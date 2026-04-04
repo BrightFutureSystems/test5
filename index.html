@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>資産寿命シミュレータ</title>
+<title>資産寿命シミュレータ v259</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
@@ -219,6 +219,79 @@
     gap:6px;
     margin:10px 0;
     align-items:center;
+  }
+  #inputModeBar{
+    position:sticky;
+    top:0;
+    z-index:25;
+    display:flex;
+    gap:6px;
+    align-items:center;
+    padding:8px 0 10px;
+    margin:0 0 10px;
+    background:#fff;
+    border-bottom:1px solid var(--border);
+  }
+  .input-mode-btn{
+    border:1px solid var(--border);
+    background:#fff;
+    padding:7px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .input-mode-btn.active{
+    background:#222;
+    color:#fff;
+    border-color:#222;
+  }
+  .mode-panel[hidden]{display:none !important;}
+  #detailStickyNav{
+    position:sticky;
+    top:var(--detail-sticky-top, 54px);
+    z-index:24;
+    display:flex;
+    gap:6px;
+    align-items:center;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding:8px 0;
+    margin:0 0 10px;
+    background:#fff;
+    border-bottom:1px solid var(--border);
+  }
+  #detailStickyNav[hidden]{display:none !important;}
+  .detail-sticky-btn{
+    flex:0 0 auto;
+    border:1px solid var(--border);
+    background:#f8fafc;
+    color:#111827;
+    padding:6px 10px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .detail-sticky-btn.active{
+    background:#222;
+    color:#fff;
+    border-color:#222;
+  }
+  .detail-sticky-target{scroll-margin-top:calc(var(--detail-sticky-top, 54px) + 48px);}
+  .simple-mode-placeholder{
+    border:1px dashed #cbd5e1;
+    border-radius:12px;
+    background:#f8fafc;
+    padding:18px 16px;
+    color:#334155;
+    line-height:1.8;
+  }
+  .simple-mode-placeholder-title{
+    font-weight:700;
+    color:#0f172a;
+    margin-bottom:6px;
   }
   #tabButtons{
     display:flex;
@@ -835,6 +908,10 @@
     .graph-select{width:110px;}
     .grid2{grid-template-columns:1fr}
     #inputs{max-height:calc(100vh - 360px)}
+    #inputModeBar{padding:8px 0 8px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
+    .input-mode-btn{padding:7px 10px;white-space:nowrap;flex:0 0 auto;}
+    #detailStickyNav{top:var(--detail-sticky-top, 50px);padding:7px 0;gap:4px;}
+    .detail-sticky-btn{padding:6px 9px;font-size:12px;}
     .basic-table{table-layout:fixed;}
     .basic-table th,.basic-table td{padding:4px;}
     .basic-table td:nth-child(2) .input-unit{width:170px;max-width:100%;justify-content:flex-start;gap:4px;margin:0 auto;}
@@ -1561,6 +1638,11 @@
   </div>
 
   <div id="inputs">
+    <div id="inputModeBar" aria-label="入力モード切替">
+      <button type="button" id="inputModeCommonBtn" class="input-mode-btn active" data-input-mode="common" aria-pressed="true">共通設定</button>
+      <button type="button" id="inputModeSimpleBtn" class="input-mode-btn" data-input-mode="simple" aria-pressed="false">簡単</button>
+      <button type="button" id="inputModeDetailBtn" class="input-mode-btn" data-input-mode="detail" aria-pressed="false">詳細</button>
+    </div>
     <div id="resultBar">
       <div class="mini-card" id="fireResult">FIRE：-</div>
       <div class="mini-card" id="retireAssetResult">退職時資産：-</div>
@@ -1569,7 +1651,8 @@
       <div class="mini-card" id="incomeTotalResult">総収入：-</div>
       <div class="mini-card" id="expenseTotalResult">総支出：-</div>
     </div>
-    <div class="section">
+    <div id="commonSettingsPanel" class="mode-panel">
+<div class="section">
       <h2>基本情報</h2>
       <div class="grid2">
         <div>
@@ -1594,7 +1677,20 @@
       <div class="help">基準年月日はシミュレーションの開始日です。本人・配偶者・子どもの年齢は、この日時点で自動計算されます。子どもの学校は、生年月日と基準年月日から自動選択されますが、必要に応じて手動で変更できます。為替レートはドル建資産・収入の円換算に、インフレ率は各項目でONにした将来金額の増減に使います。</div>
     </div>
 
-    <div class="section">
+        </div>
+    <div id="simpleModePanel" class="mode-panel" hidden>
+      <div class="section">
+        <h2>簡単モード</h2>
+        <div class="simple-mode-placeholder">
+          <div class="simple-mode-placeholder-title">簡単モードは次段階で実装します</div>
+          <div>この画面には、今後ノブや代表値入力を配置して、主要条件をサクサク動かせる入口UIを実装していきます。</div>
+          <div>今回の v259 では、共通設定・簡単・詳細の切替骨組みに加え、詳細モード内のスティッキー見出しも追加しています。</div>
+        </div>
+      </div>
+    </div>
+    <div id="detailModePanel" class="mode-panel" hidden>
+      <div id="detailStickyNav" hidden aria-label="詳細モード内セクション移動"></div>
+<div class="section">
       <h2>資産</h2>
       <div class="help">預貯金・現在の運用資産・今後の投資・積立投資に分けて入力します。現在保有分は「現在の運用資産」、将来の一括投資予定は「今後の投資」、継続積立は「積立投資」へ入力してください。</div>
       <div class="subhead">預貯金</div>
@@ -1930,7 +2026,8 @@
         </table>
       </div>
     </div>
-  </div>
+  </div>    </div>
+
 </div>
 
 <script>
@@ -1997,6 +2094,7 @@ let chart = null;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
+let currentInputMode = "common";
 let monteMode = false;
 let defaultScenarioTemplate = null;
 let educationDetailDraft = null;
@@ -5223,8 +5321,145 @@ function updateLoanSummary(){
   }
   box.innerHTML = buildLoanSummaryHtml(items);
 }
+function updateDetailStickyTop(){
+  const modeBar = document.getElementById("inputModeBar");
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl || !modeBar) return;
+  inputsEl.style.setProperty("--detail-sticky-top", `${Math.ceil(modeBar.offsetHeight || 0)}px`);
+}
+
+let detailStickySections = [];
+let detailStickyObserver = null;
+let currentDetailStickySectionId = "";
+
+function getDetailStickyNav(){
+  return document.getElementById("detailStickyNav");
+}
+
+function setActiveDetailStickySection(sectionId){
+  currentDetailStickySectionId = sectionId || "";
+  const nav = getDetailStickyNav();
+  if(!nav) return;
+  nav.querySelectorAll(".detail-sticky-btn").forEach(btn=>{
+    const active = !!sectionId && btn.dataset.targetId === sectionId;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function scrollDetailSectionIntoView(sectionId){
+  const section = document.getElementById(sectionId);
+  const inputsEl = document.getElementById("inputs");
+  if(!section || !inputsEl) return;
+  const modeBar = document.getElementById("inputModeBar");
+  const stickyNav = getDetailStickyNav();
+  const offset = (modeBar ? modeBar.offsetHeight : 0) + (stickyNav && !stickyNav.hidden ? stickyNav.offsetHeight : 0) + 8;
+  const targetTop = Math.max(0, section.offsetTop - offset);
+  inputsEl.scrollTo({ top: targetTop, behavior: "smooth" });
+}
+
+function buildDetailStickyNav(){
+  const panel = document.getElementById("detailModePanel");
+  const nav = getDetailStickyNav();
+  if(!panel || !nav) return;
+  detailStickySections = Array.from(panel.querySelectorAll(":scope > .section"))
+    .map((section, idx)=>{
+      const heading = section.querySelector("h2");
+      const title = heading ? heading.textContent.trim() : `詳細${idx + 1}`;
+      const id = section.id || `detailSection${idx + 1}`;
+      section.id = id;
+      section.classList.add("detail-sticky-target");
+      return { id, title, element: section };
+    });
+  nav.innerHTML = detailStickySections.map(sec=>`<button type="button" class="detail-sticky-btn" data-target-id="${sec.id}" aria-pressed="false">${sec.title}</button>`).join("");
+  nav.querySelectorAll(".detail-sticky-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      setActiveDetailStickySection(btn.dataset.targetId);
+      scrollDetailSectionIntoView(btn.dataset.targetId);
+    });
+  });
+  if(detailStickySections.length){
+    setActiveDetailStickySection(detailStickySections[0].id);
+  }else{
+    setActiveDetailStickySection("");
+  }
+  setupDetailStickyObserver();
+}
+
+function setupDetailStickyObserver(){
+  if(detailStickyObserver){
+    detailStickyObserver.disconnect();
+    detailStickyObserver = null;
+  }
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl || !detailStickySections.length || !("IntersectionObserver" in window)) return;
+  detailStickyObserver = new IntersectionObserver((entries)=>{
+    if(currentInputMode !== "detail") return;
+    const visible = entries
+      .filter(entry=>entry.isIntersecting)
+      .sort((a, b)=>a.boundingClientRect.top - b.boundingClientRect.top);
+    if(visible.length){
+      setActiveDetailStickySection(visible[0].target.id);
+      return;
+    }
+    const sectionsAbove = detailStickySections.filter(sec=>sec.element.offsetTop <= inputsEl.scrollTop + 4);
+    if(sectionsAbove.length){
+      setActiveDetailStickySection(sectionsAbove[sectionsAbove.length - 1].id);
+    }
+  }, {
+    root: inputsEl,
+    threshold: [0, 0.1, 0.4],
+    rootMargin: `-${((document.getElementById("inputModeBar")?.offsetHeight || 0) + 44)}px 0px -60% 0px`
+  });
+  detailStickySections.forEach(sec=>detailStickyObserver.observe(sec.element));
+}
+
+function updateDetailStickyNavVisibility(){
+  const nav = getDetailStickyNav();
+  if(!nav) return;
+  nav.hidden = !(currentInputMode === "detail" && detailStickySections.length);
+  if(!nav.hidden && detailStickySections.length && !currentDetailStickySectionId){
+    setActiveDetailStickySection(detailStickySections[0].id);
+  }
+}
+
 function updateInputsVisibility(){
-  document.getElementById("inputs").style.display = scenarios.length ? "block" : "none";
+  const inputsEl = document.getElementById("inputs");
+  if(inputsEl) inputsEl.style.display = scenarios.length ? "block" : "none";
+  updateInputModeUI();
+}
+function setInputMode(mode, options = {}){
+  const nextMode = mode === "simple" || mode === "detail" ? mode : "common";
+  if(currentInputMode === nextMode){
+    updateInputModeUI();
+    return;
+  }
+  currentInputMode = nextMode;
+  updateInputModeUI();
+  if(!options.preserveScroll){
+    const inputsEl = document.getElementById("inputs");
+    if(inputsEl) inputsEl.scrollTop = 0;
+  }
+}
+function updateInputModeUI(){
+  const inputsEl = document.getElementById("inputs");
+  const hasScenario = !!scenarios.length;
+  const mode = hasScenario ? currentInputMode : "common";
+  [["common", "inputModeCommonBtn", "commonSettingsPanel"],["simple", "inputModeSimpleBtn", "simpleModePanel"],["detail", "inputModeDetailBtn", "detailModePanel"]].forEach(([key, btnId, panelId])=>{
+    const btn = document.getElementById(btnId);
+    const panel = document.getElementById(panelId);
+    const active = hasScenario && mode === key;
+    if(btn){
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      btn.disabled = !hasScenario;
+    }
+    if(panel) panel.hidden = !active;
+  });
+  if(inputsEl) inputsEl.dataset.inputMode = mode;
+  updateDetailStickyTop();
+  updateDetailStickyNavVisibility();
+  applyTabOrder();
 }
 function addTab(){
   ensureScenarioSaved();
@@ -10582,6 +10817,17 @@ function saveIncomeCurveModal(){
   closeIncomeCurveModal();
 }
 
+document.querySelectorAll("[data-input-mode]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    setInputMode(btn.dataset.inputMode);
+  });
+});
+buildDetailStickyNav();
+updateDetailStickyTop();
+window.addEventListener("resize", ()=>{
+  updateDetailStickyTop();
+  setupDetailStickyObserver();
+});
 document.getElementById("addTabBtn").addEventListener("click", ()=>{
   addTab(); draw(); persistState();
 });
@@ -11367,6 +11613,7 @@ window.addEventListener("load", ()=>{
   normalizeScenarioNames();
   if(!scenarios.length) addTab();
   renderTabs();
+  updateInputModeUI();
   syncAllBirthDateDerivedFields();
   updatePeriodDisplays();
   enhanceNumericInputs(document);
