@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>資産寿命シミュレータ v259</title>
+<title>資産寿命シミュレータ</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
@@ -293,6 +293,21 @@
     color:#0f172a;
     margin-bottom:6px;
   }
+  .simple-mode-root{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+  .simple-mode-card{border:1px solid var(--border);border-radius:12px;background:#f8fafc;padding:12px;}
+  .simple-mode-card-title{font-weight:700;color:#0f172a;margin-bottom:8px;}
+  .simple-mode-card-note{margin-top:8px;color:#64748b;font-size:12px;line-height:1.5;}
+  .simple-mode-field{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px solid #e5e7eb;}
+  .simple-mode-field:first-child{border-top:none;padding-top:0;}
+  .simple-mode-field-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600;color:#111827;}
+  .simple-mode-field-value{font-size:12px;color:#475569;white-space:nowrap;}
+  .simple-mode-slider{width:100%;margin:0;}
+  .simple-mode-input-row{display:flex;align-items:center;gap:8px;}
+  .simple-mode-input-row input[type=number]{width:120px;max-width:100%;}
+  .simple-mode-input-row .suffix{white-space:nowrap;}
+  .simple-mode-note{margin-top:10px;color:#64748b;font-size:12px;line-height:1.6;}
+  .simple-linked-row td{background:#f8fbff;}
+  .simple-linked-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:11px;font-weight:700;vertical-align:middle;}
   #tabButtons{
     display:flex;
     flex-wrap:wrap;
@@ -910,6 +925,9 @@
     #inputs{max-height:calc(100vh - 360px)}
     #inputModeBar{padding:8px 0 8px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
     .input-mode-btn{padding:7px 10px;white-space:nowrap;flex:0 0 auto;}
+    .simple-mode-root{grid-template-columns:1fr;}
+    .simple-mode-card{padding:10px;}
+    .simple-mode-input-row input[type=number]{width:108px;}
     #detailStickyNav{top:var(--detail-sticky-top, 50px);padding:7px 0;gap:4px;}
     .detail-sticky-btn{padding:6px 9px;font-size:12px;}
     .basic-table{table-layout:fixed;}
@@ -1643,6 +1661,10 @@
       <button type="button" id="inputModeSimpleBtn" class="input-mode-btn" data-input-mode="simple" aria-pressed="false">簡単</button>
       <button type="button" id="inputModeDetailBtn" class="input-mode-btn" data-input-mode="detail" aria-pressed="false">詳細</button>
     </div>
+    <input id="simpleAutoInflLife1" type="hidden" value="1">
+    <input id="simpleAutoInflLife2" type="hidden" value="1">
+    <input id="simpleAutoInflRent1" type="hidden" value="1">
+    <input id="simpleAutoInflEdu" type="hidden" value="1">
     <div id="resultBar">
       <div class="mini-card" id="fireResult">FIRE：-</div>
       <div class="mini-card" id="retireAssetResult">退職時資産：-</div>
@@ -1662,7 +1684,7 @@
             <tr><td>配偶者生年月日</td><td><div class="basic-inline-date-age"><input id="spouseBirthDate" type="date" class="datebox" value="1991-01-01"><span class="readonly-age-inline">(<span id="spouseAgeLabel" class="readonly-age-text">35歳0ヶ月</span>)</span><input id="spouseAgeDisplay" type="hidden" value="35歳0ヶ月"><input id="spouseAge" type="hidden" value="35"></div></td></tr>
             <tr><td>想定寿命</td><td><div class="input-unit center"><input id="lifeExpect" type="number" class="agebox" value="90"><span class="suffix">歳</span></div></td></tr>
             <tr><td>為替レート</td><td><div class="input-unit center"><input id="usdRate" type="number" class="agebox" value="150" step="0.1"><span class="suffix">円 / ドル</span></div></td></tr>
-            <tr><td>インフレ率</td><td><div class="input-unit center"><input id="inflRate" type="number" class="ratebox" step="0.1" value="1.0"><span class="suffix">%</span></div></td></tr>
+            <tr><td>インフレ率</td><td><div class="input-unit center"><input id="inflRate" type="number" class="ratebox" step="0.1" value="0.0"><span class="suffix">%</span></div></td></tr>
             <tr><td>基準年月日</td><td><div class="basic-date-only"><input id="baseDate" type="date" class="datebox" value=""><input id="currentBaseYear" type="hidden" value=""></div></td></tr>
           </table>
         </div>
@@ -1681,11 +1703,8 @@
     <div id="simpleModePanel" class="mode-panel" hidden>
       <div class="section">
         <h2>簡単モード</h2>
-        <div class="simple-mode-placeholder">
-          <div class="simple-mode-placeholder-title">簡単モードは次段階で実装します</div>
-          <div>この画面には、今後ノブや代表値入力を配置して、主要条件をサクサク動かせる入口UIを実装していきます。</div>
-          <div>今回の v259 では、共通設定・簡単・詳細の切替骨組みに加え、詳細モード内のスティッキー見出しも追加しています。</div>
-        </div>
+        <div id="simpleModeRoot" class="simple-mode-root"></div>
+        <div class="simple-mode-note">簡単モードは、各テーブルの先頭代表位置のみを操作します。詳細モード側で追加した他の行や詳細設定は保持され、計算にも引き続き反映されます。</div>
       </div>
     </div>
     <div id="detailModePanel" class="mode-panel" hidden>
@@ -2413,7 +2432,7 @@ function applyDefaultScalarInputs(){
   if(spouseBirthInput) spouseBirthInput.value = getDefaultBirthDateForAge(baseDateValue, 35);
   if(selfAgeHidden) selfAgeHidden.value = "40";
   if(spouseAgeHidden) spouseAgeHidden.value = "35";
-  if(inflRateInput) inflRateInput.value = "1.0";
+  if(inflRateInput) inflRateInput.value = "0.0";
 }
 function createDefaultScenarioData(){
   DYNAMIC_SECTIONS.forEach(type=>{ dynamicCounts[type] = DEFAULT_ROW_COUNT[type] || 1; });
@@ -3311,6 +3330,14 @@ function getInsuranceAssistModalData(){
     medicalSubtype:document.getElementById('insuranceAssistMedicalSubtype')?.value || '医療保険・がん保険'
   };
 }
+function formatDatePartsYmd(parts){
+  if(!parts || !Number.isFinite(parts.year) || !Number.isFinite(parts.month) || !Number.isFinite(parts.day)) return "";
+  const y = String(Math.trunc(parts.year)).padStart(4, "0");
+  const m = String(Math.trunc(parts.month)).padStart(2, "0");
+  const d = String(Math.trunc(parts.day)).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function formatMoneyForDisplay(v){
   const n = Number(v || 0);
   if(!Number.isFinite(n)) return '0';
@@ -4442,14 +4469,21 @@ function updatePeriodDisplays(){
   const currentAge = numInput("age", 0);
   const xMinEl = document.getElementById("xAxisMin");
   const xMaxEl = document.getElementById("xAxisMax");
-  if(xMinEl && (!sanitizeNumericText(xMinEl.value, true) || numValue(xMinEl.value, 0) < currentAge)){
-    xMinEl.value = String(currentAge);
-    formatNumericInputDisplay(xMinEl, true);
+  const previousAge = Number(document.body?.dataset?.lastCurrentAge || currentAge);
+  if(xMinEl){
+    const hasValidXMin = !!sanitizeNumericText(xMinEl.value, true);
+    const xMinValue = hasValidXMin ? numValue(xMinEl.value, 0) : currentAge;
+    const shouldResetToCurrentAge = (!hasValidXMin) || (xMinValue < currentAge) || (xMinValue === previousAge && currentAge !== previousAge);
+    if(shouldResetToCurrentAge){
+      xMinEl.value = String(currentAge);
+      formatNumericInputDisplay(xMinEl, true);
+    }
   }
   if(xMaxEl && (!sanitizeNumericText(xMaxEl.value, true) || numValue(xMaxEl.value, 0) < currentAge)){
     xMaxEl.value = String(Math.min(120, Math.max(100, currentAge)));
     formatNumericInputDisplay(xMaxEl, true);
   }
+  if(document.body) document.body.dataset.lastCurrentAge = String(currentAge);
 }
 
 
@@ -4759,7 +4793,7 @@ function getAllInputs(){
   const baseYear = currentBaseYearValue();
   document.querySelectorAll("input, select").forEach(el=>{
     if(!el.id) return;
-    if(el.closest && (el.closest("#loanDetailModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#monteCarloSettingsModal"))) return;
+    if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#monteCarloSettingsModal"))) return;
     if(el.type === "checkbox"){
       data[el.id] = el.checked;
       return;
@@ -4811,6 +4845,9 @@ function setAllInputs(data){
   refreshAllTimeDisplays(nextContext, nextContext);
   updateIncomeCurveControls();
   updateChildAllowanceSummary(migrated);
+  syncSimpleModeFromDetail();
+  syncSimpleInflationCheckboxesFromRate();
+  applySimpleLinkedHighlights();
   seedLoanDetailHiddenFromSimpleIfNeeded();
   if(document.getElementById("homeDetailOn")?.checked){
     syncSimpleLoanInputsFromStoredDetailFields();
@@ -5321,6 +5358,479 @@ function updateLoanSummary(){
   }
   box.innerHTML = buildLoanSummaryHtml(items);
 }
+const SIMPLE_MODE_BLOCKS = [
+  {
+    key:"assets",
+    title:"資産・前提",
+    note:"今ある資産と全体前提を調整します。インフレ率は生活費・家賃・教育費に適用します。",
+    fields:[
+      {key:"depAmount", label:"現在の預貯金額", unit:"万円", min:0, max:10000, step:10, displayDigits:0},
+      {key:"invAmount", label:"現在の運用資産額", unit:"万円", min:0, max:20000, step:10, displayDigits:0},
+      {key:"invRate", label:"運用資産の利回り", unit:"%", min:-5, max:12, step:0.1},
+      {key:"inflRate", label:"インフレ率", unit:"%", min:-1, max:8, step:0.1}
+    ]
+  },
+  {
+    key:"working",
+    title:"現役期",
+    note:"退職前の収支を簡易に調整します。",
+    fields:[
+      {key:"salaryMonth", label:"退職までの手取り（月）", unit:"万円 / 月", min:0, max:200, step:1},
+      {key:"lifeBefore", label:"退職までの生活費（月）", unit:"万円 / 月", min:0, max:100, step:1},
+      {key:"rent", label:"家賃", unit:"万円 / 月", min:0, max:50, step:0.5}
+    ]
+  },
+  {
+    key:"retire",
+    title:"退職条件",
+    note:"退職時点そのものに効く代表条件です。",
+    fields:[
+      {key:"retireAge", label:"リタイア年齢", unit:"歳", min:40, max:75, step:1},
+      {key:"retirePay", label:"退職金（手取り）", unit:"万円", min:0, max:10000, step:10}
+    ]
+  },
+  {
+    key:"after",
+    title:"老後",
+    note:"老後の収支条件を調整します。",
+    fields:[
+      {key:"pensionAge", label:"年金開始年齢", unit:"歳", min:60, max:75, step:1},
+      {key:"pensionMonth", label:"年金受給額（月・税引前）", unit:"万円 / 月", min:0, max:80, step:0.5},
+      {key:"lifeAfter", label:"退職後の生活費（月）", unit:"万円 / 月", min:0, max:100, step:1}
+    ]
+  }
+];
+const SIMPLE_MODE_FIELDS = SIMPLE_MODE_BLOCKS.flatMap(block=>block.fields);
+const SIMPLE_AUTO_INFL_FLAG_IDS = {
+  life1:"simpleAutoInflLife1",
+  life2:"simpleAutoInflLife2",
+  rent1:"simpleAutoInflRent1",
+  edu:"simpleAutoInflEdu"
+};
+let simpleAutoInflSyncInProgress = false;
+
+function getSimpleAutoInflFlagEl(key){
+  return document.getElementById(SIMPLE_AUTO_INFL_FLAG_IDS[key] || "");
+}
+function isSimpleAutoInflManaged(key){
+  const el = getSimpleAutoInflFlagEl(key);
+  return !el || String(el.value || "1") !== "0";
+}
+function setSimpleAutoInflManaged(key, managed){
+  const el = getSimpleAutoInflFlagEl(key);
+  if(!el) return;
+  el.value = managed ? "1" : "0";
+  el.setAttribute("value", el.value);
+}
+function withSimpleAutoInflSync(fn){
+  simpleAutoInflSyncInProgress = true;
+  try{
+    fn && fn();
+  }finally{
+    simpleAutoInflSyncInProgress = false;
+  }
+}
+function setCheckboxValue(id, checked){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.checked = !!checked;
+}
+function isSimpleInflationEnabled(rateValue = null){
+  const n = rateValue == null ? numInput("inflRate", 0) : numValue(rateValue, 0);
+  return Math.abs(n) > 0.0000001;
+}
+function syncSimpleInflationCheckboxesFromRate(rateValue = null){
+  const enabled = isSimpleInflationEnabled(rateValue);
+  withSimpleAutoInflSync(()=>{
+    if(isSimpleAutoInflManaged("life1")) setCheckboxValue("life1_inflationOn", enabled);
+    if(isSimpleAutoInflManaged("life2")) setCheckboxValue("life2_inflationOn", enabled);
+    if(isSimpleAutoInflManaged("rent1")) setCheckboxValue("rent1_inflationOn", enabled);
+    if(isSimpleAutoInflManaged("edu")) setCheckboxValue("inflEdu", enabled);
+  });
+}
+function getSimpleModeDisplayDigits(def){
+  if(def && Number.isFinite(Number(def.displayDigits))) return Math.max(0, Number(def.displayDigits));
+  const step = Number(def?.step || 1);
+  return step >= 1 ? 0 : getSimpleModeStepDigits(step);
+}
+function normalizeSimpleModeValueForDisplay(value, def){
+  const digits = getSimpleModeDisplayDigits(def);
+  const factor = 10 ** digits;
+  return Math.round((Number(value) || 0) * factor) / factor;
+}
+
+function getSimpleModeRoot(){
+  return document.getElementById("simpleModeRoot");
+}
+function getSimpleModeFieldDef(key){
+  return SIMPLE_MODE_FIELDS.find(field=>field.key === key) || null;
+}
+function getSimpleModeRangeId(key){ return `simple_${key}_range`; }
+function getSimpleModeNumberId(key){ return `simple_${key}_number`; }
+function getSimpleModeStepDigits(step){
+  const raw = String(step ?? "1");
+  return raw.includes(".") ? (raw.split(".")[1] || "").length : 0;
+}
+function getSimpleModeNiceMax(value, def){
+  const baseMax = numValue(def?.max, 0);
+  const step = numValue(def?.step, 1) || 1;
+  const numericValue = numValue(value, NaN);
+  const candidate = Number.isFinite(numericValue) ? Math.max(baseMax || 0, numericValue * 1.25) : (baseMax || 0);
+  const steps = Math.max(1, Math.ceil(candidate / step));
+  return Math.round(steps * step * 1000) / 1000;
+}
+function updateSimpleModeFieldBounds(key, value = null){
+  const def = getSimpleModeFieldDef(key);
+  if(!def) return;
+  const rangeEl = document.getElementById(getSimpleModeRangeId(key));
+  const numberEl = document.getElementById(getSimpleModeNumberId(key));
+  const currentAge = getSimpleModeCurrentAge();
+  const min = key === "retireAge" ? Math.max(numValue(def.min, 0), currentAge) : numValue(def.min, 0);
+  const max = getSimpleModeNiceMax(value, {...def, min});
+  [rangeEl, numberEl].forEach(el=>{
+    if(!el) return;
+    el.min = String(min);
+    el.max = String(max);
+  });
+}
+function clampSimpleModeValue(value, def){
+  const min = numValue(def?.min, 0);
+  const max = numValue(def?.max, min);
+  let n = numValue(value, min);
+  if(!Number.isFinite(n)) n = min;
+  if(Number.isFinite(min)) n = Math.max(min, n);
+  if(Number.isFinite(max)) n = Math.min(max, n);
+  return Math.round(n * 1000) / 1000;
+}
+function formatSimpleModeDisplayValue(value, def){
+  const digits = getSimpleModeDisplayDigits(def);
+  const n = normalizeSimpleModeValueForDisplay(value, def);
+  return `${n.toLocaleString("ja-JP", {minimumFractionDigits:digits, maximumFractionDigits:digits})} ${def?.unit || ""}`.trim();
+}
+function buildSimpleModeFieldHtml(def){
+  return `<div class="simple-mode-field" data-simple-field="${def.key}">
+    <div class="simple-mode-field-label"><span>${escapeHtml(def.label)}</span><span id="simple_${def.key}_display" class="simple-mode-field-value">-</span></div>
+    <input id="${getSimpleModeRangeId(def.key)}" class="simple-mode-slider" type="range" min="${escapeAttr(def.min)}" max="${escapeAttr(def.max)}" step="${escapeAttr(def.step)}" value="${escapeAttr(def.min)}">
+    <div class="simple-mode-input-row">
+      <input id="${getSimpleModeNumberId(def.key)}" type="number" step="${escapeAttr(def.step)}" min="${escapeAttr(def.min)}" max="${escapeAttr(def.max)}" value="${escapeAttr(def.min)}">
+      <span class="suffix">${escapeHtml(def.unit)}</span>
+    </div>
+  </div>`;
+}
+function renderSimpleMode(){
+  const root = getSimpleModeRoot();
+  if(!root) return;
+  root.innerHTML = SIMPLE_MODE_BLOCKS.map(block=>`<section class="simple-mode-card" data-simple-block="${block.key}"><div class="simple-mode-card-title">${escapeHtml(block.title)}</div>${block.fields.map(buildSimpleModeFieldHtml).join("")}<div class="simple-mode-card-note">${escapeHtml(block.note)}</div></section>`).join("");
+}
+function getSimpleModeCurrentAge(){
+  const n = Number(document.getElementById("age")?.value);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 40;
+}
+function getSimpleModeRetireAge(){
+  const hidden = Number(document.getElementById("self_retire_age")?.value);
+  if(Number.isFinite(hidden) && hidden > 0) return Math.round(hidden);
+  const fallback = calcAgeAtYearMonth(document.getElementById('selfBirthDate')?.value || '', document.getElementById('self_retire_year')?.value, document.getElementById('self_retire_month')?.value);
+  return Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : 65;
+}
+function updateSimpleModeConstraints(){
+  const retireDef = getSimpleModeFieldDef("retireAge");
+  if(retireDef) updateSimpleModeFieldBounds("retireAge", getSimpleModeRetireAge());
+}
+function setSimpleModeFieldUIValue(key, value){
+  const def = getSimpleModeFieldDef(key);
+  if(!def) return;
+  updateSimpleModeConstraints();
+  updateSimpleModeFieldBounds(key, value);
+  const rangeEl = document.getElementById(getSimpleModeRangeId(key));
+  const numberEl = document.getElementById(getSimpleModeNumberId(key));
+  const displayEl = document.getElementById(`simple_${key}_display`);
+  const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
+  const clamped = normalizeSimpleModeValueForDisplay(clampSimpleModeValue(value, dynamicDef), def);
+  if(rangeEl) rangeEl.value = String(clamped);
+  if(numberEl){
+    numberEl.value = String(clamped);
+    numberEl.setAttribute("value", String(clamped));
+    formatNumericInputDisplay(numberEl, true);
+  }
+  if(displayEl) displayEl.textContent = formatSimpleModeDisplayValue(clamped, def);
+}
+function getSimpleModeFieldValue(key){
+  const def = getSimpleModeFieldDef(key);
+  if(!def) return 0;
+  const numberEl = document.getElementById(getSimpleModeNumberId(key));
+  const rangeEl = document.getElementById(getSimpleModeRangeId(key));
+  const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
+  const raw = numberEl?.value !== "" ? numberEl?.value : rangeEl?.value;
+  return normalizeSimpleModeValueForDisplay(clampSimpleModeValue(numValue(raw, dynamicDef.min), dynamicDef), def);
+}
+function collectSimpleModeValuesFromUI(){
+  return {
+    depAmount:getSimpleModeFieldValue("depAmount"),
+    invAmount:getSimpleModeFieldValue("invAmount"),
+    invRate:getSimpleModeFieldValue("invRate"),
+    inflRate:getSimpleModeFieldValue("inflRate"),
+    salaryMonth:getSimpleModeFieldValue("salaryMonth"),
+    lifeBefore:getSimpleModeFieldValue("lifeBefore"),
+    rent:getSimpleModeFieldValue("rent"),
+    retireAge:getSimpleModeFieldValue("retireAge"),
+    retirePay:getSimpleModeFieldValue("retirePay"),
+    pensionAge:getSimpleModeFieldValue("pensionAge"),
+    pensionMonth:getSimpleModeFieldValue("pensionMonth"),
+    lifeAfter:getSimpleModeFieldValue("lifeAfter")
+  };
+}
+function convertDetailCurrencyAmountToManYen(amount, currency){
+  const n = numValue(amount, 0);
+  if(String(currency || "万円") === "ドル"){
+    const usdRate = Number(document.getElementById("usdRate")?.value || 0) || 0;
+    if(usdRate > 0) return (n * usdRate) / 10000;
+  }
+  return n;
+}
+function convertManYenToDetailCurrencyAmount(amountManYen, currency){
+  const n = numValue(amountManYen, 0);
+  if(String(currency || "万円") === "ドル"){
+    const usdRate = Number(document.getElementById("usdRate")?.value || 0) || 0;
+    if(usdRate > 0) return (n * 10000) / usdRate;
+  }
+  return n;
+}
+function readSimpleModeValuesFromDetail(){
+  return {
+    depAmount:convertDetailCurrencyAmountToManYen(document.getElementById("dep1_amount")?.value || 0, document.getElementById("dep1_cur")?.value || "万円"),
+    invAmount:convertDetailCurrencyAmountToManYen(document.getElementById("inv1_amount")?.value || 0, document.getElementById("inv1_cur")?.value || "万円"),
+    invRate:numInput("inv1_rate", 0),
+    inflRate:numInput("inflRate", 0),
+    salaryMonth:numInput("self_salary_month", 0),
+    lifeBefore:numInput("life1_val", 0),
+    rent:numInput("rent1_val", 0),
+    retireAge:getSimpleModeRetireAge(),
+    retirePay:numInput("self_retire_pay", 0),
+    pensionAge:numInput("self_pension_age", 0),
+    pensionMonth:numInput("self_pension_month", 0),
+    lifeAfter:numInput("life2_val", 0)
+  };
+}
+function syncSimpleModeFromDetail(){
+  if(!getSimpleModeRoot()) return;
+  updateSimpleModeConstraints();
+  const values = readSimpleModeValuesFromDetail();
+  Object.entries(values).forEach(([key, value])=>setSimpleModeFieldUIValue(key, value));
+}
+function ensureSimpleRepresentativeSlots(data, simpleValues = null){
+  const next = migrateLegacyData(deepClone(data || getAllInputs()));
+  const values = simpleValues || readSimpleModeValuesFromDetail();
+  const currentAge = getSimpleModeCurrentAge();
+  const retireAge = Math.max(currentAge, Math.round(Number(values.retireAge) || getSimpleModeRetireAge() || 65));
+  const inflEnabled = isSimpleInflationEnabled(values.inflRate);
+  let changed = false;
+  const ensureDep1 = !(next.dep1_owner != null || next.dep1_amount != null || next.dep1_cur != null || next.dep1_rate != null);
+  if(ensureDep1){
+    next.dep1_owner = "本人";
+    next.dep1_amount = Number(values.depAmount) || 0;
+    next.dep1_cur = "万円";
+    next.dep1_rate = next.dep1_rate != null && next.dep1_rate !== "" ? next.dep1_rate : 0.2;
+    next.dep1_taxOn = next.dep1_taxOn == null ? true : next.dep1_taxOn;
+    setRowLabelMeta(next, "dep", 1, defaultRowLabel("dep", 1), false);
+    changed = true;
+  }
+  const ensureInv1 = !(next.inv1_owner != null || next.inv1_amount != null || next.inv1_rate != null || next.inv1_accountType != null);
+  if(ensureInv1){
+    const invAmount = Number(values.invAmount) || 0;
+    next.inv1_owner = "本人";
+    next.inv1_accountType = "課税";
+    next.inv1_cost = invAmount;
+    next.inv1_amount = invAmount;
+    next.inv1_cur = "万円";
+    next.inv1_rate = Number(values.invRate) || 0;
+    next.inv1_idecoCategory = "";
+    setRowLabelMeta(next, "inv", 1, defaultRowLabel("inv", 1), false);
+    changed = true;
+  }
+  const ensureLife1 = !(next.life1_fromAge != null || next.life1_toAge != null || next.life1_val != null);
+  if(ensureLife1){
+    next.life1_fromAge = currentAge;
+    next.life1_toAge = retireAge;
+    next.life1_val = Number(values.lifeBefore) || 0;
+    next.life1_timeUnit = "age";
+    next.life1_inflationOn = next.life1_inflationOn == null ? (isSimpleAutoInflManaged("life1") ? inflEnabled : false) : next.life1_inflationOn;
+    setRowLabelMeta(next, "life", 1, defaultRowLabel("life", 1), false);
+    changed = true;
+  } else {
+    const hasLife2 = (next.life2_fromAge != null || next.life2_toAge != null || next.life2_val != null);
+    const life1From = Number(next.life1_fromAge ?? currentAge) || currentAge;
+    const life1To = Number(next.life1_toAge ?? 120) || 120;
+    const life1TimeUnit = next.life1_timeUnit || "age";
+    const life1LooksLikeInitialUnsplit = !hasLife2 && life1TimeUnit === "age" && life1From === currentAge && life1To === 120;
+    if(life1LooksLikeInitialUnsplit){
+      next.life1_fromAge = currentAge;
+      next.life1_toAge = retireAge;
+      next.life1_timeUnit = "age";
+      next.life1_inflationOn = next.life1_inflationOn == null ? (isSimpleAutoInflManaged("life1") ? inflEnabled : false) : next.life1_inflationOn;
+      changed = true;
+    }
+  }
+  const ensureLife2 = !(next.life2_fromAge != null || next.life2_toAge != null || next.life2_val != null);
+  if(ensureLife2){
+    next.life2_fromAge = Math.min(120, retireAge + 1);
+    next.life2_toAge = 120;
+    next.life2_val = Number(values.lifeAfter) || 0;
+    next.life2_timeUnit = "age";
+    next.life2_inflationOn = next.life2_inflationOn == null ? (isSimpleAutoInflManaged("life2") ? inflEnabled : false) : next.life2_inflationOn;
+    setRowLabelMeta(next, "life", 2, defaultRowLabel("life", 2), false);
+    changed = true;
+  }
+  const ensureRent1 = !(next.rent1_fromAge != null || next.rent1_toAge != null || next.rent1_val != null);
+  if(ensureRent1){
+    next.rent1_fromAge = currentAge;
+    next.rent1_toAge = 120;
+    next.rent1_val = Number(values.rent) || 0;
+    next.rent1_timeUnit = "age";
+    next.rent1_inflationOn = next.rent1_inflationOn == null ? (isSimpleAutoInflManaged("rent1") ? inflEnabled : false) : next.rent1_inflationOn;
+    setRowLabelMeta(next, "rent", 1, defaultRowLabel("rent", 1), false);
+    changed = true;
+  }
+  if(next.inflEdu == null){
+    next.inflEdu = isSimpleAutoInflManaged("edu") ? inflEnabled : false;
+    changed = true;
+  }
+  return {data: next, changed};
+}
+function ensureSimpleRepresentativeSlotsInDOM(simpleValues = null){
+  const ensured = ensureSimpleRepresentativeSlots(getAllInputs(), simpleValues);
+  if(ensured.changed){
+    setAllInputs(ensured.data);
+    syncCurrentScenarioFromDOM(false);
+  }
+  return ensured;
+}
+function setPreciseNumericInputValue(id, value, digits = 6){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const n = numValue(value, 0);
+  const rounded = Math.round(n * (10 ** digits)) / (10 ** digits);
+  const textValue = String(rounded).replace(/(?:\.0+|(?:(\.\d*?[1-9]))0+)$/, "$1");
+  el.value = textValue;
+  el.setAttribute("value", textValue);
+  formatNumericInputDisplay(el, true);
+}
+function writeSimpleModeValueToDetailByKey(key, simpleValue){
+  switch(String(key || "")){
+    case "depAmount": {
+      const currency = document.getElementById("dep1_cur")?.value || "万円";
+      const detailAmount = convertManYenToDetailCurrencyAmount(simpleValue, currency);
+      setPreciseNumericInputValue("dep1_amount", currency === "ドル" ? Math.round(detailAmount) : detailAmount, currency === "ドル" ? 0 : 3);
+      break;
+    }
+    case "invAmount": {
+      const currency = document.getElementById("inv1_cur")?.value || "万円";
+      const detailAmount = convertManYenToDetailCurrencyAmount(simpleValue, currency);
+      setPreciseNumericInputValue("inv1_amount", currency === "ドル" ? Math.round(detailAmount) : detailAmount, currency === "ドル" ? 0 : 3);
+      break;
+    }
+    case "invRate":
+      setNumericInputValue("inv1_rate", simpleValue);
+      break;
+    case "inflRate":
+      setNumericInputValue("inflRate", simpleValue);
+      syncSimpleInflationCheckboxesFromRate(simpleValue);
+      break;
+    case "salaryMonth":
+      setNumericInputValue("self_salary_month", simpleValue);
+      break;
+    case "lifeBefore":
+      setNumericInputValue("life1_val", simpleValue);
+      break;
+    case "rent":
+      setNumericInputValue("rent1_val", simpleValue);
+      break;
+    case "retireAge": {
+      const retireYm = deriveRetireYearMonthFromAge(simpleValue, document.getElementById("selfBirthDate")?.value || "", document.getElementById("baseDate")?.value || "");
+      const retireYearEl = document.getElementById("self_retire_year");
+      if(retireYearEl && retireYm.year) retireYearEl.value = String(retireYm.year);
+      syncRetireFieldsForPrefix("self");
+      break;
+    }
+    case "retirePay":
+      setNumericInputValue("self_retire_pay", simpleValue);
+      break;
+    case "pensionAge":
+      setNumericInputValue("self_pension_age", simpleValue);
+      break;
+    case "pensionMonth":
+      setNumericInputValue("self_pension_month", simpleValue);
+      break;
+    case "lifeAfter":
+      setNumericInputValue("life2_val", simpleValue);
+      break;
+  }
+}
+function writeSimpleModeValuesToDetail(simpleValues, changedKey = null){
+  ensureSimpleRepresentativeSlotsInDOM(simpleValues);
+  if(changedKey){
+    writeSimpleModeValueToDetailByKey(changedKey, simpleValues[changedKey]);
+  }else{
+    Object.keys(simpleValues || {}).forEach(key=>writeSimpleModeValueToDetailByKey(key, simpleValues[key]));
+  }
+  updateIncomeCurveControls();
+  updatePeriodDisplays();
+  syncSimpleInflationCheckboxesFromRate(simpleValues?.inflRate);
+  updateLoanSummary();
+  applySimpleLinkedHighlights();
+  syncSimpleModeFromDetail();
+}
+function handleSimpleModeFieldInput(key, rawValue){
+  const def = getSimpleModeFieldDef(key);
+  if(!def) return;
+  const normalizedRaw = numValue(rawValue, def.min);
+  updateSimpleModeFieldBounds(key, normalizedRaw);
+  const rangeEl = document.getElementById(getSimpleModeRangeId(key));
+  const numberEl = document.getElementById(getSimpleModeNumberId(key));
+  const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
+  const clamped = clampSimpleModeValue(normalizedRaw, dynamicDef);
+  setSimpleModeFieldUIValue(key, clamped);
+  const values = collectSimpleModeValuesFromUI();
+  writeSimpleModeValuesToDetail(values, key);
+  monteMode = false;
+  syncCurrentScenarioFromDOM(false);
+  requestDraw();
+  persistState();
+}
+function clearSimpleLinkedHighlights(){
+  document.querySelectorAll('.simple-linked-row').forEach(el=>el.classList.remove('simple-linked-row'));
+  document.querySelectorAll('.simple-linked-badge').forEach(el=>el.remove());
+}
+function addSimpleLinkedBadge(cell){
+  if(!cell) return;
+  if(cell.querySelector('.simple-linked-badge')) return;
+  const badge = document.createElement('span');
+  badge.className = 'simple-linked-badge';
+  badge.textContent = '簡単連動';
+  const anchor = cell.querySelector('.row-label-btn') || cell;
+  anchor.appendChild(badge);
+}
+function markSimpleLinkedRow(row){
+  if(!row) return;
+  row.classList.add('simple-linked-row');
+  addSimpleLinkedBadge(row.children?.[0]);
+}
+function markSimpleLinkedScalarInput(inputId){
+  const input = document.getElementById(inputId);
+  const row = input?.closest('tr');
+  if(!row) return;
+  row.classList.add('simple-linked-row');
+  addSimpleLinkedBadge(row.children?.[0]);
+}
+function applySimpleLinkedHighlights(){
+  clearSimpleLinkedHighlights();
+  markSimpleLinkedRow(document.querySelector('#depRows tr:nth-child(1)'));
+  markSimpleLinkedRow(document.querySelector('#invRows tr:nth-child(1)'));
+  markSimpleLinkedRow(document.querySelector('#lifeRows tr:nth-child(1)'));
+  markSimpleLinkedRow(document.querySelector('#lifeRows tr:nth-child(2)'));
+  markSimpleLinkedRow(document.querySelector('#rentRows tr:nth-child(1)'));
+  ["inflRate","self_salary_month","self_retire_year","self_retire_pay","self_pension_age","self_pension_month"].forEach(markSimpleLinkedScalarInput);
+}
+
 function updateDetailStickyTop(){
   const modeBar = document.getElementById("inputModeBar");
   const inputsEl = document.getElementById("inputs");
@@ -5331,6 +5841,12 @@ function updateDetailStickyTop(){
 let detailStickySections = [];
 let detailStickyObserver = null;
 let currentDetailStickySectionId = "";
+let detailStickyPendingTargetId = "";
+let detailStickyPendingTargetTop = null;
+let detailStickyPendingUntil = 0;
+let detailStickySettledTargetId = "";
+let detailStickySettledUntil = 0;
+let detailStickyScrollHandlerBound = false;
 
 function getDetailStickyNav(){
   return document.getElementById("detailStickyNav");
@@ -5347,14 +5863,95 @@ function setActiveDetailStickySection(sectionId){
   });
 }
 
+function getDetailStickyScrollOffset(){
+  const modeBar = document.getElementById("inputModeBar");
+  const stickyNav = getDetailStickyNav();
+  return (modeBar ? modeBar.offsetHeight : 0) + (stickyNav && !stickyNav.hidden ? stickyNav.offsetHeight : 0);
+}
+
+function getDetailStickyAnchorTop(){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl) return 0;
+  const rect = inputsEl.getBoundingClientRect();
+  return rect.top + getDetailStickyScrollOffset();
+}
+
+function getDetailStickySectionForScroll(){
+  if(!detailStickySections.length) return "";
+  const anchorTop = getDetailStickyAnchorTop();
+  let activeId = detailStickySections[0].id;
+  for(const sec of detailStickySections){
+    const secTop = sec.element.getBoundingClientRect().top;
+    if(secTop <= anchorTop + 1) activeId = sec.id;
+    else break;
+  }
+  return activeId;
+}
+
+function refreshActiveDetailStickySectionFromScroll(){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl || !detailStickySections.length) return;
+  const now = Date.now();
+  const currentTop = Math.round(inputsEl.scrollTop || 0);
+  const liveSectionId = getDetailStickySectionForScroll();
+  if(detailStickyPendingTargetId){
+    let arrived = false;
+    if(detailStickyPendingTargetTop != null){
+      const targetEl = document.getElementById(detailStickyPendingTargetId);
+      if(targetEl){
+        const diff = Math.abs(targetEl.getBoundingClientRect().top - getDetailStickyAnchorTop());
+        arrived = diff <= 2;
+      }else{
+        arrived = Math.abs(currentTop - detailStickyPendingTargetTop) <= 2;
+      }
+    }
+    const expired = now >= detailStickyPendingUntil;
+    if(arrived || expired){
+      const targetId = detailStickyPendingTargetId;
+      detailStickyPendingTargetId = "";
+      detailStickyPendingTargetTop = null;
+      detailStickyPendingUntil = 0;
+      detailStickySettledTargetId = targetId;
+      detailStickySettledUntil = now + 220;
+      setActiveDetailStickySection(targetId);
+      return;
+    }
+    setActiveDetailStickySection(liveSectionId);
+    return;
+  }
+  if(detailStickySettledTargetId && now < detailStickySettledUntil){
+    setActiveDetailStickySection(detailStickySettledTargetId);
+    return;
+  }
+  detailStickySettledTargetId = "";
+  detailStickySettledUntil = 0;
+  setActiveDetailStickySection(liveSectionId);
+}
+
+function ensureDetailStickyScrollHandler(){
+  if(detailStickyScrollHandlerBound) return;
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl) return;
+  inputsEl.addEventListener("scroll", ()=>{
+    if(currentInputMode !== "detail") return;
+    refreshActiveDetailStickySectionFromScroll();
+  }, { passive:true });
+  detailStickyScrollHandlerBound = true;
+}
+
 function scrollDetailSectionIntoView(sectionId){
   const section = document.getElementById(sectionId);
   const inputsEl = document.getElementById("inputs");
   if(!section || !inputsEl) return;
-  const modeBar = document.getElementById("inputModeBar");
-  const stickyNav = getDetailStickyNav();
-  const offset = (modeBar ? modeBar.offsetHeight : 0) + (stickyNav && !stickyNav.hidden ? stickyNav.offsetHeight : 0) + 8;
-  const targetTop = Math.max(0, section.offsetTop - offset);
+  const anchorTop = getDetailStickyAnchorTop();
+  const sectionTop = section.getBoundingClientRect().top;
+  const delta = sectionTop - anchorTop;
+  const targetTop = Math.max(0, Math.round((inputsEl.scrollTop || 0) + delta));
+  detailStickyPendingTargetId = sectionId;
+  detailStickyPendingTargetTop = targetTop;
+  detailStickyPendingUntil = Date.now() + 1600;
+  detailStickySettledTargetId = "";
+  detailStickySettledUntil = 0;
   inputsEl.scrollTo({ top: targetTop, behavior: "smooth" });
 }
 
@@ -5374,15 +5971,20 @@ function buildDetailStickyNav(){
   nav.innerHTML = detailStickySections.map(sec=>`<button type="button" class="detail-sticky-btn" data-target-id="${sec.id}" aria-pressed="false">${sec.title}</button>`).join("");
   nav.querySelectorAll(".detail-sticky-btn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      setActiveDetailStickySection(btn.dataset.targetId);
       scrollDetailSectionIntoView(btn.dataset.targetId);
     });
   });
+  detailStickyPendingTargetId = "";
+  detailStickyPendingTargetTop = null;
+  detailStickyPendingUntil = 0;
+  detailStickySettledTargetId = "";
+  detailStickySettledUntil = 0;
   if(detailStickySections.length){
     setActiveDetailStickySection(detailStickySections[0].id);
   }else{
     setActiveDetailStickySection("");
   }
+  ensureDetailStickyScrollHandler();
   setupDetailStickyObserver();
 }
 
@@ -5393,23 +5995,13 @@ function setupDetailStickyObserver(){
   }
   const inputsEl = document.getElementById("inputs");
   if(!inputsEl || !detailStickySections.length || !("IntersectionObserver" in window)) return;
-  detailStickyObserver = new IntersectionObserver((entries)=>{
+  detailStickyObserver = new IntersectionObserver(()=>{
     if(currentInputMode !== "detail") return;
-    const visible = entries
-      .filter(entry=>entry.isIntersecting)
-      .sort((a, b)=>a.boundingClientRect.top - b.boundingClientRect.top);
-    if(visible.length){
-      setActiveDetailStickySection(visible[0].target.id);
-      return;
-    }
-    const sectionsAbove = detailStickySections.filter(sec=>sec.element.offsetTop <= inputsEl.scrollTop + 4);
-    if(sectionsAbove.length){
-      setActiveDetailStickySection(sectionsAbove[sectionsAbove.length - 1].id);
-    }
+    refreshActiveDetailStickySectionFromScroll();
   }, {
     root: inputsEl,
     threshold: [0, 0.1, 0.4],
-    rootMargin: `-${((document.getElementById("inputModeBar")?.offsetHeight || 0) + 44)}px 0px -60% 0px`
+    rootMargin: `-${Math.max(0, getDetailStickyScrollOffset())}px 0px -60% 0px`
   });
   detailStickySections.forEach(sec=>detailStickyObserver.observe(sec.element));
 }
@@ -5418,8 +6010,14 @@ function updateDetailStickyNavVisibility(){
   const nav = getDetailStickyNav();
   if(!nav) return;
   nav.hidden = !(currentInputMode === "detail" && detailStickySections.length);
-  if(!nav.hidden && detailStickySections.length && !currentDetailStickySectionId){
-    setActiveDetailStickySection(detailStickySections[0].id);
+  if(nav.hidden){
+    detailStickyPendingTargetId = "";
+    detailStickyPendingTargetTop = null;
+    detailStickyPendingUntil = 0;
+    return;
+  }
+  if(detailStickySections.length){
+    refreshActiveDetailStickySectionFromScroll();
   }
 }
 
@@ -5457,6 +6055,7 @@ function updateInputModeUI(){
     if(panel) panel.hidden = !active;
   });
   if(inputsEl) inputsEl.dataset.inputMode = mode;
+  if(hasScenario && mode === "simple") syncSimpleModeFromDetail();
   updateDetailStickyTop();
   updateDetailStickyNavVisibility();
   applyTabOrder();
@@ -6774,28 +7373,79 @@ function getEducationCostForYearLegacy(cfg, yearIndex){
   });
   return {total, byChild};
 }
-function getSimulationYearStartParts(cfg, yearIndex){
+function isLeapCalendarYear(year){
+  const y = Number(year) || 0;
+  return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+}
+function getDaysInCalendarYear(year){
+  return isLeapCalendarYear(year) ? 366 : 365;
+}
+function getCalendarYearWindowStartParts(baseParts, yearIndex){
+  if(!baseParts) return null;
+  if((Number(yearIndex) || 0) <= 0) return {...baseParts};
+  return {year:baseParts.year + (Number(yearIndex) || 0), month:1, day:1};
+}
+function getCalendarYearWindowEndExclusiveParts(baseParts, yearIndex){
+  if(!baseParts) return null;
+  if((Number(yearIndex) || 0) <= 0) return {year:baseParts.year + 1, month:1, day:1};
+  return {year:baseParts.year + (Number(yearIndex) || 0) + 1, month:1, day:1};
+}
+function getCalendarYearWindow(cfg, yearIndex){
+  const baseParts = parseDateInput(cfg?.baseDate || '');
+  if(!baseParts) return null;
+  const idx = Number(yearIndex) || 0;
+  const startParts = getCalendarYearWindowStartParts(baseParts, idx);
+  const endExclusiveParts = getCalendarYearWindowEndExclusiveParts(baseParts, idx);
+  const dayCount = getDaysBetweenParts(startParts, endExclusiveParts);
+  const daysInCalendarYear = getDaysInCalendarYear(startParts?.year);
+  return {
+    yearIndex: idx,
+    labelYear: startParts?.year || baseParts.year,
+    startParts,
+    endExclusiveParts,
+    dayCount,
+    daysInCalendarYear,
+    yearFraction: daysInCalendarYear > 0 ? (dayCount / daysInCalendarYear) : 0
+  };
+}
+function getLegacySimulationYearStartParts(cfg, yearIndex){
   const baseParts = parseDateInput(cfg?.baseDate || '');
   if(!baseParts) return null;
   return addYearsToParts(baseParts, yearIndex);
 }
-function getSimulationYearEndExclusiveParts(cfg, yearIndex){
-  const startParts = getSimulationYearStartParts(cfg, yearIndex);
+function getLegacySimulationYearEndExclusiveParts(cfg, yearIndex){
+  const startParts = getLegacySimulationYearStartParts(cfg, yearIndex);
   if(!startParts) return null;
   return addYearsToParts(startParts, 1);
+}
+function getSimulationYearStartParts(cfg, yearIndex){
+  const windowInfo = getCalendarYearWindow(cfg, yearIndex);
+  return windowInfo?.startParts || null;
+}
+function getSimulationYearEndExclusiveParts(cfg, yearIndex){
+  const windowInfo = getCalendarYearWindow(cfg, yearIndex);
+  return windowInfo?.endExclusiveParts || null;
 }
 function addMonthsToYearMonth(year, month, delta){
   const base = new Date(Date.UTC(Number(year) || 0, (Number(month) || 1) - 1 + (Number(delta) || 0), 1));
   return {year:base.getUTCFullYear(), month:base.getUTCMonth() + 1};
 }
 function getIncomeYearStartYearMonth(cfg, yearIndex){
+  const yearWindow = getCalendarYearWindow(cfg, yearIndex);
+  if(!yearWindow?.startParts || !yearWindow?.endExclusiveParts) return null;
   const baseParts = parseDateInput(cfg?.baseDate || '');
-  if(!baseParts) return null;
-  const startMonthOffset = baseParts.day === 1 ? 0 : 1;
-  return addMonthsToYearMonth(baseParts.year, baseParts.month, yearIndex * 12 + startMonthOffset);
+  let startYm = {year:yearWindow.startParts.year, month:yearWindow.startParts.month};
+  if(yearIndex === 0 && baseParts && Number(baseParts.day) !== 1){
+    startYm = addMonthsToYearMonth(startYm.year, startYm.month, 1);
+  }
+  const windowEndYm = {year:yearWindow.endExclusiveParts.year, month:yearWindow.endExclusiveParts.month};
+  if(compareYearMonth(startYm, windowEndYm) >= 0) return null;
+  return startYm;
 }
 function compareYearMonth(a, b){
-  if(!a || !b) return 0;
+  if(!a && !b) return 0;
+  if(!a) return -1;
+  if(!b) return 1;
   if(a.year !== b.year) return a.year - b.year;
   return a.month - b.month;
 }
@@ -6807,14 +7457,17 @@ function getRetireYearMonthForPerson(cfg, personKey){
   return {year, month};
 }
 function getWorkedMonthsForYear(cfg, personKey, yearIndex){
+  const yearWindow = getCalendarYearWindow(cfg, yearIndex);
+  if(!yearWindow?.startParts || !yearWindow?.endExclusiveParts) return 12;
   const startYm = getIncomeYearStartYearMonth(cfg, yearIndex);
-  if(!startYm) return 12;
+  if(!startYm) return 0;
   const retireYm = getRetireYearMonthForPerson(cfg, personKey);
-  if(!retireYm) return 12;
+  const windowEndYm = {year:yearWindow.endExclusiveParts.year, month:yearWindow.endExclusiveParts.month};
   let months = 0;
-  for(let idx=0; idx<12; idx++){
-    const slotYm = addMonthsToYearMonth(startYm.year, startYm.month, idx);
-    if(compareYearMonth(slotYm, retireYm) <= 0) months += 1;
+  let cursor = {year:startYm.year, month:startYm.month};
+  while(compareYearMonth(cursor, windowEndYm) < 0){
+    if(!retireYm || compareYearMonth(cursor, retireYm) <= 0) months += 1;
+    cursor = addMonthsToYearMonth(cursor.year, cursor.month, 1);
   }
   return months;
 }
@@ -7112,8 +7765,46 @@ function getRangeValue(rows, age, inflRate = 0, yearIndex = 0){
 function getPointValue(rows, age, inflRate = 0, yearIndex = 0){
   return (rows || []).filter(r=>r.age===age).reduce((s,r)=>s + applyInflation(r.val || 0, !!r.inflationOn, inflRate, yearIndex),0);
 }
+function getSimulationYearFraction(cfg, yearIndex){
+  const win = getCalendarYearWindow(cfg, yearIndex);
+  if(!win) return 1;
+  const frac = Number(win.yearFraction);
+  return Number.isFinite(frac) && frac > 0 ? frac : 1;
+}
+function getYearFractionCompoundedRateFactor(rate, yearFraction){
+  const r = Number(rate) || 0;
+  const frac = Math.max(0, Number(yearFraction) || 0);
+  if(frac === 0 || r === 0) return 1;
+  const base = 1 + r;
+  if(base <= 0) return Math.max(0, 1 + (r * frac));
+  return Math.pow(base, frac);
+}
+function getElapsedYearsBeforeSimulationYear(cfg, yearIndex){
+  const idx = Math.max(0, Number(yearIndex) || 0);
+  let total = 0;
+  for(let i=0; i<idx; i++) total += getSimulationYearFraction(cfg, i);
+  return total;
+}
+function getInflationElapsedYears(cfg, yearIndex, fallbackYears = 0){
+  if(!cfg) return Math.max(0, Number(fallbackYears) || 0);
+  return getElapsedYearsBeforeSimulationYear(cfg, yearIndex);
+}
+function getInflatedRangeValueForSimulationYear(cfg, rows, age, inflRate = 0, yearIndex = 0){
+  const years = getInflationElapsedYears(cfg, yearIndex, yearIndex);
+  return (rows || []).filter(r=>age >= (r.fromAge || 0) && age <= (r.toAge || 0)).reduce((s,r)=>s + applyInflation(r.val || 0, !!r.inflationOn, inflRate, years),0);
+}
+function getInflatedPointValueForSimulationYear(cfg, rows, age, inflRate = 0, yearIndex = 0){
+  const years = getInflationElapsedYears(cfg, yearIndex, yearIndex);
+  return (rows || []).filter(r=>r.age===age).reduce((s,r)=>s + applyInflation(r.val || 0, !!r.inflationOn, inflRate, years),0);
+}
+function getProratedRangeAnnualAmount(cfg, rows, age, yearIndex, inflRate = 0){
+  return getInflatedRangeValueForSimulationYear(cfg, rows || [], age, inflRate, yearIndex) * getSimulationYearFraction(cfg, yearIndex);
+}
+function getProratedRangeMonthlyAnnualAmount(cfg, rows, age, yearIndex, inflRate = 0){
+  return getInflatedRangeValueForSimulationYear(cfg, rows || [], age, inflRate, yearIndex) * 12 * getSimulationYearFraction(cfg, yearIndex);
+}
 function getRegularIncomeForYear(cfg, age, yearIndex){
-  return getRangeValue(cfg.regularIncomeRows || [], age, cfg.inflRate, yearIndex);
+  return getProratedRangeAnnualAmount(cfg, cfg.regularIncomeRows || [], age, yearIndex, cfg.inflRate);
 }
 function getInsurancePayProrationForYear(cfg, row, yearIndex){
   const startYear = Number(row?.startYear) || 0;
@@ -7135,16 +7826,47 @@ function getInsurancePayForYear(cfg, age, yearIndex){
     return sum + applyInflation(prorated, !!row.inflationOn, cfg.inflRate, yearIndex);
   }, 0);
 }
+function getInsuranceReceiverBirthParts(cfg, receiver){
+  const normalized = String(receiver || '');
+  if(normalized === '本人') return parseDateInput(cfg?.selfBirthDate || '');
+  if(normalized === '配偶者') return parseDateInput(cfg?.spouseBirthDate || '');
+  const children = Array.isArray(cfg?.children) ? cfg.children : [];
+  const child = children.find(c => String(c?.name || '') === normalized);
+  return child ? parseDateInput(child.birthDate || '') : null;
+}
+function getInsuranceReceiveProrationForYear(cfg, row, yearIndex){
+  const unit = row?.unit || 'lump';
+  if(unit === 'lump') return 1;
+  const fromAge = Number(row?.fromAge) || 0;
+  const toAge = Number(row?.toAge) || 0;
+  if(fromAge <= 0 || toAge < fromAge) return 1;
+  const receiverBirth = getInsuranceReceiverBirthParts(cfg, row?.receiver);
+  if(!receiverBirth) return 1;
+  const receiveStart = addYearsToParts(receiverBirth, fromAge);
+  const receiveEndExclusive = addYearsToParts(receiverBirth, toAge + 1);
+  const yearStart = getSimulationYearStartParts(cfg, yearIndex);
+  const yearEndExclusive = getSimulationYearEndExclusiveParts(cfg, yearIndex);
+  if(!receiveStart || !receiveEndExclusive || !yearStart || !yearEndExclusive) return 0;
+  const overlap = getOverlapPeriodParts(receiveStart, receiveEndExclusive, yearStart, yearEndExclusive);
+  if(!overlap) return 0;
+  const totalDays = getDaysBetweenParts(yearStart, yearEndExclusive);
+  if(totalDays <= 0) return 0;
+  if(unit === 'month' || unit === 'year'){
+    return Math.max(0, Math.min(1, getDaysBetweenParts(overlap.start, overlap.endExclusive) / totalDays));
+  }
+  return 1;
+}
 function getInsuranceReceiveForYear(cfg, age, yearIndex){
   return (cfg.insuranceReceiveRows || []).reduce((sum, row)=>{
     const unit = row.unit || "lump";
     if(unit === "lump"){
       if(age !== (row.fromAge || 0)) return sum;
-      return sum + applyInflation(row.val || 0, !!row.inflationOn, cfg.inflRate, yearIndex);
+      return sum + applyInflation(row.val || 0, !!row.inflationOn, cfg.inflRate, getInflationElapsedYears(cfg, yearIndex, yearIndex));
     }
     if(age < (row.fromAge || 0) || age > (row.toAge || 0)) return sum;
     const annualBase = (unit === "month" ? (row.val || 0) * 12 : (row.val || 0));
-    return sum + applyInflation(annualBase, !!row.inflationOn, cfg.inflRate, yearIndex);
+    const proration = getInsuranceReceiveProrationForYear(cfg, row, yearIndex);
+    return sum + applyInflation(annualBase * proration, !!row.inflationOn, cfg.inflRate, getInflationElapsedYears(cfg, yearIndex, yearIndex));
   }, 0);
 }
 function getDefaultReceiptStartAge(cfg, owner, accountType){
@@ -7607,8 +8329,8 @@ function getIncomeForYear(cfg, age, yearIndex, investments, receiptState){
   if(spWorkedMonths > 0) parts.spouse += spIncomeCurve.salaryMonth * spWorkedMonths + spIncomeCurve.bonusYear * (spWorkedMonths / 12);
   parts.pension += getPensionAnnualAmountForYear(cfg, "sp", yearIndex);
 
-  parts.regular = getRegularIncomeForYear(cfg, age, age - cfg.age);
-  parts.extra = getPointValue(cfg.extraIncome, age, cfg.inflRate, age - cfg.age);
+  parts.regular = getRegularIncomeForYear(cfg, age, yearIndex);
+  parts.extra = getInflatedPointValueForSimulationYear(cfg, cfg.extraIncome, age, cfg.inflRate, yearIndex);
   parts.childAllowance = getChildAllowanceForYear(cfg, age - cfg.age);
   parts.insurance = getInsuranceReceiveForYear(cfg, age, age - cfg.age);
   if(receiptState && investments) parts.retirePay += processReceiptIncomeForYear(cfg, age, investments, receiptState);
@@ -7621,14 +8343,14 @@ function applyInflation(v, enabled, infl, years){
   return v * Math.pow(1 + infl, Math.max(0, years));
 }
 function getExpenseForYear(cfg, age, yearIndex){
-  const life = getRangeValue(cfg.lifeRows, age, cfg.inflRate, yearIndex) * 12;
-  const rent = getRangeValue(cfg.rentRows, age, cfg.inflRate, yearIndex) * 12;
-  const homeMaint = getRangeValue(cfg.homeMaintRows, age, cfg.inflRate, yearIndex);
+  const life = getProratedRangeMonthlyAnnualAmount(cfg, cfg.lifeRows, age, yearIndex, cfg.inflRate);
+  const rent = getProratedRangeMonthlyAnnualAmount(cfg, cfg.rentRows, age, yearIndex, cfg.inflRate);
+  const homeMaint = getProratedRangeAnnualAmount(cfg, cfg.homeMaintRows, age, yearIndex, cfg.inflRate);
   const insurance = getInsurancePayForYear(cfg, age, yearIndex);
-  const periodic = getRangeValue(cfg.periodRows, age, cfg.inflRate, yearIndex);
-  const extra = getPointValue(cfg.extraRows, age, cfg.inflRate, yearIndex);
+  const periodic = getProratedRangeAnnualAmount(cfg, cfg.periodRows, age, yearIndex, cfg.inflRate);
+  const extra = getInflatedPointValueForSimulationYear(cfg, cfg.extraRows, age, cfg.inflRate, yearIndex);
   const eduObj = getEducationCostForYear(cfg, yearIndex);
-  const education = applyInflation(eduObj.total, cfg.infl.edu, cfg.inflRate, yearIndex);
+  const education = applyInflation(eduObj.total, cfg.infl.edu, cfg.inflRate, getInflationElapsedYears(cfg, yearIndex, yearIndex));
 
   let loan = 0;
   let down = 0;
@@ -7955,6 +8677,7 @@ function getChildrenSnapshotForYear(cfg, yearIndex){
   }));
 }
 function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, socialObj, taxObj, depTotal, safeTotal, invTotal, liability, annualState, beginningTotal){
+  const calendarWindow = getCalendarYearWindow(cfg, yearIndex);
   const selfPension = getPensionAnnualAmountForYear(cfg, 'self', yearIndex);
   const spousePension = getPensionAnnualAmountForYear(cfg, 'sp', yearIndex);
   const workSelf = (()=>{ const curve=buildIncomeCurveSeries(cfg.incomeSelf, cfg.age, age); const wm=getWorkedMonthsForYear(cfg, 'self', yearIndex); return wm > 0 ? curve.salaryMonth * wm + curve.bonusYear * (wm / 12) : 0; })();
@@ -7970,7 +8693,7 @@ function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, social
   const endingTotal = depTotal + safeTotal + invTotal - liability;
   const withdrawalRuleInfo = annualState?.withdrawalRuleInfo || null;
   return {
-    year:(parseDateInput(cfg.baseDate || '')?.year || new Date().getFullYear()) + yearIndex,
+    year:calendarWindow?.labelYear ?? ((parseDateInput(cfg.baseDate || '')?.year || new Date().getFullYear()) + yearIndex),
     ages:{
       self:age,
       spouse:Math.max(0, Number(cfg.spouseAge || 0) + yearIndex),
@@ -8045,6 +8768,14 @@ function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, social
     meta:{
       notes:[],
       events:[],
+      calendarWindow:calendarWindow ? {
+        year:calendarWindow.labelYear,
+        start:formatDatePartsYmd(calendarWindow.startParts),
+        end:formatDatePartsYmd(addDaysToParts(calendarWindow.endExclusiveParts, -1)),
+        dayCount:calendarWindow.dayCount,
+        daysInCalendarYear:calendarWindow.daysInCalendarYear,
+        yearFraction:calendarWindow.yearFraction
+      } : null,
       withdrawalRule:withdrawalRuleInfo ? {
         ...withdrawalRuleInfo,
         label:getWithdrawalRuleLabel(withdrawalRuleInfo.mode),
@@ -8111,7 +8842,12 @@ function renderCashflowTable(sim){
   if(note){
     const first = rows[0];
     const last = rows[rows.length - 1];
-    note.textContent = rows.length ? `表示期間：${first?.year ?? ''}年〜${last?.year ?? ''}年 / 取り崩しルール：${getWithdrawalRuleLabel(first?.meta?.withdrawalRule?.mode)} / 防御ルール：${first?.meta?.withdrawalRule?.defensiveLabel || 'なし'} / 項目を行、各年を列にして比較できるようにしています。生活費不足の売却額と現金バッファ補充の売却額を分けて表示しています。計算側は yearlyRows、表示側は renderCashflowTable に分けてあり、将来の分離もしやすい構成です。` : '';
+    const firstWindow = first?.meta?.calendarWindow;
+    const lastWindow = last?.meta?.calendarWindow;
+    const periodText = rows.length
+      ? `${firstWindow?.start || ((first?.year ?? '') + '年')}〜${lastWindow?.end || ((last?.year ?? '') + '年')}`
+      : '';
+    note.textContent = rows.length ? `表示期間：${periodText} / 年次列：各暦年（初年度のみ基準日から年末まで） / 取り崩しルール：${getWithdrawalRuleLabel(first?.meta?.withdrawalRule?.mode)} / 防御ルール：${first?.meta?.withdrawalRule?.defensiveLabel || 'なし'} / 項目を行、各年を列にして比較できるようにしています。生活費不足の売却額と現金バッファ補充の売却額を分けて表示しています。計算側は yearlyRows、表示側は renderCashflowTable に分けてあり、将来の分離もしやすい構成です。` : '';
   }
 }
 
@@ -8451,7 +9187,7 @@ function currentSafeAssetTotal(safeAssets, age){
     return sum;
   }, 0);
 }
-function processSafeAssetsForYear(cfg, age, safeAssets, deposits){
+function processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex = 0){
   let interestIncome = 0;
   if(!Array.isArray(safeAssets) || !safeAssets.length) return {interestIncome, totalSafeAssets:0};
   safeAssets.forEach(asset=>{
@@ -8464,7 +9200,7 @@ function processSafeAssetsForYear(cfg, age, safeAssets, deposits){
       asset.monthsRemaining = asset.durationMonths;
     }
     if(!asset.active) return;
-    let monthsAvailable = 12;
+    let monthsAvailable = 12 * getSimulationYearFraction(cfg, yearIndex);
     let grossInterest = 0;
     while(monthsAvailable > 0 && asset.active){
       const segment = Math.max(0, Math.min(monthsAvailable, asset.monthsRemaining));
@@ -8606,7 +9342,7 @@ function buildMonteStaticSeries(cfg){
     const spousePension = getPensionAnnualAmountForYear(cfg, "sp", yearIndex);
     const pension = selfPension + spousePension;
     const regular = getRegularIncomeForYear(cfg, age, yearIndex);
-    const extra = getPointValue(cfg.extraIncome, age, cfg.inflRate, yearIndex);
+    const extra = getInflatedPointValueForSimulationYear(cfg, cfg.extraIncome, age, cfg.inflRate, yearIndex);
     const childAllowance = getChildAllowanceForYear(cfg, yearIndex);
     const insurance = getInsuranceReceiveForYear(cfg, age, yearIndex);
     const incomeParts = {self:selfWork, spouse:spouseWork, pension, regular, extra, childAllowance, insurance};
@@ -8665,6 +9401,7 @@ function simulate(cfg, random=false, opts={}){
   const depositSeries = compact ? null : {};
   const childNames = compact ? null : {};
   const yearlyRows = compact ? null : [];
+  const calendarYearWindows = compact ? null : [];
   if(!compact){
     for(let i=1;i<=dynamicCounts.child;i++) educationByChildSeries[i] = [];
   }
@@ -8691,11 +9428,15 @@ function simulate(cfg, random=false, opts={}){
     const beginningSafeTotal = currentSafeAssetTotal(safeAssets, age) || 0;
     const beginningTotal = beginningDepTotal + beginningInvTotal + beginningSafeTotal - liability;
 
-    deposits.forEach(d=>{ const netRate = d.taxOn ? (Number(d.rate || 0) || 0) * (1 - DEPOSIT_INTEREST_TAX_RATE) : (Number(d.rate || 0) || 0); d.amount *= (1 + netRate); });
+    const simulationYearFraction = getSimulationYearFraction(cfg, yearIndex);
+    deposits.forEach(d=>{
+      const netRate = d.taxOn ? (Number(d.rate || 0) || 0) * (1 - DEPOSIT_INTEREST_TAX_RATE) : (Number(d.rate || 0) || 0);
+      d.amount *= getYearFractionCompoundedRateFactor(netRate, simulationYearFraction);
+    });
     investments.forEach(inv=>{
       let r = inv.rate;
       if(random) r = randomizeReturn(r, opts?.returnShocks?.[yearIndex]);
-      inv.amount *= (1 + r);
+      inv.amount *= getYearFractionCompoundedRateFactor(r, simulationYearFraction);
     });
 
     let incomeObj;
@@ -8722,7 +9463,7 @@ function simulate(cfg, random=false, opts={}){
       taxObj = socialTaxObj.tax;
       annualNeed = annualCashBufferNeed(expenseObj.parts) + (socialObj.total || 0) + (taxObj.total || 0);
     }
-    const safeAssetObj = processSafeAssetsForYear(cfg, age, safeAssets, deposits);
+    const safeAssetObj = processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex);
     incomeObj.parts.interest = safeAssetObj.interestIncome || 0;
     let income = incomeObj.total + (safeAssetObj.interestIncome || 0);
     let expense = expenseObj.total + (socialObj.total || 0) + (taxObj.total || 0);
@@ -8811,7 +9552,9 @@ function simulate(cfg, random=false, opts={}){
         principalSeries[key].push(investments[idx]?.cost || 0);
       });
       for(let c=1;c<=dynamicCounts.dep;c++) depositSeries[c].push(deposits[c-1]?.amount || 0);
-      yearlyRows.push(buildAnnualYearlyRow(cfg, age, yearIndex, {total:income, parts:incomeObj.parts}, expenseObj, socialObj, taxObj, depTotal, safeTotal, invTotal, liability, annualState, beginningTotal));
+      const annualRow = buildAnnualYearlyRow(cfg, age, yearIndex, {total:income, parts:incomeObj.parts}, expenseObj, socialObj, taxObj, depTotal, safeTotal, invTotal, liability, annualState, beginningTotal);
+      yearlyRows.push(annualRow);
+      calendarYearWindows.push(annualRow?.meta?.calendarWindow || null);
     }
   }
 
@@ -8833,7 +9576,7 @@ function simulate(cfg, random=false, opts={}){
     annualIncome,annualExpense,annualCashflow,
     annualEducation,annualEducationCum,educationByChildSeries,
     incomePartsSeries,expensePartsSeries,invSeries,principalSeries,depositSeries,
-    childNames,invNames,yearlyRows,
+    childNames,invNames,yearlyRows,calendarYearWindows,
     depletionAge,retireAsset,totalIncomeSum,totalExpenseSum
   };
 }
@@ -9183,16 +9926,62 @@ function pluginLines(cfg, sim, monteInfo=null){
     }
   };
 }
+function getSimulationDisplayRangeText(sim){
+  const windows = Array.isArray(sim?.calendarYearWindows) ? sim.calendarYearWindows : [];
+  if(!windows.length) return "シミュレーション全期間";
+  const first = windows[0];
+  const last = windows[windows.length - 1];
+  if(!first?.start || !last?.end) return "シミュレーション全期間";
+  const endInclusive = addDaysToParts(last.end, -1);
+  return `${formatDatePartsYmd(first.start)}〜${formatDatePartsYmd(endInclusive)}`;
+}
 function updateResultCards(cfg, sim){
   const lifeIdx = Math.max(0, Math.min(sim.totalAssets.length-1, cfg.lifeExpect - cfg.age));
   const lifeAsset = sim.totalAssets[lifeIdx] ?? sim.totalAssets.at(-1) ?? 0;
   const fire = lifeAsset > 0;
-  document.getElementById("fireResult").textContent = `FIRE：${fire ? "成立 ✅" : "不成立 ❌"}`;
-  document.getElementById("retireAssetResult").textContent = `退職時資産：約${Math.round(sim.retireAsset).toLocaleString()}万円`;
-  document.getElementById("neededAssetResult").textContent = `退職時必要資産目安：約${neededAssetEstimate(cfg).toLocaleString()}万円`;
-  document.getElementById("depletionResult").textContent = `資産寿命：${sim.depletionAge ? sim.depletionAge+"歳" : "なし"}`;
-  document.getElementById("incomeTotalResult").textContent = `総収入：約${Math.round(sim.totalIncomeSum).toLocaleString()}万円`;
-  document.getElementById("expenseTotalResult").textContent = `総支出：約${Math.round(sim.totalExpenseSum).toLocaleString()}万円`;
+  const displayRangeText = getSimulationDisplayRangeText(sim);
+  const fireEl = document.getElementById("fireResult");
+  const retireEl = document.getElementById("retireAssetResult");
+  const neededEl = document.getElementById("neededAssetResult");
+  const depletionEl = document.getElementById("depletionResult");
+  const incomeEl = document.getElementById("incomeTotalResult");
+  const expenseEl = document.getElementById("expenseTotalResult");
+  fireEl.textContent = `FIRE：${fire ? "成立 ✅" : "不成立 ❌"}`;
+  retireEl.textContent = `退職時資産：約${Math.round(sim.retireAsset).toLocaleString()}万円`;
+  neededEl.textContent = `退職時必要資産目安：約${neededAssetEstimate(cfg).toLocaleString()}万円`;
+  depletionEl.textContent = `資産寿命：${sim.depletionAge ? sim.depletionAge+"歳" : "なし"}`;
+  incomeEl.textContent = `総収入：約${Math.round(sim.totalIncomeSum).toLocaleString()}万円`;
+  expenseEl.textContent = `総支出：約${Math.round(sim.totalExpenseSum).toLocaleString()}万円`;
+  fireEl.title = `想定寿命 ${cfg.lifeExpect}歳 時点の総資産で判定`;
+  retireEl.title = "退職月時点の総資産";
+  neededEl.title = "退職後生活費・年金・利回りをもとにした参考目安";
+  depletionEl.title = "総資産が初めて 0 以下になった年齢";
+  incomeEl.title = `${displayRangeText} の累計収入`;
+  expenseEl.title = `${displayRangeText} の累計支出`;
+}
+
+function getCalendarWindowForXAxisValue(sim, xValue){
+  if(!sim?.labels || !sim?.calendarYearWindows) return null;
+  const target = Number(xValue);
+  if(!Number.isFinite(target)) return null;
+  const idx = sim.labels.findIndex(v=>Number(v) === target);
+  if(idx < 0) return null;
+  return sim.calendarYearWindows[idx] || sim.yearlyRows?.[idx]?.meta?.calendarWindow || null;
+}
+function getCalendarWindowTooltipTitle(sim, xValue){
+  const target = Number(xValue);
+  if(!Number.isFinite(target)) return `年齢：${xValue}`;
+  const win = getCalendarWindowForXAxisValue(sim, target);
+  if(!win) return `年齢：${target}歳`;
+  const endInclusive = addDaysToParts(win.end, -1);
+  return `年齢：${target}歳 / ${win.year}年（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
+}
+function getCalendarWindowTickLabel(sim, xValue){
+  const target = Number(xValue);
+  if(!Number.isFinite(target)) return `${xValue}`;
+  const win = getCalendarWindowForXAxisValue(sim, target);
+  if(!win) return `${target}歳`;
+  return [`${target}歳`, `${win.year}年`];
 }
 
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
@@ -9219,6 +10008,11 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }}},
       tooltip:{
         callbacks:{
+          title(items){
+            const first = items?.[0];
+            if(!first) return '';
+            return getCalendarWindowTooltipTitle(extra.simRef, first.parsed?.x ?? first.label);
+          },
           label(ctx){
             const raw = ctx.parsed.y ?? 0;
             const signAdjusted = (graphType === "incomeExpense" && raw < 0) ? Math.abs(raw) : raw;
@@ -9228,7 +10022,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax), max:cfg.xAxisMax, offset:false, bounds:"ticks", ticks:{stepSize:5}, title:{display:true,text:"年齢（歳）"}},
+      x:{type:"linear", min:Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax), max:cfg.xAxisMax, offset:false, bounds:"ticks", ticks:{stepSize:5, callback(value){ return getCalendarWindowTickLabel(extra.simRef, value); }}, title:{display:true,text:"年齢（歳） / 暦年"}},
       y:{title:{display:true,text:yTitleMap[graphType] || "金額（万円）"}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown")}
     }
   };
@@ -9324,7 +10118,7 @@ function draw(){
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
-    options:buildChartOptions(graphType, firstCfg, yData, overlay, {educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
+    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
     plugins:[pluginLines(firstCfg, baseSim)]
   });
 }
@@ -9417,12 +10211,31 @@ function runMonte(){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{legend:{display:overlay, labels:{filter:(item, data)=>{
-        const ds = data?.datasets?.[item.datasetIndex];
-        return !!item.text && (!!ds ? ds.data.some(p=>Number.isFinite(p?.y) && Math.abs(p.y) > 1e-9) : true);
-      }}}},
+      plugins:{
+        legend:{display:overlay, labels:{filter:(item, data)=>{
+          const ds = data?.datasets?.[item.datasetIndex];
+          return !!item.text && (!!ds ? ds.data.some(p=>Number.isFinite(p?.y) && Math.abs(p.y) > 1e-9) : true);
+        }}},
+        tooltip:{
+          callbacks:{
+            title(items){
+              const first = items?.[0];
+              if(!first) return '';
+              const datasetLabel = String(first.dataset?.label || '');
+              if(datasetLabel.includes('想定寿命時の総資産確率分布')){
+                return datasetLabel;
+              }
+              return getCalendarWindowTooltipTitle(baseSim, first.parsed?.x ?? first.label);
+            },
+            label(ctx){
+              const raw = ctx.parsed?.y ?? 0;
+              return `${ctx.dataset.label}: ${Math.round(raw).toLocaleString()}万円`;
+            }
+          }
+        }
+      },
       scales:{
-        x:{type:"linear", min:Math.min(firstCfg.xAxisMin ?? firstCfg.age, getMonteDistributionAxisMax(firstCfg)), max:getMonteDistributionAxisMax(firstCfg), offset:false, bounds:"ticks", ticks:{stepSize:5}, title:{display:true,text:"年齢（歳）"}},
+        x:{type:"linear", min:Math.min(firstCfg.xAxisMin ?? firstCfg.age, getMonteDistributionAxisMax(firstCfg)), max:getMonteDistributionAxisMax(firstCfg), offset:false, bounds:"ticks", ticks:{stepSize:5, callback(value){ return getCalendarWindowTickLabel(baseSim, value); }}, title:{display:true,text:"年齢（歳） / 暦年"}},
         y:{title:{display:true,text:"総資産（万円）"}, ...getAxisBounds(yData, firstCfg, false)}
       }
     },
@@ -10327,14 +11140,15 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
     annualState.beginningInvestmentTotal = investments.reduce((s, inv)=>s + (Number(inv.amount) || 0), 0);
     const yearIndex = age - cfg.age;
 
+    const simulationYearFraction = getSimulationYearFraction(cfg, yearIndex);
     deposits.forEach(d=>{
       const netRate = d.taxOn ? (Number(d.rate || 0) || 0) * (1 - DEPOSIT_INTEREST_TAX_RATE) : (Number(d.rate || 0) || 0);
-      d.amount *= (1 + netRate);
+      d.amount *= getYearFractionCompoundedRateFactor(netRate, simulationYearFraction);
     });
     investments.forEach(inv=>{
       let r = inv.rate;
       r = randomizeReturn(r, returnShocks?.[yearIndex]);
-      inv.amount *= (1 + r);
+      inv.amount *= getYearFractionCompoundedRateFactor(r, simulationYearFraction);
     });
 
     let incomeObj;
@@ -10362,7 +11176,7 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
       annualNeed = annualCashBufferNeed(expenseObj.parts) + (socialObj.total || 0) + (taxObj.total || 0);
     }
 
-    const safeAssetObj = processSafeAssetsForYear(cfg, age, safeAssets, deposits);
+    const safeAssetObj = processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex);
     incomeObj.parts.interest = safeAssetObj.interestIncome || 0;
     const income = incomeObj.total + (safeAssetObj.interestIncome || 0);
     const expense = expenseObj.total + (socialObj.total || 0) + (taxObj.total || 0);
@@ -11149,6 +11963,15 @@ document.addEventListener("click", (e)=>{
 
 document.addEventListener("change", (e)=>{
   const target = e.target;
+  const id = target?.id || "";
+  if(simpleAutoInflSyncInProgress) return;
+  if(id === "life1_inflationOn") setSimpleAutoInflManaged("life1", false);
+  else if(id === "life2_inflationOn") setSimpleAutoInflManaged("life2", false);
+  else if(id === "rent1_inflationOn") setSimpleAutoInflManaged("rent1", false);
+  else if(id === "inflEdu") setSimpleAutoInflManaged("edu", false);
+});
+document.addEventListener("change", (e)=>{
+  const target = e.target;
   if(target?.id && /^safeAsset\d+_type$/.test(target.id)){
     syncCurrentScenarioFromDOM(false);
     renderDynamicSections(migrateLegacyData(getAllInputs()));
@@ -11168,7 +11991,7 @@ document.addEventListener("input", (e)=>{
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#loanDetailModal") || el.closest("#insuranceAssistModal"))) return;
+  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#insuranceAssistModal"))) return;
   if(/^(reginc|inc|rent|homeMaint|life|period|extra)\d+_timeUnit$/.test(el.id)){
     const match = el.id.match(/^(reginc|inc|rent|homeMaint|life|period|extra)(\d+)_timeUnit$/);
     if(match){
@@ -11226,7 +12049,7 @@ function commitMainInputChange(e){
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && el.closest("#loanDetailModal")) return;
+  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal"))) return;
   if(e?.type === "focusout" && (el.id === "childAllowanceOn" || /^child\d+_allowanceOn$/.test(el.id))) return;
   if(e?.type === "focusout" && mainInputSnapshotUnchanged(el)) return;
   if(/^(reginc|inc|rent|homeMaint|life|period|extra)\d+_timeUnit$/.test(el.id)){
@@ -11274,7 +12097,7 @@ document.addEventListener("focusin", (e)=>{
   if(!(el instanceof HTMLElement)) return;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && el.closest("#loanDetailModal")) return;
+  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal"))) return;
   rememberMainInputSnapshot(el);
 }, true);
 document.addEventListener("change", commitMainInputChange);
@@ -11597,10 +12420,30 @@ document.getElementById("pensionHelperModal")?.addEventListener("input", (e)=>{
   renderPensionHelperComputed();
 });
 
+getSimpleModeRoot()?.addEventListener("input", (e)=>{
+  const target = e.target;
+  if(!(target instanceof HTMLInputElement)) return;
+  const fieldWrap = target.closest('[data-simple-field]');
+  if(!fieldWrap) return;
+  e.stopPropagation();
+  const key = fieldWrap.dataset.simpleField || '';
+  handleSimpleModeFieldInput(key, target.value);
+});
+getSimpleModeRoot()?.addEventListener("change", (e)=>{
+  const target = e.target;
+  if(!(target instanceof HTMLInputElement)) return;
+  const fieldWrap = target.closest('[data-simple-field]');
+  if(!fieldWrap) return;
+  e.stopPropagation();
+  const key = fieldWrap.dataset.simpleField || '';
+  handleSimpleModeFieldInput(key, target.value);
+});
+
 window.addEventListener("load", ()=>{
   const today = getTodayDateString();
   const baseDateInput = document.getElementById("baseDate");
   const currentBaseYearInput = document.getElementById("currentBaseYear");
+  renderSimpleMode();
   if(baseDateInput && !baseDateInput.value) baseDateInput.value = today;
   if(currentBaseYearInput && !currentBaseYearInput.value) currentBaseYearInput.value = String(parseDateInput(today)?.year || new Date().getFullYear());
   defaultScenarioTemplate = deepClone(createDefaultScenarioData());
@@ -11619,6 +12462,9 @@ window.addEventListener("load", ()=>{
   enhanceNumericInputs(document);
   formatAllNumericInputs(document, true);
   applyTabOrder();
+  syncSimpleModeFromDetail();
+  syncSimpleInflationCheckboxesFromRate();
+  applySimpleLinkedHighlights();
   draw();
 });
 </script>
