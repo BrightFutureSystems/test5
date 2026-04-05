@@ -305,6 +305,9 @@
   .simple-mode-input-row{display:flex;align-items:center;gap:8px;}
   .simple-mode-input-row input[type=number]{width:120px;max-width:100%;}
   .simple-mode-input-row .suffix{white-space:nowrap;}
+  .simple-mode-field.is-disabled{opacity:.6;}
+  .simple-mode-field.is-disabled .simple-mode-slider,
+  .simple-mode-field.is-disabled .simple-mode-input-row input{cursor:not-allowed;}
   .simple-mode-note{margin-top:10px;color:#64748b;font-size:12px;line-height:1.6;}
   .simple-linked-row td{background:#f8fbff;}
   .simple-linked-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:11px;font-weight:700;vertical-align:middle;}
@@ -2114,6 +2117,7 @@ let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
 let currentInputMode = "common";
+let inputModeScrollPositions = {common:0, simple:0, detail:0};
 let monteMode = false;
 let defaultScenarioTemplate = null;
 let educationDetailDraft = null;
@@ -5373,11 +5377,12 @@ const SIMPLE_MODE_BLOCKS = [
   {
     key:"working",
     title:"現役期",
-    note:"退職前の収支を簡易に調整します。",
+    note:"退職前の収支を簡易に調整します。生活費には家賃・教育費を含めません。家賃は現役期・老後共通です。手取りやボーナスをカスタム設定中は、簡単モードでは変更できません。",
     fields:[
       {key:"salaryMonth", label:"退職までの手取り（月）", unit:"万円 / 月", min:0, max:200, step:1},
-      {key:"lifeBefore", label:"退職までの生活費（月）", unit:"万円 / 月", min:0, max:100, step:1},
-      {key:"rent", label:"家賃", unit:"万円 / 月", min:0, max:50, step:0.5}
+      {key:"bonusYear", label:"退職までのボーナス（年・手取り）", unit:"万円 / 年", min:0, max:400, step:1},
+      {key:"lifeBefore", label:"退職までの生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1},
+      {key:"rent", label:"家賃（現役期・老後共通）", unit:"万円 / 月", min:0, max:50, step:0.5}
     ]
   },
   {
@@ -5465,6 +5470,16 @@ function getSimpleModeRoot(){
 function getSimpleModeFieldDef(key){
   return SIMPLE_MODE_FIELDS.find(field=>field.key === key) || null;
 }
+function isSimpleModeFieldCustomLocked(key){
+  if(key === "salaryMonth") return !!document.getElementById("self_salary_mode_custom")?.checked;
+  if(key === "bonusYear") return !!document.getElementById("self_bonus_mode_custom")?.checked;
+  return false;
+}
+function getSimpleModeFieldLockReason(key){
+  if(key === "salaryMonth") return "詳細モードで手取りカスタム設定中";
+  if(key === "bonusYear") return "詳細モードでボーナスカスタム設定中";
+  return "";
+}
 function getSimpleModeRangeId(key){ return `simple_${key}_range`; }
 function getSimpleModeNumberId(key){ return `simple_${key}_number`; }
 function getSimpleModeStepDigits(step){
@@ -5508,11 +5523,15 @@ function formatSimpleModeDisplayValue(value, def){
   return `${n.toLocaleString("ja-JP", {minimumFractionDigits:digits, maximumFractionDigits:digits})} ${def?.unit || ""}`.trim();
 }
 function buildSimpleModeFieldHtml(def){
-  return `<div class="simple-mode-field" data-simple-field="${def.key}">
+  const locked = isSimpleModeFieldCustomLocked(def.key);
+  const lockReason = getSimpleModeFieldLockReason(def.key);
+  const disabledAttr = locked ? ' disabled' : '';
+  const titleAttr = lockReason ? ` title="${escapeAttr(lockReason)}"` : '';
+  return `<div class="simple-mode-field${locked ? ' is-disabled' : ''}" data-simple-field="${def.key}" data-simple-locked="${locked ? '1' : '0'}">
     <div class="simple-mode-field-label"><span>${escapeHtml(def.label)}</span><span id="simple_${def.key}_display" class="simple-mode-field-value">-</span></div>
-    <input id="${getSimpleModeRangeId(def.key)}" class="simple-mode-slider" type="range" min="${escapeAttr(def.min)}" max="${escapeAttr(def.max)}" step="${escapeAttr(def.step)}" value="${escapeAttr(def.min)}">
+    <input id="${getSimpleModeRangeId(def.key)}" class="simple-mode-slider" type="range" min="${escapeAttr(def.min)}" max="${escapeAttr(def.max)}" step="${escapeAttr(def.step)}" value="${escapeAttr(def.min)}"${disabledAttr}${titleAttr}>
     <div class="simple-mode-input-row">
-      <input id="${getSimpleModeNumberId(def.key)}" type="number" step="${escapeAttr(def.step)}" min="${escapeAttr(def.min)}" max="${escapeAttr(def.max)}" value="${escapeAttr(def.min)}">
+      <input id="${getSimpleModeNumberId(def.key)}" type="number" step="${escapeAttr(def.step)}" min="${escapeAttr(def.min)}" max="${escapeAttr(def.max)}" value="${escapeAttr(def.min)}"${disabledAttr}${titleAttr}>
       <span class="suffix">${escapeHtml(def.unit)}</span>
     </div>
   </div>`;
@@ -5521,6 +5540,26 @@ function renderSimpleMode(){
   const root = getSimpleModeRoot();
   if(!root) return;
   root.innerHTML = SIMPLE_MODE_BLOCKS.map(block=>`<section class="simple-mode-card" data-simple-block="${block.key}"><div class="simple-mode-card-title">${escapeHtml(block.title)}</div>${block.fields.map(buildSimpleModeFieldHtml).join("")}<div class="simple-mode-card-note">${escapeHtml(block.note)}</div></section>`).join("");
+  refreshSimpleModeLockState();
+}
+function refreshSimpleModeFieldLockState(key){
+  const fieldWrap = document.querySelector(`[data-simple-field="${key}"]`);
+  if(!fieldWrap) return;
+  const locked = isSimpleModeFieldCustomLocked(key);
+  const lockReason = getSimpleModeFieldLockReason(key);
+  fieldWrap.dataset.simpleLocked = locked ? "1" : "0";
+  fieldWrap.classList.toggle("is-disabled", locked);
+  const rangeEl = document.getElementById(getSimpleModeRangeId(key));
+  const numberEl = document.getElementById(getSimpleModeNumberId(key));
+  [rangeEl, numberEl].forEach(el=>{
+    if(!el) return;
+    el.disabled = locked;
+    if(lockReason) el.title = lockReason;
+    else el.removeAttribute("title");
+  });
+}
+function refreshSimpleModeLockState(){
+  ["salaryMonth","bonusYear"].forEach(refreshSimpleModeFieldLockState);
 }
 function getSimpleModeCurrentAge(){
   const n = Number(document.getElementById("age")?.value);
@@ -5570,6 +5609,7 @@ function collectSimpleModeValuesFromUI(){
     invRate:getSimpleModeFieldValue("invRate"),
     inflRate:getSimpleModeFieldValue("inflRate"),
     salaryMonth:getSimpleModeFieldValue("salaryMonth"),
+    bonusYear:getSimpleModeFieldValue("bonusYear"),
     lifeBefore:getSimpleModeFieldValue("lifeBefore"),
     rent:getSimpleModeFieldValue("rent"),
     retireAge:getSimpleModeFieldValue("retireAge"),
@@ -5602,6 +5642,7 @@ function readSimpleModeValuesFromDetail(){
     invRate:numInput("inv1_rate", 0),
     inflRate:numInput("inflRate", 0),
     salaryMonth:numInput("self_salary_month", 0),
+    bonusYear:numInput("self_bonus_year", 0),
     lifeBefore:numInput("life1_val", 0),
     rent:numInput("rent1_val", 0),
     retireAge:getSimpleModeRetireAge(),
@@ -5616,6 +5657,7 @@ function syncSimpleModeFromDetail(){
   updateSimpleModeConstraints();
   const values = readSimpleModeValuesFromDetail();
   Object.entries(values).forEach(([key, value])=>setSimpleModeFieldUIValue(key, value));
+  refreshSimpleModeLockState();
 }
 function ensureSimpleRepresentativeSlots(data, simpleValues = null){
   const next = migrateLegacyData(deepClone(data || getAllInputs()));
@@ -5738,6 +5780,9 @@ function writeSimpleModeValueToDetailByKey(key, simpleValue){
     case "salaryMonth":
       setNumericInputValue("self_salary_month", simpleValue);
       break;
+    case "bonusYear":
+      setNumericInputValue("self_bonus_year", simpleValue);
+      break;
     case "lifeBefore":
       setNumericInputValue("life1_val", simpleValue);
       break;
@@ -5773,6 +5818,7 @@ function writeSimpleModeValuesToDetail(simpleValues, changedKey = null){
     Object.keys(simpleValues || {}).forEach(key=>writeSimpleModeValueToDetailByKey(key, simpleValues[key]));
   }
   updateIncomeCurveControls();
+  refreshSimpleModeLockState();
   updatePeriodDisplays();
   syncSimpleInflationCheckboxesFromRate(simpleValues?.inflRate);
   updateLoanSummary();
@@ -5782,6 +5828,10 @@ function writeSimpleModeValuesToDetail(simpleValues, changedKey = null){
 function handleSimpleModeFieldInput(key, rawValue){
   const def = getSimpleModeFieldDef(key);
   if(!def) return;
+  if(isSimpleModeFieldCustomLocked(key)){
+    syncSimpleModeFromDetail();
+    return;
+  }
   const normalizedRaw = numValue(rawValue, def.min);
   updateSimpleModeFieldBounds(key, normalizedRaw);
   const rangeEl = document.getElementById(getSimpleModeRangeId(key));
@@ -5828,7 +5878,7 @@ function applySimpleLinkedHighlights(){
   markSimpleLinkedRow(document.querySelector('#lifeRows tr:nth-child(1)'));
   markSimpleLinkedRow(document.querySelector('#lifeRows tr:nth-child(2)'));
   markSimpleLinkedRow(document.querySelector('#rentRows tr:nth-child(1)'));
-  ["inflRate","self_salary_month","self_retire_year","self_retire_pay","self_pension_age","self_pension_month"].forEach(markSimpleLinkedScalarInput);
+  ["inflRate","self_salary_month","self_bonus_year","self_retire_year","self_retire_pay","self_pension_age","self_pension_month"].forEach(markSimpleLinkedScalarInput);
 }
 
 function updateDetailStickyTop(){
@@ -6026,18 +6076,51 @@ function updateInputsVisibility(){
   if(inputsEl) inputsEl.style.display = scenarios.length ? "block" : "none";
   updateInputModeUI();
 }
+function normalizeInputMode(mode){
+  return mode === "simple" || mode === "detail" ? mode : "common";
+}
+function getInputModeScrollStore(){
+  return inputModeScrollPositions && typeof inputModeScrollPositions === "object" ? inputModeScrollPositions : (inputModeScrollPositions = {common:0, simple:0, detail:0});
+}
+function captureCurrentInputModeScroll(){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl) return;
+  getInputModeScrollStore()[normalizeInputMode(currentInputMode)] = Math.max(0, inputsEl.scrollTop || 0);
+}
+function restoreInputModeScroll(mode){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl) return;
+  const top = Math.max(0, +(getInputModeScrollStore()[normalizeInputMode(mode)] || 0));
+  requestAnimationFrame(()=>{
+    inputsEl.scrollTop = top;
+  });
+}
 function setInputMode(mode, options = {}){
-  const nextMode = mode === "simple" || mode === "detail" ? mode : "common";
+  const nextMode = normalizeInputMode(mode);
+  const resetScroll = options && options.preserveScroll === false;
   if(currentInputMode === nextMode){
     updateInputModeUI();
+    if(resetScroll){
+      const inputsEl = document.getElementById("inputs");
+      if(inputsEl) inputsEl.scrollTop = 0;
+      getInputModeScrollStore()[nextMode] = 0;
+    }else{
+      restoreInputModeScroll(nextMode);
+    }
+    if(options.persist !== false) persistState();
     return;
   }
+  captureCurrentInputModeScroll();
   currentInputMode = nextMode;
   updateInputModeUI();
-  if(!options.preserveScroll){
+  if(resetScroll){
     const inputsEl = document.getElementById("inputs");
     if(inputsEl) inputsEl.scrollTop = 0;
+    getInputModeScrollStore()[nextMode] = 0;
+  }else{
+    restoreInputModeScroll(nextMode);
   }
+  if(options.persist !== false) persistState();
 }
 function updateInputModeUI(){
   const inputsEl = document.getElementById("inputs");
@@ -10245,7 +10328,13 @@ function runMonte(){
 
 function getSaveData(){
   ensureScenarioSaved();
-  return {scenarios, currentTab};
+  captureCurrentInputModeScroll();
+  return {
+    scenarios,
+    currentTab,
+    currentInputMode: normalizeInputMode(currentInputMode),
+    inputModeScrollPositions: {...getInputModeScrollStore()}
+  };
 }
 function encodeData(obj){
   try{
@@ -10288,6 +10377,8 @@ function loadFromURL(){
     scenarios = data.scenarios || [];
     normalizeScenarioNames();
     currentTab = data.currentTab || 0;
+    currentInputMode = normalizeInputMode(data.currentInputMode);
+    inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
     updatePeriodDisplays();
     renderTabs();
@@ -10306,6 +10397,8 @@ function loadFromLocal(){
     scenarios = data.scenarios || [];
     normalizeScenarioNames();
     currentTab = data.currentTab || 0;
+    currentInputMode = normalizeInputMode(data.currentInputMode);
+    inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
     updatePeriodDisplays();
     renderTabs();
@@ -10401,6 +10494,7 @@ function updateIncomeCurveControls(){
     if(salaryInput) salaryInput.disabled = false;
     if(bonusInput) bonusInput.disabled = false;
   });
+  refreshSimpleModeLockState();
 }
 let activePensionHelperOwner = null;
 let pensionHelperDraft = null;
@@ -12466,6 +12560,7 @@ window.addEventListener("load", ()=>{
   syncSimpleInflationCheckboxesFromRate();
   applySimpleLinkedHighlights();
   draw();
+  restoreInputModeScroll(currentInputMode);
 });
 </script>
 </body>
