@@ -1067,6 +1067,37 @@
   .fire-diagnosis-age-range{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
   .fire-diagnosis-age-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   .fire-diagnosis-age-item .input-unit{width:auto;justify-content:flex-start;}
+  .fire-probability-legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+    align-items:center;
+    justify-content:center;
+    margin-top:10px;
+    color:#374151;
+    font-size:13px;
+  }
+  .fire-probability-legend-item{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+  }
+  .fire-probability-legend-line{
+    display:inline-block;
+    width:42px;
+    height:0;
+    border-top:3px solid #2563eb;
+    border-radius:999px;
+    flex:0 0 auto;
+  }
+  .fire-probability-legend-line.is-threshold{
+    width:42px;
+    height:3px;
+    border-top:none;
+    border-radius:0;
+    background:repeating-linear-gradient(to right, #dc2626 0 10px, transparent 10px 16px);
+  }
 
   .crash-test-table th:nth-child(1),.crash-test-table td:nth-child(1){width:108px;min-width:108px;}
   .crash-test-table th:nth-child(2),.crash-test-table td:nth-child(2){width:64px;min-width:64px;}
@@ -1748,20 +1779,28 @@
     <div class="modal-card withdrawal-rule-modal" role="dialog" aria-modal="true" aria-labelledby="fireDiagnosisTitle">
       <div id="fireDiagnosisTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">FIRE診断</div>
       <div class="withdrawal-rule-grid">
-        <div class="withdrawal-rule-note">※ 現在の入力条件をもとに、想定寿命まで資産がマイナスにならない FIRE可能年齢を探索します。比較モードでは、通常ケースと暴落設定反映ケースの両方を診断して差を確認できます。</div>
+        <div class="withdrawal-rule-note">※ 現在の入力条件をもとに FIRE可能年齢 を探索します。通常診断では既存の月参考値つき FIRE診断を使い、モンテカルロ診断では通常ケースのみを対象に、成功率しきい値ベースで年単位探索します。</div>
         <div class="withdrawal-rule-section">
           <div class="withdrawal-rule-section-title">診断設定</div>
           <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label for="fireDiagnosisModeSelect">結果表示モード</label><select id="fireDiagnosisModeSelect"><option value="normal">通常のみ</option><option value="compare_crash">通常＋暴落比較</option></select></div>
+            <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label for="fireDiagnosisTypeSelect">診断方式</label><select id="fireDiagnosisTypeSelect"><option value="normal">通常診断</option><option value="monte_carlo">モンテカルロ診断</option></select></div>
+            <div id="fireDiagnosisModeField" class="withdrawal-rule-field withdrawal-rule-field-wide"><label for="fireDiagnosisModeSelect">結果表示モード</label><select id="fireDiagnosisModeSelect"><option value="normal">通常のみ</option><option value="compare_crash">通常＋暴落比較</option></select></div>
             <div class="withdrawal-rule-field"><label for="fireDiagnosisJudgementModeSelect">判定モード</label><select id="fireDiagnosisJudgementModeSelect"><option value="standard">標準</option><option value="safe">安全重視</option></select></div>
             <div id="fireDiagnosisRequiredTerminalAssetField" class="withdrawal-rule-field"><label for="fireDiagnosisRequiredTerminalAssetInput">寿命時最低残高</label><div class="input-unit"><input id="fireDiagnosisRequiredTerminalAssetInput" type="number" class="moneybox" value="1000" step="10" min="0"><span class="suffix">万円</span></div></div>
+            <div id="fireDiagnosisRequiredSuccessRateField" class="withdrawal-rule-field withdrawal-rule-hidden"><label for="fireDiagnosisRequiredSuccessRateInput">成功率しきい値</label><div class="input-unit"><input id="fireDiagnosisRequiredSuccessRateInput" type="number" class="ratebox" value="80" step="1" min="1" max="100"><span class="suffix">%</span></div></div>
             <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>探索年齢</label><div class="fire-diagnosis-age-range"><div class="fire-diagnosis-age-item"><span>開始</span><div class="input-unit"><input id="fireDiagnosisAgeFromInput" type="number" class="agebox" value="40" step="1" min="0" max="120"><span class="suffix">歳</span></div></div><div class="fire-diagnosis-age-item"><span>終了</span><div class="input-unit"><input id="fireDiagnosisAgeToInput" type="number" class="agebox" value="70" step="1" min="0" max="120"><span class="suffix">歳</span></div></div></div></div>
             <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>判定条件</label><div id="fireDiagnosisConditionSummary" class="withdrawal-rule-summary">標準：想定寿命まで総資産が一度もマイナスにならないこと</div></div>
+            <div id="fireDiagnosisMonteNote" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden"><div class="withdrawal-rule-summary">モンテカルロ診断では、既存のモンテカルロ設定の試行回数・利回りモデル・シード設定を利用します。暴落比較は v1 では未対応のため通常ケースのみを判定します。</div></div>
           </div>
         </div>
         <div class="withdrawal-rule-section">
           <div class="withdrawal-rule-section-title">診断結果</div>
           <div id="fireDiagnosisResult" class="withdrawal-rule-summary">診断条件を確認して「診断実行」を押してください。</div>
+          <div id="fireDiagnosisProbabilityLegend" class="fire-probability-legend withdrawal-rule-hidden" aria-hidden="true">
+            <div class="fire-probability-legend-item"><span class="fire-probability-legend-line"></span><span>成功率</span></div>
+            <div class="fire-probability-legend-item"><span class="fire-probability-legend-line is-threshold"></span><span id="fireDiagnosisProbabilityLegendThresholdLabel">成立しきい値</span></div>
+          </div>
+          <div id="fireDiagnosisProbabilityChartWrap" class="withdrawal-compare-chart-wrap withdrawal-rule-hidden" style="margin-top:10px;"><canvas id="fireDiagnosisProbabilityChart"></canvas></div>
         </div>
       </div>
       <div class="modal-actions" style="margin-top:14px;">
@@ -1809,9 +1848,12 @@
     <input id="simpleAutoInflEdu" type="hidden" value="1">
     <input id="sumInv1_lastNonTaxableAccountType" type="hidden" value="">
     <input id="crashTestsJson" type="hidden" value="[]">
+    <input id="fireDiagnosisType" type="hidden" value="normal">
     <input id="fireDiagnosisMode" type="hidden" value="compare_crash">
     <input id="fireDiagnosisJudgementMode" type="hidden" value="standard">
     <input id="fireDiagnosisRequiredTerminalAsset" type="hidden" value="1000">
+    <input id="fireDiagnosisRequiredSuccessRate" type="hidden" value="80">
+    <input id="fireDiagnosisShowProbabilityGraph" type="hidden" value="true">
     <input id="fireDiagnosisAgeFrom" type="hidden" value="40">
     <input id="fireDiagnosisAgeTo" type="hidden" value="70">
     <input id="sumInv1_fromAge_auto" type="hidden" value="1">
@@ -2277,6 +2319,8 @@ let currentTab = 0;
 let currentInputMode = "common";
 let inputModeScrollPositions = {common:0, simple:0, detail:0};
 let monteMode = false;
+let fireDiagnosisProbabilityChart = null;
+let lastFireDiagnosisResult = null;
 let defaultScenarioTemplate = null;
 let educationDetailDraft = null;
 let currentEducationDetailChildIndex = null;
@@ -9496,39 +9540,78 @@ function saveCrashTestModal(){
 }
 function getFireDiagnosisStoredSettings(){
   const current = Math.round(Number(currentAgeValue()) || 0);
+  const diagnosisType = (document.getElementById('fireDiagnosisType')?.value || 'normal') === 'monte_carlo' ? 'monte_carlo' : 'normal';
   const mode = (document.getElementById('fireDiagnosisMode')?.value || 'compare_crash') === 'compare_crash' ? 'compare_crash' : 'normal';
   const judgementMode = (document.getElementById('fireDiagnosisJudgementMode')?.value || 'standard') === 'safe' ? 'safe' : 'standard';
   const requiredTerminalAsset = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAsset')?.value || 1000) || 1000);
+  const requiredSuccessRate = Math.max(1, Math.min(100, Math.round(Number(document.getElementById('fireDiagnosisRequiredSuccessRate')?.value || 80) || 80)));
+  const showProbabilityGraph = String(document.getElementById('fireDiagnosisShowProbabilityGraph')?.value || 'true') !== 'false';
   const ageFrom = Math.max(current, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeFrom')?.value || current) || current)));
   const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeTo')?.value || Math.max(ageFrom, 70)) || Math.max(ageFrom, 70))));
-  return {mode, judgementMode, requiredTerminalAsset, ageFrom, ageTo};
+  return {diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
 }
 function setFireDiagnosisStoredSettings(settings){
   const safe = settings || {};
   const current = Math.round(Number(currentAgeValue()) || 0);
   const from = Math.max(current, Math.min(120, Math.round(Number(safe.ageFrom ?? document.getElementById('fireDiagnosisAgeFrom')?.value ?? current) || current)));
   const to = Math.max(from, Math.min(120, Math.round(Number(safe.ageTo ?? document.getElementById('fireDiagnosisAgeTo')?.value ?? Math.max(from, 70)) || Math.max(from, 70))));
+  const diagnosisType = safe.diagnosisType === 'monte_carlo' ? 'monte_carlo' : 'normal';
   const mode = safe.mode === 'compare_crash' ? 'compare_crash' : 'normal';
   const judgementMode = safe.judgementMode === 'safe' ? 'safe' : 'standard';
   const requiredTerminalAsset = Math.max(0, Number(safe.requiredTerminalAsset ?? document.getElementById('fireDiagnosisRequiredTerminalAsset')?.value ?? 1000) || 1000);
+  const requiredSuccessRate = Math.max(1, Math.min(100, Math.round(Number(safe.requiredSuccessRate ?? document.getElementById('fireDiagnosisRequiredSuccessRate')?.value ?? 80) || 80)));
+  const showProbabilityGraph = safe.showProbabilityGraph == null ? String(document.getElementById('fireDiagnosisShowProbabilityGraph')?.value || 'true') !== 'false' : !!safe.showProbabilityGraph;
+  const typeHidden = document.getElementById('fireDiagnosisType');
   const modeHidden = document.getElementById('fireDiagnosisMode');
   const judgementHidden = document.getElementById('fireDiagnosisJudgementMode');
   const requiredHidden = document.getElementById('fireDiagnosisRequiredTerminalAsset');
+  const successHidden = document.getElementById('fireDiagnosisRequiredSuccessRate');
+  const showGraphHidden = document.getElementById('fireDiagnosisShowProbabilityGraph');
   const fromHidden = document.getElementById('fireDiagnosisAgeFrom');
   const toHidden = document.getElementById('fireDiagnosisAgeTo');
+  if(typeHidden) typeHidden.value = diagnosisType;
   if(modeHidden) modeHidden.value = mode;
   if(judgementHidden) judgementHidden.value = judgementMode;
   if(requiredHidden) requiredHidden.value = String(requiredTerminalAsset);
+  if(successHidden) successHidden.value = String(requiredSuccessRate);
+  if(showGraphHidden) showGraphHidden.value = showProbabilityGraph ? 'true' : 'false';
   if(fromHidden) fromHidden.value = String(from);
   if(toHidden) toHidden.value = String(to);
 }
+function destroyFireDiagnosisProbabilityChart(){
+  if(fireDiagnosisProbabilityChart){
+    fireDiagnosisProbabilityChart.destroy();
+    fireDiagnosisProbabilityChart = null;
+  }
+}
 function updateFireDiagnosisJudgementUi(){
+  const diagnosisType = document.getElementById('fireDiagnosisTypeSelect')?.value === 'monte_carlo' ? 'monte_carlo' : 'normal';
   const mode = document.getElementById('fireDiagnosisJudgementModeSelect')?.value === 'safe' ? 'safe' : 'standard';
-  const field = document.getElementById('fireDiagnosisRequiredTerminalAssetField');
+  const resultModeField = document.getElementById('fireDiagnosisModeField');
+  const resultModeSelect = document.getElementById('fireDiagnosisModeSelect');
+  const terminalField = document.getElementById('fireDiagnosisRequiredTerminalAssetField');
+  const successRateField = document.getElementById('fireDiagnosisRequiredSuccessRateField');
+  const monteNote = document.getElementById('fireDiagnosisMonteNote');
   const summary = document.getElementById('fireDiagnosisConditionSummary');
-  if(field) field.classList.toggle('withdrawal-rule-hidden', mode !== 'safe');
+  const isMonte = diagnosisType === 'monte_carlo';
+  if(resultModeField) resultModeField.classList.toggle('withdrawal-rule-hidden', isMonte);
+  if(resultModeSelect){
+    resultModeSelect.disabled = isMonte;
+    if(isMonte) resultModeSelect.value = 'normal';
+  }
+  if(terminalField) terminalField.classList.toggle('withdrawal-rule-hidden', mode !== 'safe');
+  if(successRateField) successRateField.classList.toggle('withdrawal-rule-hidden', !isMonte);
+  if(monteNote) monteNote.classList.toggle('withdrawal-rule-hidden', !isMonte);
   if(summary){
-    if(mode === 'safe'){
+    if(isMonte){
+      const threshold = Math.max(1, Math.min(100, Math.round(Number(document.getElementById('fireDiagnosisRequiredSuccessRateInput')?.value || 80) || 80)));
+      if(mode === 'safe'){
+        const terminalThreshold = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value || 1000) || 1000);
+        summary.innerHTML = `モンテカルロ診断 / 安全重視：各 trial で想定寿命まで総資産が一度もマイナスにならず、寿命時残高が <strong>${Math.round(terminalThreshold).toLocaleString()}万円以上</strong> となる trial の比率が <strong>${threshold}%以上</strong> であること`;
+      } else {
+        summary.innerHTML = `モンテカルロ診断 / 標準：各 trial で想定寿命まで総資産が一度もマイナスにならない trial の比率が <strong>${threshold}%以上</strong> であること`;
+      }
+    } else if(mode === 'safe'){
       const threshold = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value || 1000) || 1000);
       summary.innerHTML = `安全重視：想定寿命まで総資産が一度もマイナスにならず、寿命時残高が <strong>${Math.round(threshold).toLocaleString()}万円以上</strong> であること`;
     } else {
@@ -9538,31 +9621,41 @@ function updateFireDiagnosisJudgementUi(){
 }
 function loadFireDiagnosisDraftToModal(){
   const settings = getFireDiagnosisStoredSettings();
+  const typeEl = document.getElementById('fireDiagnosisTypeSelect');
   const modeEl = document.getElementById('fireDiagnosisModeSelect');
   const judgementEl = document.getElementById('fireDiagnosisJudgementModeSelect');
   const requiredEl = document.getElementById('fireDiagnosisRequiredTerminalAssetInput');
+  const successRateEl = document.getElementById('fireDiagnosisRequiredSuccessRateInput');
   const fromEl = document.getElementById('fireDiagnosisAgeFromInput');
   const toEl = document.getElementById('fireDiagnosisAgeToInput');
+  if(typeEl) typeEl.value = settings.diagnosisType;
   if(modeEl) modeEl.value = settings.mode;
   if(judgementEl) judgementEl.value = settings.judgementMode;
   if(requiredEl) requiredEl.value = String(Math.round(settings.requiredTerminalAsset));
+  if(successRateEl) successRateEl.value = String(settings.requiredSuccessRate);
   if(fromEl) fromEl.value = String(settings.ageFrom);
   if(toEl) toEl.value = String(settings.ageTo);
   updateFireDiagnosisJudgementUi();
 }
 function getFireDiagnosisSettingsFromModal(){
   const current = Math.round(Number(currentAgeValue()) || 0);
-  const mode = document.getElementById('fireDiagnosisModeSelect')?.value === 'compare_crash' ? 'compare_crash' : 'normal';
+  const diagnosisType = document.getElementById('fireDiagnosisTypeSelect')?.value === 'monte_carlo' ? 'monte_carlo' : 'normal';
+  const mode = diagnosisType === 'monte_carlo' ? 'normal' : (document.getElementById('fireDiagnosisModeSelect')?.value === 'compare_crash' ? 'compare_crash' : 'normal');
   const judgementMode = document.getElementById('fireDiagnosisJudgementModeSelect')?.value === 'safe' ? 'safe' : 'standard';
   const requiredTerminalAsset = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value || 1000) || 1000);
+  const requiredSuccessRate = Math.max(1, Math.min(100, Math.round(Number(document.getElementById('fireDiagnosisRequiredSuccessRateInput')?.value || 80) || 80)));
+  const showProbabilityGraph = String(document.getElementById('fireDiagnosisShowProbabilityGraph')?.value || 'true') !== 'false';
   const ageFrom = Math.max(current, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeFromInput')?.value || current) || current)));
   const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeToInput')?.value || Math.max(ageFrom,70)) || Math.max(ageFrom,70))));
-  return {mode, judgementMode, requiredTerminalAsset, ageFrom, ageTo};
+  return {diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
 }
 function openFireDiagnosisModal(){
   loadFireDiagnosisDraftToModal();
+  lastFireDiagnosisResult = null;
+  destroyFireDiagnosisProbabilityChart();
   const resultEl = document.getElementById('fireDiagnosisResult');
   if(resultEl) resultEl.innerHTML = '診断条件を確認して「診断実行」を押してください。';
+  document.getElementById('fireDiagnosisProbabilityChartWrap')?.classList.add('withdrawal-rule-hidden');
   const modal = document.getElementById('fireDiagnosisModal');
   modal?.classList.add('show');
   modal?.setAttribute('aria-hidden', 'false');
@@ -9904,6 +9997,340 @@ function findFireAgeBinary(baseData, options){
   const refinedTrial = refineFireAgeWithinYear(baseData, {failTrial: loTrial, successTrial: hiTrial}, evalOptions) || hiTrial;
   return buildFireDiagnosisSuccessPayload(refinedTrial, evalOptions, checkedFrom, checkedTo);
 }
+function evaluateFireTrialSuccess(simResult, options){
+  const judged = evaluateFireDiagnosisResult(simResult?.cfg || null, simResult?.sim || null, options);
+  return {
+    success: !!judged?.found,
+    minAsset: Number(judged?.minAsset || 0) || 0,
+    terminalAsset: Number(judged?.terminalAsset || 0) || 0,
+    depletionAge: judged?.depletionAge != null ? Number(judged.depletionAge) : null,
+    reasonCode: judged?.reasonCode || 'not_found_in_search_range',
+    reasonText: judged?.reasonText || '探索範囲内で成立せず'
+  };
+}
+function buildMonteCarloFireTrialContexts(baseScenario, options){
+  const settings = options?.monteSettings || getMonteCarloSettingsFromDOM();
+  const trials = clampMonteTrials(options?.trials || settings?.trials || 80);
+  const originalData = migrateLegacyData(deepClone(baseScenario || getAllInputs()));
+  const activeState = captureActiveInputState();
+  try{
+    setAllInputs(originalData);
+    const cfg = getScenarioFromDOM();
+    cfg.crashTests = [];
+    const shocks = buildSharedReturnShocks(cfg, trials, originalData, {...settings, trials});
+    return Array.from({length:trials}, (_, idx)=>({trialIndex:idx, shocks:shocks[idx] || []}));
+  } finally {
+    setAllInputs(originalData);
+    restoreActiveInputState(activeState);
+  }
+}
+function runMonteCarloFireAtAge(baseScenario, retireAge, options, trialContexts, cache){
+  const safeAge = Math.max(0, Math.round(Number(retireAge) || 0));
+  const phase = options?.phase === 'final' ? 'final' : 'coarse';
+  const cacheKey = `${phase}:${safeAge}`;
+  if(cache instanceof Map && cache.has(cacheKey)) return cache.get(cacheKey);
+  const originalData = migrateLegacyData(deepClone(baseScenario || getAllInputs()));
+  const activeState = captureActiveInputState();
+  try{
+    const trialData = buildScenarioDataForRetireAge(originalData, safeAge);
+    setAllInputs(trialData);
+    const cfg = getScenarioFromDOM();
+    cfg.crashTests = [];
+    const staticSeries = getOrBuildMonteStaticSeries(trialData, cfg);
+    const contexts = Array.isArray(trialContexts) ? trialContexts : [];
+    const trials = Math.max(1, contexts.length || clampMonteTrials(options?.trials || 80));
+    let successCount = 0;
+    let lastReasonCode = 'ok';
+    let lastReasonText = '成立';
+    for(let i = 0; i < trials; i++){
+      const shocks = contexts[i]?.shocks || null;
+      const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shocks});
+      const judged = evaluateFireTrialSuccess({cfg, sim}, options);
+      if(judged.success) successCount++;
+      else {
+        lastReasonCode = judged.reasonCode || lastReasonCode;
+        lastReasonText = judged.reasonText || lastReasonText;
+      }
+    }
+    const successRate = successCount / Math.max(1, trials) * 100;
+    const threshold = Math.max(1, Math.min(100, Number(options?.requiredSuccessRate || 80) || 80));
+    const found = successRate >= threshold;
+    const result = {
+      age:safeAge,
+      successRate,
+      successCount,
+      trials,
+      found,
+      reasonCode:found ? 'ok' : (lastReasonCode || 'success_rate_below_threshold'),
+      reasonText:found ? `${safeAge}歳から成立` : (lastReasonText || '探索範囲内で成立せず')
+    };
+    if(cache instanceof Map) cache.set(cacheKey, result);
+    return result;
+  } finally {
+    setAllInputs(originalData);
+    restoreActiveInputState(activeState);
+  }
+}
+function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
+  const checkedFrom = Math.max(0, Math.round(Number(options?.ageFrom) || 0));
+  const checkedTo = Math.max(checkedFrom, Math.round(Number(options?.ageTo) || checkedFrom));
+  const threshold = Math.max(1, Math.min(100, Number(options?.requiredSuccessRate || 80) || 80));
+  const coarseTrials = Math.max(10, Math.min(30, clampMonteTrials(Math.min(options?.coarseTrials || 24, Array.isArray(trialContexts) ? trialContexts.length : 24))));
+  const coarseContexts = Array.isArray(trialContexts) ? trialContexts.slice(0, coarseTrials) : [];
+  const finalContexts = Array.isArray(trialContexts) ? trialContexts : [];
+  const cache = new Map();
+  const runAt = (age, phase)=>runMonteCarloFireAtAge(baseScenario, age, {
+    judgementMode: options?.judgementMode,
+    requiredTerminalAsset: options?.requiredTerminalAsset,
+    requiredSuccessRate: threshold,
+    trials: phase === 'final' ? finalContexts.length : coarseContexts.length,
+    phase
+  }, phase === 'final' ? finalContexts : coarseContexts, cache);
+  const fromTrial = runAt(checkedFrom, 'coarse');
+  if(fromTrial.found){
+    const exact = runAt(checkedFrom, 'final');
+    return {
+      found:true,
+      fireAgeYears:checkedFrom,
+      successRateAtFireAge:exact.successRate,
+      successRateAtPrevAge:null,
+      requiredSuccessRate:threshold,
+      reasonCode:'ok',
+      reasonText:`${checkedFrom}歳から成立`,
+      cachedAgeResults:cache
+    };
+  }
+  const toTrial = checkedTo === checkedFrom ? fromTrial : runAt(checkedTo, 'coarse');
+  if(!toTrial.found){
+    const exact = runAt(checkedTo, 'final');
+    return {
+      found:false,
+      fireAgeYears:null,
+      successRateAtFireAge:null,
+      successRateAtPrevAge:exact.successRate,
+      requiredSuccessRate:threshold,
+      reasonCode:'not_found_in_search_range',
+      reasonText:`${checkedTo}歳時点でも成功率が${threshold}%未満`,
+      cachedAgeResults:cache,
+      lastCheckedAge:checkedTo,
+      lastCheckedSuccessRate:exact.successRate
+    };
+  }
+  let lo = checkedFrom;
+  let hi = checkedTo;
+  while((hi - lo) > 1){
+    const mid = Math.floor((lo + hi) / 2);
+    const midTrial = runAt(mid, 'coarse');
+    if(midTrial.found) hi = mid;
+    else lo = mid;
+  }
+
+  let fireAge = hi;
+  let fireExact = runAt(fireAge, 'final');
+  while(fireAge > checkedFrom){
+    const prevExact = runAt(fireAge - 1, 'final');
+    if(!prevExact?.found) break;
+    fireAge -= 1;
+    fireExact = prevExact;
+  }
+
+  const finalPrev = fireAge - 1 >= checkedFrom ? runAt(fireAge - 1, 'final') : null;
+  const finalFire = fireExact || runAt(fireAge, 'final');
+  return {
+    found:!!finalFire?.found,
+    fireAgeYears:fireAge,
+    successRateAtFireAge:Number(finalFire?.successRate || 0) || 0,
+    successRateAtPrevAge:finalPrev ? (Number(finalPrev.successRate || 0) || 0) : null,
+    requiredSuccessRate:threshold,
+    reasonCode:finalFire?.found ? 'ok' : 'success_rate_below_threshold',
+    reasonText:finalFire?.found ? `${fireAge}歳から成立` : `探索範囲内で成立せず`,
+    cachedAgeResults:cache
+  };
+}
+function buildMonteCarloFireProbabilitySeries(centerAge, radius, options, baseScenario, trialContexts, cache){
+  const ages = [];
+  const safeRadius = Math.max(0, Math.round(Number(radius) || 0));
+  const minAge = Math.max(Math.round(Number(options?.ageFrom) || 0), Math.max(0, Math.round(Number(centerAge) || 0) - safeRadius));
+  const maxAge = Math.min(Math.round(Number(options?.ageTo) || 120), Math.round(Number(centerAge) || 0) + safeRadius);
+  for(let age = minAge; age <= maxAge; age++) ages.push(age);
+  return ages.map(age=>{
+    const key = `final:${age}`;
+    const cached = cache instanceof Map ? cache.get(key) : null;
+    const result = cached || runMonteCarloFireAtAge(baseScenario, age, {
+      judgementMode: options?.judgementMode,
+      requiredTerminalAsset: options?.requiredTerminalAsset,
+      requiredSuccessRate: options?.requiredSuccessRate,
+      trials: Array.isArray(trialContexts) ? trialContexts.length : (options?.trials || 80),
+      phase:'final'
+    }, trialContexts, cache);
+    return {age, successRate:Number(result?.successRate || 0) || 0};
+  });
+}
+function runMonteCarloFireDiagnosis(baseScenario, options){
+  const monteSettings = getMonteCarloSettingsFromDOM();
+  const contexts = buildMonteCarloFireTrialContexts(baseScenario, {monteSettings, trials:monteSettings.trials});
+  const searchResult = findMonteCarloFireAgeBinary(baseScenario, {
+    ageFrom: options?.ageFrom,
+    ageTo: options?.ageTo,
+    judgementMode: options?.judgementMode,
+    requiredTerminalAsset: options?.requiredTerminalAsset,
+    requiredSuccessRate: options?.requiredSuccessRate,
+    coarseTrials: Math.min(24, contexts.length),
+    monteSettings
+  }, contexts);
+  const result = {
+    diagnosisType:'monte_carlo',
+    mode:'normal',
+    found:!!searchResult?.found,
+    success:!!searchResult?.found,
+    judgementMode: options?.judgementMode === 'safe' ? 'safe' : 'standard',
+    requiredTerminalAsset: Math.max(0, Number(options?.requiredTerminalAsset) || 0),
+    requiredSuccessRate: Math.max(1, Math.min(100, Number(options?.requiredSuccessRate || 80) || 80)),
+    checkedFrom: Math.max(0, Math.round(Number(options?.ageFrom) || 0)),
+    checkedTo: Math.max(0, Math.round(Number(options?.ageTo) || 0)),
+    fireAgeYears: searchResult?.fireAgeYears ?? null,
+    fireAgeMonths: 0,
+    fireAgeTotalMonths: searchResult?.fireAgeYears != null ? Math.round(Number(searchResult.fireAgeYears) || 0) * 12 : null,
+    firePossibleAge: searchResult?.fireAgeYears ?? null,
+    successRateAtFireAge: searchResult?.successRateAtFireAge ?? null,
+    successRateAtPrevAge: searchResult?.successRateAtPrevAge ?? null,
+    reasonCode: searchResult?.reasonCode || 'not_found_in_search_range',
+    reasonText: searchResult?.reasonText || '探索範囲内で成立せず',
+    probabilitySeries: []
+  };
+  if(result.found && options?.showProbabilityGraph !== false && result.fireAgeYears != null){
+    result.probabilitySeries = buildMonteCarloFireProbabilitySeries(result.fireAgeYears, 3, {
+      ageFrom: result.checkedFrom,
+      ageTo: result.checkedTo,
+      judgementMode: result.judgementMode,
+      requiredTerminalAsset: result.requiredTerminalAsset,
+      requiredSuccessRate: result.requiredSuccessRate,
+      trials: contexts.length
+    }, baseScenario, contexts, searchResult?.cachedAgeResults);
+  }
+  if(!result.found && Number.isFinite(Number(searchResult?.lastCheckedAge))){
+    result.lastCheckedAge = Number(searchResult.lastCheckedAge);
+    result.lastCheckedSuccessRate = Number(searchResult.lastCheckedSuccessRate || 0) || 0;
+  }
+  return result;
+}
+function getMonteCarloFireProbabilityAxisRange(series, threshold){
+  const values = [];
+  (Array.isArray(series) ? series : []).forEach(item=>{
+    const v = Number(item?.successRate);
+    if(Number.isFinite(v)) values.push(v);
+  });
+  const thresholdValue = Number(threshold);
+  if(Number.isFinite(thresholdValue)) values.push(thresholdValue);
+  if(!values.length){
+    return {min:0, max:100};
+  }
+  let minValue = Math.min(...values);
+  let maxValue = Math.max(...values);
+  let span = maxValue - minValue;
+  const minSpan = 10;
+  if(span < minSpan){
+    const center = (minValue + maxValue) / 2;
+    minValue = center - minSpan / 2;
+    maxValue = center + minSpan / 2;
+    span = maxValue - minValue;
+  }
+  const padding = Math.max(2, span * 0.2);
+  let yMin = Math.floor((minValue - padding) / 5) * 5;
+  let yMax = Math.ceil((maxValue + padding) / 5) * 5;
+  yMin = Math.max(0, yMin);
+  yMax = Math.min(100, yMax);
+  if((yMax - yMin) < minSpan){
+    const shortage = minSpan - (yMax - yMin);
+    const down = Math.min(yMin, Math.ceil(shortage / 2));
+    const up = Math.min(100 - yMax, shortage - down);
+    yMin -= down;
+    yMax += up;
+    if((yMax - yMin) < minSpan){
+      if(yMin === 0){
+        yMax = Math.min(100, yMin + minSpan);
+      }else if(yMax === 100){
+        yMin = Math.max(0, yMax - minSpan);
+      }
+    }
+  }
+  return {min:yMin, max:yMax};
+}
+function renderMonteCarloFireProbabilityChart(result){
+  const wrap = document.getElementById('fireDiagnosisProbabilityChartWrap');
+  const canvas = document.getElementById('fireDiagnosisProbabilityChart');
+  const legendEl = document.getElementById('fireDiagnosisProbabilityLegend');
+  const thresholdLabelEl = document.getElementById('fireDiagnosisProbabilityLegendThresholdLabel');
+  destroyFireDiagnosisProbabilityChart();
+  if(!wrap || !canvas){
+    return;
+  }
+  const series = Array.isArray(result?.probabilitySeries) ? result.probabilitySeries : [];
+  if(!result?.found || !series.length){
+    wrap.classList.add('withdrawal-rule-hidden');
+    legendEl?.classList.add('withdrawal-rule-hidden');
+    if(thresholdLabelEl) thresholdLabelEl.textContent = '成立しきい値';
+    return;
+  }
+  wrap.classList.remove('withdrawal-rule-hidden');
+  legendEl?.classList.remove('withdrawal-rule-hidden');
+  const fireAge = Math.round(Number(result.fireAgeYears) || 0);
+  const threshold = Math.max(1, Math.min(100, Number(result.requiredSuccessRate || 80) || 80));
+  if(thresholdLabelEl) thresholdLabelEl.textContent = `成立しきい値 (${threshold}%)`;
+  const successRates = series.map(item=>Math.round((Number(item.successRate || 0) || 0) * 10) / 10);
+  const axisRange = getMonteCarloFireProbabilityAxisRange(series, threshold);
+  fireDiagnosisProbabilityChart = new Chart(canvas.getContext('2d'), {
+    type:'line',
+    data:{
+      labels:series.map(item=>`${item.age}歳`),
+      datasets:[
+        {
+          label:'成功率',
+          data:successRates,
+          borderColor:'#2563eb',
+          backgroundColor:'rgba(37,99,235,0.12)',
+          pointRadius:series.map(item=>item.age === fireAge ? 5 : 3),
+          pointHoverRadius:series.map(item=>item.age === fireAge ? 6 : 4),
+          pointBackgroundColor:series.map(item=>item.age === fireAge ? '#dc2626' : '#2563eb'),
+          pointBorderColor:series.map(item=>item.age === fireAge ? '#dc2626' : '#2563eb'),
+          borderWidth:2,
+          tension:0.2,
+          fill:false
+        },
+        {
+          label:`成立しきい値 (${threshold}%)`,
+          data:series.map(()=>threshold),
+          borderColor:'#dc2626',
+          backgroundColor:'rgba(220,38,38,0)',
+          borderDash:[6,4],
+          pointRadius:0,
+          pointHoverRadius:0,
+          borderWidth:2,
+          tension:0,
+          fill:false
+        }
+      ]
+    },
+    options:{
+      animation:false,
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label(ctx){ return `${ctx.dataset.label}: ${Number(ctx.parsed?.y || 0).toFixed(1)}%`; }}}
+      },
+      scales:{
+        y:{
+          min:axisRange.min,
+          max:axisRange.max,
+          title:{display:true,text:'成功率（%）'},
+          ticks:{callback(value){ return `${value}%`; }}
+        },
+        x:{title:{display:true,text:'退職年齢'}}
+      }
+    }
+  });
+}
 function formatFireDiagnosisMetric(label, value){
   return `<div>${label}：${value}</div>`;
 }
@@ -9943,6 +10370,30 @@ function formatSingleFireDiagnosisCard(result, heading){
 }
 function formatFireDiagnosisResultHtml(result){
   if(!result) return '<div>診断結果を表示できませんでした。</div>';
+  if(result.diagnosisType === 'monte_carlo'){
+    const lines = [];
+    lines.push(`<div><strong>診断方式</strong>：モンテカルロ診断</div>`);
+    lines.push(`<div>成功率基準：${Math.round(Number(result.requiredSuccessRate || 0) || 0)}%</div>`);
+    lines.push(`<div>判定モード：${result.judgementMode === 'safe' ? '安全重視' : '標準'}</div>`);
+    if(result.judgementMode === 'safe'){
+      lines.push(`<div>寿命時最低残高：${Math.round(Number(result.requiredTerminalAsset || 0) || 0).toLocaleString()}万円</div>`);
+    }
+    if(!result.found){
+      lines.push('<div style="margin-top:6px;">指定範囲内では FIRE可能年齢 が見つかりませんでした。</div>');
+      lines.push(`<div style="margin-top:6px;">理由：${result.reasonText || '探索範囲内で成立せず'}</div>`);
+      if(Number.isFinite(Number(result.lastCheckedAge))){
+        lines.push(`<div>${Math.round(Number(result.lastCheckedAge))}歳の成功率：${(Number(result.lastCheckedSuccessRate || 0) || 0).toFixed(1)}%</div>`);
+      }
+      return lines.join('');
+    }
+    lines.push(`<div style="margin-top:6px;">FIRE可能年齢：<strong>${formatFireDiagnosisAgeText(result.fireAgeYears ?? result.firePossibleAge, result.fireAgeMonths ?? 0)}</strong></div>`);
+    lines.push(`<div>${Math.round(Number(result.fireAgeYears || 0) || 0)}歳の成功率：${(Number(result.successRateAtFireAge || 0) || 0).toFixed(1)}%</div>`);
+    if(result.successRateAtPrevAge != null && Number.isFinite(Number(result.successRateAtPrevAge))){
+      lines.push(`<div>${Math.max(0, Math.round(Number(result.fireAgeYears || 0) || 0) - 1)}歳の成功率：${(Number(result.successRateAtPrevAge || 0) || 0).toFixed(1)}%</div>`);
+    }
+    lines.push(`<div>コメント：${result.reasonText || '成立'}</div>`);
+    return lines.join('');
+  }
   if(result.mode === 'compare_crash'){
     const lines = [];
     if(!result.normal?.found && !result.withCrash?.found){
@@ -9977,6 +10428,9 @@ function runFireDiagnosisCore(baseData, settings){
   const originalData = migrateLegacyData(deepClone(baseData || getAllInputs()));
   const activeState = captureActiveInputState();
   try{
+    if(settings.diagnosisType === 'monte_carlo'){
+      return runMonteCarloFireDiagnosis(originalData, settings);
+    }
     if(settings.mode === 'compare_crash'){
       const normal = runSingleFireDiagnosisCore(originalData, {...settings, mode:'normal'});
       const withCrash = runSingleFireDiagnosisCore(originalData, {...settings, mode:'with_crash'});
@@ -9987,6 +10441,7 @@ function runFireDiagnosisCore(baseData, settings){
       const diffYears = bothFound ? Math.trunc(diffTotalMonths / 12) : null;
       const diffMonths = bothFound ? Math.abs(diffTotalMonths % 12) : null;
       return {
+        diagnosisType:'normal',
         mode:'compare_crash',
         success: !!(normal?.found || withCrash?.found),
         found: !!(normal?.found || withCrash?.found),
@@ -10001,7 +10456,7 @@ function runFireDiagnosisCore(baseData, settings){
         diffTotalMonths
       };
     }
-    return runSingleFireDiagnosisCore(originalData, settings);
+    return {...runSingleFireDiagnosisCore(originalData, settings), diagnosisType:'normal'};
   } finally {
     setAllInputs(originalData);
     restoreActiveInputState(activeState);
@@ -10012,14 +10467,22 @@ function runFireDiagnosis(){
   setFireDiagnosisStoredSettings(settings);
   syncCurrentScenarioFromDOM(true);
   persistState();
+  destroyFireDiagnosisProbabilityChart();
+  document.getElementById('fireDiagnosisProbabilityChartWrap')?.classList.add('withdrawal-rule-hidden');
   const resultEl = document.getElementById('fireDiagnosisResult');
   if(resultEl){
-    resultEl.innerHTML = settings.mode === 'compare_crash'
-      ? '診断中...（通常ケースと暴落込みケースを二分探索で順番に計算します）'
-      : '診断中...（二分探索で計算します）';
+    if(settings.diagnosisType === 'monte_carlo'){
+      resultEl.innerHTML = '診断中...（成功率しきい値ベースで年単位二分探索します）';
+    } else {
+      resultEl.innerHTML = settings.mode === 'compare_crash'
+        ? '診断中...（通常ケースと暴落込みケースを二分探索で順番に計算します）'
+        : '診断中...（二分探索で計算します）';
+    }
   }
   const result = runFireDiagnosisCore(getAllInputs(), settings);
+  lastFireDiagnosisResult = result;
   if(resultEl) resultEl.innerHTML = formatFireDiagnosisResultHtml(result);
+  if(result?.diagnosisType === 'monte_carlo') renderMonteCarloFireProbabilityChart(result);
 }
 function clampMonteTrials(v){ return Math.max(10, Math.min(5000, Math.round(Number(v) || 80))); }
 function clampMonteDrawPaths(v, trials){ return Math.max(10, Math.min(Math.max(10, Number(trials) || 80), Math.round(Number(v) || 80))); }
@@ -13493,8 +13956,11 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
 });
 document.getElementById("cancelFireDiagnosisBtn")?.addEventListener("click", closeFireDiagnosisModal);
 document.getElementById("runFireDiagnosisBtn")?.addEventListener("click", runFireDiagnosis);
+document.getElementById("fireDiagnosisTypeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
+document.getElementById("fireDiagnosisModeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisJudgementModeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisRequiredTerminalAssetInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
+document.getElementById("fireDiagnosisRequiredSuccessRateInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisModal")?.addEventListener("mousedown", (e)=>{
   if(e.target === document.getElementById("fireDiagnosisModal")) closeFireDiagnosisModal();
 });
