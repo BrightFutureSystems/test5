@@ -830,6 +830,7 @@
     padding:16px;
   }
   .modal-backdrop.show{display:flex;}
+  #deleteRowModal,#deleteTabModal{z-index:1300;}
   .modal-card{
     width:min(460px, 100%);
     background:#fff;
@@ -1062,15 +1063,28 @@
   .withdrawal-param-case-table td .input-unit{padding-left:0;justify-content:center;}
   .withdrawal-param-case-table td input[type=number]{width:100%;max-width:120px;margin:0 auto;}
   .withdrawal-param-case-help{margin-bottom:8px;color:var(--muted);font-size:.88rem;line-height:1.5;}
+  .crash-label-cell{text-align:center !important;padding-left:6px !important;}
+  .fire-diagnosis-age-range{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .fire-diagnosis-age-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .fire-diagnosis-age-item .input-unit{width:auto;justify-content:flex-start;}
+
   .crash-test-table th:nth-child(1),.crash-test-table td:nth-child(1){width:108px;min-width:108px;}
   .crash-test-table th:nth-child(2),.crash-test-table td:nth-child(2){width:64px;min-width:64px;}
-  .crash-test-table th:nth-child(3),.crash-test-table td:nth-child(3){width:128px;min-width:128px;}
-  .crash-test-table th:nth-child(4),.crash-test-table td:nth-child(4),.crash-test-table th:nth-child(5),.crash-test-table td:nth-child(5),.crash-test-table th:nth-child(6),.crash-test-table td:nth-child(6){width:112px;min-width:112px;}
+  .crash-test-table th:nth-child(3),.crash-test-table td:nth-child(3){width:118px;min-width:118px;}
+  .crash-test-table th:nth-child(4),.crash-test-table td:nth-child(4){width:220px;min-width:220px;}
+  .crash-test-table th:nth-child(5),.crash-test-table td:nth-child(5){width:88px;min-width:88px;}
+  .crash-test-table th:nth-child(6),.crash-test-table td:nth-child(6){width:84px;min-width:84px;}
+  .crash-timing-wrap{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;width:100%;}
+  .crash-timing-type-select{width:108px !important;min-width:108px !important;}
+  .crash-timing-value{width:62px !important;min-width:62px !important;}
+  .crash-timing-unit{display:inline-block;min-width:20px;text-align:left;}
   .crash-test-table td input[type=number],.crash-test-table td select{width:100%;max-width:100%;min-width:0;}
+  .crash-test-table td [data-crash-field="dropPct"]{width:64px !important;min-width:64px !important;}
+  .crash-test-table td [data-crash-field="recoveryYears"]{width:54px !important;min-width:54px !important;}
   .crash-test-table td .input-unit{padding-left:0;justify-content:center;}
   .crash-test-table .crash-toggle-cell{padding-left:0;padding-right:0;}
-  .crash-test-table .crash-label-cell{padding-left:8px;padding-right:8px;text-align:left;}
-  .crash-test-table .crash-label-cell .row-label-btn{min-width:52px;white-space:nowrap;}
+  .crash-test-table .crash-label-cell{padding-left:8px;padding-right:8px;text-align:center;}
+  .crash-test-table .crash-label-cell .row-label-btn{min-width:52px;white-space:nowrap;margin:0 auto;}
   .crash-history-table{width:100%;min-width:560px;border-collapse:collapse;table-layout:fixed;font-size:12px;}
   .crash-history-table th,.crash-history-table td{border:1px solid var(--border);padding:6px;text-align:center;vertical-align:middle;}
   .crash-history-table th{background:#fafafa;line-height:1.35;}
@@ -1084,7 +1098,7 @@
     .withdrawal-compare-table{min-width:720px;font-size:12px;}
     .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{width:220px;min-width:220px;}
     .withdrawal-param-case-table{min-width:420px;font-size:12px;}
-    .crash-test-table{min-width:708px;font-size:12px;}
+    .crash-test-table{min-width:742px;font-size:12px;}
     .crash-history-table{min-width:560px;font-size:12px;}
   }
   .numeric-assist{display:none !important;
@@ -1153,7 +1167,8 @@
       </div>
       <div id="rightTopControls">
         <button id="withdrawalRuleBtn" type="button" class="compact-btn">取り崩しルール</button>
-        <button id="crashTestBtn" type="button" class="compact-btn">暴落テスト</button>
+        <button id="crashTestBtn" type="button" class="compact-btn">暴落設定</button>
+        <button id="fireDiagnosisBtn" type="button" class="compact-btn">FIRE診断</button>
         <div class="split-btn-group">
           <button id="runMonteBtn" type="button" class="compact-btn split-btn-main">確率計算</button>
           <button id="openMonteSettingsBtn" type="button" class="compact-btn split-btn-toggle" aria-label="モンテカルロ設定">▼</button>
@@ -1635,14 +1650,14 @@
 
   <div id="crashTestModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-card withdrawal-rule-modal" role="dialog" aria-modal="true" aria-labelledby="crashTestTitle">
-      <div id="crashTestTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">暴落テスト</div>
+      <div id="crashTestTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">暴落設定</div>
       <div class="withdrawal-rule-grid">
-        <div class="withdrawal-rule-note">※ 暴落テストは、運用資産の利回りに一時的な下落・回復補正を与えるストレステストです。預貯金・安全資産には直接ショックを与えません。</div>
+        <div class="withdrawal-rule-note">※ 暴落設定では、運用資産に対する下落・回復シナリオを設定します。設定した内容は通常計算や FIRE診断に反映できます。預貯金・安全資産には直接ショックを与えません。</div>
         <div class="withdrawal-rule-section">
           <div class="withdrawal-rule-section-title">暴落シナリオ</div>
           <div class="withdrawal-compare-table-wrap">
             <table class="withdrawal-param-case-table crash-test-table">
-              <thead><tr><th>項目</th><th>反映</th><th>プリセット</th><th>発生年齢</th><th>下落率</th><th>回復年数</th></tr></thead>
+              <thead><tr><th>項目</th><th>反映</th><th>プリセット</th><th>発生時期</th><th>下落率</th><th>回復年数</th></tr></thead>
               <tbody id="crashTestRowsBody"></tbody>
             </table>
           </div>
@@ -1729,6 +1744,33 @@
   <input id="monteSeedOn" type="hidden" value="false">
   <input id="monteSeedValue" type="hidden" value="12345">
 
+  <div id="fireDiagnosisModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card withdrawal-rule-modal" role="dialog" aria-modal="true" aria-labelledby="fireDiagnosisTitle">
+      <div id="fireDiagnosisTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">FIRE診断</div>
+      <div class="withdrawal-rule-grid">
+        <div class="withdrawal-rule-note">※ 現在の入力条件をもとに、想定寿命まで資産がマイナスにならない FIRE可能年齢を探索します。比較モードでは、通常ケースと暴落設定反映ケースの両方を診断して差を確認できます。</div>
+        <div class="withdrawal-rule-section">
+          <div class="withdrawal-rule-section-title">診断設定</div>
+          <div class="withdrawal-rule-fields">
+            <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label for="fireDiagnosisModeSelect">結果表示モード</label><select id="fireDiagnosisModeSelect"><option value="normal">通常のみ</option><option value="compare_crash">通常＋暴落比較</option></select></div>
+            <div class="withdrawal-rule-field"><label for="fireDiagnosisJudgementModeSelect">判定モード</label><select id="fireDiagnosisJudgementModeSelect"><option value="standard">標準</option><option value="safe">安全重視</option></select></div>
+            <div id="fireDiagnosisRequiredTerminalAssetField" class="withdrawal-rule-field"><label for="fireDiagnosisRequiredTerminalAssetInput">寿命時最低残高</label><div class="input-unit"><input id="fireDiagnosisRequiredTerminalAssetInput" type="number" class="moneybox" value="1000" step="10" min="0"><span class="suffix">万円</span></div></div>
+            <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>探索年齢</label><div class="fire-diagnosis-age-range"><div class="fire-diagnosis-age-item"><span>開始</span><div class="input-unit"><input id="fireDiagnosisAgeFromInput" type="number" class="agebox" value="40" step="1" min="0" max="120"><span class="suffix">歳</span></div></div><div class="fire-diagnosis-age-item"><span>終了</span><div class="input-unit"><input id="fireDiagnosisAgeToInput" type="number" class="agebox" value="70" step="1" min="0" max="120"><span class="suffix">歳</span></div></div></div></div>
+            <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>判定条件</label><div id="fireDiagnosisConditionSummary" class="withdrawal-rule-summary">標準：想定寿命まで総資産が一度もマイナスにならないこと</div></div>
+          </div>
+        </div>
+        <div class="withdrawal-rule-section">
+          <div class="withdrawal-rule-section-title">診断結果</div>
+          <div id="fireDiagnosisResult" class="withdrawal-rule-summary">診断条件を確認して「診断実行」を押してください。</div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button type="button" id="cancelFireDiagnosisBtn">キャンセル</button>
+        <button type="button" id="runFireDiagnosisBtn">診断実行</button>
+      </div>
+    </div>
+  </div>
+
   <div id="deleteTabModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteTabMessage">
       <div id="deleteTabMessage" class="modal-text"></div>
@@ -1767,6 +1809,11 @@
     <input id="simpleAutoInflEdu" type="hidden" value="1">
     <input id="sumInv1_lastNonTaxableAccountType" type="hidden" value="">
     <input id="crashTestsJson" type="hidden" value="[]">
+    <input id="fireDiagnosisMode" type="hidden" value="compare_crash">
+    <input id="fireDiagnosisJudgementMode" type="hidden" value="standard">
+    <input id="fireDiagnosisRequiredTerminalAsset" type="hidden" value="1000">
+    <input id="fireDiagnosisAgeFrom" type="hidden" value="40">
+    <input id="fireDiagnosisAgeTo" type="hidden" value="70">
     <input id="sumInv1_fromAge_auto" type="hidden" value="1">
     <input id="sumInv1_toAge_auto" type="hidden" value="1">
     <input id="life1_fromAge_auto" type="hidden" value="1">
@@ -2273,6 +2320,16 @@ function mergeDisplaySettingsIntoCfg(baseCfg, displayCfg){
     if(Object.prototype.hasOwnProperty.call(src, key)) merged[key] = src[key];
   });
   return merged;
+}
+function parseStoredCheckboxValue(val, fallback = false){
+  if(val == null) return !!fallback;
+  if(typeof val === "boolean") return val;
+  if(typeof val === "number") return val !== 0;
+  const s = String(val).trim().toLowerCase();
+  if(s === "" ) return !!fallback;
+  if(["false","0","off","no","null","undefined"].includes(s)) return false;
+  if(["true","1","on","yes"].includes(s)) return true;
+  return !!fallback;
 }
 
 function pruneNormalSimCacheIfNeeded(){
@@ -2958,18 +3015,88 @@ function closeRowContextMenu(){
   menu.classList.remove("show");
   menu.setAttribute("aria-hidden", "true");
 }
-function focusDeleteConfirmButton(modalId){
+function resetModalScrollPosition(modalId){
+  const modal = document.getElementById(modalId);
+  if(!modal) return;
+  modal.scrollTop = 0;
+  const card = modal.querySelector('.modal-card');
+  if(card) card.scrollTop = 0;
+}
+function resetModalInnerScrollPositions(modalId){
+  const modal = document.getElementById(modalId);
+  if(!modal) return;
+  const selectors = [
+    '.table-scroll',
+    '.loan-prepay-table-wrap',
+    '.edu-detail-onetime-table-wrap',
+    '.edu-detail-preschool-table-wrap',
+    '.withdrawal-compare-table-wrap',
+    '.child-allowance-wrap',
+    '.cashflow-table-wrap'
+  ];
+  modal.querySelectorAll(selectors.join(',')).forEach(el=>{
+    el.scrollTop = 0;
+    el.scrollLeft = 0;
+  });
+}
+let preferredDeleteModalFocusButton = null;
+let activeDeleteModalButton = 'confirm';
+let suspendedModalElementsForDeleteDialog = [];
+function suspendUnderlyingModalFocus(activeModalId){
+  restoreSuspendedModalFocus();
+  suspendedModalElementsForDeleteDialog = Array.from(document.querySelectorAll('.modal-backdrop.show')).filter(el=>el && el.id !== activeModalId);
+  suspendedModalElementsForDeleteDialog.forEach(el=>{
+    try{
+      el.dataset.prevAriaHidden = el.getAttribute('aria-hidden') ?? '';
+      el.setAttribute('aria-hidden','true');
+      el.inert = true;
+    }catch(_err){}
+  });
+}
+function restoreSuspendedModalFocus(){
+  suspendedModalElementsForDeleteDialog.forEach(el=>{
+    try{
+      if((el.dataset.prevAriaHidden ?? '') === '') el.removeAttribute('aria-hidden');
+      else el.setAttribute('aria-hidden', el.dataset.prevAriaHidden);
+      delete el.dataset.prevAriaHidden;
+      el.inert = false;
+    }catch(_err){}
+  });
+  suspendedModalElementsForDeleteDialog = [];
+}
+function getDeleteModalButtons(modal){
+  if(!modal) return {cancelBtn:null, confirmBtn:null};
+  return {
+    cancelBtn: modal.querySelector('#cancelDeleteRowBtn, #cancelDeleteTabBtn'),
+    confirmBtn: modal.querySelector('#confirmDeleteRowBtn, #confirmDeleteTabBtn, .danger-btn')
+  };
+}
+function focusDeleteModalButton(modalId, which='confirm'){
   const modal = document.getElementById(modalId);
   if(!modal || !modal.classList.contains("show")) return;
-  const btn = modal.querySelector('.danger-btn, #confirmDeleteRowBtn, #confirmDeleteTabBtn');
+  const {cancelBtn, confirmBtn} = getDeleteModalButtons(modal);
+  const btn = which === 'cancel' ? cancelBtn : confirmBtn;
   if(!btn || btn.disabled) return;
-  requestAnimationFrame(()=>{
-    if(modal.classList.contains("show")) btn.focus({preventScroll:true});
-  });
+  activeDeleteModalButton = which === 'cancel' ? 'cancel' : 'confirm';
+  preferredDeleteModalFocusButton = btn;
+  const focusNow = ()=>{
+    if(!modal.classList.contains("show") || btn.disabled) return;
+    try{ btn.focus({preventScroll:true}); }catch(_err){ try{ btn.focus(); }catch(__err){} }
+    lastFocusedElementInOpenModal = btn;
+  };
+  requestAnimationFrame(focusNow);
+}
+function focusDeleteConfirmButton(modalId){
+  focusDeleteModalButton(modalId, 'confirm');
+}
+function clearPreferredDeleteModalFocus(){
+  preferredDeleteModalFocusButton = null;
+  activeDeleteModalButton = 'confirm';
 }
 const STANDARD_ACTION_MODAL_CONFIG = {
   withdrawalRuleModal: {primarySelector:'#saveWithdrawalRuleBtn', cancelSelector:'#cancelWithdrawalRuleBtn'},
   crashTestModal: {primarySelector:'#saveCrashTestBtn', cancelSelector:'#cancelCrashTestBtn'},
+  fireDiagnosisModal: {primarySelector:'#runFireDiagnosisBtn', cancelSelector:'#cancelFireDiagnosisBtn'},
   monteCarloSettingsModal: {primarySelector:'#saveMonteSettingsBtn', cancelSelector:'#cancelMonteSettingsBtn'},
   incomeCurveModal: {primarySelector:'#saveIncomeCurveBtn', cancelSelector:'#cancelIncomeCurveBtn'},
   pensionHelperModal: {primarySelector:'#savePensionHelperBtn', cancelSelector:'#cancelPensionHelperBtn'},
@@ -3029,8 +3156,7 @@ function handleStandardActionModalKeydown(e){
 function handleDeleteModalKeydown(e){
   const modal = e.currentTarget;
   if(!modal || !modal.classList.contains('show')) return;
-  const cancelBtn = modal.querySelector('#cancelDeleteRowBtn, #cancelDeleteTabBtn');
-  const confirmBtn = modal.querySelector('#confirmDeleteRowBtn, #confirmDeleteTabBtn, .danger-btn');
+  const {cancelBtn, confirmBtn} = getDeleteModalButtons(modal);
   if(e.key === 'Escape'){
     e.preventDefault();
     e.stopPropagation();
@@ -3039,40 +3165,52 @@ function handleDeleteModalKeydown(e){
     return;
   }
   if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
-    const active = document.activeElement;
-    const inTargets = active === cancelBtn || active === confirmBtn;
-    if(!inTargets) return;
     e.preventDefault();
     e.stopPropagation();
-    if(active === confirmBtn) cancelBtn?.focus({preventScroll:true});
-    else confirmBtn?.focus({preventScroll:true});
+    const nextWhich = activeDeleteModalButton === 'confirm' ? 'cancel' : 'confirm';
+    focusDeleteModalButton(modal.id, nextWhich);
     return;
   }
   if(e.key === 'Enter'){
-    const active = document.activeElement;
-    if(active === cancelBtn){
-      e.preventDefault();
-      e.stopPropagation();
-      cancelBtn.click();
+    e.preventDefault();
+    e.stopPropagation();
+    if(activeDeleteModalButton === 'cancel'){
+      cancelBtn?.click();
       return;
     }
-    if(active === confirmBtn){
-      e.preventDefault();
-      e.stopPropagation();
+    if(confirmBtn && !confirmBtn.disabled){
       confirmBtn.click();
     }
   }
 }
+function handleDeleteModalFocusOut(e){
+  const modal = e.currentTarget;
+  if(!modal || !modal.classList.contains('show')) return;
+  const related = e.relatedTarget;
+  if(related && modal.contains(related)) return;
+  requestAnimationFrame(()=>{
+    if(!modal.classList.contains('show')) return;
+    const active = document.activeElement;
+    if(active && modal.contains(active)) return;
+    focusDeleteModalButton(modal.id, activeDeleteModalButton || 'confirm');
+  });
+}
 function openDeleteRowModal(type, index){
+  closeRowContextMenu();
   const label = type === "crashTest" ? getCrashTestRowLabel(index) : getRowLabel(migrateLegacyData(getAllInputs()), type, index);
   pendingDeleteRow = {type, index};
   document.getElementById("deleteRowMessage").textContent = `「${label}」を削除します。元に戻せませんが実行しますか？`;
   const modal = document.getElementById("deleteRowModal");
-  modal?.classList.add("show");
-  modal?.setAttribute("aria-hidden", "false");
+  if(!modal) return;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  suspendUnderlyingModalFocus('deleteRowModal');
+  resetModalScrollPosition('deleteRowModal');
+  resetModalInnerScrollPositions('deleteRowModal');
+  activeDeleteModalButton = 'confirm';
   focusDeleteConfirmButton('deleteRowModal');
 }
-function closeDeleteRowModal(){ pendingDeleteRow = null; const modal = document.getElementById("deleteRowModal"); modal?.classList.remove("show"); modal?.setAttribute("aria-hidden", "true"); }
+function closeDeleteRowModal(){ pendingDeleteRow = null; const modal = document.getElementById("deleteRowModal"); modal?.classList.remove("show"); modal?.setAttribute("aria-hidden", "true"); restoreSuspendedModalFocus(); lastFocusedElementInOpenModal = null; clearPreferredDeleteModalFocus(); }
 function confirmDeleteRow(){
   if(!pendingDeleteRow) return;
   const {type,index}=pendingDeleteRow;
@@ -3279,7 +3417,8 @@ function renderChildRows(data = {}){
     const ageLabel = calcAgeLabelFromBirthDate(birthRaw, baseDate) || String(data[`child${i}_ageDisplay`] || "");
     const hiddenAgeVal = attrValue(data[`child${i}_age`], "");
     const schoolManualVal = attrValue(data[`child${i}_schoolManual`], "false");
-    html += `<tr>${buildRowLabelCell("child", i, data)}<td><input id="child${i}_enabled" type="checkbox" ${enabled}></td><td><div class="basic-inline-date-age child-inline-date-age"><input id="child${i}_birthDate" type="date" class="datebox" value="${birthVal}"><span class="readonly-age-inline">(<span id="child${i}_ageLabel" class="readonly-age-text">${escapeHtml(String(ageLabel || ""))}</span>)</span><input id="child${i}_ageDisplay" type="hidden" value="${attrValue(ageLabel, "")}"><input id="child${i}_age" type="hidden" value="${hiddenAgeVal}"><input id="child${i}_schoolManual" type="hidden" value="${schoolManualVal}"></div></td><td><select id="child${i}_school" class="wide-child-school"></select></td></tr>`;
+    const allowanceOnVal = parseStoredCheckboxValue(data[`child${i}_allowanceOn`], enabled);
+    html += `<tr>${buildRowLabelCell("child", i, data)}<td><input id="child${i}_enabled" type="checkbox" ${enabled}></td><td><div class="basic-inline-date-age child-inline-date-age"><input id="child${i}_birthDate" type="date" class="datebox" value="${birthVal}"><span class="readonly-age-inline">(<span id="child${i}_ageLabel" class="readonly-age-text">${escapeHtml(String(ageLabel || ""))}</span>)</span><input id="child${i}_ageDisplay" type="hidden" value="${attrValue(ageLabel, "")}"><input id="child${i}_age" type="hidden" value="${hiddenAgeVal}"><input id="child${i}_schoolManual" type="hidden" value="${schoolManualVal}"><input id="child${i}_allowanceOn" type="checkbox" ${allowanceOnVal ? "checked" : ""} hidden></div></td><td><select id="child${i}_school" class="wide-child-school"></select></td></tr>`;
   }
   body.innerHTML = html;
   for(let i=1;i<=dynamicCounts.child;i++) buildSchoolSelect(`child${i}_school`, data[`child${i}_school`] ?? "年少未満");
@@ -3614,6 +3753,8 @@ function openInsuranceAssistModal(){
   const insuranceAssistModal = document.getElementById('insuranceAssistModal');
   insuranceAssistModal?.classList.add('show');
   insuranceAssistModal?.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('insuranceAssistModal');
+  resetModalInnerScrollPositions('insuranceAssistModal');
   syncInsuranceAssistTypeUI(false);
   applyTabOrder();
   focusModalPrimaryActionButton('insuranceAssistModal');
@@ -4359,16 +4500,69 @@ function calcAgeLabelFromBirthDate(birthDateValue, targetDateValue){
   const parts = calcAgeYearMonthsAtParts(parseDateInput(birthDateValue || ""), parseDateInput(targetDateValue || ""));
   return parts ? formatAgeYearMonthsLabel(parts) : "";
 }
-function deriveRetireYearMonthFromAge(ageValue, birthDateValue, baseDateValue){
-  const age = Math.max(0, Number(ageValue) || 0);
+function normalizeYearMonthParts(yearValue, monthValue){
+  let year = Math.round(Number(yearValue) || 0);
+  let month = Math.round(Number(monthValue) || 0);
+  if(month <= 0){
+    const borrow = Math.ceil((1 - month) / 12);
+    year -= borrow;
+    month += borrow * 12;
+  }
+  if(month > 12){
+    year += Math.floor((month - 1) / 12);
+    month = ((month - 1) % 12) + 1;
+  }
+  return {year, month};
+}
+function deriveRetireYearMonthFromTotalMonths(totalMonthsValue, birthDateValue, baseDateValue){
+  const totalMonths = Math.max(0, Math.round(Number(totalMonthsValue) || 0));
   const birth = parseDateInput(birthDateValue || '');
-  if(birth) return {year:birth.year + age, month:birth.month};
+  if(birth){
+    let guess = normalizeYearMonthParts(birth.year + Math.floor(totalMonths / 12), birth.month + (totalMonths % 12));
+    const getAgeMonthsAtMonthEnd = (year, month)=>{
+      const parts = calcAgeYearMonthsAtParts(birth, getRetireMonthEndParts(year, month));
+      return parts ? parts.totalMonths : 0;
+    };
+    let currentMonths = getAgeMonthsAtMonthEnd(guess.year, guess.month);
+    let guard = 0;
+    while(currentMonths < totalMonths && guard < 24){
+      guess = normalizeYearMonthParts(guess.year, guess.month + 1);
+      currentMonths = getAgeMonthsAtMonthEnd(guess.year, guess.month);
+      guard += 1;
+    }
+    guard = 0;
+    while(guard < 24){
+      const prev = normalizeYearMonthParts(guess.year, guess.month - 1);
+      const prevMonths = getAgeMonthsAtMonthEnd(prev.year, prev.month);
+      if(prevMonths >= totalMonths){
+        guess = prev;
+        guard += 1;
+        continue;
+      }
+      break;
+    }
+    return guess;
+  }
   const base = parseDateInput(baseDateValue || '');
   if(!base) return {year:0, month:0};
-  const currentAge = calcAgeFromBirthDate(birthDateValue, baseDateValue);
-  const deltaYears = Number.isFinite(currentAge) ? age - currentAge : 0;
-  const year = base.year + Math.round(deltaYears);
-  return {year, month:base.month};
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  return normalizeYearMonthParts(base.year + years, base.month + months);
+}
+function getRetireTotalMonthsFromCfg(cfg, personKey='self'){
+  const birthValue = personKey === 'sp' ? (cfg?.spouseBirthDate || '') : (cfg?.selfBirthDate || '');
+  const birthParts = parseDateInput(birthValue || '');
+  const source = personKey === 'sp' ? cfg?.incomeSp : cfg?.incomeSelf;
+  const retireParts = getRetireMonthEndParts(source?.retireYear, source?.retireMonth);
+  if(birthParts && retireParts){
+    const ageParts = calcAgeYearMonthsAtParts(birthParts, retireParts);
+    if(ageParts) return Math.max(0, ageParts.totalMonths || 0);
+  }
+  return Math.max(0, Math.round((Number(source?.retireAge) || 0) * 12));
+}
+function deriveRetireYearMonthFromAge(ageValue, birthDateValue, baseDateValue){
+  const age = Math.max(0, Number(ageValue) || 0);
+  return deriveRetireYearMonthFromTotalMonths(Math.round(age * 12), birthDateValue, baseDateValue);
 }
 function getRetireYearRangeParts(birthDateValue, baseDateValue, selectedYear){
   const base = parseDateInput(baseDateValue || '');
@@ -4750,7 +4944,7 @@ function isVisibleForTab(el){
 }
 function isInsideHiddenLayer(el){
   if(!el || !el.closest) return false;
-  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]');
+  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]');
 }
 function isTabNavigableElement(el){
   if(!el || !el.matches) return false;
@@ -4766,7 +4960,7 @@ function shouldSelectAllOnTabFocus(el){
   return el.matches('input[type="text"], input[type="search"], input[type="url"], input[type="tel"], input[type="email"], input[type="number"], input[data-numeric-ready="1"], textarea');
 }
 function getOpenModal(){
-  return document.querySelector('#loanDetailModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #monteCarloSettingsModal.show, #deleteRowModal.show, #deleteTabModal.show');
+  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #loanDetailModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show');
 }
 function getTabScopeRoot(){
   return getOpenModal() || document.body;
@@ -4845,7 +5039,7 @@ function focusByIdForTab(id){
   return true;
 }
 function getChildAllowanceCheckboxSequence(){
-  return Array.from(document.querySelectorAll('#childAllowanceSummaryWrap input[id^="child"][id$="_allowanceOn"]')).filter(isTabNavigableElement);
+  return Array.from(document.querySelectorAll('#childAllowanceSummaryWrap input[id^="child"][id$="_allowanceOn_ui"]')).filter(isTabNavigableElement);
 }
 function focusChildAllowanceCheckboxByOffset(currentId, offset){
   const seq = getChildAllowanceCheckboxSequence();
@@ -4978,7 +5172,7 @@ function getAllInputs(){
   const baseYear = currentBaseYearValue();
   document.querySelectorAll("input, select").forEach(el=>{
     if(!el.id) return;
-    if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#monteCarloSettingsModal"))) return;
+    if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal"))) return;
     if(el.type === "checkbox"){
       data[el.id] = el.checked;
       return;
@@ -5001,6 +5195,14 @@ function syncCurrentScenarioFromDOM(persistLocal = false){
     persistState();
   }
 }
+function invalidateSimulationCaches(){
+  normalSimCache.clear();
+  monteRunCache.clear();
+  monteCompareResultCache.clear();
+  monteStaticSeriesCache.clear();
+  monteSharedShockCache.clear();
+}
+
 function refreshRowLabelTexts(){
   document.querySelectorAll(".row-label-btn[data-type][data-index]").forEach(btn=>{
     const type = btn.dataset.type;
@@ -5018,7 +5220,7 @@ function setAllInputs(data){
   Object.entries(migrated || {}).forEach(([id,val])=>{
     const el = document.getElementById(id);
     if(!el) return;
-    if(el.type === "checkbox") el.checked = !!val;
+    if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
   refreshRowLabelTexts();
@@ -6616,6 +6818,8 @@ function openDeleteTabModal(tabIndex = currentTab){
   const modal = document.getElementById("deleteTabModal");
   modal?.classList.add("show");
   modal?.setAttribute("aria-hidden", "false");
+  resetModalScrollPosition('deleteTabModal');
+  resetModalInnerScrollPositions('deleteTabModal');
   focusDeleteConfirmButton('deleteTabModal');
 }
 function closeDeleteTabModal(){
@@ -6778,7 +6982,12 @@ function getScenarioFromDOM(){
       birthDate:document.getElementById(`child${i}_birthDate`)?.value || "",
       age:numInput(`child${i}_age`, 0),
       school:document.getElementById(`child${i}_school`).value,
-      allowanceOn:(()=>{ const el = document.getElementById(`child${i}_allowanceOn`); return el ? !!el.checked : true; })()
+      allowanceOn:(()=>{
+        const storeEl = document.getElementById(`child${i}_allowanceOn`);
+        if(storeEl) return !!storeEl.checked;
+        const stored = scenarios?.[currentTab]?.data?.[`child${i}_allowanceOn`];
+        return parseStoredCheckboxValue(stored, true);
+      })()
     });
   }
 
@@ -7542,6 +7751,8 @@ function openEducationCopyModal(){
   const modal = document.getElementById('educationCopyModal');
   modal?.classList.add('show');
   modal?.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('educationCopyModal');
+  resetModalInnerScrollPositions('educationCopyModal');
   applyTabOrder();
   focusModalPrimaryActionButton('educationCopyModal');
 }
@@ -7599,6 +7810,8 @@ function openEducationDetailModal(childIndex){
   const modal = document.getElementById('educationDetailModal');
   modal?.classList.add('show');
   modal?.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('educationDetailModal');
+  resetModalInnerScrollPositions('educationDetailModal');
   applyTabOrder();
   lastFocusedElementInOpenModal = null;
   focusModalPrimaryActionButton('educationDetailModal');
@@ -8741,7 +8954,7 @@ function updateChildAllowanceSummary(data = null){
   children.forEach(child=>{
     const row = cache.rows[child.idx] || [];
     const rowTotal = row.reduce((sum, v)=>sum + (Number(v) || 0), 0);
-    html += `<tr class="${child.allowanceOn ? '' : 'summary-disabled-row'}"><td>${escapeHtml(child.name || `子${child.idx}`)}</td><td><label class="inline-check"><input id="child${child.idx}_allowanceOn" type="checkbox" ${child.allowanceOn ? 'checked' : ''}></label></td>`;
+    html += `<tr class="${child.allowanceOn ? '' : 'summary-disabled-row'}"><td>${escapeHtml(child.name || `子${child.idx}`)}</td><td><label class="inline-check"><input id="child${child.idx}_allowanceOn_ui" data-child-allowance-index="${child.idx}" type="checkbox" ${child.allowanceOn ? 'checked' : ''}></label></td>`;
     for(let yearIndex=0; yearIndex<cache.maxCols; yearIndex++) html += `<td>${formatAllowanceSummaryCell(row[yearIndex] || 0)}</td>`;
     html += `<td>${formatAllowanceSummaryCell(rowTotal)}</td></tr>`;
   });
@@ -8971,10 +9184,12 @@ const CRASH_HISTORY_ROWS = [
 ];
 let crashTestDraft = [];
 let crashTestBackdropPointerDown = false;
-function clampCrashTestAge(v, fallback){
+let fireDiagnosisBackdropPointerDown = false;
+function clampCrashTestTimingValue(v, timingType, fallback){
   const n = Number(v);
+  const max = timingType === "after_retire" ? 60 : 120;
   if(!Number.isFinite(n)) return fallback;
-  return Math.max(0, Math.min(120, Math.round(n)));
+  return Math.max(0, Math.min(max, Math.round(n)));
 }
 function clampCrashTestDropPct(v, fallback){
   const n = Number(v);
@@ -8985,6 +9200,9 @@ function clampCrashTestRecoveryYears(v, fallback){
   const n = Number(v);
   if(!Number.isFinite(n)) return fallback;
   return Math.max(1, Math.min(30, Math.round(n)));
+}
+function normalizeCrashTestTimingType(value){
+  return String(value || "") === "after_retire" ? "after_retire" : "fixed";
 }
 function normalizeCrashTestPreset(value){
   return Object.prototype.hasOwnProperty.call(CRASH_TEST_PRESETS, String(value || "")) ? String(value) : "custom";
@@ -9003,7 +9221,8 @@ function buildDefaultCrashTestRow(index=0){
     custom: false,
     enabled: true,
     preset: "custom",
-    age: getDefaultCrashTestAge(),
+    timingType: "fixed",
+    timingValue: getDefaultCrashTestAge(),
     dropPct: 35,
     recoveryYears: 3
   };
@@ -9017,10 +9236,22 @@ function relabelCrashTestDefaults(rows){
 function normalizeCrashTestRow(row, index=0){
   const preset = normalizeCrashTestPreset(row?.preset);
   const presetConfig = getCrashTestPresetConfig(preset);
-  const fallbackAge = getDefaultCrashTestAge();
+  const timingType = normalizeCrashTestTimingType(row?.timingType);
+  const defaultFixedTiming = getDefaultCrashTestAge();
+  const rawTimingSource = row?.timingValue != null ? row?.timingValue : (row?.age != null ? row?.age : (timingType === "after_retire" ? 0 : defaultFixedTiming));
+  const fixedTimingValue = clampCrashTestTimingValue(
+    row?.fixedTimingValue != null ? row.fixedTimingValue : (timingType === "fixed" ? rawTimingSource : defaultFixedTiming),
+    "fixed",
+    defaultFixedTiming
+  );
+  const afterRetireTimingValue = clampCrashTestTimingValue(
+    row?.afterRetireTimingValue != null ? row.afterRetireTimingValue : (timingType === "after_retire" ? rawTimingSource : 0),
+    "after_retire",
+    0
+  );
+  const timingValue = timingType === "after_retire" ? afterRetireTimingValue : fixedTimingValue;
   const dropPct = clampCrashTestDropPct(row?.dropPct, presetConfig.dropPct ?? 35);
   const recoveryYears = clampCrashTestRecoveryYears(row?.recoveryYears, presetConfig.recoveryYears ?? 3);
-  const age = clampCrashTestAge(row?.age, fallbackAge);
   const fallbackName = defaultRowLabel("crashTest", index + 1);
   const rawName = String(row?.name || "").trim();
   const custom = row?.custom != null ? String(row.custom) === "true" || row.custom === true : !!(rawName && rawName !== fallbackName);
@@ -9029,7 +9260,10 @@ function normalizeCrashTestRow(row, index=0){
     custom,
     enabled: row?.enabled == null ? true : !!row.enabled,
     preset,
-    age,
+    timingType,
+    timingValue,
+    fixedTimingValue,
+    afterRetireTimingValue,
     dropPct,
     recoveryYears
   };
@@ -9065,27 +9299,48 @@ function getCrashRecoveryExtraRate(dropRate, recoveryYears){
   if(d <= 0) return 0;
   return Math.pow(1 / Math.max(0.000001, 1 - d), 1 / n) - 1;
 }
-function getCrashAdjustmentForAge(age, crashTests){
+function getCrashRecoveryExtraRateForBase(baseReturn, dropRate, recoveryYears){
+  const d = Math.max(0, Math.min(0.95, Number(dropRate) || 0));
+  const n = Math.max(1, Math.round(Number(recoveryYears) || 1));
+  if(d <= 0) return 0;
+  return d / n;
+}
+function resolveCrashTestEventAge(row, retireAge){
+  const normalized = normalizeCrashTestRow(row || {});
+  if(normalized.timingType === "after_retire"){
+    const base = Math.round(Number(retireAge) || 0);
+    return Math.max(0, base + clampCrashTestTimingValue(normalized.timingValue, "after_retire", 0));
+  }
+  return clampCrashTestTimingValue(normalized.timingValue, "fixed", getDefaultCrashTestAge());
+}
+function getCrashAdjustmentForAge(baseReturn, age, crashTests, retireAge){
   const targetAge = Math.round(Number(age) || 0);
+  const base = Number(baseReturn) || 0;
   return normalizeCrashTestsArray(crashTests).reduce((sum, row)=>{
     if(!row.enabled) return sum;
-    const eventAge = Math.round(Number(row.age) || 0);
+    const eventAge = resolveCrashTestEventAge(row, retireAge);
     const dropRate = clampCrashTestDropPct(row.dropPct, 0) / 100;
     const recoveryYears = clampCrashTestRecoveryYears(row.recoveryYears, 1);
     if(targetAge === eventAge) return sum - dropRate;
     if(targetAge > eventAge && targetAge <= eventAge + recoveryYears){
-      return sum + getCrashRecoveryExtraRate(dropRate, recoveryYears);
+      return sum + getCrashRecoveryExtraRateForBase(base, dropRate, recoveryYears);
     }
     return sum;
   }, 0);
 }
-function applyCrashAdjustmentToReturn(baseReturn, age, crashTests){
-  return (Number(baseReturn) || 0) + getCrashAdjustmentForAge(age, crashTests);
+function applyCrashAdjustmentToReturn(baseReturn, age, crashTests, retireAge){
+  const base = Number(baseReturn) || 0;
+  return base + getCrashAdjustmentForAge(base, age, crashTests, retireAge);
+}
+function formatCrashTimingLabel(row){
+  return row.timingType === "after_retire"
+    ? `リタイア後 ${Math.round(row.timingValue)}年`
+    : `${Math.round(row.timingValue)}歳`;
 }
 function formatCrashTestSummaryLine(row){
   const recoveryYears = clampCrashTestRecoveryYears(row.recoveryYears, 1);
-  const recoveryPct = getCrashRecoveryExtraRate(clampCrashTestDropPct(row.dropPct, 0) / 100, recoveryYears) * 100;
-  return `${escapeHtml(row.name)}：運用資産に対して ${Math.round(row.age)}歳 に ${Number(row.dropPct).toFixed(1)}% の下落補正を与え、その後 ${recoveryYears}年 にわたり毎年 +${recoveryPct.toFixed(1)}% の追加回復補正をかけます。`;
+  const recoveryPct = getCrashRecoveryExtraRateForBase(0, clampCrashTestDropPct(row.dropPct, 0) / 100, recoveryYears) * 100;
+  return `${escapeHtml(row.name)}：運用資産に対して ${escapeHtml(formatCrashTimingLabel(row))} に ${Number(row.dropPct).toFixed(1)}% の下落補正を与え、その後 ${recoveryYears}年 にわたり、減少した元本の一部を毎年 +${recoveryPct.toFixed(1)}% ずつ段階回復させます。回復後も、暴落がなかった場合に比べて資産差は残ります。`;
 }
 function renderCrashTestSummary(rows){
   const summaryEl = document.getElementById("crashTestSummary");
@@ -9105,6 +9360,14 @@ function buildCrashTestLabelCell(row, index){
   const html = buildRowLabelCell("crashTest", index + 1, data);
   return html.replace('<td>', '<td class="crash-label-cell">');
 }
+function buildCrashTimingCell(row){
+  const timingTypeOptions = `<option value="fixed" ${row.timingType === "fixed" ? "selected" : ""}>固定</option><option value="after_retire" ${row.timingType === "after_retire" ? "selected" : ""}>リタイア後</option>`;
+  const unit = row.timingType === "after_retire" ? '年' : '歳';
+  const fixedValue = Math.round(Number(row.fixedTimingValue != null ? row.fixedTimingValue : getDefaultCrashTestAge()) || getDefaultCrashTestAge());
+  const afterValue = Math.round(Number(row.afterRetireTimingValue != null ? row.afterRetireTimingValue : 0) || 0);
+  const currentValue = row.timingType === "after_retire" ? afterValue : fixedValue;
+  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}" data-fixed-value="${fixedValue}" data-after-value="${afterValue}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1"><span class="suffix crash-timing-unit">${unit}</span></div>`;
+}
 function renderCrashTestRows(){
   const body = document.getElementById("crashTestRowsBody");
   if(!body) return;
@@ -9116,7 +9379,7 @@ function renderCrashTestRows(){
       ${buildCrashTestLabelCell(row, idx)}
       <td class="crash-toggle-cell"><label class="inline-check"><input type="checkbox" data-crash-field="enabled" ${row.enabled ? "checked" : ""}></label></td>
       <td><select data-crash-field="preset">${presetOptions}</select></td>
-      <td><div class="input-unit center"><input type="number" class="agebox" data-crash-field="age" value="${row.age}" step="1"><span class="suffix">歳</span></div></td>
+      <td>${buildCrashTimingCell(row)}</td>
       <td><div class="input-unit center"><input type="number" class="ratebox" data-crash-field="dropPct" value="${Number(row.dropPct).toFixed(1)}" step="0.1"><span class="suffix">%</span></div></td>
       <td><div class="input-unit center"><input type="number" class="agebox" data-crash-field="recoveryYears" value="${row.recoveryYears}" step="1"><span class="suffix">年</span></div></td>
     </tr>`;
@@ -9126,12 +9389,32 @@ function renderCrashTestRows(){
 function syncCrashTestDraftFromModal(){
   const rows = [];
   document.querySelectorAll("#crashTestRowsBody tr[data-crash-test-row]").forEach((tr, idx)=>{
+    const wrap = tr.querySelector('.crash-timing-wrap');
+    const timingType = normalizeCrashTestTimingType(tr.querySelector('[data-crash-field="timingType"]')?.value);
+    const timingInput = tr.querySelector('[data-crash-field="timingValue"]');
+    const timingValueRaw = timingInput?.value;
+    let fixedTimingValue = wrap?.dataset?.fixedValue;
+    let afterRetireTimingValue = wrap?.dataset?.afterValue;
+    if(timingType === 'after_retire'){
+      afterRetireTimingValue = String(clampCrashTestTimingValue(timingValueRaw, 'after_retire', 0));
+      if(wrap) wrap.dataset.afterValue = afterRetireTimingValue;
+    }else{
+      fixedTimingValue = String(clampCrashTestTimingValue(timingValueRaw, 'fixed', getDefaultCrashTestAge()));
+      if(wrap) wrap.dataset.fixedValue = fixedTimingValue;
+    }
+    const timingValue = timingType === 'after_retire' ? afterRetireTimingValue : fixedTimingValue;
+    if(timingInput){
+      timingInput.setAttribute('value', String(timingValue));
+    }
     rows.push(normalizeCrashTestRow({
       name: tr.querySelector(`#crashTest${idx + 1}_name`)?.value,
       custom: tr.querySelector(`#crashTest${idx + 1}_custom`)?.value,
       enabled: !!tr.querySelector('[data-crash-field="enabled"]')?.checked,
       preset: tr.querySelector('[data-crash-field="preset"]')?.value,
-      age: tr.querySelector('[data-crash-field="age"]')?.value,
+      timingType,
+      timingValue,
+      fixedTimingValue,
+      afterRetireTimingValue,
       dropPct: tr.querySelector('[data-crash-field="dropPct"]')?.value,
       recoveryYears: tr.querySelector('[data-crash-field="recoveryYears"]')?.value
     }, idx));
@@ -9149,7 +9432,8 @@ function addCrashTestRow(preset="custom"){
     custom: false,
     enabled: true,
     preset: normalizedPreset,
-    age: getDefaultCrashTestAge(),
+    timingType: "fixed",
+    timingValue: getDefaultCrashTestAge(),
     dropPct: presetConfig.dropPct ?? 35,
     recoveryYears: presetConfig.recoveryYears ?? 3
   }, crashTestDraft.length));
@@ -9189,6 +9473,8 @@ function openCrashTestModal(){
   const modal = document.getElementById("crashTestModal");
   modal?.classList.add("show");
   modal?.setAttribute("aria-hidden", "false");
+  resetModalScrollPosition("crashTestModal");
+  resetModalInnerScrollPositions('crashTestModal');
   applyTabOrder();
   focusModalPrimaryActionButton("crashTestModal");
 }
@@ -9207,6 +9493,533 @@ function saveCrashTestModal(){
   else requestDraw();
   persistState();
   closeCrashTestModal();
+}
+function getFireDiagnosisStoredSettings(){
+  const current = Math.round(Number(currentAgeValue()) || 0);
+  const mode = (document.getElementById('fireDiagnosisMode')?.value || 'compare_crash') === 'compare_crash' ? 'compare_crash' : 'normal';
+  const judgementMode = (document.getElementById('fireDiagnosisJudgementMode')?.value || 'standard') === 'safe' ? 'safe' : 'standard';
+  const requiredTerminalAsset = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAsset')?.value || 1000) || 1000);
+  const ageFrom = Math.max(current, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeFrom')?.value || current) || current)));
+  const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeTo')?.value || Math.max(ageFrom, 70)) || Math.max(ageFrom, 70))));
+  return {mode, judgementMode, requiredTerminalAsset, ageFrom, ageTo};
+}
+function setFireDiagnosisStoredSettings(settings){
+  const safe = settings || {};
+  const current = Math.round(Number(currentAgeValue()) || 0);
+  const from = Math.max(current, Math.min(120, Math.round(Number(safe.ageFrom ?? document.getElementById('fireDiagnosisAgeFrom')?.value ?? current) || current)));
+  const to = Math.max(from, Math.min(120, Math.round(Number(safe.ageTo ?? document.getElementById('fireDiagnosisAgeTo')?.value ?? Math.max(from, 70)) || Math.max(from, 70))));
+  const mode = safe.mode === 'compare_crash' ? 'compare_crash' : 'normal';
+  const judgementMode = safe.judgementMode === 'safe' ? 'safe' : 'standard';
+  const requiredTerminalAsset = Math.max(0, Number(safe.requiredTerminalAsset ?? document.getElementById('fireDiagnosisRequiredTerminalAsset')?.value ?? 1000) || 1000);
+  const modeHidden = document.getElementById('fireDiagnosisMode');
+  const judgementHidden = document.getElementById('fireDiagnosisJudgementMode');
+  const requiredHidden = document.getElementById('fireDiagnosisRequiredTerminalAsset');
+  const fromHidden = document.getElementById('fireDiagnosisAgeFrom');
+  const toHidden = document.getElementById('fireDiagnosisAgeTo');
+  if(modeHidden) modeHidden.value = mode;
+  if(judgementHidden) judgementHidden.value = judgementMode;
+  if(requiredHidden) requiredHidden.value = String(requiredTerminalAsset);
+  if(fromHidden) fromHidden.value = String(from);
+  if(toHidden) toHidden.value = String(to);
+}
+function updateFireDiagnosisJudgementUi(){
+  const mode = document.getElementById('fireDiagnosisJudgementModeSelect')?.value === 'safe' ? 'safe' : 'standard';
+  const field = document.getElementById('fireDiagnosisRequiredTerminalAssetField');
+  const summary = document.getElementById('fireDiagnosisConditionSummary');
+  if(field) field.classList.toggle('withdrawal-rule-hidden', mode !== 'safe');
+  if(summary){
+    if(mode === 'safe'){
+      const threshold = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value || 1000) || 1000);
+      summary.innerHTML = `安全重視：想定寿命まで総資産が一度もマイナスにならず、寿命時残高が <strong>${Math.round(threshold).toLocaleString()}万円以上</strong> であること`;
+    } else {
+      summary.textContent = '標準：想定寿命まで総資産が一度もマイナスにならないこと';
+    }
+  }
+}
+function loadFireDiagnosisDraftToModal(){
+  const settings = getFireDiagnosisStoredSettings();
+  const modeEl = document.getElementById('fireDiagnosisModeSelect');
+  const judgementEl = document.getElementById('fireDiagnosisJudgementModeSelect');
+  const requiredEl = document.getElementById('fireDiagnosisRequiredTerminalAssetInput');
+  const fromEl = document.getElementById('fireDiagnosisAgeFromInput');
+  const toEl = document.getElementById('fireDiagnosisAgeToInput');
+  if(modeEl) modeEl.value = settings.mode;
+  if(judgementEl) judgementEl.value = settings.judgementMode;
+  if(requiredEl) requiredEl.value = String(Math.round(settings.requiredTerminalAsset));
+  if(fromEl) fromEl.value = String(settings.ageFrom);
+  if(toEl) toEl.value = String(settings.ageTo);
+  updateFireDiagnosisJudgementUi();
+}
+function getFireDiagnosisSettingsFromModal(){
+  const current = Math.round(Number(currentAgeValue()) || 0);
+  const mode = document.getElementById('fireDiagnosisModeSelect')?.value === 'compare_crash' ? 'compare_crash' : 'normal';
+  const judgementMode = document.getElementById('fireDiagnosisJudgementModeSelect')?.value === 'safe' ? 'safe' : 'standard';
+  const requiredTerminalAsset = Math.max(0, Number(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value || 1000) || 1000);
+  const ageFrom = Math.max(current, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeFromInput')?.value || current) || current)));
+  const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeToInput')?.value || Math.max(ageFrom,70)) || Math.max(ageFrom,70))));
+  return {mode, judgementMode, requiredTerminalAsset, ageFrom, ageTo};
+}
+function openFireDiagnosisModal(){
+  loadFireDiagnosisDraftToModal();
+  const resultEl = document.getElementById('fireDiagnosisResult');
+  if(resultEl) resultEl.innerHTML = '診断条件を確認して「診断実行」を押してください。';
+  const modal = document.getElementById('fireDiagnosisModal');
+  modal?.classList.add('show');
+  modal?.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('fireDiagnosisModal');
+  resetModalInnerScrollPositions('fireDiagnosisModal');
+  applyTabOrder();
+  focusModalPrimaryActionButton('fireDiagnosisModal');
+}
+function closeFireDiagnosisModal(){
+  const modal = document.getElementById('fireDiagnosisModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+  applyTabOrder();
+}
+function evaluateFireScore(cfg, sim, options){
+  const assets = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+  const ageOffset = Math.max(0, Math.round(Number(cfg?.age) || 0));
+  const lifeExpect = Math.max(ageOffset, Math.round(Number(cfg?.lifeExpect) || ageOffset));
+  const lifeIdx = assets.length ? Math.max(0, Math.min(assets.length - 1, lifeExpect - ageOffset)) : 0;
+  const lastAsset = assets.length ? (assets[assets.length - 1] ?? 0) : 0;
+  const terminalAsset = assets.length ? (assets[lifeIdx] ?? lastAsset) : 0;
+  const assetSlice = assets.length ? assets.slice(0, lifeIdx + 1) : [0];
+  const minAsset = assetSlice.length ? Math.min(...assetSlice.map(v => Number(v) || 0)) : 0;
+  const requiredTerminalAsset = Math.max(0, Number(options?.requiredTerminalAsset) || 0);
+  const judgementMode = options?.judgementMode === 'safe' ? 'safe' : 'standard';
+  const score = judgementMode === 'safe'
+    ? Math.min(minAsset, terminalAsset - requiredTerminalAsset)
+    : minAsset;
+  return {
+    score,
+    terminalAsset,
+    minAsset,
+    depletionAge: sim?.depletionAge != null ? Number(sim.depletionAge) : null,
+    requiredTerminalAsset,
+    judgementMode
+  };
+}
+function evaluateFireDiagnosisResult(cfg, sim, options){
+  const evalScore = evaluateFireScore(cfg, sim, options);
+  const found = evalScore.score >= 0;
+  let reasonCode = 'ok';
+  let reasonText = '成立';
+  if(!found){
+    if(evalScore.minAsset < 0){
+      reasonCode = 'depletion_before_life_expectancy';
+      reasonText = evalScore.depletionAge != null ? `${Math.round(evalScore.depletionAge)}歳で資産枯渇` : '想定寿命前に資産枯渇';
+    } else if(evalScore.judgementMode === 'safe' && evalScore.terminalAsset < evalScore.requiredTerminalAsset){
+      reasonCode = 'terminal_asset_below_threshold';
+      const shortage = Math.max(0, evalScore.requiredTerminalAsset - evalScore.terminalAsset);
+      reasonText = shortage > 0 ? `寿命時残高が安全水準に ${Math.round(shortage).toLocaleString()}万円不足` : '寿命時残高が安全水準未満';
+    } else {
+      reasonCode = 'not_found_in_search_range';
+      reasonText = '探索範囲内で成立せず';
+    }
+  }
+  return {...evalScore, found, reasonCode, reasonText};
+}
+function buildScenarioDataForRetireAge(baseData, retireAge){
+  const next = migrateLegacyData(deepClone(baseData || {}));
+  const retireTotalMonths = Math.max(0, Math.round((Number(retireAge) || 0) * 12));
+  const ym = deriveRetireYearMonthFromTotalMonths(retireTotalMonths, next.selfBirthDate || document.getElementById('selfBirthDate')?.value || '', next.baseDate || document.getElementById('baseDate')?.value || '');
+  next.self_retire_year = ym.year || next.self_retire_year || '';
+  next.self_retire_month = ym.month || next.self_retire_month || 1;
+  next.self_retire_age = retireTotalMonths / 12;
+  return next;
+}
+function runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options){
+  const normalizedRetireYears = Math.max(0, Math.round(Number(retireYears) || 0));
+  const requestedRetireTotalMonths = normalizedRetireYears * 12;
+  const trialData = buildScenarioDataForRetireAge(baseData, normalizedRetireYears);
+  setAllInputs(trialData);
+  const cfg = getScenarioFromDOM();
+  if(!options?.applyCrash) cfg.crashTests = [];
+  const effectiveRetireTotalMonths = getRetireTotalMonthsFromCfg(cfg, 'self');
+  const sim = simulate(cfg, false, {compact:true});
+  const judged = evaluateFireDiagnosisResult(cfg, sim, options);
+  return {
+    retireAge: effectiveRetireTotalMonths / 12,
+    requestedRetireAge: normalizedRetireYears,
+    requestedRetireTotalMonths,
+    retireAgeYears: Math.floor(effectiveRetireTotalMonths / 12),
+    retireAgeMonths: effectiveRetireTotalMonths % 12,
+    retireTotalMonths: effectiveRetireTotalMonths,
+    sim,
+    cfg,
+    ...judged,
+    retireAsset: Number(sim?.retireAsset) || 0,
+    terminalAsset: judged.terminalAsset,
+    minAsset: judged.minAsset
+  };
+}
+function interpolateFireDiagnosisValue(a, b, ratio){
+  const av = Number(a);
+  const bv = Number(b);
+  if(Number.isFinite(av) && Number.isFinite(bv)) return av + (bv - av) * ratio;
+  if(Number.isFinite(av)) return av;
+  if(Number.isFinite(bv)) return bv;
+  return null;
+}
+function interpolateFireDiagnosisAssetSeries(lowerAssets, upperAssets, ratio){
+  const lower = Array.isArray(lowerAssets) ? lowerAssets : [];
+  const upper = Array.isArray(upperAssets) ? upperAssets : [];
+  const len = Math.max(lower.length, upper.length);
+  const out = [];
+  for(let i = 0; i < len; i++){
+    const lvRaw = lower[i];
+    const uvRaw = upper[i];
+    const lv = Number(lvRaw);
+    const uv = Number(uvRaw);
+    if(Number.isFinite(lv) && Number.isFinite(uv)){
+      out.push(lv + (uv - lv) * ratio);
+    } else if(Number.isFinite(lv)){
+      out.push(lv);
+    } else if(Number.isFinite(uv)){
+      out.push(uv);
+    } else {
+      out.push(0);
+    }
+  }
+  return out;
+}
+function deriveInterpolatedFireDiagnosisMetrics(requestedRetireTotalMonths, lowerTrial, upperTrial, ratio, options){
+  const cfg = upperTrial?.cfg || lowerTrial?.cfg || null;
+  const judgementMode = options?.judgementMode === 'safe' ? 'safe' : 'standard';
+  const requiredTerminalAsset = Math.max(0, Number(options?.requiredTerminalAsset) || 0);
+  const lowerAssets = Array.isArray(lowerTrial?.sim?.totalAssets) ? lowerTrial.sim.totalAssets : [];
+  const upperAssets = Array.isArray(upperTrial?.sim?.totalAssets) ? upperTrial.sim.totalAssets : [];
+  const assets = interpolateFireDiagnosisAssetSeries(lowerAssets, upperAssets, ratio);
+  const ageOffset = Math.max(0, Math.round(Number(cfg?.age) || 0));
+  const lifeExpect = Math.max(ageOffset, Math.round(Number(cfg?.lifeExpect) || ageOffset));
+  const lifeIdx = assets.length ? Math.max(0, Math.min(assets.length - 1, lifeExpect - ageOffset)) : 0;
+  const lastAsset = assets.length ? Number(assets[assets.length - 1] || 0) : 0;
+  const terminalAsset = assets.length ? Number(assets[lifeIdx] || 0) : lastAsset;
+  const assetSlice = assets.length ? assets.slice(0, lifeIdx + 1).map(v => Number(v) || 0) : [0];
+  const minAsset = assetSlice.length ? Math.min(...assetSlice) : 0;
+  let depletionAge = null;
+  for(let i = 0; i < assetSlice.length; i++){
+    const curr = Number(assetSlice[i] || 0);
+    if(curr < 0){
+      if(i === 0){
+        depletionAge = ageOffset;
+      } else {
+        const prev = Number(assetSlice[i - 1] || 0);
+        if(prev >= 0 && prev !== curr){
+          const frac = Math.max(0, Math.min(1, prev / (prev - curr)));
+          depletionAge = (ageOffset + i - 1) + frac;
+        } else {
+          depletionAge = ageOffset + i;
+        }
+      }
+      break;
+    }
+  }
+  const retireAsset = interpolateFireDiagnosisValue(lowerTrial?.retireAsset, upperTrial?.retireAsset, ratio);
+  const score = judgementMode === 'safe'
+    ? Math.min(minAsset, terminalAsset - requiredTerminalAsset)
+    : minAsset;
+  return {
+    cfg,
+    sim: upperTrial?.sim || lowerTrial?.sim || null,
+    terminalAsset,
+    minAsset,
+    depletionAge,
+    retireAsset: Number(retireAsset || 0),
+    score,
+    requiredTerminalAsset,
+    judgementMode
+  };
+}
+function buildInterpolatedFireDiagnosisTrial(requestedRetireTotalMonths, lowerTrial, upperTrial, options){
+  const lowerMonths = Math.max(0, Math.round(Number(lowerTrial?.retireTotalMonths) || 0));
+  const upperMonths = Math.max(lowerMonths + 12, Math.round(Number(upperTrial?.retireTotalMonths) || (lowerMonths + 12)));
+  const spanMonths = Math.max(1, upperMonths - lowerMonths);
+  const ratio = Math.max(0, Math.min(1, (requestedRetireTotalMonths - lowerMonths) / spanMonths));
+  const interpolated = deriveInterpolatedFireDiagnosisMetrics(requestedRetireTotalMonths, lowerTrial, upperTrial, ratio, options);
+  const judgementMode = interpolated.judgementMode;
+  const requiredTerminalAsset = interpolated.requiredTerminalAsset;
+  const terminalAsset = interpolated.terminalAsset;
+  const minAsset = interpolated.minAsset;
+  const score = interpolated.score;
+  const found = score >= 0;
+  let reasonCode = 'ok';
+  let reasonText = '成立';
+  if(!found){
+    if(Number(minAsset || 0) < 0){
+      reasonCode = 'depletion_before_life_expectancy';
+      reasonText = Number.isFinite(Number(interpolated.depletionAge)) ? `${Math.round(Number(interpolated.depletionAge))}歳で資産枯渇` : '想定寿命前に資産枯渇';
+    } else if(judgementMode === 'safe' && Number(terminalAsset || 0) < requiredTerminalAsset){
+      reasonCode = 'terminal_asset_below_threshold';
+      const shortage = Math.max(0, requiredTerminalAsset - Number(terminalAsset || 0));
+      reasonText = shortage > 0 ? `寿命時残高が安全水準に ${Math.round(shortage).toLocaleString()}万円不足` : '寿命時残高が安全水準未満';
+    } else {
+      reasonCode = 'not_found_in_search_range';
+      reasonText = '探索範囲内で成立せず';
+    }
+  }
+  return {
+    retireAge: requestedRetireTotalMonths / 12,
+    requestedRetireAge: requestedRetireTotalMonths / 12,
+    requestedRetireTotalMonths,
+    retireAgeYears: Math.floor(requestedRetireTotalMonths / 12),
+    retireAgeMonths: requestedRetireTotalMonths % 12,
+    retireTotalMonths: requestedRetireTotalMonths,
+    sim: interpolated.sim,
+    cfg: interpolated.cfg,
+    found,
+    score,
+    terminalAsset,
+    minAsset,
+    depletionAge: Number.isFinite(Number(interpolated.depletionAge)) ? Number(interpolated.depletionAge) : null,
+    requiredTerminalAsset,
+    judgementMode,
+    reasonCode,
+    reasonText,
+    retireAsset: interpolated.retireAsset
+  };
+}
+function runFireDiagnosisTrial(baseData, retireAge, options){
+  const normalizedRetireAge = Math.max(0, Math.round((Number(retireAge) || 0) * 12) / 12);
+  const requestedRetireTotalMonths = Math.max(0, Math.round(normalizedRetireAge * 12));
+  const retireYears = Math.floor(requestedRetireTotalMonths / 12);
+  const retireMonths = requestedRetireTotalMonths % 12;
+  if(retireMonths === 0){
+    return runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
+  }
+  const lowerTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
+  const upperTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears + 1, options);
+  return buildInterpolatedFireDiagnosisTrial(requestedRetireTotalMonths, lowerTrial, upperTrial, options);
+}
+function buildFireDiagnosisSuccessPayload(trial, options, checkedFrom, checkedTo){
+  return {
+    mode: options?.applyCrash ? 'with_crash' : 'normal',
+    success: true,
+    found: true,
+    firePossibleAge: trial.retireAge,
+    fireAgeYears: trial.retireAgeYears,
+    fireAgeMonths: trial.retireAgeMonths,
+    fireAgeTotalMonths: trial.retireTotalMonths,
+    retireAsset: trial.retireAsset,
+    finalAssetAtLifeExpectancy: trial.terminalAsset,
+    terminalAsset: trial.terminalAsset,
+    minAsset: trial.minAsset,
+    depletionAge: trial.depletionAge,
+    score: trial.score,
+    reasonCode: trial.reasonCode,
+    reasonText: trial.reasonText,
+    checkedFrom,
+    checkedTo,
+    judgementMode: options?.judgementMode === 'safe' ? 'safe' : 'standard',
+    requiredTerminalAsset: Math.max(0, Number(options?.requiredTerminalAsset) || 0)
+  };
+}
+function buildFireDiagnosisFailurePayload(lastTrial, options, checkedFrom, checkedTo){
+  const base = {
+    mode: options?.applyCrash ? 'with_crash' : 'normal',
+    success: false,
+    found: false,
+    checkedFrom,
+    checkedTo,
+    judgementMode: options?.judgementMode === 'safe' ? 'safe' : 'standard',
+    requiredTerminalAsset: Math.max(0, Number(options?.requiredTerminalAsset) || 0),
+    reasonCode: 'not_found_in_search_range',
+    reasonText: '探索範囲内で成立せず',
+    terminalAsset: null,
+    finalAssetAtLifeExpectancy: null,
+    minAsset: null,
+    depletionAge: null,
+    score: null,
+    retireAsset: null
+  };
+  if(lastTrial){
+    base.terminalAsset = lastTrial.terminalAsset;
+    base.finalAssetAtLifeExpectancy = lastTrial.terminalAsset;
+    base.minAsset = lastTrial.minAsset;
+    base.depletionAge = lastTrial.depletionAge;
+    base.score = lastTrial.score;
+    base.retireAsset = lastTrial.retireAsset;
+    base.reasonCode = lastTrial.reasonCode || base.reasonCode;
+    base.reasonText = lastTrial.reasonText || base.reasonText;
+  }
+  return base;
+}
+function refineFireAgeWithinYear(baseData, boundary, options){
+  const failTrial = boundary?.failTrial || null;
+  const successTrial = boundary?.successTrial || null;
+  if(!successTrial?.found) return successTrial;
+  if(!failTrial || failTrial.found) return successTrial;
+  const failMonths = Math.max(0, Math.round(Number(failTrial.retireTotalMonths) || 0));
+  const successMonths = Math.max(failMonths, Math.round(Number(successTrial.retireTotalMonths) || 0));
+  if(successMonths - failMonths <= 1) return successTrial;
+  let refinedSuccess = successTrial;
+  for(let retireMonths = failMonths + 1; retireMonths <= successMonths; retireMonths++){
+    const monthTrial = runFireDiagnosisTrial(baseData, retireMonths / 12, options);
+    if(monthTrial.found){
+      refinedSuccess = monthTrial;
+      break;
+    }
+  }
+  return refinedSuccess;
+}
+function findFireAgeBinary(baseData, options){
+  const checkedFrom = Math.max(0, Math.round(Number(options?.ageFrom) || 0));
+  const checkedTo = Math.max(checkedFrom, Math.round(Number(options?.ageTo) || checkedFrom));
+  const evalOptions = {
+    applyCrash: !!options?.applyCrash,
+    judgementMode: options?.judgementMode === 'safe' ? 'safe' : 'standard',
+    requiredTerminalAsset: Math.max(0, Number(options?.requiredTerminalAsset) || 0)
+  };
+  const fromTrial = runFireDiagnosisTrial(baseData, checkedFrom, evalOptions);
+  if(fromTrial.found){
+    return buildFireDiagnosisSuccessPayload(fromTrial, evalOptions, checkedFrom, checkedTo);
+  }
+  const toTrial = checkedTo === checkedFrom ? fromTrial : runFireDiagnosisTrial(baseData, checkedTo, evalOptions);
+  if(!toTrial.found){
+    return buildFireDiagnosisFailurePayload(toTrial, evalOptions, checkedFrom, checkedTo);
+  }
+  let loAge = checkedFrom;
+  let hiAge = checkedTo;
+  let loTrial = fromTrial;
+  let hiTrial = toTrial;
+  while((hiAge - loAge) > 1){
+    const midAge = Math.floor((loAge + hiAge) / 2);
+    const midTrial = runFireDiagnosisTrial(baseData, midAge, evalOptions);
+    if(midTrial.found){
+      hiAge = midAge;
+      hiTrial = midTrial;
+    } else {
+      loAge = midAge;
+      loTrial = midTrial;
+    }
+  }
+  if(hiAge - 1 >= checkedFrom){
+    const confirmTrial = (hiAge - 1 === loAge) ? loTrial : runFireDiagnosisTrial(baseData, hiAge - 1, evalOptions);
+    if(confirmTrial.found){
+      hiAge = hiAge - 1;
+      hiTrial = confirmTrial;
+    }
+  }
+  const refinedTrial = refineFireAgeWithinYear(baseData, {failTrial: loTrial, successTrial: hiTrial}, evalOptions) || hiTrial;
+  return buildFireDiagnosisSuccessPayload(refinedTrial, evalOptions, checkedFrom, checkedTo);
+}
+function formatFireDiagnosisMetric(label, value){
+  return `<div>${label}：${value}</div>`;
+}
+function formatFireDiagnosisAgeText(yearsValue, monthsValue){
+  const totalMonthsRaw = Math.round((Number(yearsValue) || 0) * 12 + (Number(monthsValue) || 0));
+  const totalMonths = Math.max(0, totalMonthsRaw);
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  return `${years}歳${months}ヶ月`;
+}
+function formatFireDiagnosisDiffText(totalMonthsValue){
+  const totalMonths = Number(totalMonthsValue);
+  if(!Number.isFinite(totalMonths)) return '差なし';
+  if(totalMonths === 0) return '差なし';
+  const sign = totalMonths > 0 ? '+' : '-';
+  const absMonths = Math.abs(Math.round(totalMonths));
+  const years = Math.floor(absMonths / 12);
+  const months = absMonths % 12;
+  return `${sign}${years}年${months}ヶ月`;
+}
+function formatSingleFireDiagnosisCard(result, heading){
+  const lines = [`<div><strong>${heading}</strong></div>`];
+  if(!result?.found){
+    lines.push(formatFireDiagnosisMetric('結果', result?.reasonText || '探索範囲内で成立せず'));
+    return lines;
+  }
+  const ageText = formatFireDiagnosisAgeText(result.fireAgeYears ?? result.firePossibleAge, result.fireAgeMonths ?? 0);
+  lines.push(formatFireDiagnosisMetric('FIRE可能年齢', ageText));
+  lines.push(formatFireDiagnosisMetric('コメント', result.reasonText || '成立'));
+  lines.push(formatFireDiagnosisMetric('退職時資産', `約${Math.round(Number(result.retireAsset) || 0).toLocaleString()}万円`));
+  lines.push(formatFireDiagnosisMetric('寿命時残高', `約${Math.round(Number(result.terminalAsset) || 0).toLocaleString()}万円`));
+  lines.push(formatFireDiagnosisMetric('期間中最低残高', `約${Math.round(Number(result.minAsset) || 0).toLocaleString()}万円`));
+  if(result.depletionAge != null && Number.isFinite(Number(result.depletionAge))){
+    lines.push(formatFireDiagnosisMetric('枯渇年齢', `${Math.round(Number(result.depletionAge))}歳`));
+  }
+  return lines;
+}
+function formatFireDiagnosisResultHtml(result){
+  if(!result) return '<div>診断結果を表示できませんでした。</div>';
+  if(result.mode === 'compare_crash'){
+    const lines = [];
+    if(!result.normal?.found && !result.withCrash?.found){
+      lines.push('<div>指定範囲内では FIRE可能年齢 が見つかりませんでした。</div>');
+      lines.push(`<div style="margin-top:6px;">通常：${result.normal?.reasonText || '探索範囲内で成立せず'}</div>`);
+      lines.push(`<div>暴落込み：${result.withCrash?.reasonText || '探索範囲内で成立せず'}</div>`);
+      return lines.join('');
+    }
+    lines.push(...formatSingleFireDiagnosisCard(result.normal, '通常ケース'));
+    lines.push('<div style="margin:8px 0 6px;border-top:1px solid #d8dee9;"></div>');
+    lines.push(...formatSingleFireDiagnosisCard(result.withCrash, '暴落込みケース'));
+    if(result.normal?.found && result.withCrash?.found){
+      lines.push(`<div style="margin-top:6px;"><strong>差分：</strong>${formatFireDiagnosisDiffText(result.diffTotalMonths)}</div>`);
+    }
+    return lines.join('');
+  }
+  if(!result.found){
+    return `<div>指定範囲内では FIRE可能年齢 が見つかりませんでした。</div><div style="margin-top:6px;">理由：${result.reasonText || '探索範囲内で成立せず'}</div>`;
+  }
+  return formatSingleFireDiagnosisCard(result, 'FIRE診断結果').join('');
+}
+function runSingleFireDiagnosisCore(baseData, settings){
+  return findFireAgeBinary(baseData, {
+    ageFrom: settings.ageFrom,
+    ageTo: settings.ageTo,
+    judgementMode: settings.judgementMode,
+    requiredTerminalAsset: settings.requiredTerminalAsset,
+    applyCrash: settings.mode === 'with_crash'
+  });
+}
+function runFireDiagnosisCore(baseData, settings){
+  const originalData = migrateLegacyData(deepClone(baseData || getAllInputs()));
+  const activeState = captureActiveInputState();
+  try{
+    if(settings.mode === 'compare_crash'){
+      const normal = runSingleFireDiagnosisCore(originalData, {...settings, mode:'normal'});
+      const withCrash = runSingleFireDiagnosisCore(originalData, {...settings, mode:'with_crash'});
+      const bothFound = !!(normal?.found && withCrash?.found);
+      const normalMonths = bothFound ? Math.max(0, Math.round(Number(normal.fireAgeTotalMonths ?? ((Number(normal.fireAgeYears) || 0) * 12 + (Number(normal.fireAgeMonths) || 0)))) ) : null;
+      const withCrashMonths = bothFound ? Math.max(0, Math.round(Number(withCrash.fireAgeTotalMonths ?? ((Number(withCrash.fireAgeYears) || 0) * 12 + (Number(withCrash.fireAgeMonths) || 0)))) ) : null;
+      const diffTotalMonths = bothFound ? (withCrashMonths - normalMonths) : null;
+      const diffYears = bothFound ? Math.trunc(diffTotalMonths / 12) : null;
+      const diffMonths = bothFound ? Math.abs(diffTotalMonths % 12) : null;
+      return {
+        mode:'compare_crash',
+        success: !!(normal?.found || withCrash?.found),
+        found: !!(normal?.found || withCrash?.found),
+        checkedFrom: settings.ageFrom,
+        checkedTo: settings.ageTo,
+        judgementMode: settings.judgementMode,
+        requiredTerminalAsset: settings.requiredTerminalAsset,
+        normal,
+        withCrash,
+        diffYears,
+        diffMonths,
+        diffTotalMonths
+      };
+    }
+    return runSingleFireDiagnosisCore(originalData, settings);
+  } finally {
+    setAllInputs(originalData);
+    restoreActiveInputState(activeState);
+  }
+}
+function runFireDiagnosis(){
+  const settings = getFireDiagnosisSettingsFromModal();
+  setFireDiagnosisStoredSettings(settings);
+  syncCurrentScenarioFromDOM(true);
+  persistState();
+  const resultEl = document.getElementById('fireDiagnosisResult');
+  if(resultEl){
+    resultEl.innerHTML = settings.mode === 'compare_crash'
+      ? '診断中...（通常ケースと暴落込みケースを二分探索で順番に計算します）'
+      : '診断中...（二分探索で計算します）';
+  }
+  const result = runFireDiagnosisCore(getAllInputs(), settings);
+  if(resultEl) resultEl.innerHTML = formatFireDiagnosisResultHtml(result);
 }
 function clampMonteTrials(v){ return Math.max(10, Math.min(5000, Math.round(Number(v) || 80))); }
 function clampMonteDrawPaths(v, trials){ return Math.max(10, Math.min(Math.max(10, Number(trials) || 80), Math.round(Number(v) || 80))); }
@@ -10394,7 +11207,7 @@ function simulate(cfg, random=false, opts={}){
       const baseRate = Number(inv.rate || 0) || 0;
       let effectiveRate = baseRate;
       if(random) effectiveRate = randomizeReturn(effectiveRate, opts?.returnShocks?.[yearIndex]);
-      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests);
+      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests, cfg?.incomeSelf?.retireAge);
       inv._effectiveRate = effectiveRate;
     });
     const dividendIncome = processInvestmentDividendsForYear(investments, deposits, simulationYearFraction, annualState);
@@ -11441,6 +12254,8 @@ function openPensionHelperModal(owner){
   pensionHelperDraft = getStoredPensionHelperForOwner(activePensionHelperOwner);
   document.getElementById("pensionHelperModal")?.classList.add("show");
   document.getElementById("pensionHelperModal")?.setAttribute("aria-hidden", "false");
+  resetModalScrollPosition('pensionHelperModal');
+  resetModalInnerScrollPositions('pensionHelperModal');
   renderPensionHelperModal();
   applyTabOrder();
   focusModalPrimaryActionButton('pensionHelperModal');
@@ -11625,11 +12440,26 @@ function openLoanDetailModal(){
   const modal = document.getElementById("loanDetailModal");
   modal?.classList.add("show");
   modal?.setAttribute("aria-hidden", "false");
+  resetModalScrollPosition('loanDetailModal');
+  resetModalInnerScrollPositions('loanDetailModal');
   applyTabOrder();
   focusModalPrimaryActionButton('loanDetailModal');
-  restoreSimpleLoanInputs(snapshot);
-  requestAnimationFrame(()=>restoreSimpleLoanInputs(snapshot));
-  setTimeout(()=>restoreSimpleLoanInputs(snapshot), 0);
+  const restoreSnapshot = ()=>{
+    restoreSimpleLoanInputs(snapshot);
+    syncLoanBuyYearSelectOptions({
+      selfBirthDate: document.getElementById('selfBirthDate')?.value || '',
+      baseDate: document.getElementById('baseDate')?.value || '',
+      homeBuyYear: snapshot?.homeBuyYear || '',
+      homeBuyMonth: snapshot?.homeBuyMonth || '',
+      homeAge: snapshot?.homeAge || document.getElementById('homeAge')?.value || 40
+    });
+    if(document.getElementById('homeBuyYear') && snapshot?.homeBuyYear) document.getElementById('homeBuyYear').value = String(snapshot.homeBuyYear);
+    if(document.getElementById('homeBuyMonth') && snapshot?.homeBuyMonth) document.getElementById('homeBuyMonth').value = String(snapshot.homeBuyMonth);
+    syncLoanBuyFieldsFromYearMonth();
+  };
+  restoreSnapshot();
+  requestAnimationFrame(restoreSnapshot);
+  setTimeout(restoreSnapshot, 0);
 }
 function closeLoanDetailModal(){
   loanDetailDraft = null;
@@ -11639,41 +12469,60 @@ function closeLoanDetailModal(){
   applyTabOrder();
 }
 function saveLoanDetailModal(){
-  syncLoanDetailDraftFromModal();
-  const sim = simulateLoanDetail(loanDetailDraft);
-  if(!sim.valid) return;
-  syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:loanDetailDraft.buyYear, homeBuyMonth:loanDetailDraft.buyMonth, homeAge:loanDetailDraft.buyAge});
-  document.getElementById('homeBuyYear').value = String(loanDetailDraft.buyYear || '');
-  document.getElementById('homeBuyMonth').value = String(loanDetailDraft.buyMonth || 1);
-  syncLoanBuyFieldsFromYearMonth();
-  setNumericInputValue("homeDown", loanDetailDraft.down || 0);
-  document.getElementById("homeDetailBuyAge").value = loanDetailDraft.buyAge || 0;
-  document.getElementById("homeDetailBuyYear").value = loanDetailDraft.buyYear || '';
-  document.getElementById("homeDetailBuyMonth").value = loanDetailDraft.buyMonth || 1;
-  document.getElementById("homeDetailDown").value = loanDetailDraft.down || 0;
-  document.getElementById("homeDetailLoanAmount").value = loanDetailDraft.loanAmount || 0;
-  document.getElementById("homeDetailRate").value = loanDetailDraft.ratePct || 0;
-  document.getElementById("homeDetailBaseYears").value = loanDetailDraft.baseYears || 0;
-  document.getElementById("homeDetailMethod").value = loanDetailDraft.method || "元利均等返済";
-  document.getElementById("homeDetailPrepayJson").value = JSON.stringify(normalizeLoanPrepayPlans(loanDetailDraft.prepayPlans || []));
-  syncSimpleLoanInputsFromDetail({
-    enabled:true,
-    buyAge:loanDetailDraft.buyAge,
-    buyYear:loanDetailDraft.buyYear,
-    buyMonth:loanDetailDraft.buyMonth,
-    down:loanDetailDraft.down,
-    loanAmount:loanDetailDraft.loanAmount,
-    ratePct:loanDetailDraft.ratePct,
-    baseYears:loanDetailDraft.baseYears,
-    method:loanDetailDraft.method,
-    prepayPlans:normalizeLoanPrepayPlans(loanDetailDraft.prepayPlans || [])
-  });
-  formatAllNumericInputs(document, true);
-  updateLoanSummary();
-  syncCurrentScenarioFromDOM(false);
-  requestDraw();
-  persistState();
-  closeLoanDetailModal();
+  try{
+    syncLoanDetailDraftFromModal();
+    const detail = loanDetailDraft ? {...loanDetailDraft} : null;
+    if(!detail) return;
+    if((!detail.buyAge || detail.buyAge <= 0) && detail.buyYear > 0 && detail.buyMonth >= 1){
+      const ageParts = calcAgeYearMonthsAtParts(parseDateInput(document.getElementById('selfBirthDate')?.value || ''), getRetireMonthEndParts(detail.buyYear, detail.buyMonth));
+      detail.buyAge = ageParts ? (ageParts.years + ageParts.months / 12) : detail.buyAge;
+    }
+    const zeroLoan = !(Number(detail.loanAmount) > 0);
+    const sim = zeroLoan
+      ? {valid:true, initialMonthly:0, actualYears:0, totalPaid:0, prepayTotal:0, endYear:detail.buyYear || 0, endMonth:detail.buyMonth || 1}
+      : simulateLoanDetail(detail);
+    if(!sim.valid){
+      console.warn('saveLoanDetailModal invalid detail', detail, sim);
+      return;
+    }
+    const normalizedPlans = normalizeLoanPrepayPlans(detail.prepayPlans || []);
+    syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:detail.buyYear, homeBuyMonth:detail.buyMonth, homeAge:detail.buyAge});
+    document.getElementById('homeBuyYear').value = String(detail.buyYear || '');
+    document.getElementById('homeBuyMonth').value = String(detail.buyMonth || 1);
+    syncLoanBuyFieldsFromYearMonth();
+    setNumericInputValue("homeDown", detail.down || 0);
+    setNumericInputValue("homePayMonth", getLoanDisplayPayment(sim, numInput("age", 0), detail.buyAge) || 0);
+    setNumericInputValue("homeYears", Number(sim.actualYears || detail.baseYears || 0));
+    document.getElementById("homeDetailBuyAge").value = detail.buyAge || 0;
+    document.getElementById("homeDetailBuyYear").value = detail.buyYear || '';
+    document.getElementById("homeDetailBuyMonth").value = detail.buyMonth || 1;
+    document.getElementById("homeDetailDown").value = detail.down || 0;
+    document.getElementById("homeDetailLoanAmount").value = detail.loanAmount || 0;
+    document.getElementById("homeDetailRate").value = detail.ratePct || 0;
+    document.getElementById("homeDetailBaseYears").value = detail.baseYears || 0;
+    document.getElementById("homeDetailMethod").value = detail.method || "元利均等返済";
+    document.getElementById("homeDetailPrepayJson").value = JSON.stringify(normalizedPlans);
+    syncSimpleLoanInputsFromDetail({
+      enabled:true,
+      buyAge:detail.buyAge,
+      buyYear:detail.buyYear,
+      buyMonth:detail.buyMonth,
+      down:detail.down,
+      loanAmount:detail.loanAmount,
+      ratePct:detail.ratePct,
+      baseYears:detail.baseYears,
+      method:detail.method,
+      prepayPlans:normalizedPlans
+    });
+    closeLoanDetailModal();
+    formatAllNumericInputs(document, true);
+    updateLoanSummary();
+    syncCurrentScenarioFromDOM(false);
+    requestDraw();
+    persistState();
+  }catch(err){
+    console.error('saveLoanDetailModal failed', err);
+  }
 }
 
 function openIncomeCurveModal(owner){
@@ -11686,6 +12535,8 @@ function openIncomeCurveModal(owner){
   const incomeCurveModal = document.getElementById("incomeCurveModal");
   incomeCurveModal?.classList.add("show");
   incomeCurveModal?.setAttribute("aria-hidden", "false");
+  resetModalScrollPosition('incomeCurveModal');
+  resetModalInnerScrollPositions('incomeCurveModal');
   renderIncomeCurveModal();
   applyTabOrder();
   focusModalPrimaryActionButton('incomeCurveModal');
@@ -12144,7 +12995,7 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
     investments.forEach(inv=>{
       const baseRate = Number(inv.rate || 0) || 0;
       let effectiveRate = randomizeReturn(baseRate, returnShocks?.[yearIndex]);
-      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests);
+      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests, cfg?.incomeSelf?.retireAge);
       inv._effectiveRate = effectiveRate;
       inv.amount *= getYearFractionCompoundedRateFactor(effectiveRate, simulationYearFraction);
     });
@@ -12583,15 +13434,47 @@ function updateMonteSettingsModalUI(){
   document.getElementById('monteSettingsSummary').innerHTML = formatMonteSettingsSummary(settings);
 }
 document.getElementById("crashTestBtn")?.addEventListener("click", openCrashTestModal);
+document.getElementById("fireDiagnosisBtn")?.addEventListener("click", openFireDiagnosisModal);
 document.getElementById("cancelCrashTestBtn")?.addEventListener("click", closeCrashTestModal);
 document.getElementById("saveCrashTestBtn")?.addEventListener("click", saveCrashTestModal);
 document.getElementById("crashTestAddBtn")?.addEventListener("click", ()=>addCrashTestRow());
-document.getElementById("crashTestRowsBody")?.addEventListener("input", ()=>{ syncCrashTestDraftFromModal(); });
+document.getElementById("crashTestRowsBody")?.addEventListener("input", (e)=>{
+  const target = e.target;
+  if(target?.matches?.('[data-crash-field="timingValue"]')){
+    const rowEl = target.closest('tr[data-crash-test-row]');
+    const wrap = rowEl?.querySelector('.crash-timing-wrap');
+    const timingType = normalizeCrashTestTimingType(rowEl?.querySelector('[data-crash-field="timingType"]')?.value);
+    if(wrap){
+      if(timingType === 'after_retire') wrap.dataset.afterValue = String(clampCrashTestTimingValue(target.value, 'after_retire', 0));
+      else wrap.dataset.fixedValue = String(clampCrashTestTimingValue(target.value, 'fixed', getDefaultCrashTestAge()));
+    }
+  }
+  syncCrashTestDraftFromModal();
+});
 document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
   const target = e.target;
   const rowEl = target?.closest?.("tr[data-crash-test-row]");
   if(!rowEl) return;
   const rowIndex = Math.max(0, (Number(rowEl.dataset.crashTestRow) || 1) - 1);
+  if(target.matches('[data-crash-field="timingType"]')){
+    const current = normalizeCrashTestRow(crashTestDraft[rowIndex] || {}, rowIndex);
+    const input = rowEl.querySelector('[data-crash-field="timingValue"]');
+    const previousType = current.timingType === 'after_retire' ? 'after_retire' : 'fixed';
+    const currentValue = clampCrashTestTimingValue(input?.value, previousType, previousType === 'after_retire' ? 0 : getDefaultCrashTestAge());
+    if(previousType === 'after_retire') current.afterRetireTimingValue = currentValue;
+    else current.fixedTimingValue = currentValue;
+    const nextType = normalizeCrashTestTimingType(target.value);
+    current.timingType = nextType;
+    current.timingValue = nextType === 'after_retire'
+      ? clampCrashTestTimingValue(current.afterRetireTimingValue, 'after_retire', 0)
+      : clampCrashTestTimingValue(current.fixedTimingValue, 'fixed', getDefaultCrashTestAge());
+    crashTestDraft[rowIndex] = normalizeCrashTestRow(current, rowIndex);
+    renderCrashTestRows();
+    const nextRow = document.querySelector(`#crashTestRowsBody tr[data-crash-test-row="${rowIndex + 1}"]`);
+    nextRow?.querySelector('[data-crash-field="timingValue"]')?.focus();
+    renderCrashTestSummary(crashTestDraft);
+    return;
+  }
   syncCrashTestDraftFromModal();
   if(target.matches('[data-crash-field="preset"]')){
     const preset = normalizeCrashTestPreset(target.value);
@@ -12608,6 +13491,13 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
   }
   renderCrashTestSummary(crashTestDraft);
 });
+document.getElementById("cancelFireDiagnosisBtn")?.addEventListener("click", closeFireDiagnosisModal);
+document.getElementById("runFireDiagnosisBtn")?.addEventListener("click", runFireDiagnosis);
+document.getElementById("fireDiagnosisJudgementModeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
+document.getElementById("fireDiagnosisRequiredTerminalAssetInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
+document.getElementById("fireDiagnosisModal")?.addEventListener("mousedown", (e)=>{
+  if(e.target === document.getElementById("fireDiagnosisModal")) closeFireDiagnosisModal();
+});
 
 function openMonteSettingsModal(){
   syncMonteSettingsModalFromHidden();
@@ -12615,6 +13505,8 @@ function openMonteSettingsModal(){
   const monteSettingsModal = document.getElementById('monteCarloSettingsModal');
   monteSettingsModal?.classList.add('show');
   monteSettingsModal?.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('monteCarloSettingsModal');
+  resetModalInnerScrollPositions('monteCarloSettingsModal');
   applyTabOrder();
   focusModalPrimaryActionButton('monteCarloSettingsModal');
 }
@@ -12640,6 +13532,8 @@ function openWithdrawalRuleModal(){
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
   withdrawalRuleModal?.classList.add('show');
   withdrawalRuleModal?.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('withdrawalRuleModal');
+  resetModalInnerScrollPositions('withdrawalRuleModal');
   if(withdrawalCompareCache) renderWithdrawalComparisonResults(withdrawalCompareCache);
   applyTabOrder();
   focusModalPrimaryActionButton('withdrawalRuleModal');
@@ -12715,14 +13609,27 @@ document.getElementById("deleteTabModal").addEventListener("click", (e)=>{
   if(e.target.id === "deleteTabModal") closeDeleteTabModal();
 });
 document.getElementById("deleteTabModal")?.addEventListener("keydown", handleDeleteModalKeydown, true);
+document.getElementById("deleteTabModal")?.addEventListener("focusout", handleDeleteModalFocusOut, true);
 document.getElementById("crashTestModal")?.addEventListener("keydown", handleStandardActionModalKeydown, true);
+document.getElementById("fireDiagnosisModal")?.addEventListener("keydown", handleStandardActionModalKeydown, true);
 document.getElementById("deleteRowModal")?.addEventListener("click", (e)=>{
   if(e.target.id === "deleteRowModal") closeDeleteRowModal();
 });
 document.getElementById("deleteRowModal")?.addEventListener("keydown", handleDeleteModalKeydown, true);
+document.getElementById("deleteRowModal")?.addEventListener("focusout", handleDeleteModalFocusOut, true);
 Object.keys(STANDARD_ACTION_MODAL_CONFIG).forEach((modalId)=>{
   document.getElementById(modalId)?.addEventListener('keydown', handleStandardActionModalKeydown, true);
 });
+document.addEventListener("pointerdown", (e)=>{
+  const menu = document.getElementById("tabContextMenu");
+  if(menu && menu.classList.contains("show") && !menu.contains(e.target) && !e.target.closest(".tab-btn")){
+    closeTabContextMenu();
+  }
+  const rowMenu = document.getElementById("rowContextMenu");
+  if(rowMenu && rowMenu.classList.contains("show") && !rowMenu.contains(e.target) && !e.target.closest("[data-row-menu]")){
+    closeRowContextMenu();
+  }
+}, true);
 document.addEventListener("click", (e)=>{
   const menu = document.getElementById("tabContextMenu");
   if(menu && menu.classList.contains("show") && !menu.contains(e.target) && !e.target.closest(".tab-btn")){
@@ -12842,11 +13749,67 @@ document.getElementById("childAllowanceOn")?.addEventListener("keydown", (e)=>{
   if(ok){ e.preventDefault(); e.stopPropagation(); }
 });
 document.getElementById("childAllowanceSummaryWrap")?.addEventListener("keydown", (e)=>{
-  const input = e.target.closest('input[id^="child"][id$="_allowanceOn"]');
+  const input = e.target.closest('input[id^="child"][id$="_allowanceOn_ui"]');
   if(!input || e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
   const ok = e.shiftKey ? focusPrevAllowanceCheckbox(input.id) : focusNextAllowanceCheckbox(input.id);
   if(ok){ e.preventDefault(); e.stopPropagation(); }
 });
+document.getElementById("childAllowanceSummaryWrap")?.addEventListener("change", (e)=>{
+  const input = e.target.closest('input[id^="child"][id$="_allowanceOn_ui"]');
+  if(!input) return;
+  const match = input.id.match(/^child(\d+)_allowanceOn_ui$/);
+  if(match){
+    const idx = match[1];
+    const checked = !!input.checked;
+    const storeEl = document.getElementById(`child${idx}_allowanceOn`);
+    if(storeEl) storeEl.checked = checked;
+    if(scenarios.length && currentTab >= 0 && scenarios[currentTab]){
+      const key = `child${idx}_allowanceOn`;
+      scenarios[currentTab].data = migrateLegacyData(scenarios[currentTab].data || {});
+      scenarios[currentTab].data[key] = checked;
+    }
+    updateChildAllowanceSummary();
+  }
+  monteMode = false;
+  syncCurrentScenarioFromDOM(false);
+  invalidateSimulationCaches();
+  requestDraw();
+  persistState();
+  e.stopPropagation();
+});
+document.getElementById("childAllowanceOn")?.addEventListener("change", ()=>{
+  monteMode = false;
+  syncCurrentScenarioFromDOM(false);
+  invalidateSimulationCaches();
+  updateChildAllowanceSummary();
+  requestDraw();
+  persistState();
+});
+["taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxPublicPensionDeductionUnder65","taxPublicPensionDeduction65Plus","taxResidentRatePct","socialNationalPensionOn","socialHealthOn","socialNationalPensionAnnual","social_self_healthMode","social_sp_healthMode","socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"].forEach(id=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  const handler = ()=>{
+    monteMode = false;
+    syncCurrentScenarioFromDOM(false);
+    invalidateSimulationCaches();
+    requestDraw();
+    persistState();
+  };
+  el.addEventListener("change", handler);
+  if(el.tagName === "INPUT" && el.type !== "checkbox") el.addEventListener("input", handler);
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing) return;
+  const modal = document.querySelector('#deleteRowModal.show, #deleteTabModal.show');
+  if(!modal) return;
+  if(!['ArrowLeft','ArrowRight','Enter','Escape'].includes(e.key)) return;
+  handleDeleteModalKeydown({
+    currentTarget: modal,
+    key: e.key,
+    preventDefault: ()=>e.preventDefault(),
+    stopPropagation: ()=>e.stopPropagation()
+  });
+}, true);
 document.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab") return;
   if(e.altKey || e.ctrlKey || e.metaKey) return;
@@ -12903,25 +13866,42 @@ document.addEventListener("touchstart", (e)=>{
 }, {passive:true});
 document.addEventListener("touchend", (e)=>{ const rowLabel = e.target.closest?.("[data-row-menu]"); if(rowLabel && rowLabel._pressTimer){ clearTimeout(rowLabel._pressTimer); rowLabel._pressTimer=null; } }, {passive:true});
 document.addEventListener("touchmove", ()=>{ document.querySelectorAll("[data-row-menu]").forEach(el=>{ if(el._pressTimer){ clearTimeout(el._pressTimer); el._pressTimer=null; } }); }, {passive:true});
-document.getElementById("rowContextMenu")?.addEventListener("click", (e)=>{
+function handleRowContextMenuAction(e){
   const btn = e.target.closest("button[data-row-action]");
   if(!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
   const menu = document.getElementById("rowContextMenu");
+  if(!menu) return;
   const type = menu.dataset.type;
   const index = +menu.dataset.index;
+  const action = btn.dataset.rowAction;
   closeRowContextMenu();
-  if(type === "crashTest"){
-    if(btn.dataset.rowAction === "duplicate") duplicateCrashTestRow(index);
-    if(btn.dataset.rowAction === "rename") renameCrashTestRow(index);
-    if(btn.dataset.rowAction === "delete") openDeleteRowModal(type, index);
-    return;
+  const runAction = ()=>{
+    if(type === "crashTest"){
+      if(action === "duplicate") duplicateCrashTestRow(index);
+      else if(action === "rename") renameCrashTestRow(index);
+      else if(action === "delete") openDeleteRowModal(type, index);
+      return;
+    }
+    if(action === "duplicate") duplicateDynamicRow(type, index);
+    else if(action === "rename") renameDynamicRow(type, index);
+    else if(action === "delete") openDeleteRowModal(type, index);
+  };
+  setTimeout(runAction, 0);
+}
+document.getElementById("rowContextMenu")?.addEventListener("pointerdown", (e)=>{
+  if(e.target.closest("button[data-row-action]")){
+    handleRowContextMenuAction(e);
   }
-  if(btn.dataset.rowAction === "duplicate") duplicateDynamicRow(type, index);
-  if(btn.dataset.rowAction === "rename") renameDynamicRow(type, index);
-  if(btn.dataset.rowAction === "delete") openDeleteRowModal(type, index);
-});
+}, true);
+document.getElementById("rowContextMenu")?.addEventListener("click", handleRowContextMenuAction, true);
 document.getElementById("cancelDeleteRowBtn")?.addEventListener("click", closeDeleteRowModal);
 document.getElementById("confirmDeleteRowBtn")?.addEventListener("click", confirmDeleteRow);
+document.getElementById("cancelDeleteRowBtn")?.addEventListener("focus", ()=>{ activeDeleteModalButton = 'cancel'; }, true);
+document.getElementById("confirmDeleteRowBtn")?.addEventListener("focus", ()=>{ activeDeleteModalButton = 'confirm'; }, true);
+document.getElementById("cancelDeleteTabBtn")?.addEventListener("focus", ()=>{ activeDeleteModalButton = 'cancel'; }, true);
+document.getElementById("confirmDeleteTabBtn")?.addEventListener("focus", ()=>{ activeDeleteModalButton = 'confirm'; }, true);
 
 document.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab") return;
@@ -13175,7 +14155,8 @@ function commitMainInputChange(e){
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
   if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal"))) return;
-  if(e?.type === "focusout" && (el.id === "childAllowanceOn" || /^child\d+_allowanceOn$/.test(el.id))) return;
+  if((e?.type === "focusout" || e?.type === "change") && /^child\d+_allowanceOn$/.test(el.id)) return;
+  if(e?.type === "focusout" && el.id === "childAllowanceOn") return;
   if(e?.type === "focusout" && mainInputSnapshotUnchanged(el)) return;
   if(/^(reginc|inc|rent|homeMaint|life|period|extra)\d+_timeUnit$/.test(el.id)){
     const match = el.id.match(/^(reginc|inc|rent|homeMaint|life|period|extra)(\d+)_timeUnit$/);
@@ -13365,7 +14346,16 @@ document.getElementById("loanDetailModal")?.addEventListener("change", (e)=>{
   renderLoanDetailResult();
 });
 document.getElementById("cancelLoanDetailBtn")?.addEventListener("click", closeLoanDetailModal);
-document.getElementById("saveLoanDetailBtn")?.addEventListener("click", saveLoanDetailModal);
+document.getElementById("saveLoanDetailBtn")?.addEventListener("pointerdown", (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  saveLoanDetailModal();
+});
+document.getElementById("saveLoanDetailBtn")?.addEventListener("click", (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  saveLoanDetailModal();
+});
 let loanDetailBackdropPointerDown = false;
 document.getElementById("loanDetailModal")?.addEventListener("mousedown", (e)=>{
   loanDetailBackdropPointerDown = e.target === e.currentTarget;
