@@ -2545,12 +2545,13 @@ function buildMonteRunResult(cfg, base, monteSettings, scenarioDataOverride){
   const staticSeries = getOrBuildMonteStaticSeries(scenarioData, cfg);
   const shockTrials = buildSharedReturnShocks(cfg, trials, scenarioData, monteSettings);
   const lifeIndex = Math.max(0, Math.min((base?.labels?.length || 1) - 1, Number(cfg.lifeExpect || 0) - Number(cfg.age || 0)));
+  const plottedLifeIndex = lifeIndex;
   const finalsAtLife = [];
   let fail = 0;
   let bestIndex = 0;
   let worstIndex = 0;
   for(let i=0;i<trials;i++){
-    const finalSim = simulateMonteFinalOnly(cfg, staticSeries, shockTrials[i], lifeIndex);
+    const finalSim = simulateMonteFinalOnly(cfg, staticSeries, shockTrials[i], plottedLifeIndex);
     const finalValue = Number(finalSim?.finalAtLife || 0) || 0;
     finalsAtLife.push(finalValue);
     if(finalValue <= 0) fail++;
@@ -2568,7 +2569,7 @@ function buildMonteRunResult(cfg, base, monteSettings, scenarioDataOverride){
     worstIndex,
     trials,
     displayCache:{},
-    fixedFinalAtLife:Number(base?.totalAssets?.[lifeIndex] ?? base?.totalAssets?.at?.(-1) ?? 0) || 0
+    fixedFinalAtLife:Number(base?.totalAssets?.[plottedLifeIndex] ?? base?.totalAssets?.at?.(-1) ?? 0) || 0
   };
 }
 function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scenarioDataOverride){
@@ -2582,7 +2583,9 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
   const staticSeries = getOrBuildMonteStaticSeries(scenarioData, cfg);
   const shockTrials = buildSharedReturnShocks(cfg, trials, scenarioData, monteSettings);
   const displayIndices = pickMonteDisplayIndices(trials, drawPaths);
+  const plottedLifeIndex = Math.max(0, Math.min((Array.isArray(base?.labels) ? base.labels.length : 1) - 1, Number(run.lifeIndex) || 0));
   const trialSeriesCache = new Map();
+  const trialValueCache = new Map();
   const getSeries = (trialIndex)=>{
     const safeIndex = Math.max(0, Math.min(trials - 1, Number(trialIndex) || 0));
     const key = String(safeIndex);
@@ -2590,15 +2593,32 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
     const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shockTrials[safeIndex]});
     const series = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
     trialSeriesCache.set(key, series);
+    trialValueCache.set(key, Number(series?.[plottedLifeIndex] ?? 0) || 0);
     return series;
   };
+  const getLifeValue = (trialIndex)=>{
+    const safeIndex = Math.max(0, Math.min(trials - 1, Number(trialIndex) || 0));
+    const key = String(safeIndex);
+    if(trialValueCache.has(key)) return Number(trialValueCache.get(key) || 0) || 0;
+    getSeries(safeIndex);
+    return Number(trialValueCache.get(key) || 0) || 0;
+  };
+  let bestIndex = 0;
+  let worstIndex = 0;
+  const finalsAtPlottedLife = [];
+  for(let i=0; i<trials; i++){
+    const value = getLifeValue(i);
+    finalsAtPlottedLife.push(value);
+    if(i === 0) continue;
+    if(value > finalsAtPlottedLife[bestIndex]) bestIndex = i;
+    if(value < finalsAtPlottedLife[worstIndex]) worstIndex = i;
+  }
   const displayResults = displayIndices.map(getSeries);
-  const best = getSeries(run.bestIndex || 0);
-  const worst = getSeries(run.worstIndex || 0);
+  const best = getSeries(bestIndex);
+  const worst = getSeries(worstIndex);
   const baseSeries = Array.isArray(base?.totalAssets) ? base.totalAssets : [];
-  const allFinalsSameAsFixed = Array.isArray(run.finalsAtLife)
-    ? run.finalsAtLife.every(v => Math.abs((Number(v) || 0) - (Number(run.fixedFinalAtLife || 0) || 0)) < 1e-9)
-    : false;
+  const fixedFinalAtLife = Number(baseSeries?.[plottedLifeIndex] ?? 0) || 0;
+  const allFinalsSameAsFixed = finalsAtPlottedLife.every(v => Math.abs((Number(v) || 0) - fixedFinalAtLife) < 1e-9);
   const allVisibleSame = [best, worst, ...displayResults].every(r => r.length === baseSeries.length && r.every((v, i)=>Math.abs((Number(v) || 0) - (Number(baseSeries[i]) || 0)) < 1e-9));
   const bundle = {
     drawPaths,
@@ -2606,6 +2626,10 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
     displayResults,
     best,
     worst,
+    bestIndex,
+    worstIndex,
+    finalsAtPlottedLife,
+    plottedLifeIndex,
     allSame: allFinalsSameAsFixed && allVisibleSame
   };
   run.displayCache[cacheKey] = bundle;
@@ -11068,10 +11092,14 @@ function buildMonteDistributionDataset(cfg, finalsAtLife, opts={}){
   const finals = Array.isArray(finalsAtLife) ? finalsAtLife.map(v=>Number(v)).filter(v=>Number.isFinite(v)) : [];
   if(finals.length < 2) return null;
   const histogram = buildHistogramSeries(finals, 28);
-  const points = Array.isArray(histogram?.points) ? histogram.points : [];
-  if(!points.length) return null;
+  const rawPoints = Array.isArray(histogram?.points) ? histogram.points : [];
+  if(!rawPoints.length) return null;
   const minAsset = Number.isFinite(histogram.min) ? histogram.min : Math.min(...finals);
   const maxAsset = Number.isFinite(histogram.max) ? histogram.max : Math.max(...finals);
+  const points = rawPoints.map((point, idx)=>({
+    x: idx === 0 ? minAsset : (idx === rawPoints.length - 1 ? maxAsset : (Number(point?.x) || 0)),
+    y: Math.max(0, Number(point?.y) || 0)
+  }));
   const peakProb = Math.max(...points.map(p=>Number(p?.y) || 0), 0);
   if(!(peakProb > 0)) return null;
   const sortedFinals = finals.slice().sort((a,b)=>a-b);
@@ -11080,14 +11108,12 @@ function buildMonteDistributionDataset(cfg, finalsAtLife, opts={}){
   const axisMax = getMonteDistributionAxisMax(cfg);
   const availableSpan = Math.max(3, axisMax - life);
   const rightSpan = availableSpan * 0.82;
-  const data = [{x:life, y:minAsset}];
-  points.forEach(point=>{
+  const data = points.map(point=>{
     const prob = Math.max(0, Number(point?.y) || 0);
     const asset = Number(point?.x) || 0;
     const scaledX = life + (prob / peakProb) * rightSpan;
-    data.push({x:scaledX, y:asset});
+    return {x:scaledX, y:asset};
   });
-  data.push({x:life, y:maxAsset});
 
   let medianProb = 0;
   if(points.length === 1){
@@ -12853,7 +12879,7 @@ function runMonte(){
     const displayPlots = displayResults.map(r => buildMontePlotSeries(cfg, plotLabels, r));
     const bestPlot = buildMontePlotSeries(cfg, plotLabels, best);
     const worstPlot = buildMontePlotSeries(cfg, plotLabels, worst);
-    const distributionDataset = !overlay ? buildMonteDistributionDataset(cfg, monteRun.finalsAtLife, {label:'想定寿命時の総資産確率分布'}) : null;
+    const distributionDataset = !overlay ? buildMonteDistributionDataset(cfg, displayBundle.finalsAtPlottedLife || monteRun.finalsAtLife, {label:'想定寿命時の総資産確率分布'}) : null;
 
     if(overlay){
       displayPlots.forEach(plot=>{
@@ -14012,8 +14038,9 @@ function buildMonteFinalStatsFromCases(cfgBase, cases, shockTrials){
     const monteFinals = [];
     let fail = 0;
     for(let i=0;i<(shockTrials || []).length;i++){
-      const sim = simulateMonteFinalOnly(cfg, staticSeries, shockTrials[i], lifeIndexClamped);
-      const finalAtLife = Number(sim?.finalAtLife || 0);
+      const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shockTrials[i]});
+      const totalAssets = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+      const finalAtLife = Number(totalAssets?.[lifeIndexClamped] ?? totalAssets?.at?.(-1) ?? 0) || 0;
       if(finalAtLife <= 0) fail++;
       monteFinals.push(finalAtLife);
     }
@@ -14075,27 +14102,29 @@ function renderWithdrawalComparisonTable(results){
   body.innerHTML = rows.map(row=>`<tr><th>${escapeHtml(row.label)}</th>${results.map(r=>`<td>${escapeHtml(formatCompareCellValue(row.key, r[row.key]))}</td>`).join('')}</tr>`).join('');
 }
 function buildHistogramSeries(values, binCount=24, sharedMin=null, sharedMax=null){
-  const clean = (values || []).map(v=>Number(v) || 0);
-  if(!clean.length) return {points:[], min:0, max:0, width:1};
-  const min = Number.isFinite(sharedMin) ? Number(sharedMin) : Math.min(...clean);
-  const max = Number.isFinite(sharedMax) ? Number(sharedMax) : Math.max(...clean);
+  const clean = (values || []).map(v=>Number(v)).filter(v=>Number.isFinite(v));
+  if(!clean.length) return {points:[], min:0, max:0, width:1, actualMin:0, actualMax:0};
+  const actualMin = Math.min(...clean);
+  const actualMax = Math.max(...clean);
+  const min = Number.isFinite(sharedMin) ? Number(sharedMin) : actualMin;
+  const max = Number.isFinite(sharedMax) ? Number(sharedMax) : actualMax;
   const span = Math.max(1, max - min);
-  const width = span / binCount;
-  const bins = new Array(binCount).fill(0);
+  const width = span / Math.max(1, binCount);
+  const bins = new Array(Math.max(1, binCount)).fill(0);
   clean.forEach(v=>{
     let idx = Math.floor((v - min) / width);
-    if(idx >= binCount) idx = binCount - 1;
+    if(idx >= bins.length) idx = bins.length - 1;
     if(idx < 0) idx = 0;
     bins[idx] += 1;
   });
   const total = clean.length;
   const corePoints = bins.map((count, idx)=>({x:min + width * (idx + 0.5), y:count / total}));
   const points = [
-    {x:min - width * 0.5, y:0},
+    {x:actualMin, y:0},
     ...corePoints,
-    {x:max + width * 0.5, y:0}
+    {x:actualMax, y:0}
   ];
-  return {points, min, max, width};
+  return {points, min, max, width, actualMin, actualMax};
 }
 
 function niceScaleStep(range){
@@ -14124,15 +14153,13 @@ function renderWithdrawalComparisonChart(results){
   if(!canvas) return;
   const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
   const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v) || 0));
-  const sharedMin = allFinals.length ? Math.min(...allFinals) : 0;
-  const sharedMax = allFinals.length ? Math.max(...allFinals) : 0;
-  const histograms = results.map(r=>buildHistogramSeries(r.finals, 24, sharedMin, sharedMax));
+  const histograms = results.map(r=>buildHistogramSeries(r.finals, 28));
   const datasets = histograms.map((hist, idx)=>({
     label:results[idx].label,
     data:hist.points,
     borderColor:palettes[idx % palettes.length],
     backgroundColor:palettes[idx % palettes.length],
-    tension:0.2,
+    tension:0.25,
     pointRadius:0,
     borderWidth:2,
     fill:false
@@ -14146,15 +14173,61 @@ function renderWithdrawalComparisonChart(results){
   const step = niceScaleStep((displayMaxRaw - displayMinRaw) / 6 || Math.max(Math.abs(displayMinRaw), Math.abs(displayMaxRaw)) || 1);
   const displayMin = niceFloor(displayMinRaw, step);
   const displayMax = niceCeil(displayMaxRaw, step);
+  const medianGuides = results.map((r, idx)=>({
+    x:Number(r.median) || 0,
+    color:palettes[idx % palettes.length],
+    label:`中央値：${(Math.round(Number(r.median) || 0)).toLocaleString("ja-JP")}万円`,
+    labelOffsetY: idx * 20
+  }));
   if(withdrawalCompareChart) withdrawalCompareChart.destroy();
   withdrawalCompareChart = new Chart(canvas.getContext('2d'), {
     type:'line',
     data:{datasets},
+    plugins:[{
+      id:'withdrawalCompareMedianGuides',
+      afterDatasetsDraw(chart){
+        const guides = chart?.options?.plugins?.withdrawalCompareMedianGuides?.guides || [];
+        if(!guides.length) return;
+        const {ctx, chartArea, scales} = chart;
+        const xScale = scales?.x;
+        const yScale = scales?.y;
+        if(!xScale || !yScale || !chartArea) return;
+        ctx.save();
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
+        guides.forEach((guide, idx)=>{
+          const valueX = Number(guide?.x);
+          if(!Number.isFinite(valueX)) return;
+          const px = xScale.getPixelForValue(valueX);
+          if(!Number.isFinite(px)) return;
+          const color = guide?.color || '#2563eb';
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4,4]);
+          ctx.beginPath();
+          ctx.moveTo(px, chartArea.top);
+          ctx.lineTo(px, chartArea.bottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = color;
+          const text = String(guide?.label || '中央値');
+          const textWidth = ctx.measureText(text).width;
+          let labelX = px + 6;
+          if(labelX + textWidth > chartArea.right - 4) labelX = Math.max(chartArea.left + 4, px - textWidth - 6);
+          const labelY = chartArea.top + 6 + (Number(guide?.labelOffsetY) || idx * 20);
+          ctx.fillText(text, labelX, labelY);
+        });
+        ctx.restore();
+      }
+    }],
     options:{
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{legend:{display:true}},
+      plugins:{
+        legend:{display:true},
+        withdrawalCompareMedianGuides:{guides:medianGuides}
+      },
       scales:{
         x:{
           type:'linear',
