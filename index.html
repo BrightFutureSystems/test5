@@ -4492,11 +4492,12 @@ function positionNumericAssist(_el){}
 function hideNumericAssist(){ activeNumericInput = null; }
 
 function enhanceNumericInputs(root = document){
+  const negativeKeyboardInputIds = new Set(["fixedScaleMin", "withdrawalBucketDefenseThresholdPct"]);
   root.querySelectorAll('input[type="number"], #fixedScaleMin, #fixedScaleMax').forEach(el=>{
     if(el.dataset.numericReady === "1") return;
     el.dataset.numericReady = "1";
     try{ el.type = "text"; }catch(_e){}
-    if(el.id === "fixedScaleMin"){
+    if(negativeKeyboardInputIds.has(el.id)){
       el.removeAttribute("inputmode");
     }else{
       el.setAttribute("inputmode", "decimal");
