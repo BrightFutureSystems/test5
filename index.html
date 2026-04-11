@@ -1063,6 +1063,12 @@
   .withdrawal-param-case-table td .input-unit{padding-left:0;justify-content:center;}
   .withdrawal-param-case-table td input[type=number]{width:100%;max-width:120px;margin:0 auto;}
   .withdrawal-param-case-help{margin-bottom:8px;color:var(--muted);font-size:.88rem;line-height:1.5;}
+  .withdrawal-inline-control{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;max-width:100%;overflow:hidden;}
+  .withdrawal-half-select{width:min(320px,100%);max-width:100%;flex:0 0 auto;}
+  .withdrawal-start-select{flex:0 0 40% !important;width:40% !important;max-width:420px !important;min-width:240px !important;}
+  .withdrawal-inline-value{width:auto;min-width:120px;flex:0 0 auto;}
+  .withdrawal-inline-value .agebox{width:96px !important;}
+  .withdrawal-inline-value input[readonly]{background:#f8fafc;color:#111827;}
   .crash-label-cell{text-align:center !important;padding-left:6px !important;}
   .fire-diagnosis-age-range{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
   .fire-diagnosis-age-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
@@ -1133,6 +1139,10 @@
 
   @media (max-width:900px){
     .withdrawal-compare-subcontrols{grid-template-columns:1fr;}
+    .withdrawal-inline-control{align-items:center;flex-direction:row;gap:8px;flex-wrap:nowrap;max-width:100%;overflow:hidden;}
+    .withdrawal-half-select{width:min(260px,68vw);max-width:68vw;}
+    .withdrawal-start-select{flex:0 0 40% !important;width:40% !important;max-width:320px !important;min-width:180px !important;}
+    .withdrawal-inline-value{width:auto;min-width:0;flex:0 0 auto;}
     .withdrawal-compare-table{min-width:720px;font-size:12px;}
     .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{width:220px;min-width:220px;}
     .withdrawal-param-case-table{min-width:420px;font-size:12px;}
@@ -1204,7 +1214,7 @@
         </div>
       </div>
       <div id="rightTopControls">
-        <button id="withdrawalRuleBtn" type="button" class="compact-btn">取り崩しルール</button>
+        <button id="withdrawalRuleBtn" type="button" class="compact-btn">取り崩し設定</button>
         <button id="crashTestBtn" type="button" class="compact-btn">暴落設定</button>
         <button id="fireDiagnosisBtn" type="button" class="compact-btn">FIRE診断</button>
         <div class="split-btn-group">
@@ -1327,6 +1337,17 @@
       <div class="modal-actions" style="margin-top:14px;">
         <button type="button" id="cancelLoanDetailBtn">キャンセル</button>
         <button type="button" id="saveLoanDetailBtn">この内容で反映</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loanDetailConflictModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="loanDetailConflictMessage">
+      <div id="loanDetailConflictMessage" class="modal-text">簡単設定の住宅ローン項目が、前回の詳細保存後に変更されています。どちらを基準に詳細設定を開きますか？</div>
+      <div class="modal-actions">
+        <button id="useStoredLoanDetailBtn" type="button">前回の詳細設定を使う</button>
+        <button id="rebuildLoanDetailFromSimpleBtn" type="button">現在の簡単設定から詳細を作り直す</button>
+        <button id="cancelLoanDetailConflictBtn" type="button">キャンセル</button>
       </div>
     </div>
   </div>
@@ -1552,15 +1573,17 @@
 
   <div id="withdrawalRuleModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-card withdrawal-rule-modal" role="dialog" aria-modal="true" aria-labelledby="withdrawalRuleTitle">
-      <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">取り崩しルール設定</div>
+      <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
         <div class="withdrawal-rule-note">※ 通常計算・モンテカルロの両方で使う取り崩しルールを設定します。年間収支計算 → 補填必要額算出 → 売却・補充ロジックの順に処理し、最後の取り崩し関数だけを切り替える設計です。</div>
         <div class="withdrawal-rule-section">
-          <div class="withdrawal-rule-section-title">ルール選択</div>
+          <div class="withdrawal-rule-section-title">設定内容</div>
           <div class="withdrawal-rule-fields">
             <div class="withdrawal-rule-field withdrawal-rule-field-wide">
               <label for="withdrawalRuleMode">取り崩しルール</label>
-              <select id="withdrawalRuleMode">
+              <select id="withdrawalRuleMode" class="withdrawal-half-select">
+                <option value="fixed_rate">定率取り崩し</option>
+                <option value="fixed_amount">定額取り崩し</option>
                 <option value="basic_annual">毎年分割取り崩し</option>
                 <option value="basic_lump">一括全額取り崩し</option>
                 <option value="basic_hybrid">一部一括＋残り分割</option>
@@ -1569,53 +1592,78 @@
                 <option value="bucket">バケツ戦略型</option>
               </select>
             </div>
-          </div>
-        </div>
-        <div id="withdrawalRuleBasicAnnualSection" class="withdrawal-rule-section">
-          <div class="withdrawal-rule-section-title">毎年分割取り崩し</div>
-          <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field"><label for="withdrawalBasicAnnualStartAge">開始年齢</label><div class="input-unit"><input id="withdrawalBasicAnnualStartAge" type="number" class="agebox" value="65" step="1" min="0"><span class="suffix">歳</span></div></div>
-            <div class="withdrawal-rule-field"><label for="withdrawalBasicAnnualPeriodYears">分割取り崩し年数</label><div class="input-unit"><input id="withdrawalBasicAnnualPeriodYears" type="number" class="agebox" value="25" step="1" min="0"><span class="suffix">年</span></div></div>
-            <input id="withdrawalBasicAnnualEndAge" type="hidden" value="90">
-            <input id="withdrawalBasicAnnualAmount" type="hidden" value="0">
-          </div>
-        </div>
-        <div id="withdrawalRuleBasicLumpSection" class="withdrawal-rule-section withdrawal-rule-hidden">
-          <div class="withdrawal-rule-section-title">一括全額取り崩し</div>
-          <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field"><label for="withdrawalBasicLumpAge">一括取り崩し年齢</label><div class="input-unit"><input id="withdrawalBasicLumpAge" type="number" class="agebox" value="65" step="1" min="0"><span class="suffix">歳</span></div></div>
-            <input id="withdrawalBasicLumpAmount" type="hidden" value="0">
-          </div>
-        </div>
-        <div id="withdrawalRuleBasicHybridSection" class="withdrawal-rule-section withdrawal-rule-hidden">
-          <div class="withdrawal-rule-section-title">一部一括＋残り分割</div>
-          <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field"><label for="withdrawalBasicHybridStartAge">開始年齢</label><div class="input-unit"><input id="withdrawalBasicHybridStartAge" type="number" class="agebox" value="65" step="1" min="0"><span class="suffix">歳</span></div></div>
-            <div class="withdrawal-rule-field"><label for="withdrawalBasicHybridLumpAmount">一括取り崩し額</label><div class="input-unit"><input id="withdrawalBasicHybridLumpAmount" type="number" class="moneybox" value="0" step="0.1" min="0"><span class="suffix">万円</span></div></div>
-            <div class="withdrawal-rule-field"><label for="withdrawalBasicHybridPeriodYears">分割取り崩し年数</label><div class="input-unit"><input id="withdrawalBasicHybridPeriodYears" type="number" class="agebox" value="20" step="1" min="0"><span class="suffix">年</span></div></div>
-            <input id="withdrawalBasicHybridAnnualAmount" type="hidden" value="0">
-          </div>
-        </div>
-        <div id="withdrawalRuleCurrentSection" class="withdrawal-rule-section withdrawal-rule-hidden">
-          <div class="withdrawal-rule-section-title">固定年数バッファ型</div>
-          <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field"><label for="withdrawalCurrentBufferYears">現金バッファ年数</label><div class="input-unit"><input id="withdrawalCurrentBufferYears" type="number" class="agebox" value="2" step="0.5" min="0"><span class="suffix">年分</span></div></div>
-          </div>
-        </div>
-        <div id="withdrawalRuleRebalanceSection" class="withdrawal-rule-section withdrawal-rule-hidden">
-          <div class="withdrawal-rule-section-title">目標配分リバランス型</div>
-          <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field"><label for="withdrawalRebalanceBufferYears">最低現金バッファ</label><div class="input-unit"><input id="withdrawalRebalanceBufferYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div></div>
-            <div class="withdrawal-rule-field"><label for="withdrawalRebalanceCashPct">目標現金比率</label><div class="input-unit"><input id="withdrawalRebalanceCashPct" type="number" class="ratebox" value="20" step="0.1" min="0"><span class="suffix">%</span></div></div>
-          </div>
-        </div>
-        <div id="withdrawalRuleBucketSection" class="withdrawal-rule-section withdrawal-rule-hidden">
-          <div class="withdrawal-rule-section-title">バケツ戦略型</div>
-          <div class="withdrawal-rule-fields">
-            <div class="withdrawal-rule-field"><label for="withdrawalBucketTargetYears">短期バケツ目標</label><div class="input-unit"><input id="withdrawalBucketTargetYears" type="number" class="agebox" value="2" step="0.5" min="0"><span class="suffix">年分</span></div></div>
-            <div class="withdrawal-rule-field"><label for="withdrawalBucketFloorYears">最低維持ライン</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div></div>
-            <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label class="inline-check"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 下落時の防御ルールを使う</label></div>
-            <div class="withdrawal-rule-field"><label for="withdrawalBucketDefenseThresholdPct">防御ルール発動ライン</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-15" step="0.1"><span class="suffix">%</span></div></div>
+            <div id="withdrawalStartConditionSection" class="withdrawal-rule-field withdrawal-rule-field-wide">
+              <label for="withdrawalStartConditionMode">取り崩し開始条件</label>
+              <div class="withdrawal-inline-control">
+                <select id="withdrawalStartConditionMode" class="withdrawal-start-select">
+                  <option value="retirement_age">リタイア年齢</option>
+                  <option value="cash_buffer_threshold">預貯金が生活費の指定年分以下</option>
+                  <option value="fixed_age">固定年齢</option>
+                </select>
+                <div class="input-unit withdrawal-inline-value">
+                  <input id="withdrawalStartConditionValue" type="text" class="agebox" value="">
+                  <span id="withdrawalStartConditionValueSuffix" class="suffix">歳</span>
+                </div>
+              </div>
+            </div>
+            <div id="withdrawalRuleFixedRateSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <label for="withdrawalFixedRatePct">年間取り崩し率</label><div class="input-unit"><input id="withdrawalFixedRatePct" type="number" class="ratebox" value="4" step="0.1" min="0"><span class="suffix">%</span></div>
+            </div>
+            <div id="withdrawalRuleFixedAmountSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <label for="withdrawalFixedAmountYearly">年間取り崩し額</label><div class="input-unit"><input id="withdrawalFixedAmountYearly" type="number" class="moneybox" value="300" step="0.1" min="0"><span class="suffix">万円 / 年</span></div>
+            </div>
+            <div id="withdrawalRuleBasicAnnualSection" class="withdrawal-rule-field">
+              <label for="withdrawalBasicAnnualPeriodYears">分割取り崩し年数</label><div class="input-unit"><input id="withdrawalBasicAnnualPeriodYears" type="number" class="agebox" value="25" step="1" min="0"><span class="suffix">年</span></div>
+              <input id="withdrawalBasicAnnualStartAge" type="hidden" value="65">
+              <input id="withdrawalBasicAnnualEndAge" type="hidden" value="90">
+              <input id="withdrawalBasicAnnualAmount" type="hidden" value="0">
+            </div>
+            <div id="withdrawalRuleBasicLumpSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <div class="withdrawal-rule-summary">開始条件を満たした最初の年の開始時点で、その時点の運用資産を全額取り崩します。</div>
+              <input id="withdrawalBasicLumpAge" type="hidden" value="65">
+              <input id="withdrawalBasicLumpAmount" type="hidden" value="0">
+            </div>
+            <div id="withdrawalRuleBasicHybridSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <label for="withdrawalBasicHybridLumpAmount">一括取り崩し額</label><div class="input-unit"><input id="withdrawalBasicHybridLumpAmount" type="number" class="moneybox" value="0" step="0.1" min="0"><span class="suffix">万円</span></div>
+              <label for="withdrawalBasicHybridPeriodYears" style="margin-top:8px;">分割取り崩し年数</label><div class="input-unit"><input id="withdrawalBasicHybridPeriodYears" type="number" class="agebox" value="20" step="1" min="0"><span class="suffix">年</span></div>
+              <input id="withdrawalBasicHybridStartAge" type="hidden" value="65">
+              <input id="withdrawalBasicHybridAnnualAmount" type="hidden" value="0">
+            </div>
+            <div id="withdrawalRuleCurrentSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <label for="withdrawalCurrentBufferYears">現金バッファ年数</label><div class="input-unit"><input id="withdrawalCurrentBufferYears" type="number" class="agebox" value="2" step="0.5" min="0"><span class="suffix">年分</span></div>
+            </div>
+            <div id="withdrawalRuleRebalanceSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <label for="withdrawalRebalanceBufferYears">最低現金バッファ</label><div class="input-unit"><input id="withdrawalRebalanceBufferYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label for="withdrawalRebalanceCashPct" style="margin-top:8px;">目標現金比率</label><div class="input-unit"><input id="withdrawalRebalanceCashPct" type="number" class="ratebox" value="20" step="0.1" min="0"><span class="suffix">%</span></div>
+            </div>
+            <div id="withdrawalRuleBucketSection" class="withdrawal-rule-field withdrawal-rule-hidden">
+              <label for="withdrawalBucketTargetYears">短期バケツ目標</label><div class="input-unit"><input id="withdrawalBucketTargetYears" type="number" class="agebox" value="2" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低維持ライン</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 下落時の防御ルールを使う</label>
+              <label for="withdrawalBucketDefenseThresholdPct" style="margin-top:8px;">防御ルール発動ライン</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-15" step="0.1"><span class="suffix">%</span></div>
+            </div>
+            <div class="withdrawal-rule-field withdrawal-rule-field-wide">
+              <label for="withdrawalOrderMode">売却順序</label>
+              <select id="withdrawalOrderMode" class="withdrawal-half-select">
+                <option value="auto">自動</option>
+                <option value="manual">手動</option>
+              </select>
+            </div>
+            <div id="withdrawalOrderAutoSection" class="withdrawal-rule-field withdrawal-rule-field-wide">
+              <div class="withdrawal-rule-summary">以下の順で売却します。<br>1. 課税<br>2. その他<br>3. NISA<br>4. DC系<br><span class="small muted">同一区分内では、含み益率が低いものを優先し、さらに残高が大きいものを優先します。</span></div>
+            </div>
+            <div id="withdrawalOrderManualSection" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden">
+              <div class="withdrawal-rule-note">現在の運用資産のみ対象です。上下ボタンで売却優先順を変更します。</div>
+              <div class="withdrawal-compare-table-wrap">
+                <table class="withdrawal-param-case-table">
+                  <thead><tr><th style="width:56px;min-width:56px;">順</th><th>資産</th><th style="width:96px;min-width:96px;">操作</th></tr></thead>
+                  <tbody id="withdrawalOrderManualBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <input id="withdrawalStartCashBufferYears" type="hidden" value="2">
+            <input id="withdrawalStartFixedAge" type="hidden" value="65">
+            <input id="withdrawalOrderManualJson" type="hidden" value="[]">
           </div>
         </div>
         <div class="withdrawal-rule-section">
@@ -1968,7 +2016,7 @@
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="sumInv">＋</button></div>
 
       <div class="stack-note">配当率は利回りの一部として扱います。課税口座の配当は簡易税率 20.315% で税引後に預貯金へ入金し、売却益などの運用益も同じ簡易税率で計算します。NISA等の非課税口座は非課税で扱います。配当は自動再投資しません。iDeCo・企業型DCの配当は口座外へ入金せず、制度内で内部成長として扱います。</div>
-      <div class="stack-note">取り崩し方法は上部の「取り崩しルール」設定に従います。</div>
+      <div class="stack-note">取り崩し方法は上部の「取り崩し設定」に従います。</div>
 
       <div class="subhead">DC加入歴設定</div>
       <table class="center-table income-table">
@@ -2127,6 +2175,8 @@
       <input id="homeDetailBaseYears" type="hidden" value="30">
       <input id="homeDetailMethod" type="hidden" value="元利均等返済">
       <input id="homeDetailPrepayJson" type="hidden" value="[]">
+      <input id="homeDetailSavedOnce" type="hidden" value="0">
+      <input id="homeSimpleEditedAfterDetailSave" type="hidden" value="0">
 
       <div class="subhead">持ち家維持費</div>
       <div class="help">持ち家維持費には、固定資産税・都市計画税、火災保険・地震保険、修繕・メンテナンス、管理費・修繕積立金など、住宅保有に伴う継続費を入力してください。</div>
@@ -3175,6 +3225,7 @@ const STANDARD_ACTION_MODAL_CONFIG = {
   pensionHelperModal: {primarySelector:'#savePensionHelperBtn', cancelSelector:'#cancelPensionHelperBtn'},
   insuranceAssistModal: {primarySelector:'#saveInsuranceAssistBtn', cancelSelector:'#cancelInsuranceAssistBtn'},
   loanDetailModal: {primarySelector:'#saveLoanDetailBtn', cancelSelector:'#cancelLoanDetailBtn'},
+  loanDetailConflictModal: {primarySelector:'#useStoredLoanDetailBtn', cancelSelector:'#cancelLoanDetailConflictBtn'},
   educationDetailModal: {primarySelector:'#saveEducationDetailBtn', cancelSelector:'#cancelEducationDetailBtn'},
   educationCopyModal: {primarySelector:'#confirmEducationCopyBtn', cancelSelector:'#cancelEducationCopyBtn'}
 };
@@ -3410,6 +3461,11 @@ function migrateLegacyData(data){
   if(data.homeDetailBaseYears == null || data.homeDetailBaseYears === "") data.homeDetailBaseYears = data.homeYears || 30;
   if(data.homeDetailMethod == null || data.homeDetailMethod === "") data.homeDetailMethod = "元利均等返済";
   if(data.homeDetailPrepayJson == null || data.homeDetailPrepayJson === "") data.homeDetailPrepayJson = "[]";
+  if(data.homeDetailSavedOnce == null){
+    const hasLegacySavedDetail = (Number(data.homeDetailLoanAmount) || 0) > 0 || String(data.homeDetailPrepayJson || "[]").trim() !== "[]";
+    data.homeDetailSavedOnce = hasLegacySavedDetail;
+  }
+  if(data.homeSimpleEditedAfterDetailSave == null) data.homeSimpleEditedAfterDetailSave = false;
   const legacySchoolMap = {"未就園児":"年少未満","年少":"年少相当","年中":"年中相当","年長":"年長相当","社会人":"卒業後"};
   const childCount = inferCount(data, "child");
   for(let i=1;i<=childCount;i++){
@@ -3578,7 +3634,8 @@ function renderInvestmentRows(data = {}){
     const ownerVal = escapeAttr(data[`inv${i}_owner`] ?? "本人");
     const accountTypeVal = escapeAttr(data[`inv${i}_accountType`] ?? "課税");
     const idecoCategoryVal = escapeAttr(data[`inv${i}_idecoCategory`] ?? "");
-    html += `<tr>${buildRowLabelCell("inv", i, data)}<td><select id="inv${i}_owner">${OWNER_OPTIONS.map(opt => `<option value="${escapeAttr(opt)}" ${ownerVal === escapeAttr(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select></td><td><select id="inv${i}_accountType">${ACCOUNT_TYPE_OPTIONS.map(opt => `<option value="${escapeAttr(opt)}" ${accountTypeVal === escapeAttr(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select></td><td><input id="inv${i}_cost" type="number" class="moneybox" value="${costVal}"></td><td><input id="inv${i}_amount" type="number" class="moneybox" value="${amountVal}"></td><td><select id="inv${i}_cur"><option ${curVal === "万円" ? "selected" : ""}>万円</option><option ${curVal === "ドル" ? "selected" : ""}>ドル</option></select></td><td><div class="input-unit center"><input id="inv${i}_rate" type="number" class="ratebox" step="0.1" value="${rateVal}"><span class="suffix">%</span></div></td><td><div class="input-unit center"><input id="inv${i}_dividendRate" type="number" class="ratebox" step="0.1" value="${dividendRateVal}"><span class="suffix">%</span></div></td><td><select id="inv${i}_idecoCategory">${getIdecoCategoryOptionsHtml(idecoCategoryVal)}</select></td></tr>`;
+    const rowIdVal = escapeAttr(data[`inv${i}_rowId`] ?? `inv_row_${i}`);
+    html += `<tr>${buildRowLabelCell("inv", i, data)}<td><input id="inv${i}_rowId" type="hidden" value="${rowIdVal}"><select id="inv${i}_owner">${OWNER_OPTIONS.map(opt => `<option value="${escapeAttr(opt)}" ${ownerVal === escapeAttr(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select></td><td><select id="inv${i}_accountType">${ACCOUNT_TYPE_OPTIONS.map(opt => `<option value="${escapeAttr(opt)}" ${accountTypeVal === escapeAttr(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select></td><td><input id="inv${i}_cost" type="number" class="moneybox" value="${costVal}"></td><td><input id="inv${i}_amount" type="number" class="moneybox" value="${amountVal}"></td><td><select id="inv${i}_cur"><option ${curVal === "万円" ? "selected" : ""}>万円</option><option ${curVal === "ドル" ? "selected" : ""}>ドル</option></select></td><td><div class="input-unit center"><input id="inv${i}_rate" type="number" class="ratebox" step="0.1" value="${rateVal}"><span class="suffix">%</span></div></td><td><div class="input-unit center"><input id="inv${i}_dividendRate" type="number" class="ratebox" step="0.1" value="${dividendRateVal}"><span class="suffix">%</span></div></td><td><select id="inv${i}_idecoCategory">${getIdecoCategoryOptionsHtml(idecoCategoryVal)}</select></td></tr>`;
   }
   body.innerHTML = html;
 }
@@ -4392,7 +4449,8 @@ function formatNumericInputDisplay(el, finalize = false){
   const start = typeof el.selectionStart === "number" ? el.selectionStart : valueBefore.length;
   const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
   const shouldPreserveFullSelection = shouldForceFullSelectionForInput(el);
-  const hadFullSelection = shouldPreserveFullSelection || (wasActive && start === 0 && end === valueBefore.length && valueBefore.length > 0);
+  const shouldSuppressFullSelectionFallback = !finalize && isLoanTabSelectSensitiveInput(el);
+  const hadFullSelection = shouldPreserveFullSelection || (!shouldSuppressFullSelectionFallback && wasActive && start === 0 && end === valueBefore.length && valueBefore.length > 0);
   const rawIndex = getNumericRawIndex(el.value, start);
   const formatted = formatNumericText(el.value, finalize, {useGrouping: shouldUseGroupingForInput(el)});
   el.value = formatted;
@@ -4453,6 +4511,7 @@ function enhanceNumericInputs(root = document){
     });
     el.addEventListener("input", ()=>{
       activeNumericInput = el;
+      if(shouldDeferLiveNumericFormatting(el)) return;
       formatNumericInputDisplay(el, false);
     });
     el.addEventListener("blur", ()=>{
@@ -4996,7 +5055,9 @@ function selectAllIfActive(el){
 function scheduleSelectAllForElement(el, opts = {}){
   if(!shouldSelectAllOnTabFocus(el)) return;
   clearSelectAllRetryTimers(el);
-  if(opts.lock !== false) lockFullSelection(el, opts.lockDurationMs || 700);
+  const isSensitive = isLoanTabSelectSensitiveInput(el);
+  const useLock = !isSensitive && opts.lock !== false;
+  if(useLock) lockFullSelection(el, opts.lockDurationMs || 700);
   const timers = [];
   const run = ()=>{
     if(!selectAllIfActive(el)) clearSelectAllRetryTimers(el);
@@ -5004,11 +5065,13 @@ function scheduleSelectAllForElement(el, opts = {}){
   requestAnimationFrame(()=>{
     requestAnimationFrame(run);
   });
-  [0, 24, 80, 160, 280, 420, 620].forEach(delay=>{
-    const id = setTimeout(run, delay);
-    timers.push(id);
-  });
-  selectAllRetryTimers.set(el, timers);
+  if(!isSensitive){
+    [0, 24, 80, 160, 280, 420, 620].forEach(delay=>{
+      const id = setTimeout(run, delay);
+      timers.push(id);
+    });
+    selectAllRetryTimers.set(el, timers);
+  }
 }
 function isVisibleForTab(el){
   if(!el || !el.getClientRects || !el.getClientRects().length) return false;
@@ -5017,7 +5080,7 @@ function isVisibleForTab(el){
 }
 function isInsideHiddenLayer(el){
   if(!el || !el.closest) return false;
-  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]');
+  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]');
 }
 function isTabNavigableElement(el){
   if(!el || !el.matches) return false;
@@ -5032,8 +5095,20 @@ function shouldSelectAllOnTabFocus(el){
   if(el.disabled || el.readOnly) return false;
   return el.matches('input[type="text"], input[type="search"], input[type="url"], input[type="tel"], input[type="email"], input[type="number"], input[data-numeric-ready="1"], textarea');
 }
+function isLoanTabSelectSensitiveInput(el){
+  if(!(el instanceof HTMLInputElement)) return false;
+  return [
+    'homeDown','homePayMonth','homeYears',
+    'loanDetailDown','loanDetailLoanAmountInput','loanDetailRateInput','loanDetailYears'
+  ].includes(el.id);
+}
+function shouldDeferLiveNumericFormatting(el){
+  if(!(el instanceof HTMLInputElement)) return false;
+  if(el.id === "fixedScaleMin" || el.id === "fixedScaleMax") return false;
+  return !!el.closest("#simpleModePanel, #loanDetailModal, #loanDetailConflictModal, #incomeCurveModal, #pensionHelperModal, #educationDetailModal, #educationCopyModal, #insuranceAssistModal, #withdrawalRuleModal, #crashTestModal, #fireDiagnosisModal, #monteCarloSettingsModal");
+}
 function getOpenModal(){
-  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #loanDetailModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show');
+  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #loanDetailModal.show, #loanDetailConflictModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show');
 }
 function getTabScopeRoot(){
   return getOpenModal() || document.body;
@@ -5060,7 +5135,7 @@ function collectTableFocusables(table){
 function collectFocusableFlow(node, scopeRoot, out, seen){
   if(!node || node.nodeType !== 1 || seen.has(node)) return;
   if(node !== scopeRoot && node.matches){
-    if(node.matches('#tabContextMenu, #rowContextMenu, #loanDetailModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]')) return;
+    if(node.matches('#tabContextMenu, #rowContextMenu, #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]')) return;
   }
 
   if(node !== scopeRoot && isTabNavigableElement(node)){
@@ -5245,7 +5320,7 @@ function getAllInputs(){
   const baseYear = currentBaseYearValue();
   document.querySelectorAll("input, select").forEach(el=>{
     if(!el.id) return;
-    if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal"))) return;
+    if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal"))) return;
     if(el.type === "checkbox"){
       data[el.id] = el.checked;
       return;
@@ -5309,9 +5384,6 @@ function setAllInputs(data){
   syncSimpleInflationCheckboxesFromRate();
   applySimpleLinkedHighlights();
   seedLoanDetailHiddenFromSimpleIfNeeded();
-  if(document.getElementById("homeDetailOn")?.checked){
-    syncSimpleLoanInputsFromStoredDetailFields();
-  }
   updateHomeDetailUIState();
   updateLoanSummary();
   updateWithdrawalRuleModalUI();
@@ -5359,6 +5431,14 @@ function calcLevelPayment(principal, monthlyRate, months){
   const f = Math.pow(1 + monthlyRate, n);
   return p * monthlyRate * f / (f - 1);
 }
+function calcPrincipalFromLevelPayment(payment, monthlyRate, months){
+  const pay = Math.max(0, Number(payment) || 0);
+  const n = Math.max(0, Math.round(Number(months) || 0));
+  if(pay <= 0 || n <= 0) return 0;
+  if(monthlyRate <= 0) return pay * n;
+  const f = Math.pow(1 + monthlyRate, n);
+  return pay * (f - 1) / (monthlyRate * f);
+}
 function calcMonthsForLevelPayment(principal, monthlyRate, payment){
   const p = Math.max(0, Number(principal) || 0);
   const pay = Math.max(0, Number(payment) || 0);
@@ -5372,6 +5452,34 @@ function getStoredLoanDetailBuyAge(){
   if(hidden && hidden.value !== "") return Number(hidden.value) || 0;
   const storedYm = getStoredLoanDetailBuyYearMonth();
   return calcAgeAtYearMonth(document.getElementById('selfBirthDate')?.value || '', storedYm.year, storedYm.month) || numInput("homeAge", 0);
+}
+function hasLoanDetailSavedOnce(){
+  return String(document.getElementById("homeDetailSavedOnce")?.value || "0") === "1";
+}
+function setLoanDetailSavedOnce(saved){
+  const el = document.getElementById("homeDetailSavedOnce");
+  if(el) el.value = saved ? "1" : "0";
+}
+function isHomeSimpleEditedAfterDetailSave(){
+  return String(document.getElementById("homeSimpleEditedAfterDetailSave")?.value || "0") === "1";
+}
+function setHomeSimpleEditedAfterDetailSave(edited){
+  const el = document.getElementById("homeSimpleEditedAfterDetailSave");
+  if(el) el.value = edited ? "1" : "0";
+}
+let suspendHomeSimpleEditTracking = 0;
+function withHomeSimpleEditTrackingSuspended(fn){
+  suspendHomeSimpleEditTracking += 1;
+  try{
+    return fn ? fn() : undefined;
+  }finally{
+    suspendHomeSimpleEditTracking = Math.max(0, suspendHomeSimpleEditTracking - 1);
+  }
+}
+function markHomeSimpleEditedAfterDetailSave(){
+  if(suspendHomeSimpleEditTracking > 0) return;
+  if(!hasLoanDetailSavedOnce()) return;
+  setHomeSimpleEditedAfterDetailSave(true);
 }
 function getStoredLoanDetailDown(){
   const hidden = document.getElementById("homeDetailDown");
@@ -5434,6 +5542,30 @@ function buildLoanDetailFromHiddenFields(){
     prepayPlans: normalizeLoanPrepayPlans(parseLoanPrepayJson(document.getElementById("homeDetailPrepayJson")?.value || "[]"))
   };
 }
+function buildLoanDetailFromSimpleInputs(){
+  const buyYm = getSimpleLoanBuyYearMonth();
+  const buyAge = calcAgeAtYearMonth(document.getElementById('selfBirthDate')?.value || '', buyYm.year, buyYm.month) || numInput("homeAge", 0) || 40;
+  const down = Math.max(0, numInput("homeDown", 0) || 0);
+  const baseYears = Math.max(0, numInput("homeYears", 0) || 0);
+  const ratePct = 1.2;
+  const method = "元利均等返済";
+  const monthlyPayment = Math.max(0, numInput("homePayMonth", 0) || 0);
+  const loanAmount = baseYears > 0 && monthlyPayment > 0
+    ? Math.round(Math.max(0, calcPrincipalFromLevelPayment(monthlyPayment, ratePct / 100 / 12, Math.round(baseYears * 12))) * 10) / 10
+    : 0;
+  return {
+    enabled: !!document.getElementById("homeDetailOn")?.checked,
+    buyAge,
+    buyYear: buyYm.year,
+    buyMonth: buyYm.month,
+    down,
+    loanAmount,
+    ratePct,
+    baseYears,
+    method,
+    prepayPlans:[]
+  };
+}
 function captureSimpleLoanInputs(){
   return {
     homeAge: document.getElementById("homeAge")?.value ?? "",
@@ -5456,6 +5588,7 @@ function restoreSimpleLoanInputs(snapshot){
   });
 }
 function seedLoanDetailHiddenFromSimpleIfNeeded(force = false){
+  if(force && hasLoanDetailSavedOnce()) return;
   const ageHidden = document.getElementById("homeDetailBuyAge");
   const yearHidden = document.getElementById("homeDetailBuyYear");
   const monthHidden = document.getElementById("homeDetailBuyMonth");
@@ -5468,19 +5601,11 @@ function seedLoanDetailHiddenFromSimpleIfNeeded(force = false){
   if(downHidden && (force || downHidden.value === "")) downHidden.value = String(numInput("homeDown", 0) || 0);
 }
 function buildLoanDetailFromDOM(){
-  const buyYm = getStoredLoanDetailBuyYearMonth();
-  return {
-    enabled: !!document.getElementById("homeDetailOn")?.checked,
-    buyAge: getStoredLoanDetailBuyAge(),
-    buyYear: buyYm.year,
-    buyMonth: buyYm.month,
-    down: getStoredLoanDetailDown(),
-    loanAmount: numInput("homeDetailLoanAmount", 0),
-    ratePct: numInput("homeDetailRate", 0),
-    baseYears: numInput("homeDetailBaseYears", 0),
-    method: document.getElementById("homeDetailMethod")?.value || "元利均等返済",
-    prepayPlans: normalizeLoanPrepayPlans(parseLoanPrepayJson(document.getElementById("homeDetailPrepayJson")?.value || "[]"))
-  };
+  const useSimpleDraft = hasLoanDetailSavedOnce() && isHomeSimpleEditedAfterDetailSave() && !document.getElementById("homeDetailOn")?.checked;
+  if(useSimpleDraft) return buildLoanDetailFromSimpleInputs();
+  const stored = buildLoanDetailFromHiddenFields();
+  if(stored.enabled && !hasLoanDetailSavedOnce()) return buildLoanDetailFromSimpleInputs();
+  return stored;
 }
 function buildLoanDetailFromConfig(home){
   const buyYm = home?.detail?.buyYear && home?.detail?.buyMonth
@@ -5686,18 +5811,20 @@ function formatLoanMonthDelta(months){
 function syncSimpleLoanInputsFromStoredDetailFields(){
   const detail = buildLoanDetailFromHiddenFields();
   detail.enabled = true;
-  const ok = syncSimpleLoanInputsFromDetail(detail);
+  const ok = withHomeSimpleEditTrackingSuspended(()=>syncSimpleLoanInputsFromDetail(detail));
   const currentAge = numInput("age", 0);
   const sim = simulateLoanDetail(detail);
   const buyYear = Number(detail.buyYear) || deriveLoanBuyYearMonthFromAge(Number(detail.buyAge) || 0).year;
   const buyMonth = Number(detail.buyMonth) || deriveLoanBuyYearMonthFromAge(Number(detail.buyAge) || 0).month;
-  syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:buyYear, homeBuyMonth:buyMonth, homeAge:detail.buyAge});
-  document.getElementById('homeBuyYear').value = String(buyYear || '');
-  document.getElementById('homeBuyMonth').value = String(buyMonth || 1);
-  syncLoanBuyFieldsFromYearMonth();
-  setNumericInputValue("homeDown", Number(detail.down) || 0);
-  setNumericInputValue("homePayMonth", Number(sim.valid ? getLoanDisplayPayment(sim, currentAge, detail.buyAge) : 0) || 0);
-  setNumericInputValue("homeYears", Number(sim.valid ? (sim.actualYears || detail.baseYears) : detail.baseYears) || 0);
+  withHomeSimpleEditTrackingSuspended(()=>{
+    syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:buyYear, homeBuyMonth:buyMonth, homeAge:detail.buyAge});
+    document.getElementById('homeBuyYear').value = String(buyYear || '');
+    document.getElementById('homeBuyMonth').value = String(buyMonth || 1);
+    syncLoanBuyFieldsFromYearMonth();
+    setNumericInputValue("homeDown", Number(detail.down) || 0);
+    setNumericInputValue("homePayMonth", Number(sim.valid ? getLoanDisplayPayment(sim, currentAge, detail.buyAge) : 0) || 0);
+    setNumericInputValue("homeYears", Number(detail.baseYears || 0));
+  });
   return ok;
 }
 function syncSimpleLoanInputsFromDetail(detailOverride = null){
@@ -5709,15 +5836,17 @@ function syncSimpleLoanInputsFromDetail(detailOverride = null){
   const buyMonthValue = Number(detail.buyMonth) || deriveLoanBuyYearMonthFromAge(Number(detail.buyAge) || 0).month;
   const ageValue = Math.round((Number(detail.buyAge) || 0) * 10) / 10;
   const downValue = Math.round((Number(detail.down) || 0) * 10) / 10;
-  const baseYearsValue = Math.round((Number(sim.valid ? (sim.actualYears || detail.baseYears) : detail.baseYears) || 0) * 10) / 10;
+  const baseYearsValue = Math.round((Number(detail.baseYears) || 0) * 10) / 10;
   const payValue = Math.round((Number(sim.valid ? getLoanDisplayPayment(sim, currentAge, detail.buyAge) : 0) || 0) * 10) / 10;
-  syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:buyYearValue, homeBuyMonth:buyMonthValue, homeAge:ageValue});
-  document.getElementById('homeBuyYear').value = String(buyYearValue || '');
-  document.getElementById('homeBuyMonth').value = String(buyMonthValue || 1);
-  syncLoanBuyFieldsFromYearMonth();
-  setNumericInputValue("homeDown", downValue);
-  setNumericInputValue("homePayMonth", payValue);
-  setNumericInputValue("homeYears", baseYearsValue);
+  withHomeSimpleEditTrackingSuspended(()=>{
+    syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:buyYearValue, homeBuyMonth:buyMonthValue, homeAge:ageValue});
+    document.getElementById('homeBuyYear').value = String(buyYearValue || '');
+    document.getElementById('homeBuyMonth').value = String(buyMonthValue || 1);
+    syncLoanBuyFieldsFromYearMonth();
+    setNumericInputValue("homeDown", downValue);
+    setNumericInputValue("homePayMonth", payValue);
+    setNumericInputValue("homeYears", baseYearsValue);
+  });
   const hiddenAge = document.getElementById("homeDetailBuyAge");
   const hiddenYear = document.getElementById("homeDetailBuyYear");
   const hiddenMonth = document.getElementById("homeDetailBuyMonth");
@@ -6532,7 +6661,7 @@ function writeSimpleModeValuesToDetail(simpleValues, changedKey = null){
   applySimpleLinkedHighlights();
   syncSimpleModeFromDetail();
 }
-function handleSimpleModeFieldInput(key, rawValue){
+function applySimpleModeFieldValue(key, rawValue, commit = false){
   const def = getSimpleModeFieldDef(key);
   if(!def) return;
   if(isSimpleModeFieldCustomLocked(key)){
@@ -6546,12 +6675,19 @@ function handleSimpleModeFieldInput(key, rawValue){
   const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
   const clamped = clampSimpleModeValue(normalizedRaw, dynamicDef);
   setSimpleModeFieldUIValue(key, clamped);
+  if(!commit) return;
   const values = collectSimpleModeValuesFromUI();
   writeSimpleModeValuesToDetail(values, key);
   monteMode = false;
   syncCurrentScenarioFromDOM(false);
   requestDraw();
   persistState();
+}
+function handleSimpleModeFieldInput(key, rawValue){
+  applySimpleModeFieldValue(key, rawValue, true);
+}
+function previewSimpleModeFieldInput(key, rawValue){
+  applySimpleModeFieldValue(key, rawValue, false);
 }
 function clearSimpleLinkedHighlights(){
   document.querySelectorAll('.simple-linked-row').forEach(el=>el.classList.remove('simple-linked-row'));
@@ -7096,6 +7232,7 @@ function getScenarioFromDOM(){
   for(let i=1;i<=dynamicCounts.inv;i++){
     const accountType = document.getElementById(`inv${i}_accountType`)?.value || "課税";
     investments.push({
+      rowId:document.getElementById(`inv${i}_rowId`)?.value || `inv_row_${i}`,
       name:document.getElementById(`inv${i}_name`)?.value || `運用${i}`,
       amount:toManYen(document.getElementById(`inv${i}_amount`).value, document.getElementById(`inv${i}_cur`).value, usdRate),
       cost:toManYen(document.getElementById(`inv${i}_cost`).value, document.getElementById(`inv${i}_cur`).value, usdRate),
@@ -7178,6 +7315,11 @@ function getScenarioFromDOM(){
     },
     withdrawalPolicy:{
       mode:document.getElementById("withdrawalRuleMode")?.value || "basic_annual",
+      startConditionMode:document.getElementById("withdrawalStartConditionMode")?.value || "retirement_age",
+      startCashBufferYears:Math.max(0, numInput("withdrawalStartCashBufferYears", 2) || 0),
+      startFixedAge:Math.max(0, numInput("withdrawalStartFixedAge", 65) || 0),
+      fixedRatePct:Math.max(0, numInput("withdrawalFixedRatePct", 4) || 0) / 100,
+      fixedAmountYearly:Math.max(0, numInput("withdrawalFixedAmountYearly", 300) || 0),
       basicAnnualStartAge:Math.max(0, numInput("withdrawalBasicAnnualStartAge", 65) || 0),
       basicAnnualPeriodYears:Math.max(0, numInput("withdrawalBasicAnnualPeriodYears", 25) || 0),
       basicAnnualEndAge:Math.max(0, numInput("withdrawalBasicAnnualEndAge", 90) || 0),
@@ -7194,7 +7336,9 @@ function getScenarioFromDOM(){
       bucketTargetYears:Math.max(0, numInput("withdrawalBucketTargetYears", 2) || 0),
       bucketFloorYears:Math.max(0, numInput("withdrawalBucketFloorYears", 1) || 0),
       bucketDefenseOn:!!document.getElementById("withdrawalBucketDefenseOn")?.checked,
-      bucketDefenseThreshold:((numInput("withdrawalBucketDefenseThresholdPct", -15) || 0) / 100)
+      bucketDefenseThreshold:((numInput("withdrawalBucketDefenseThresholdPct", -15) || 0) / 100),
+      orderMode:document.getElementById("withdrawalOrderMode")?.value || "auto",
+      orderManualJson:document.getElementById("withdrawalOrderManualJson")?.value || "[]"
     },
     monteCarlo:getMonteCarloSettingsFromDOM(),
     crashTests:getCrashTestsFromDOM(),
@@ -7313,26 +7457,30 @@ function getScenarioFromDOM(){
     lifeRows:rangeRows("life"),
     periodRows:rangeRows("period"),
     extraRows:pointRows("extra"),
-    home:{
-      age:(!!document.getElementById("homeDetailOn")?.checked ? getStoredLoanDetailBuyAge() : numInput("homeAge", 0)),
-      buyYear:(!!document.getElementById("homeDetailOn")?.checked ? getStoredLoanDetailBuyYearMonth().year : Number(document.getElementById("homeBuyYear")?.value || 0)),
-      buyMonth:(!!document.getElementById("homeDetailOn")?.checked ? getStoredLoanDetailBuyYearMonth().month : Number(document.getElementById("homeBuyMonth")?.value || 1)),
-      down:(!!document.getElementById("homeDetailOn")?.checked ? getStoredLoanDetailDown() : numInput("homeDown", 0)),
+    home:(()=>{
+      const effectiveLoanDetail = buildLoanDetailFromDOM();
+      const useDetailForCalc = !!document.getElementById("homeDetailOn")?.checked || (hasLoanDetailSavedOnce() && !isHomeSimpleEditedAfterDetailSave());
+      return {
+      age:(useDetailForCalc ? effectiveLoanDetail.buyAge : numInput("homeAge", 0)),
+      buyYear:(useDetailForCalc ? effectiveLoanDetail.buyYear : Number(document.getElementById("homeBuyYear")?.value || 0)),
+      buyMonth:(useDetailForCalc ? effectiveLoanDetail.buyMonth : Number(document.getElementById("homeBuyMonth")?.value || 1)),
+      down:(useDetailForCalc ? effectiveLoanDetail.down : numInput("homeDown", 0)),
       payMonth:numInput("homePayMonth", 0),
       years:numInput("homeYears", 0),
       detail:{
-        enabled: !!document.getElementById("homeDetailOn")?.checked,
-        buyAge:getStoredLoanDetailBuyAge(),
-        buyYear:getStoredLoanDetailBuyYearMonth().year,
-        buyMonth:getStoredLoanDetailBuyYearMonth().month,
-        down:getStoredLoanDetailDown(),
-        loanAmount:numInput("homeDetailLoanAmount", 0),
-        ratePct:numInput("homeDetailRate", 0),
-        baseYears:numInput("homeDetailBaseYears", 0),
-        method:document.getElementById("homeDetailMethod")?.value || "元利均等返済",
-        prepayPlans: normalizeLoanPrepayPlans(parseLoanPrepayJson(document.getElementById("homeDetailPrepayJson")?.value || "[]"))
+        enabled: useDetailForCalc,
+        buyAge:effectiveLoanDetail.buyAge,
+        buyYear:effectiveLoanDetail.buyYear,
+        buyMonth:effectiveLoanDetail.buyMonth,
+        down:effectiveLoanDetail.down,
+        loanAmount:effectiveLoanDetail.loanAmount,
+        ratePct:effectiveLoanDetail.ratePct,
+        baseYears:effectiveLoanDetail.baseYears,
+        method:effectiveLoanDetail.method,
+        prepayPlans: normalizeLoanPrepayPlans(effectiveLoanDetail.prepayPlans || [])
       }
-    }
+    };
+    })()
   };
 }
 
@@ -9433,14 +9581,96 @@ function buildCrashTestLabelCell(row, index){
   const html = buildRowLabelCell("crashTest", index + 1, data);
   return html.replace('<td>', '<td class="crash-label-cell">');
 }
+function buildCrashTimingOptionLabel(type, value){
+  if(type === "after_retire") return 'リタイア後';
+  return '固定';
+}
 function buildCrashTimingCell(row){
-  const timingTypeOptions = `<option value="fixed" ${row.timingType === "fixed" ? "selected" : ""}>固定</option><option value="after_retire" ${row.timingType === "after_retire" ? "selected" : ""}>リタイア後</option>`;
   const unit = row.timingType === "after_retire" ? '年' : '歳';
   const fixedValue = Math.round(Number(row.fixedTimingValue != null ? row.fixedTimingValue : getDefaultCrashTestAge()) || getDefaultCrashTestAge());
   const afterValue = Math.round(Number(row.afterRetireTimingValue != null ? row.afterRetireTimingValue : 0) || 0);
+  const fixedLabel = buildCrashTimingOptionLabel('fixed', fixedValue);
+  const afterLabel = buildCrashTimingOptionLabel('after_retire', afterValue);
+  const timingTypeOptions = `<option value="fixed" ${row.timingType === "fixed" ? "selected" : ""}>${fixedLabel}</option><option value="after_retire" ${row.timingType === "after_retire" ? "selected" : ""}>${afterLabel}</option>`;
   const currentValue = row.timingType === "after_retire" ? afterValue : fixedValue;
-  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}" data-fixed-value="${fixedValue}" data-after-value="${afterValue}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1"><span class="suffix crash-timing-unit">${unit}</span></div>`;
+  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1"><span class="suffix crash-timing-unit">${unit}</span><input type="hidden" data-crash-field="fixedTimingValue" value="${fixedValue}"><input type="hidden" data-crash-field="afterRetireTimingValue" value="${afterValue}"></div>`;
 }
+function getCrashTestDraftRowState(rowIndex){
+  return normalizeCrashTestRow(crashTestDraft[rowIndex] || buildDefaultCrashTestRow(rowIndex), rowIndex);
+}
+function updateCrashTimingOptionLabels(rowEl, rowData){
+  if(!rowEl) return;
+  const select = rowEl.querySelector('[data-crash-field="timingType"]');
+  if(!select) return;
+  const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
+  const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+  const rowIndex = Math.max(0, (Number(rowEl.dataset.crashTestRow) || 1) - 1);
+  const fallback = normalizeCrashTestRow(rowData || getCrashTestDraftRowState(rowIndex), rowIndex);
+  const fixedValue = clampCrashTestTimingValue(fixedHidden?.value, 'fixed', fallback.fixedTimingValue);
+  const afterValue = clampCrashTestTimingValue(afterHidden?.value, 'after_retire', fallback.afterRetireTimingValue);
+  const fixedOpt = select.querySelector('option[value="fixed"]');
+  const afterOpt = select.querySelector('option[value="after_retire"]');
+  if(fixedOpt) fixedOpt.textContent = buildCrashTimingOptionLabel('fixed', fixedValue);
+  if(afterOpt) afterOpt.textContent = buildCrashTimingOptionLabel('after_retire', afterValue);
+}
+
+function applyCrashTimingRowState(rowEl, rowData){
+  if(!rowEl) return;
+  const rowIndex = Math.max(0, (Number(rowEl.dataset.crashTestRow) || 1) - 1);
+  const row = normalizeCrashTestRow(rowData || getCrashTestDraftRowState(rowIndex), rowIndex);
+  const wrap = rowEl.querySelector('.crash-timing-wrap');
+  const select = rowEl.querySelector('[data-crash-field="timingType"]');
+  const input = rowEl.querySelector('[data-crash-field="timingValue"]');
+  const unitEl = rowEl.querySelector('.crash-timing-unit');
+  const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
+  const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+  if(wrap) wrap.dataset.currentType = row.timingType;
+  if(select) select.value = row.timingType;
+  if(fixedHidden) fixedHidden.value = String(row.fixedTimingValue);
+  if(afterHidden) afterHidden.value = String(row.afterRetireTimingValue);
+  const currentValue = row.timingType === 'after_retire' ? row.afterRetireTimingValue : row.fixedTimingValue;
+  if(input){
+    input.value = String(currentValue);
+    input.setAttribute('value', String(currentValue));
+  }
+  if(unitEl) unitEl.textContent = row.timingType === 'after_retire' ? '年' : '歳';
+  updateCrashTimingOptionLabels(rowEl, row);
+}
+
+function updateCrashTestDraftRowFromDOM(rowEl){
+  if(!rowEl) return null;
+  const rowIndex = Math.max(0, (Number(rowEl.dataset.crashTestRow) || 1) - 1);
+  const current = getCrashTestDraftRowState(rowIndex);
+  const wrap = rowEl.querySelector('.crash-timing-wrap');
+  const timingType = normalizeCrashTestTimingType(rowEl.querySelector('[data-crash-field="timingType"]')?.value || wrap?.dataset.currentType || current.timingType);
+  const timingInput = rowEl.querySelector('[data-crash-field="timingValue"]');
+  const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
+  const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+  const fixedTimingValue = clampCrashTestTimingValue(fixedHidden?.value, 'fixed', current.fixedTimingValue);
+  const afterRetireTimingValue = clampCrashTestTimingValue(afterHidden?.value, 'after_retire', current.afterRetireTimingValue);
+  const visibleValue = clampCrashTestTimingValue(
+    timingInput?.value,
+    timingType,
+    timingType === 'after_retire' ? afterRetireTimingValue : fixedTimingValue
+  );
+  const next = normalizeCrashTestRow({
+    ...current,
+    name: rowEl.querySelector(`#crashTest${rowIndex + 1}_name`)?.value,
+    custom: rowEl.querySelector(`#crashTest${rowIndex + 1}_custom`)?.value,
+    enabled: !!rowEl.querySelector('[data-crash-field="enabled"]')?.checked,
+    preset: rowEl.querySelector('[data-crash-field="preset"]')?.value,
+    timingType,
+    fixedTimingValue,
+    afterRetireTimingValue,
+    timingValue: visibleValue,
+    dropPct: rowEl.querySelector('[data-crash-field="dropPct"]')?.value,
+    recoveryYears: rowEl.querySelector('[data-crash-field="recoveryYears"]')?.value
+  }, rowIndex);
+  crashTestDraft[rowIndex] = next;
+  updateCrashTimingOptionLabels(rowEl, next);
+  return next;
+}
+
 function renderCrashTestRows(){
   const body = document.getElementById("crashTestRowsBody");
   if(!body) return;
@@ -9462,40 +9692,39 @@ function renderCrashTestRows(){
 function syncCrashTestDraftFromModal(){
   const rows = [];
   document.querySelectorAll("#crashTestRowsBody tr[data-crash-test-row]").forEach((tr, idx)=>{
+    const current = getCrashTestDraftRowState(idx);
     const wrap = tr.querySelector('.crash-timing-wrap');
-    const timingType = normalizeCrashTestTimingType(tr.querySelector('[data-crash-field="timingType"]')?.value);
+    const timingType = normalizeCrashTestTimingType(tr.querySelector('[data-crash-field="timingType"]')?.value || wrap?.dataset.currentType || current.timingType);
     const timingInput = tr.querySelector('[data-crash-field="timingValue"]');
-    const timingValueRaw = timingInput?.value;
-    let fixedTimingValue = wrap?.dataset?.fixedValue;
-    let afterRetireTimingValue = wrap?.dataset?.afterValue;
-    if(timingType === 'after_retire'){
-      afterRetireTimingValue = String(clampCrashTestTimingValue(timingValueRaw, 'after_retire', 0));
-      if(wrap) wrap.dataset.afterValue = afterRetireTimingValue;
-    }else{
-      fixedTimingValue = String(clampCrashTestTimingValue(timingValueRaw, 'fixed', getDefaultCrashTestAge()));
-      if(wrap) wrap.dataset.fixedValue = fixedTimingValue;
-    }
-    const timingValue = timingType === 'after_retire' ? afterRetireTimingValue : fixedTimingValue;
-    if(timingInput){
-      timingInput.setAttribute('value', String(timingValue));
-    }
-    rows.push(normalizeCrashTestRow({
+    const fixedHidden = tr.querySelector('[data-crash-field="fixedTimingValue"]');
+    const afterHidden = tr.querySelector('[data-crash-field="afterRetireTimingValue"]');
+    const fixedTimingValue = clampCrashTestTimingValue(fixedHidden?.value, 'fixed', current.fixedTimingValue);
+    const afterRetireTimingValue = clampCrashTestTimingValue(afterHidden?.value, 'after_retire', current.afterRetireTimingValue);
+    const visibleValue = clampCrashTestTimingValue(
+      timingInput?.value,
+      timingType,
+      timingType === 'after_retire' ? afterRetireTimingValue : fixedTimingValue
+    );
+    const row = normalizeCrashTestRow({
+      ...current,
       name: tr.querySelector(`#crashTest${idx + 1}_name`)?.value,
       custom: tr.querySelector(`#crashTest${idx + 1}_custom`)?.value,
       enabled: !!tr.querySelector('[data-crash-field="enabled"]')?.checked,
       preset: tr.querySelector('[data-crash-field="preset"]')?.value,
       timingType,
-      timingValue,
       fixedTimingValue,
       afterRetireTimingValue,
+      timingValue: visibleValue,
       dropPct: tr.querySelector('[data-crash-field="dropPct"]')?.value,
       recoveryYears: tr.querySelector('[data-crash-field="recoveryYears"]')?.value
-    }, idx));
+    }, idx);
+    rows.push(row);
   });
   crashTestDraft = normalizeCrashTestsArray(rows);
   renderCrashTestSummary(crashTestDraft);
   return crashTestDraft;
 }
+
 function addCrashTestRow(preset="custom"){
   syncCrashTestDraftFromModal();
   const normalizedPreset = normalizeCrashTestPreset(preset);
@@ -11549,18 +11778,35 @@ function getSellPriority(inv, cfg, age){
   if(isDcAccountType(type)) return 3;
   return 4;
 }
+function parseWithdrawalManualOrderIds(cfg){
+  const arr = cfg?.withdrawalPolicy?.orderManualIds;
+  return Array.isArray(arr) ? arr.map(v=>String(v)) : [];
+}
 function getOrderedSellableInvestments(investments, cfg, age){
-  return (investments || [])
-    .filter(inv=>inv.amount > 0.000001 && isInvestmentSellable(inv, cfg, age))
-    .sort((a,b)=>{
+  const base = (investments || []).filter(inv=>inv.amount > 0.000001 && isInvestmentSellable(inv, cfg, age));
+  const orderMode = cfg?.withdrawalPolicy?.orderMode === 'manual' ? 'manual' : 'auto';
+  if(orderMode === 'manual'){
+    const manualOrderIds = parseWithdrawalManualOrderIds(cfg);
+    const orderMap = new Map(manualOrderIds.map((id, idx)=>[String(id), idx]));
+    return base.sort((a,b)=>{
+      const ao = orderMap.has(String(a.rowId || '')) ? orderMap.get(String(a.rowId || '')) : 999999;
+      const bo = orderMap.has(String(b.rowId || '')) ? orderMap.get(String(b.rowId || '')) : 999999;
+      if(ao !== bo) return ao - bo;
       const pa = getSellPriority(a, cfg, age);
       const pb = getSellPriority(b, cfg, age);
       if(pa !== pb) return pa - pb;
-      const ga = getGainRatio(a);
-      const gb = getGainRatio(b);
-      if(ga !== gb) return ga - gb;
       return (b.amount || 0) - (a.amount || 0);
     });
+  }
+  return base.sort((a,b)=>{
+    const pa = getSellPriority(a, cfg, age);
+    const pb = getSellPriority(b, cfg, age);
+    if(pa !== pb) return pa - pb;
+    const ga = getGainRatio(a);
+    const gb = getGainRatio(b);
+    if(ga !== gb) return ga - gb;
+    return (b.amount || 0) - (a.amount || 0);
+  });
 }
 function sellInvestmentsNetToDeposits(targetNet, deposits, investments, cfg, age, annualState=null, reason="general"){
   let remaining = Math.max(0, targetNet || 0);
@@ -11834,9 +12080,20 @@ function processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex = 0,
 
 function getWithdrawalPolicyConfig(cfg){
   const src = cfg?.withdrawalPolicy || {};
-  const mode = ["basic_annual","basic_lump","basic_hybrid","current","rebalance","bucket"].includes(src.mode) ? src.mode : "basic_annual";
+  const mode = ["fixed_rate","fixed_amount","basic_annual","basic_lump","basic_hybrid","current","rebalance","bucket"].includes(src.mode) ? src.mode : "basic_annual";
+  const startConditionMode = ["retirement_age","cash_buffer_threshold","fixed_age"].includes(src.startConditionMode) ? src.startConditionMode : "retirement_age";
+  let orderManualIds = [];
+  try{
+    orderManualIds = JSON.parse(src.orderManualJson || '[]');
+    if(!Array.isArray(orderManualIds)) orderManualIds = [];
+  }catch(_e){ orderManualIds = []; }
   return {
     mode,
+    startConditionMode,
+    startCashBufferYears:Math.max(0, Number(src.startCashBufferYears ?? 2) || 0),
+    startFixedAge:Math.max(0, Number(src.startFixedAge ?? 65) || 0),
+    fixedRatePct:Math.max(0, Number(src.fixedRatePct ?? 0.04) || 0),
+    fixedAmountYearly:Math.max(0, Number(src.fixedAmountYearly ?? 300) || 0),
     basicAnnualStartAge:Math.max(0, Number(src.basicAnnualStartAge ?? 65) || 0),
     basicAnnualPeriodYears:Math.max(0, Number(src.basicAnnualPeriodYears ?? ((src.basicAnnualEndAge != null)
       ? Math.max(0, (Number(src.basicAnnualEndAge) || 0) - (Number(src.basicAnnualStartAge ?? 65) || 0) + 1)
@@ -11855,10 +12112,14 @@ function getWithdrawalPolicyConfig(cfg){
     bucketTargetYears:Math.max(0, Number(src.bucketTargetYears ?? 2) || 0),
     bucketFloorYears:Math.max(0, Number(src.bucketFloorYears ?? 1) || 0),
     bucketDefenseOn:src.bucketDefenseOn !== false,
-    bucketDefenseThreshold:Number(src.bucketDefenseThreshold ?? -0.15) || 0
+    bucketDefenseThreshold:Number(src.bucketDefenseThreshold ?? -0.15) || 0,
+    orderMode: src.orderMode === 'manual' ? 'manual' : 'auto',
+    orderManualIds
   };
 }
 function getWithdrawalRuleLabel(mode){
+  if(mode === 'fixed_rate') return '定率取り崩し';
+  if(mode === 'fixed_amount') return '定額取り崩し';
   if(mode === 'basic_lump') return '一括全額取り崩し';
   if(mode === 'basic_hybrid') return '一部一括＋残り分割';
   if(mode === 'rebalance') return '目標配分リバランス型';
@@ -11867,7 +12128,18 @@ function getWithdrawalRuleLabel(mode){
   return '毎年分割取り崩し';
 }
 function isBasicWithdrawalMode(mode){
-  return mode === 'basic_annual' || mode === 'basic_lump' || mode === 'basic_hybrid';
+  return mode === 'fixed_rate' || mode === 'fixed_amount' || mode === 'basic_annual' || mode === 'basic_lump' || mode === 'basic_hybrid';
+}
+function getHouseholdRetireAge(cfg){
+  const ages = [Number(cfg?.incomeSelf?.retireAge), Number(cfg?.incomeSp?.retireAge)].filter(v=>Number.isFinite(v) && v > 0);
+  return ages.length ? Math.min(...ages) : 65;
+}
+function shouldStartPlannedWithdrawal(rule, age, depTotal, annualNeed, retireAge){
+  if(!rule) return false;
+  const mode = rule.startConditionMode || 'retirement_age';
+  if(mode === 'fixed_age') return age >= Math.round(Number(rule.startFixedAge || 0));
+  if(mode === 'cash_buffer_threshold') return depTotal <= Math.max(0, Number(annualNeed || 0)) * Math.max(0, Number(rule.startCashBufferYears || 0));
+  return age >= Math.round(Number(retireAge || 0));
 }
 function computeBasicWithdrawalAmountAtStart(rule, mode, totalInvestments){
   const total = Math.max(0, Number(totalInvestments) || 0);
@@ -11882,11 +12154,20 @@ function computeBasicWithdrawalAmountAtStart(rule, mode, totalInvestments){
   const years = Math.max(0, Math.round(Number(rule.basicAnnualPeriodYears || 0) || 0));
   return years > 0 ? total / years : 0;
 }
-function getPlannedWithdrawalAmountForYear(rule, age, totalInvestments){
+function getPlannedWithdrawalAmountForYear(rule, age, totalInvestments, depTotal=0, annualNeed=0, retireAge=65){
   if(!rule) return 0;
+  const startReady = shouldStartPlannedWithdrawal(rule, age, depTotal, annualNeed, retireAge);
+  if(rule.mode === 'fixed_rate'){
+    if(!startReady) return 0;
+    return Math.max(0, Number(totalInvestments || 0) * Math.max(0, Number(rule.fixedRatePct || 0)));
+  }
+  if(rule.mode === 'fixed_amount'){
+    if(!startReady) return 0;
+    return Math.max(0, Number(rule.fixedAmountYearly || 0));
+  }
   if(rule.mode === 'basic_lump'){
-    const lumpAge = Math.round(Number(rule.basicLumpAge || 0));
-    if(age === lumpAge){
+    if(!Number.isFinite(rule._basicLumpTriggeredAge) && startReady) rule._basicLumpTriggeredAge = age;
+    if(age === rule._basicLumpTriggeredAge){
       const amount = computeBasicWithdrawalAmountAtStart(rule, 'basic_lump', totalInvestments);
       rule.basicLumpAmount = amount;
       return amount;
@@ -11894,26 +12175,28 @@ function getPlannedWithdrawalAmountForYear(rule, age, totalInvestments){
     return 0;
   }
   if(rule.mode === 'basic_hybrid'){
-    const startAge = Math.round(Number(rule.basicHybridStartAge || 0));
     const periodYears = Math.max(0, Math.round(Number(rule.basicHybridPeriodYears || 0)) || 0);
+    if(!Number.isFinite(rule._basicHybridTriggeredAge) && startReady) rule._basicHybridTriggeredAge = age;
+    const startAge = Number.isFinite(rule._basicHybridTriggeredAge) ? rule._basicHybridTriggeredAge : Math.round(Number(rule.basicHybridStartAge || 0));
     if(age === startAge){
       rule._basicHybridComputedAnnualAmount = computeBasicWithdrawalAmountAtStart(rule, 'basic_hybrid', totalInvestments);
       rule.basicHybridAnnualAmount = rule._basicHybridComputedAnnualAmount;
       return Math.max(0, Number(rule.basicHybridLumpAmount || 0));
     }
-    if(periodYears > 0 && age >= startAge + 1 && age <= startAge + periodYears){
+    if(periodYears > 0 && Number.isFinite(rule._basicHybridTriggeredAge) && age >= startAge + 1 && age <= startAge + periodYears){
       return Math.max(0, Number(rule._basicHybridComputedAnnualAmount ?? rule.basicHybridAnnualAmount ?? 0) || 0);
     }
     return 0;
   }
   if(rule.mode === 'basic_annual'){
-    const startAge = Math.round(Number(rule.basicAnnualStartAge || 0));
     const periodYears = Math.max(0, Math.round(Number(rule.basicAnnualPeriodYears || 0)) || 0);
+    if(!Number.isFinite(rule._basicAnnualTriggeredAge) && startReady) rule._basicAnnualTriggeredAge = age;
+    const startAge = Number.isFinite(rule._basicAnnualTriggeredAge) ? rule._basicAnnualTriggeredAge : Math.round(Number(rule.basicAnnualStartAge || 0));
     if(age === startAge){
       rule._basicAnnualComputedAmount = computeBasicWithdrawalAmountAtStart(rule, 'basic_annual', totalInvestments);
       rule.basicAnnualAmount = rule._basicAnnualComputedAmount;
     }
-    if(periodYears > 0 && age >= startAge && age <= startAge + periodYears - 1){
+    if(periodYears > 0 && Number.isFinite(rule._basicAnnualTriggeredAge) && age >= startAge && age <= startAge + periodYears - 1){
       return Math.max(0, Number(rule._basicAnnualComputedAmount ?? rule.basicAnnualAmount ?? 0) || 0);
     }
   }
@@ -11921,7 +12204,10 @@ function getPlannedWithdrawalAmountForYear(rule, age, totalInvestments){
 }
 function applyPlannedWithdrawalAtYearStart(cfg, age, deposits, investments, liabilityRef, annualState, rule){
   const currentInvestmentTotal = investments.reduce((s, inv)=>s + (Number(inv.amount) || 0), 0);
-  const plannedNeed = Math.max(0, getPlannedWithdrawalAmountForYear(rule, age, currentInvestmentTotal));
+  const depTotalBefore = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
+  const annualNeedForStart = annualState?.annualNeedBase || 0;
+  const retireAge = getHouseholdRetireAge(cfg);
+  const plannedNeed = Math.max(0, getPlannedWithdrawalAmountForYear(rule, age, currentInvestmentTotal, depTotalBefore, annualNeedForStart, retireAge));
   if(plannedNeed <= 0.0001) return 0;
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   const beforeDepTotal = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
@@ -11929,9 +12215,6 @@ function applyPlannedWithdrawalAtYearStart(cfg, age, deposits, investments, liab
   const afterDepTotal = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
   const funded = Math.max(0, afterDepTotal - beforeDepTotal);
   const remainingNeed = Math.max(0, plannedNeed - funded);
-  if(remainingNeed > 0.0001){
-    liabilityRef.value = (Number(liabilityRef.value) || 0) + remainingNeed;
-  }
   annualState.plannedWithdrawal = plannedNeed;
   annualState.plannedWithdrawalFunded = funded;
   annualState.plannedWithdrawalUnfunded = remainingNeed;
@@ -12065,6 +12348,7 @@ function simulate(cfg, random=false, opts={}){
   const finalOnly = !!opts.finalOnly;
   const finalLifeIndex = Math.max(0, Number(opts.lifeIndex) || 0);
   const staticSeries = Array.isArray(opts.staticSeries) ? opts.staticSeries : null;
+  const annualNeedSeries = staticSeries || buildMonteStaticSeries(cfg);
   const deposits = deepClone(cfg.deposits);
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   const investments = deepClone(cfg.investments);
@@ -12115,13 +12399,14 @@ function simulate(cfg, random=false, opts={}){
 
   for(let age=cfg.age; age<=120; age++){
     const annualState = initializeAnnualContributionState(investments);
+    const yearIndex = age - cfg.age;
+    annualState.annualNeedBase = annualNeedSeries?.[yearIndex]?.annualNeedBase || 0;
     const liabilityRefAtStart = {value:liability};
     if(isBasicWithdrawalMode(withdrawalPolicy.mode)){
       applyPlannedWithdrawalAtYearStart(cfg, age, deposits, investments, liabilityRefAtStart, annualState, withdrawalPolicy);
       liability = Math.max(0, Number(liabilityRefAtStart.value) || 0);
     }
     annualState.beginningInvestmentTotal = investments.reduce((s, inv)=>s + (Number(inv.amount) || 0), 0);
-    const yearIndex = age - cfg.age;
     const beginningDepTotal = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
     const beginningInvTotal = annualState.beginningInvestmentTotal;
     const beginningSafeTotal = currentSafeAssetTotal(safeAssets, age) || 0;
@@ -13261,24 +13546,25 @@ function syncIncomeInputsFromCurve(owner, curve){
 function getStoredLoanDetail(){
   return buildLoanDetailFromDOM();
 }
-function fillLoanDetailModalFromStored(){
-  const stored = buildLoanDetailFromHiddenFields();
-  const prepayPlans = normalizeLoanPrepayPlans(stored.prepayPlans || []);
-  if(!prepayPlans.length){
-    const baseParts = parseDateInput(document.getElementById('baseDate')?.value || '') || {year:new Date().getFullYear(), month:1};
-    prepayPlans.push({id:`plan_${Date.now()}`, year:baseParts.year, month:baseParts.month, age:0, amount:0, mode:"期間短縮型"});
-  }
+function setLoanDetailDraftFromDetail(detail){
+  const source = detail || buildLoanDetailFromHiddenFields();
   loanDetailDraft = {
-    buyAge: stored.buyAge || 40,
-    buyYear: stored.buyYear || deriveLoanBuyYearMonthFromAge(stored.buyAge || 40).year,
-    buyMonth: stored.buyMonth || deriveLoanBuyYearMonthFromAge(stored.buyAge || 40).month,
-    down: stored.down || 0,
-    loanAmount: stored.loanAmount || 0,
-    ratePct: stored.ratePct || 0,
-    baseYears: stored.baseYears || 35,
-    method: stored.method || "元利均等返済",
-    prepayPlans
+    buyAge: source.buyAge || 40,
+    buyYear: source.buyYear || deriveLoanBuyYearMonthFromAge(source.buyAge || 40).year,
+    buyMonth: source.buyMonth || deriveLoanBuyYearMonthFromAge(source.buyAge || 40).month,
+    down: source.down || 0,
+    loanAmount: source.loanAmount || 0,
+    ratePct: source.ratePct || 0,
+    baseYears: source.baseYears || 0,
+    method: source.method || "元利均等返済",
+    prepayPlans: normalizeLoanPrepayPlans(source.prepayPlans || [])
   };
+}
+function fillLoanDetailModalFromStored(){
+  setLoanDetailDraftFromDetail(buildLoanDetailFromHiddenFields());
+}
+function fillLoanDetailModalFromSimple(){
+  setLoanDetailDraftFromDetail(buildLoanDetailFromSimpleInputs());
 }
 function renderLoanDetailPrepayRows(){
   const body = document.getElementById("loanDetailPrepayRows");
@@ -13370,9 +13656,11 @@ function renderLoanDetailModal(){
   formatAllNumericInputs(document.getElementById("loanDetailModal"), true);
   renderLoanDetailResult();
 }
-function openLoanDetailModal(){
+function openLoanDetailModal(sourceMode = null){
   const snapshot = captureSimpleLoanInputs();
-  fillLoanDetailModalFromStored();
+  const mode = sourceMode || (hasLoanDetailSavedOnce() ? 'stored' : 'simple');
+  if(mode === 'simple') fillLoanDetailModalFromSimple();
+  else fillLoanDetailModalFromStored();
   renderLoanDetailModal();
   const modal = document.getElementById("loanDetailModal");
   modal?.classList.add("show");
@@ -13397,6 +13685,31 @@ function openLoanDetailModal(){
   restoreSnapshot();
   requestAnimationFrame(restoreSnapshot);
   setTimeout(restoreSnapshot, 0);
+}
+function openLoanDetailConflictModal(){
+  const modal = document.getElementById("loanDetailConflictModal");
+  modal?.classList.add("show");
+  modal?.setAttribute("aria-hidden", "false");
+  resetModalScrollPosition('loanDetailConflictModal');
+  resetModalInnerScrollPositions('loanDetailConflictModal');
+  applyTabOrder();
+  focusModalPrimaryActionButton('loanDetailConflictModal');
+}
+function closeLoanDetailConflictModal(){
+  const modal = document.getElementById("loanDetailConflictModal");
+  modal?.classList.remove("show");
+  modal?.setAttribute("aria-hidden", "true");
+  applyTabOrder();
+}
+function handleUseStoredLoanDetail(){
+  setHomeSimpleEditedAfterDetailSave(false);
+  closeLoanDetailConflictModal();
+  openLoanDetailModal('stored');
+}
+function handleRebuildLoanDetailFromSimple(){
+  closeLoanDetailConflictModal();
+  loanDetailDraft = null;
+  openLoanDetailModal('simple');
 }
 function closeLoanDetailModal(){
   loanDetailDraft = null;
@@ -13423,13 +13736,15 @@ function saveLoanDetailModal(){
       return;
     }
     const normalizedPlans = normalizeLoanPrepayPlans(detail.prepayPlans || []);
-    syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:detail.buyYear, homeBuyMonth:detail.buyMonth, homeAge:detail.buyAge});
-    document.getElementById('homeBuyYear').value = String(detail.buyYear || '');
-    document.getElementById('homeBuyMonth').value = String(detail.buyMonth || 1);
-    syncLoanBuyFieldsFromYearMonth();
-    setNumericInputValue("homeDown", detail.down || 0);
-    setNumericInputValue("homePayMonth", getLoanDisplayPayment(sim, numInput("age", 0), detail.buyAge) || 0);
-    setNumericInputValue("homeYears", Number(sim.actualYears || detail.baseYears || 0));
+    withHomeSimpleEditTrackingSuspended(()=>{
+      syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:detail.buyYear, homeBuyMonth:detail.buyMonth, homeAge:detail.buyAge});
+      document.getElementById('homeBuyYear').value = String(detail.buyYear || '');
+      document.getElementById('homeBuyMonth').value = String(detail.buyMonth || 1);
+      syncLoanBuyFieldsFromYearMonth();
+      setNumericInputValue("homeDown", detail.down || 0);
+      setNumericInputValue("homePayMonth", getLoanDisplayPayment(sim, numInput("age", 0), detail.buyAge) || 0);
+      setNumericInputValue("homeYears", Number(detail.baseYears || 0));
+    });
     document.getElementById("homeDetailBuyAge").value = detail.buyAge || 0;
     document.getElementById("homeDetailBuyYear").value = detail.buyYear || '';
     document.getElementById("homeDetailBuyMonth").value = detail.buyMonth || 1;
@@ -13451,6 +13766,8 @@ function saveLoanDetailModal(){
       method:detail.method,
       prepayPlans:normalizedPlans
     });
+    setLoanDetailSavedOnce(true);
+    setHomeSimpleEditedAfterDetailSave(false);
     closeLoanDetailModal();
     formatAllNumericInputs(document, true);
     updateLoanSummary();
@@ -13631,6 +13948,13 @@ function addIncomeCurvePoint(){
 }
 const WITHDRAWAL_RULE_MODAL_IDS = [
   "withdrawalRuleMode",
+  "withdrawalStartConditionMode",
+  "withdrawalStartCashBufferYears",
+  "withdrawalStartFixedAge",
+  "withdrawalFixedRatePct",
+  "withdrawalFixedAmountYearly",
+  "withdrawalOrderMode",
+  "withdrawalOrderManualJson",
   "withdrawalBasicAnnualStartAge",
   "withdrawalBasicAnnualPeriodYears",
   "withdrawalBasicAnnualEndAge",
@@ -13672,7 +13996,7 @@ const WITHDRAWAL_PARAMETER_COMPARE_RULES = {
     label:'目標配分リバランス型',
     params:[
       {key:'rebalanceBufferYears', label:'最低現金バッファ', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`},
-      {key:'rebalanceCashPct', label:'目標現金比率', unit:'%', step:1, min:0, max:100, fallback:20, format:(v)=>`${formatNumberJP(v, 0)}%`}
+      {key:'rebalanceCashPct', label:'目標現金比率', unit:'%', step:1, min:0, max:100, fallback:20, displayScale:100, format:(v)=>`${formatNumberJP(v, 0)}%`}
     ]
   },
   bucket:{
@@ -13711,7 +14035,7 @@ function getWithdrawalParameterDefinition(ruleMode, paramKey){
 function getWithdrawalPolicyFieldCurrentValue(policy, paramDef){
   if(!paramDef) return 0;
   const raw = Number(policy?.[paramDef.key]);
-  if(Number.isFinite(raw)) return raw;
+  if(Number.isFinite(raw)) return normalizeWithdrawalParamValue(convertWithdrawalParamStoredToDisplay(raw, paramDef), paramDef);
   return Number(paramDef.fallback || 0) || 0;
 }
 function normalizeWithdrawalParamValue(value, paramDef){
@@ -13725,6 +14049,18 @@ function normalizeWithdrawalParamValue(value, paramDef){
   n = Math.round(n / step) * step;
   const digits = String(step).includes('.') ? String(step).split('.')[1].length : 0;
   return Number(n.toFixed(Math.min(6, digits)));
+}
+function getWithdrawalParamDisplayScale(paramDef){
+  const scale = Number(paramDef?.displayScale);
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+function convertWithdrawalParamStoredToDisplay(value, paramDef){
+  const raw = Number(value);
+  if(!Number.isFinite(raw)) return Number(paramDef?.fallback || 0) || 0;
+  return raw * getWithdrawalParamDisplayScale(paramDef);
+}
+function convertWithdrawalParamDisplayToStored(value, paramDef){
+  return normalizeWithdrawalParamValue(value, paramDef) / getWithdrawalParamDisplayScale(paramDef);
 }
 function buildDefaultWithdrawalParamValues(baseValue, paramDef, count){
   const desired = Math.max(2, Math.min(5, Number(count) || 3));
@@ -13839,7 +14175,7 @@ function getWithdrawalComparisonCases(cfgBase){
         mode:ruleMode,
         label:item?.label || `ケース${idx + 1}`,
         fullLabel:`${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} / ${paramDef.label} ${paramDef.format ? paramDef.format(value) : value}`,
-        policyOverride:{mode:ruleMode, [paramKey]:value}
+        policyOverride:{mode:ruleMode, [paramKey]:convertWithdrawalParamDisplayToStored(value, paramDef)}
       };
     });
   }
@@ -13893,6 +14229,7 @@ function buildSharedReturnShocks(cfg, trials, scenarioDataOverride, monteSetting
 }
 function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
   const finalLifeIndex = Math.max(0, Number(lifeIndex) || 0);
+  const annualNeedSeries = Array.isArray(staticSeries) ? staticSeries : buildMonteStaticSeries(cfg);
   const deposits = deepClone(cfg.deposits);
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   const investments = deepClone(cfg.investments);
@@ -13910,13 +14247,14 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
 
   for(let age=cfg.age; age<=120; age++){
     const annualState = initializeAnnualContributionState(investments);
+    const yearIndex = age - cfg.age;
+    annualState.annualNeedBase = annualNeedSeries?.[yearIndex]?.annualNeedBase || 0;
     const liabilityRefAtStart = {value:liability};
     if(isBasicWithdrawalMode(withdrawalPolicy.mode)){
       applyPlannedWithdrawalAtYearStart(cfg, age, deposits, investments, liabilityRefAtStart, annualState, withdrawalPolicy);
       liability = Math.max(0, Number(liabilityRefAtStart.value) || 0);
     }
     annualState.beginningInvestmentTotal = investments.reduce((s, inv)=>s + (Number(inv.amount) || 0), 0);
-    const yearIndex = age - cfg.age;
 
     const simulationYearFraction = getSimulationYearFraction(cfg, yearIndex);
     deposits.forEach(d=>{
@@ -14315,17 +14653,158 @@ function restoreWithdrawalRuleState(state){
     if(el.type === 'checkbox') el.checked = !!val;
     else el.value = val;
   });
+  const modeEl = document.getElementById('withdrawalStartConditionMode');
+  if(modeEl) modeEl.dataset.previousMode = modeEl.value || 'retirement_age';
+  syncWithdrawalStartConditionValueControl();
   updateWithdrawalRuleModalUI();
   updateWithdrawalCompareModeUI();
+}
+function buildWithdrawalOrderItemsFromDOM(){
+  const items = [];
+  for(let i=1;i<=dynamicCounts.inv;i++){
+    const rowId = document.getElementById(`inv${i}_rowId`)?.value || `inv_row_${i}`;
+    const name = document.getElementById(`inv${i}_name`)?.value || `運用${i}`;
+    const owner = document.getElementById(`inv${i}_owner`)?.value || '本人';
+    const accountType = document.getElementById(`inv${i}_accountType`)?.value || '課税';
+    const principal = numInput(`inv${i}_cost`, 0) || 0;
+    const amount = numInput(`inv${i}_amount`, 0) || 0;
+    const currency = document.getElementById(`inv${i}_cur`)?.value || '万円';
+    const rate = numInput(`inv${i}_rate`, 0) || 0;
+    const dividendRate = numInput(`inv${i}_dividendRate`, 0) || 0;
+    items.push({rowId, name, owner, accountType, currency, principal, amount, rate, dividendRate});
+  }
+  return items;
+}
+function parseWithdrawalOrderManualJson(){
+  try{
+    const arr = JSON.parse(document.getElementById('withdrawalOrderManualJson')?.value || '[]');
+    return Array.isArray(arr) ? arr.map(v=>String(v)) : [];
+  }catch(_e){ return []; }
+}
+function writeWithdrawalOrderManualJson(arr){
+  const normalized = Array.isArray(arr) ? arr.map(v=>String(v)) : [];
+  const el = document.getElementById('withdrawalOrderManualJson');
+  if(el) el.value = JSON.stringify(normalized);
+}
+function normalizeWithdrawalOrderManualIds(){
+  const items = buildWithdrawalOrderItemsFromDOM();
+  const ids = items.map(item=>String(item.rowId));
+  const current = parseWithdrawalOrderManualJson();
+  const filtered = current.filter(id=>ids.includes(String(id)));
+  ids.forEach(id=>{ if(!filtered.includes(id)) filtered.push(id); });
+  writeWithdrawalOrderManualJson(filtered);
+  return filtered;
+}
+function renderWithdrawalOrderManualEditor(){
+  const body = document.getElementById('withdrawalOrderManualBody');
+  if(!body) return;
+  try{
+    const items = buildWithdrawalOrderItemsFromDOM();
+    const ids = normalizeWithdrawalOrderManualIds();
+    const itemMap = new Map(items.map(item=>[String(item.rowId), item]));
+    const orderedItems = ids.map(id=>itemMap.get(String(id))).filter(Boolean);
+    const renderItems = orderedItems.length ? orderedItems : items;
+    let html = '';
+    renderItems.forEach((item, idx)=>{
+      const id = String(item?.rowId ?? '');
+      const currencyLabel = (String(item?.currency || '円') === 'ドル') ? 'ドル' : '万円';
+      const details = [
+        `名義 ${escapeHtml(item?.owner ?? '')}`,
+        `口座 ${escapeHtml(item?.accountType ?? '')}`,
+        `元本 ${escapeHtml(formatNumberJP(item?.principal ?? 0, 1))}${currencyLabel}`,
+        `現在額 ${escapeHtml(formatNumberJP(item?.amount ?? 0, 1))}${currencyLabel}`,
+        `利回り ${escapeHtml(formatNumberJP(item?.rate ?? 0, 1))}%`,
+        `配当率 ${escapeHtml(formatNumberJP(item?.dividendRate ?? 0, 1))}%`
+      ].join(' / ');
+      html += `<tr><td>${idx + 1}</td><td style="text-align:left;">${escapeHtml(item?.name ?? `運用${idx+1}`)}<div class="small muted">${details}</div></td><td><div style="display:flex;gap:4px;justify-content:center;"><button type="button" data-withdrawal-order-move="up" data-row-id="${escapeAttr(id)}" ${idx===0?'disabled':''}>↑</button><button type="button" data-withdrawal-order-move="down" data-row-id="${escapeAttr(id)}" ${idx===renderItems.length-1?'disabled':''}>↓</button></div></td></tr>`;
+    });
+    body.innerHTML = html || `<tr><td colspan="3">現在の運用資産がありません。</td></tr>`;
+  }catch(_e){
+    body.innerHTML = `<tr><td colspan="3">現在の運用資産を表示できませんでした。</td></tr>`;
+  }
+}
+function moveWithdrawalOrderManualItem(delta, rowId){
+  const ids = normalizeWithdrawalOrderManualIds();
+  const idx = ids.indexOf(String(rowId));
+  if(idx < 0) return;
+  const next = idx + delta;
+  if(next < 0 || next >= ids.length) return;
+  const tmp = ids[idx]; ids[idx] = ids[next]; ids[next] = tmp;
+  writeWithdrawalOrderManualJson(ids);
+  renderWithdrawalOrderManualEditor();
+  renderWithdrawalRuleSummary();
+  withdrawalCompareCache = null;
+}
+function getWithdrawalRuleUsesStartCondition(mode){
+  return mode === 'fixed_rate' || mode === 'fixed_amount' || mode === 'basic_annual' || mode === 'basic_lump' || mode === 'basic_hybrid';
+}
+function syncWithdrawalStartConditionValueControl(){
+  const mode = document.getElementById('withdrawalStartConditionMode')?.value || 'retirement_age';
+  const valueEl = document.getElementById('withdrawalStartConditionValue');
+  const suffixEl = document.getElementById('withdrawalStartConditionValueSuffix');
+  const retireAge = Math.round(getHouseholdRetireAge(getScenarioFromDOM()));
+  if(!valueEl || !suffixEl) return;
+  if(mode === 'cash_buffer_threshold'){
+    valueEl.readOnly = false;
+    valueEl.value = String(numInput('withdrawalStartCashBufferYears', 2) || 0);
+    valueEl.inputMode = 'decimal';
+    suffixEl.textContent = '年分';
+    return;
+  }
+  if(mode === 'fixed_age'){
+    valueEl.readOnly = false;
+    valueEl.value = String(Math.max(0, numInput('withdrawalStartFixedAge', 65) || 0));
+    valueEl.inputMode = 'numeric';
+    suffixEl.textContent = '歳';
+    return;
+  }
+  valueEl.readOnly = true;
+  valueEl.value = String(retireAge);
+  valueEl.inputMode = 'numeric';
+  suffixEl.textContent = '歳';
+}
+function persistWithdrawalStartConditionValueControl(forceMode){
+  const mode = forceMode || document.getElementById('withdrawalStartConditionMode')?.value || 'retirement_age';
+  const valueEl = document.getElementById('withdrawalStartConditionValue');
+  if(!valueEl || valueEl.readOnly) return;
+  const raw = Number(String(valueEl.value || '').replace(/,/g,''));
+  if(mode === 'cash_buffer_threshold'){
+    const hidden = document.getElementById('withdrawalStartCashBufferYears');
+    if(hidden) hidden.value = String(Math.max(0, Number.isFinite(raw) ? raw : 2));
+  }else if(mode === 'fixed_age'){
+    const hidden = document.getElementById('withdrawalStartFixedAge');
+    if(hidden) hidden.value = String(Math.max(0, Number.isFinite(raw) ? Math.round(raw) : 65));
+  }
+}
+function getWithdrawalStartConditionSummary(){
+  const mode = document.getElementById('withdrawalStartConditionMode')?.value || 'retirement_age';
+  if(mode === 'cash_buffer_threshold') return `預貯金が生活費の指定年分 ${formatNumberJP(numInput('withdrawalStartCashBufferYears', 2) || 0, 1)} 年分以下になった時`;
+  if(mode === 'fixed_age') return `固定年齢 ${Math.max(0, numInput('withdrawalStartFixedAge', 65) || 0)} 歳`;
+  return `リタイア年齢（${Math.round(getHouseholdRetireAge(getScenarioFromDOM()))}歳）`;
+}
+function handleWithdrawalStartConditionModeChange(){
+  const modeEl = document.getElementById('withdrawalStartConditionMode');
+  if(!modeEl) return;
+  const previousMode = modeEl.dataset.previousMode || 'retirement_age';
+  persistWithdrawalStartConditionValueControl(previousMode);
+  modeEl.dataset.previousMode = modeEl.value || 'retirement_age';
+  withdrawalCompareCache = null;
+  updateWithdrawalRuleModalUI();
+  applyTabOrder();
+}
+function syncBasicWithdrawalStartAgesToRetire(){
+  const retireAge = Math.round(getHouseholdRetireAge(getScenarioFromDOM()));
+  ['withdrawalBasicAnnualStartAge','withdrawalBasicLumpAge','withdrawalBasicHybridStartAge'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = String(retireAge);
+  });
+  syncWithdrawalStartConditionValueControl();
 }
 function renderWithdrawalRuleSummary(){
   const box = document.getElementById('withdrawalRuleSummary');
   if(!box) return;
   const mode = document.getElementById('withdrawalRuleMode')?.value || 'basic_annual';
-  const basicAnnualStartAge = numInput('withdrawalBasicAnnualStartAge', 65) || 0;
   const basicAnnualPeriodYears = numInput('withdrawalBasicAnnualPeriodYears', 25) || 0;
-  const basicLumpAge = numInput('withdrawalBasicLumpAge', 65) || 0;
-  const basicHybridStartAge = numInput('withdrawalBasicHybridStartAge', 65) || 0;
   const basicHybridLumpAmount = numInput('withdrawalBasicHybridLumpAmount', 0) || 0;
   const basicHybridPeriodYears = numInput('withdrawalBasicHybridPeriodYears', 20) || 0;
   const currentYears = numInput('withdrawalCurrentBufferYears', 2) || 0;
@@ -14335,30 +14814,42 @@ function renderWithdrawalRuleSummary(){
   const bucketFloor = numInput('withdrawalBucketFloorYears', 1) || 0;
   const defenseOn = !!document.getElementById('withdrawalBucketDefenseOn')?.checked;
   const defensePct = numInput('withdrawalBucketDefenseThresholdPct', -15) || 0;
+  const fixedRatePct = numInput('withdrawalFixedRatePct', 4) || 0;
+  const fixedAmountYearly = numInput('withdrawalFixedAmountYearly', 300) || 0;
+  const startSummary = getWithdrawalStartConditionSummary();
+  const orderMode = document.getElementById('withdrawalOrderMode')?.value || 'auto';
   let html = '';
-  if(mode === 'basic_lump'){
-    html = `<strong>一括全額取り崩し</strong><br>${basicLumpAge}歳の年の開始時点に、その時点の運用資産を全額取り崩します。`;
-  }else if(mode === 'basic_hybrid'){
-    html = `<strong>一部一括＋残り分割</strong><br>${basicHybridStartAge}歳の年の開始時点に ${formatNumberJP(basicHybridLumpAmount, 1)} 万円を一括で取り崩し、残額はその時点の運用資産残高をもとに自動計算して、翌年から ${basicHybridPeriodYears} 年間で均等に分割して取り崩します。`;
-  }else if(mode === 'rebalance'){
-    html = `<strong>目標配分リバランス型</strong><br>生活費 ${rebalanceYears} 年分を最低現金として持ちつつ、年末に現金比率 ${cashPct}% を目標に不足分を投資資産から補充します。`;
-  }else if(mode === 'bucket'){
-    html = `<strong>バケツ戦略型</strong><br>短期バケツ目標 ${bucketTarget} 年分、最低維持ライン ${bucketFloor} 年分です。` + (defenseOn ? ` 年間の投資資産リターンが ${defensePct}% 以下の年は、防御ルールにより目標までの補充を止め、最低ラインまでに抑えます。` : ' 防御ルールは使いません。');
-  }else if(mode === 'current'){
-    html = `<strong>固定年数バッファ型</strong><br>生活費 ${currentYears} 年分の現金バッファを固定的に維持し、不足したら投資資産から補充します。主要生活支出には、生活費・住居費・保険料・定期支出・教育費の継続部分などを含み、臨時支出や入学一時金などの単発費用は含みません。`;
-  }else{
-    html = `<strong>毎年分割取り崩し</strong><br>${basicAnnualStartAge}歳の年の開始時点の運用資産残高をもとに、${basicAnnualPeriodYears} 年で均等に分割した金額を自動計算し、各年の開始時点に取り崩します。`;
-  }
+  if(mode === 'fixed_rate') html = `<strong>定率取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。開始後は毎年の開始時点の運用資産残高に対して ${formatNumberJP(fixedRatePct, 1)}% を取り崩します。現金が不足した場合は別途追加売却で補填します。`;
+  else if(mode === 'fixed_amount') html = `<strong>定額取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。開始後は毎年 ${formatNumberJP(fixedAmountYearly, 1)} 万円を取り崩します。現金が不足した場合は別途追加売却で補填します。`;
+  else if(mode === 'basic_lump') html = `<strong>一括全額取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点で、その時点の運用資産を全額取り崩します。`;
+  else if(mode === 'basic_hybrid') html = `<strong>一部一括＋残り分割</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点に ${formatNumberJP(basicHybridLumpAmount, 1)} 万円を一括で取り崩し、残額はその時点の運用資産残高をもとに自動計算して、翌年から ${basicHybridPeriodYears} 年間で均等に分割して取り崩します。`;
+  else if(mode === 'rebalance') html = `<strong>目標配分リバランス型</strong><br>生活費 ${rebalanceYears} 年分を最低現金として持ちつつ、年末に現金比率 ${cashPct}% を目標に不足分を投資資産から補充します。`;
+  else if(mode === 'bucket') html = `<strong>バケツ戦略型</strong><br>短期バケツ目標 ${bucketTarget} 年分、最低維持ライン ${bucketFloor} 年分です。` + (defenseOn ? ` 年間の投資資産リターンが ${defensePct}% 以下の年は、防御ルールにより目標までの補充を止め、最低ラインまでに抑えます。` : ' 防御ルールは使いません。');
+  else if(mode === 'current') html = `<strong>固定年数バッファ型</strong><br>生活費 ${currentYears} 年分の現金バッファを固定的に維持し、不足したら投資資産から補充します。主要生活支出には、生活費・住居費・保険料・定期支出・教育費の継続部分などを含み、臨時支出や入学一時金などの単発費用は含みません。`;
+  else html = `<strong>毎年分割取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点の運用資産残高をもとに、${basicAnnualPeriodYears} 年で均等に分割した金額を自動計算し、各年の開始時点に取り崩します。`;
+  html += `<br><span class="small muted">売却順序: ${orderMode === 'manual' ? '手動' : '自動（課税 → その他 → NISA → DC系。同一区分内では含み益率が低いもの優先、さらに残高が大きいもの優先）'}</span>`;
   box.innerHTML = html;
 }
 function updateWithdrawalRuleModalUI(){
+  syncBasicWithdrawalStartAgesToRetire();
+  const startModeEl = document.getElementById('withdrawalStartConditionMode');
+  if(startModeEl && !startModeEl.dataset.previousMode) startModeEl.dataset.previousMode = startModeEl.value || 'retirement_age';
   const mode = document.getElementById('withdrawalRuleMode')?.value || 'basic_annual';
+  const usesStartCondition = getWithdrawalRuleUsesStartCondition(mode);
+  const orderMode = document.getElementById('withdrawalOrderMode')?.value || 'auto';
+  document.getElementById('withdrawalRuleFixedRateSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'fixed_rate');
+  document.getElementById('withdrawalRuleFixedAmountSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'fixed_amount');
   document.getElementById('withdrawalRuleBasicAnnualSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'basic_annual');
   document.getElementById('withdrawalRuleBasicLumpSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'basic_lump');
   document.getElementById('withdrawalRuleBasicHybridSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'basic_hybrid');
   document.getElementById('withdrawalRuleCurrentSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'current');
   document.getElementById('withdrawalRuleRebalanceSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'rebalance');
   document.getElementById('withdrawalRuleBucketSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'bucket');
+  document.getElementById('withdrawalStartConditionSection')?.classList.toggle('withdrawal-rule-hidden', !usesStartCondition);
+  document.getElementById('withdrawalOrderManualSection')?.classList.toggle('withdrawal-rule-hidden', orderMode !== 'manual');
+  document.getElementById('withdrawalOrderAutoSection')?.classList.toggle('withdrawal-rule-hidden', orderMode !== 'auto');
+  syncWithdrawalStartConditionValueControl();
+  if(orderMode === 'manual') renderWithdrawalOrderManualEditor();
   renderWithdrawalRuleSummary();
   updateWithdrawalCompareModeUI();
 }
@@ -14424,16 +14915,19 @@ document.getElementById("saveCrashTestBtn")?.addEventListener("click", saveCrash
 document.getElementById("crashTestAddBtn")?.addEventListener("click", ()=>addCrashTestRow());
 document.getElementById("crashTestRowsBody")?.addEventListener("input", (e)=>{
   const target = e.target;
-  if(target?.matches?.('[data-crash-field="timingValue"]')){
-    const rowEl = target.closest('tr[data-crash-test-row]');
-    const wrap = rowEl?.querySelector('.crash-timing-wrap');
-    const timingType = normalizeCrashTestTimingType(rowEl?.querySelector('[data-crash-field="timingType"]')?.value);
-    if(wrap){
-      if(timingType === 'after_retire') wrap.dataset.afterValue = String(clampCrashTestTimingValue(target.value, 'after_retire', 0));
-      else wrap.dataset.fixedValue = String(clampCrashTestTimingValue(target.value, 'fixed', getDefaultCrashTestAge()));
-    }
+  const rowEl = target?.closest?.('tr[data-crash-test-row]');
+  if(!rowEl) return;
+  const wrap = rowEl.querySelector('.crash-timing-wrap');
+  if(target.matches('[data-crash-field="timingValue"]')){
+    const currentType = normalizeCrashTestTimingType(rowEl.querySelector('[data-crash-field="timingType"]')?.value || wrap?.dataset.currentType);
+    const nextValue = clampCrashTestTimingValue(target.value, currentType, currentType === 'after_retire' ? 0 : getDefaultCrashTestAge());
+    const hidden = rowEl.querySelector(currentType === 'after_retire' ? '[data-crash-field="afterRetireTimingValue"]' : '[data-crash-field="fixedTimingValue"]');
+    if(hidden) hidden.value = String(nextValue);
+    if(wrap) wrap.dataset.currentType = currentType;
+    updateCrashTimingOptionLabels(rowEl);
   }
-  syncCrashTestDraftFromModal();
+  updateCrashTestDraftRowFromDOM(rowEl);
+  renderCrashTestSummary(crashTestDraft);
 });
 document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
   const target = e.target;
@@ -14441,25 +14935,35 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
   if(!rowEl) return;
   const rowIndex = Math.max(0, (Number(rowEl.dataset.crashTestRow) || 1) - 1);
   if(target.matches('[data-crash-field="timingType"]')){
-    const current = normalizeCrashTestRow(crashTestDraft[rowIndex] || {}, rowIndex);
+    const wrap = rowEl.querySelector('.crash-timing-wrap');
     const input = rowEl.querySelector('[data-crash-field="timingValue"]');
-    const previousType = current.timingType === 'after_retire' ? 'after_retire' : 'fixed';
-    const currentValue = clampCrashTestTimingValue(input?.value, previousType, previousType === 'after_retire' ? 0 : getDefaultCrashTestAge());
-    if(previousType === 'after_retire') current.afterRetireTimingValue = currentValue;
-    else current.fixedTimingValue = currentValue;
+    const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
+    const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+    const previousType = normalizeCrashTestTimingType(wrap?.dataset.currentType || getCrashTestDraftRowState(rowIndex).timingType);
+    const previousFallback = previousType === 'after_retire'
+      ? clampCrashTestTimingValue(afterHidden?.value, 'after_retire', getCrashTestDraftRowState(rowIndex).afterRetireTimingValue)
+      : clampCrashTestTimingValue(fixedHidden?.value, 'fixed', getCrashTestDraftRowState(rowIndex).fixedTimingValue);
+    const currentVisible = clampCrashTestTimingValue(input?.value, previousType, previousFallback);
+    if(previousType === 'after_retire'){
+      if(afterHidden) afterHidden.value = String(currentVisible);
+    }else{
+      if(fixedHidden) fixedHidden.value = String(currentVisible);
+    }
     const nextType = normalizeCrashTestTimingType(target.value);
-    current.timingType = nextType;
-    current.timingValue = nextType === 'after_retire'
-      ? clampCrashTestTimingValue(current.afterRetireTimingValue, 'after_retire', 0)
-      : clampCrashTestTimingValue(current.fixedTimingValue, 'fixed', getDefaultCrashTestAge());
-    crashTestDraft[rowIndex] = normalizeCrashTestRow(current, rowIndex);
-    renderCrashTestRows();
-    const nextRow = document.querySelector(`#crashTestRowsBody tr[data-crash-test-row="${rowIndex + 1}"]`);
-    nextRow?.querySelector('[data-crash-field="timingValue"]')?.focus();
+    if(wrap) wrap.dataset.currentType = nextType;
+    const nextValue = nextType === 'after_retire'
+      ? clampCrashTestTimingValue(afterHidden?.value, 'after_retire', 0)
+      : clampCrashTestTimingValue(fixedHidden?.value, 'fixed', getDefaultCrashTestAge());
+    if(input){
+      input.value = String(nextValue);
+      input.setAttribute('value', String(nextValue));
+    }
+    const next = updateCrashTestDraftRowFromDOM(rowEl);
+    applyCrashTimingRowState(rowEl, next);
     renderCrashTestSummary(crashTestDraft);
     return;
   }
-  syncCrashTestDraftFromModal();
+  updateCrashTestDraftRowFromDOM(rowEl);
   if(target.matches('[data-crash-field="preset"]')){
     const preset = normalizeCrashTestPreset(target.value);
     const presetConfig = getCrashTestPresetConfig(preset);
@@ -14515,13 +15019,20 @@ function saveMonteSettingsModal(){
 
 function openWithdrawalRuleModal(){
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
-  updateWithdrawalRuleModalUI();
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
   withdrawalRuleModal?.classList.add('show');
   withdrawalRuleModal?.setAttribute('aria-hidden', 'false');
+  const startModeEl = document.getElementById('withdrawalStartConditionMode');
+  if(startModeEl) startModeEl.dataset.previousMode = startModeEl.value || 'retirement_age';
+  try{
+    renderWithdrawalOrderManualEditor();
+    updateWithdrawalRuleModalUI();
+    if(withdrawalCompareCache) renderWithdrawalComparisonResults(withdrawalCompareCache);
+  }catch(err){
+    console.error('取り崩し設定モーダル初期化エラー', err);
+  }
   resetModalScrollPosition('withdrawalRuleModal');
   resetModalInnerScrollPositions('withdrawalRuleModal');
-  if(withdrawalCompareCache) renderWithdrawalComparisonResults(withdrawalCompareCache);
   applyTabOrder();
   focusModalPrimaryActionButton('withdrawalRuleModal');
 }
@@ -14637,8 +15148,12 @@ document.getElementById("cancelWithdrawalRuleBtn")?.addEventListener("click", ca
 document.getElementById("saveWithdrawalRuleBtn")?.addEventListener("click", saveWithdrawalRuleModal);
 
 document.getElementById("withdrawalBucketDefenseOn")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); });
-["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); }));
+["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); }));
+document.getElementById("withdrawalStartConditionValue")?.addEventListener("input", ()=>{ persistWithdrawalStartConditionValueControl(); withdrawalCompareCache=null; renderWithdrawalRuleSummary(); });
 document.getElementById("withdrawalRuleMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); });
+document.getElementById("withdrawalStartConditionMode")?.addEventListener("change", handleWithdrawalStartConditionModeChange);
+document.getElementById("withdrawalOrderMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); });
+document.getElementById("withdrawalOrderManualBody")?.addEventListener("click", (e)=>{ const btn = e.target.closest('[data-withdrawal-order-move]'); if(!btn) return; moveWithdrawalOrderManualItem(btn.dataset.withdrawalOrderMove === 'up' ? -1 : 1, btn.dataset.rowId || ''); });
 document.getElementById("withdrawalCompareMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalCompareModeUI(); });
 document.getElementById("withdrawalCompareParamRule")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; rebuildWithdrawalParameterCases(true); updateWithdrawalCompareModeUI(); });
 document.getElementById("withdrawalCompareParamKey")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; rebuildWithdrawalParameterCases(true); updateWithdrawalCompareModeUI(); });
@@ -14783,7 +15298,6 @@ document.getElementById("childAllowanceOn")?.addEventListener("change", ()=>{
     persistState();
   };
   el.addEventListener("change", handler);
-  if(el.tagName === "INPUT" && el.type !== "checkbox") el.addEventListener("input", handler);
 });
 document.addEventListener('keydown', (e)=>{
   if(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing) return;
@@ -14843,16 +15357,81 @@ document.addEventListener("contextmenu", (e)=>{
   e.stopPropagation();
   openRowContextMenu(rowLabel.dataset.type, +rowLabel.dataset.index, e.clientX, e.clientY);
 });
+function clearRowLabelPressTimer(rowLabel){
+  if(rowLabel && rowLabel._pressTimer){
+    clearTimeout(rowLabel._pressTimer);
+    rowLabel._pressTimer = null;
+  }
+}
+function clearAllRowLabelPressTimers(){
+  document.querySelectorAll('[data-row-menu]').forEach(clearRowLabelPressTimer);
+}
 document.addEventListener("touchstart", (e)=>{
-  const rowLabel = e.target.closest("[data-row-menu]");
+  const rowLabel = e.target.closest?.("[data-row-menu]");
   if(!rowLabel) return;
+  clearAllRowLabelPressTimers();
+  const touch = e.touches && e.touches[0];
+  if(!touch) return;
+  const startX = touch.clientX;
+  const startY = touch.clientY;
   rowLabel._pressTimer = setTimeout(()=>{
-    const touch = e.touches[0];
-    openRowContextMenu(rowLabel.dataset.type, +rowLabel.dataset.index, touch.clientX, touch.clientY);
+    rowLabel._pressTimer = null;
+    rowLabel._longPressTriggered = true;
+    openRowContextMenu(rowLabel.dataset.type, +rowLabel.dataset.index, startX, startY);
   }, 550);
 }, {passive:true});
-document.addEventListener("touchend", (e)=>{ const rowLabel = e.target.closest?.("[data-row-menu]"); if(rowLabel && rowLabel._pressTimer){ clearTimeout(rowLabel._pressTimer); rowLabel._pressTimer=null; } }, {passive:true});
-document.addEventListener("touchmove", ()=>{ document.querySelectorAll("[data-row-menu]").forEach(el=>{ if(el._pressTimer){ clearTimeout(el._pressTimer); el._pressTimer=null; } }); }, {passive:true});
+document.addEventListener("touchend", (e)=>{
+  const rowLabel = e.target.closest?.("[data-row-menu]");
+  if(rowLabel) clearRowLabelPressTimer(rowLabel);
+}, {passive:true});
+document.addEventListener("touchcancel", ()=>{
+  clearAllRowLabelPressTimers();
+}, {passive:true});
+document.addEventListener("touchmove", (e)=>{
+  const rowLabel = e.target.closest?.("[data-row-menu]");
+  if(rowLabel && rowLabel._pressTimer){
+    const touch = e.touches && e.touches[0];
+    if(!touch){
+      clearRowLabelPressTimer(rowLabel);
+      return;
+    }
+    const rect = rowLabel.getBoundingClientRect();
+    const margin = 12;
+    if(touch.clientX < rect.left - margin || touch.clientX > rect.right + margin || touch.clientY < rect.top - margin || touch.clientY > rect.bottom + margin){
+      clearRowLabelPressTimer(rowLabel);
+    }
+    return;
+  }
+  clearAllRowLabelPressTimers();
+}, {passive:true});
+document.addEventListener("click", (e)=>{
+  const rowLabel = e.target.closest?.('[data-row-menu]');
+  if(rowLabel && rowLabel._longPressTriggered){
+    rowLabel._longPressTriggered = false;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
+document.addEventListener("pointerdown", (e)=>{
+  const rowLabel = e.target.closest?.('[data-row-menu]');
+  if(!rowLabel) return;
+  if(e.pointerType === 'mouse') return;
+  clearAllRowLabelPressTimers();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  rowLabel._pressTimer = setTimeout(()=>{
+    rowLabel._pressTimer = null;
+    rowLabel._longPressTriggered = true;
+    openRowContextMenu(rowLabel.dataset.type, +rowLabel.dataset.index, startX, startY);
+  }, 550);
+}, true);
+document.addEventListener("pointerup", (e)=>{
+  const rowLabel = e.target.closest?.('[data-row-menu]');
+  if(rowLabel) clearRowLabelPressTimer(rowLabel);
+}, true);
+document.addEventListener("pointercancel", ()=>{
+  clearAllRowLabelPressTimers();
+}, true);
 function handleRowContextMenuAction(e){
   const btn = e.target.closest("button[data-row-action]");
   if(!btn) return;
@@ -14948,17 +15527,27 @@ document.addEventListener("keydown", (e)=>{
   if(!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
   if(!shouldKeepFullSelection(el)) return;
   if(e.key === "Tab") return;
-  if(e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End"){
-    clearSelectionLock(el);
-    return;
-  }
   if(e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
-  clearSelectionLock(el);
+  unlockSelectionForEditing(el);
 }, true);
 document.addEventListener("input", (e)=>{
   const el = e.target;
-  if(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) clearSelectionLock(el);
+  if(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement){
+    unlockSelectionForEditing(el);
+  }
   if(el instanceof HTMLInputElement) clampDividendRatePairInputs(el, {mode:"input"});
+}, true);
+document.addEventListener("beforeinput", ()=>{
+  const el = document.activeElement;
+  if(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement){
+    unlockSelectionForEditing(el);
+  }
+}, true);
+document.addEventListener("compositionstart", ()=>{
+  const el = document.activeElement;
+  if(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement){
+    unlockSelectionForEditing(el);
+  }
 }, true);
 document.addEventListener("click", (e)=>{
   const addBtn = e.target.closest("[data-add-row]");
@@ -15083,7 +15672,7 @@ document.addEventListener("input", (e)=>{
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#insuranceAssistModal"))) return;
+  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#insuranceAssistModal"))) return;
   if(/^(reginc|inc|rent|homeMaint|life|period|extra)\d+_timeUnit$/.test(el.id)){
     const match = el.id.match(/^(reginc|inc|rent|homeMaint|life|period|extra)(\d+)_timeUnit$/);
     if(match){
@@ -15141,7 +15730,7 @@ function commitMainInputChange(e){
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal"))) return;
+  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal"))) return;
   if((e?.type === "focusout" || e?.type === "change") && /^child\d+_allowanceOn$/.test(el.id)) return;
   if(e?.type === "focusout" && el.id === "childAllowanceOn") return;
   if(e?.type === "focusout" && mainInputSnapshotUnchanged(el)) return;
@@ -15217,7 +15806,7 @@ document.addEventListener("focusin", (e)=>{
   if(!(el instanceof HTMLElement)) return;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal"))) return;
+  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal"))) return;
   rememberMainInputSnapshot(el);
 }, true);
 document.addEventListener("change", commitMainInputChange);
@@ -15261,14 +15850,12 @@ document.addEventListener("focusout", commitMainInputChange, true);
 document.getElementById("homeDetailOn")?.addEventListener("change", ()=>{
   const isOn = !!document.getElementById("homeDetailOn")?.checked;
   if(isOn){
-    if(!hasStoredLoanDetailValues()) initializeLoanDetailStoredFromSimple();
-    syncSimpleLoanInputsFromStoredDetailFields();
-    const storedYm = getStoredLoanDetailBuyYearMonth();
-    syncLoanBuyYearSelectOptions({selfBirthDate:document.getElementById('selfBirthDate')?.value || '', baseDate:document.getElementById('baseDate')?.value || '', homeBuyYear:storedYm.year, homeBuyMonth:storedYm.month, homeAge:getHiddenNumericValue("homeDetailBuyAge", numInput("homeAge", 0))});
-    document.getElementById('homeBuyYear').value = String(storedYm.year || '');
-    document.getElementById('homeBuyMonth').value = String(storedYm.month || 1);
-    syncLoanBuyFieldsFromYearMonth();
-    setNumericInputValue("homeDown", getHiddenNumericValue("homeDetailDown", numInput("homeDown", 0)));
+    if(!hasLoanDetailSavedOnce()){
+      if(!hasStoredLoanDetailValues()) initializeLoanDetailStoredFromSimple();
+      seedLoanDetailHiddenFromSimpleIfNeeded();
+    }else if(isHomeSimpleEditedAfterDetailSave()){
+      seedLoanDetailHiddenFromSimpleIfNeeded();
+    }
   }
   updateHomeDetailUIState();
   updateLoanSummary();
@@ -15278,35 +15865,45 @@ document.getElementById("homeDetailOn")?.addEventListener("change", ()=>{
 });
 document.getElementById("homeDetailBtn")?.addEventListener("click", ()=>{
   if(document.getElementById("homeDetailBtn")?.disabled) return;
-  openLoanDetailModal();
+  if(hasLoanDetailSavedOnce() && isHomeSimpleEditedAfterDetailSave()){
+    openLoanDetailConflictModal();
+    return;
+  }
+  openLoanDetailModal(hasLoanDetailSavedOnce() ? 'stored' : 'simple');
 });
-["homeBuyYear","homeBuyMonth","homeDown"].forEach(id=>{
+["homeBuyYear","homeBuyMonth","homeDown","homePayMonth","homeYears"].forEach(id=>{
   document.getElementById(id)?.addEventListener("input", ()=>{
     if(document.getElementById("homeDetailOn")?.checked) return;
     syncLoanBuyFieldsFromYearMonth();
-    seedLoanDetailHiddenFromSimpleIfNeeded(true);
+    if(hasLoanDetailSavedOnce()) markHomeSimpleEditedAfterDetailSave();
+    else seedLoanDetailHiddenFromSimpleIfNeeded(true);
   });
 });
-document.getElementById("homeBuyYear")?.addEventListener("change", ()=>{
+function commitSimpleLoanInputs(){
   if(document.getElementById("homeDetailOn")?.checked) return;
   syncLoanBuyFieldsFromYearMonth();
-  seedLoanDetailHiddenFromSimpleIfNeeded(true);
+  if(hasLoanDetailSavedOnce()) markHomeSimpleEditedAfterDetailSave();
+  else seedLoanDetailHiddenFromSimpleIfNeeded(true);
   updateLoanSummary();
   syncCurrentScenarioFromDOM(false);
   requestDraw();
   persistState();
-});
-document.getElementById("homeBuyMonth")?.addEventListener("change", ()=>{
-  if(document.getElementById("homeDetailOn")?.checked) return;
-  syncLoanBuyFieldsFromYearMonth();
-  seedLoanDetailHiddenFromSimpleIfNeeded(true);
-  updateLoanSummary();
-  syncCurrentScenarioFromDOM(false);
-  requestDraw();
-  persistState();
-});
+}
+document.getElementById("homeBuyYear")?.addEventListener("change", commitSimpleLoanInputs);
+document.getElementById("homeBuyMonth")?.addEventListener("change", commitSimpleLoanInputs);
+document.getElementById("homeDown")?.addEventListener("change", commitSimpleLoanInputs);
+document.getElementById("homePayMonth")?.addEventListener("change", commitSimpleLoanInputs);
+document.getElementById("homeYears")?.addEventListener("change", commitSimpleLoanInputs);
+document.getElementById("homeBuyYear")?.addEventListener("focusout", commitSimpleLoanInputs, true);
+document.getElementById("homeBuyMonth")?.addEventListener("focusout", commitSimpleLoanInputs, true);
+document.getElementById("homeDown")?.addEventListener("focusout", commitSimpleLoanInputs, true);
+document.getElementById("homePayMonth")?.addEventListener("focusout", commitSimpleLoanInputs, true);
+document.getElementById("homeYears")?.addEventListener("focusout", commitSimpleLoanInputs, true);
 document.getElementById("loanDetailAddPrepayBtn")?.addEventListener("click", ()=>{
-  if(!loanDetailDraft) fillLoanDetailModalFromStored();
+  if(!loanDetailDraft){
+    if(hasLoanDetailSavedOnce()) fillLoanDetailModalFromStored();
+    else fillLoanDetailModalFromSimple();
+  }
   syncLoanDetailDraftFromModal(true);
   const baseParts = parseDateInput(document.getElementById('baseDate')?.value || '') || {year:new Date().getFullYear(), month:1};
   loanDetailDraft.prepayPlans.push({id:`plan_${Date.now()}`, year:baseParts.year, month:baseParts.month, age:calcAgeAtYearMonth(document.getElementById('selfBirthDate')?.value || '', baseParts.year, baseParts.month), amount:0, mode:"期間短縮型"});
@@ -15324,15 +15921,26 @@ document.getElementById("loanDetailPrepayRows")?.addEventListener("click", (e)=>
 });
 document.getElementById("loanDetailModal")?.addEventListener("input", (e)=>{
   if(!e.target.closest("#loanDetailModal")) return;
-  if(e.target.id === 'loanDetailBuyYear' || e.target.id === 'loanDetailBuyMonth') syncLoanDetailBuyFieldsFromYearMonth();
-  renderLoanDetailResult();
+  if(e.target.id === 'loanDetailBuyYear' || e.target.id === 'loanDetailBuyMonth'){
+    syncLoanDetailBuyFieldsFromYearMonth();
+    renderLoanDetailResult();
+  }
 });
 document.getElementById("loanDetailModal")?.addEventListener("change", (e)=>{
   if(!e.target.closest("#loanDetailModal")) return;
   if(e.target.id === 'loanDetailBuyYear' || e.target.id === 'loanDetailBuyMonth') syncLoanDetailBuyFieldsFromYearMonth();
   renderLoanDetailResult();
 });
+document.getElementById("loanDetailModal")?.addEventListener("focusout", (e)=>{
+  if(!e.target.closest("#loanDetailModal")) return;
+  if(!(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement)) return;
+  if(e.target.id === 'loanDetailBuyYear' || e.target.id === 'loanDetailBuyMonth') syncLoanDetailBuyFieldsFromYearMonth();
+  renderLoanDetailResult();
+}, true);
 document.getElementById("cancelLoanDetailBtn")?.addEventListener("click", closeLoanDetailModal);
+document.getElementById("useStoredLoanDetailBtn")?.addEventListener("click", handleUseStoredLoanDetail);
+document.getElementById("rebuildLoanDetailFromSimpleBtn")?.addEventListener("click", handleRebuildLoanDetailFromSimple);
+document.getElementById("cancelLoanDetailConflictBtn")?.addEventListener("click", closeLoanDetailConflictModal);
 document.getElementById("saveLoanDetailBtn")?.addEventListener("pointerdown", (e)=>{
   e.preventDefault();
   e.stopPropagation();
@@ -15354,9 +15962,14 @@ document.getElementById("loanDetailModal")?.addEventListener("mouseup", (e)=>{
 document.getElementById("loanDetailModal")?.addEventListener("click", (e)=>{
   if(e.target === e.currentTarget) e.stopPropagation();
 });
+document.getElementById("loanDetailConflictModal")?.addEventListener("click", (e)=>{
+  if(e.target === e.currentTarget) closeLoanDetailConflictModal();
+});
 document.querySelector("#loanDetailModal .loan-detail-modal")?.addEventListener("click", (e)=>e.stopPropagation());
+document.querySelector("#loanDetailConflictModal .modal-card")?.addEventListener("click", (e)=>e.stopPropagation());
 ["mousedown","mouseup","dblclick","selectstart"].forEach(evt=>{
   document.querySelector("#loanDetailModal .loan-detail-modal")?.addEventListener(evt, (e)=>e.stopPropagation());
+  document.querySelector("#loanDetailConflictModal .modal-card")?.addEventListener(evt, (e)=>e.stopPropagation());
 });
 
 document.getElementById('insuranceAssistBtn')?.addEventListener('click', openInsuranceAssistModal);
@@ -15572,7 +16185,8 @@ getSimpleModeRoot()?.addEventListener("input", (e)=>{
     return;
   }
   const key = fieldWrap.dataset.simpleField || '';
-  handleSimpleModeFieldInput(key, target.value);
+  if(target.type === "range") handleSimpleModeFieldInput(key, target.value);
+  else previewSimpleModeFieldInput(key, target.value);
 });
 getSimpleModeRoot()?.addEventListener("change", (e)=>{
   const target = e.target;
@@ -15592,6 +16206,17 @@ getSimpleModeRoot()?.addEventListener("change", (e)=>{
   const key = fieldWrap.dataset.simpleField || '';
   handleSimpleModeFieldInput(key, target.value);
 });
+getSimpleModeRoot()?.addEventListener("focusout", (e)=>{
+  const target = e.target;
+  if(!(target instanceof HTMLInputElement)) return;
+  if(target.type === "range") return;
+  const fieldWrap = target.closest('[data-simple-field]');
+  if(!fieldWrap) return;
+  if(target.dataset.simpleExtra === "sumInvTaxFree") return;
+  e.stopPropagation();
+  const key = fieldWrap.dataset.simpleField || '';
+  handleSimpleModeFieldInput(key, target.value);
+}, true);
 
 window.addEventListener("load", ()=>{
   const today = getTodayDateString();
@@ -15605,7 +16230,7 @@ window.addEventListener("load", ()=>{
   updateHomeDetailUIState();
   if(!loadFromURL() && !loadFromLocal()) addTab();
   if(document.getElementById("homeDetailOn")?.checked){
-    syncSimpleLoanInputsFromDetail();
+    seedLoanDetailHiddenFromSimpleIfNeeded();
   }
   normalizeScenarioNames();
   if(!scenarios.length) addTab();
