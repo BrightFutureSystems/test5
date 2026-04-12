@@ -730,6 +730,10 @@
   .edu-cell-detail{min-width:58px !important;width:58px !important;max-width:58px !important;}
   .edu-cell-detail .edu-cell-inner{width:auto;align-items:center;}
   .edu-cell-detail .loan-detail-btn{width:48px;min-width:48px;padding-left:0;padding-right:0;} 
+  .subhead-with-action{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .subhead-action-btn{padding:5px 10px;font-size:12px;white-space:nowrap;}
+  .edu-cell-detail .edu-cell-inner{gap:6px;align-items:center;}
+  .edu-reset-btn{width:48px;min-width:48px;padding-left:0;padding-right:0;font-size:12px;}
   .help{
     font-size:12px;
     color:var(--muted);
@@ -1641,6 +1645,7 @@
               <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低維持ライン</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
               <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 下落時の防御ルールを使う</label>
               <label for="withdrawalBucketDefenseThresholdPct" style="margin-top:8px;">防御ルール発動ライン</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-15" step="0.1"><span class="suffix">%</span></div>
+              <label for="withdrawalBucketDefenseRecoveryPct" style="margin-top:8px;">解除回復率</label><div class="input-unit"><input id="withdrawalBucketDefenseRecoveryPct" type="number" class="ratebox" value="95" step="0.1" min="0" max="200"><span class="suffix">%</span></div>
             </div>
             <div class="withdrawal-rule-field withdrawal-rule-field-wide">
               <label for="withdrawalOrderMode">売却順序</label>
@@ -1859,6 +1864,17 @@
       <div class="modal-actions" style="margin-top:14px;">
         <button type="button" id="cancelFireDiagnosisBtn">キャンセル</button>
         <button type="button" id="runFireDiagnosisBtn">診断実行</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resetDefaultsConfirmModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resetDefaultsConfirmTitle">
+      <div id="resetDefaultsConfirmTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">初期値に戻しますか？</div>
+      <div id="resetDefaultsConfirmMessage" class="modal-text">この設定を初期値に戻します。現在の値は元に戻せません。実行しますか？</div>
+      <div class="modal-actions">
+        <button id="cancelResetDefaultsConfirmBtn" type="button">キャンセル</button>
+        <button id="confirmResetDefaultsConfirmBtn" type="button">初期化</button>
       </div>
     </div>
   </div>
@@ -2253,7 +2269,7 @@
       <h2>社会保険料・公的年金課税（簡易）</h2>
       <div class="grid2">
         <div>
-          <div class="subhead">社会保険料（簡易）</div>
+          <div class="subhead subhead-with-action"><span>社会保険料（簡易）</span><button type="button" id="resetSocialSimpleBtn" class="subhead-action-btn">初期化</button></div>
           <table class="center-table income-table">
             <tr><th>項目</th><th>入力</th></tr>
             <tr><td>国民年金の支払いを反映</td><td><label class="inline-check"><input id="socialNationalPensionOn" type="checkbox" checked> 反映する</label></td></tr>
@@ -2271,7 +2287,7 @@
           <div class="help small">国民年金：20〜59歳の対象者1人あたりの概算年額です。夫婦とも対象なら原則2人分かかります。<br>退職後健保（本人・配偶者）：退職後に使う健康保険の種類をそれぞれ選びます。<br>任意継続年額：任意継続を選んだ本人1人あたりの概算年額です。本人・配偶者とも任意継続を選ぶ場合は、この金額をそれぞれに適用します。<br>国保簡易 料率：国保の所得連動部分を表す簡易率です。自治体差があります。<br>国保簡易 均等割等：均等割・平等割など固定部分をまとめた世帯ベースの概算です。<br>国保簡易 上限：国保年額の簡易上限です。自治体や年度で異なります。<br>介護保険（65歳以上）：65歳以上の対象者1人あたりの概算年額です。夫婦とも65歳以上なら2人分かかり得ます。<br>後期高齢保険料：75歳以上の本人1人あたりの概算年額です。実際の保険料は地域や所得で変わります。</div>
         </div>
         <div>
-          <div class="subhead">公的年金課税（簡易）</div>
+          <div class="subhead subhead-with-action"><span>公的年金課税（簡易）</span><button type="button" id="resetPensionTaxSimpleBtn" class="subhead-action-btn">初期化</button></div>
           <table class="center-table income-table">
             <tr><th>項目</th><th>入力</th></tr>
             <tr><td>公的年金の税を反映</td><td><label class="inline-check"><input id="taxOn" type="checkbox" checked> 反映する</label></td></tr>
@@ -3227,7 +3243,8 @@ const STANDARD_ACTION_MODAL_CONFIG = {
   loanDetailModal: {primarySelector:'#saveLoanDetailBtn', cancelSelector:'#cancelLoanDetailBtn'},
   loanDetailConflictModal: {primarySelector:'#useStoredLoanDetailBtn', cancelSelector:'#cancelLoanDetailConflictBtn'},
   educationDetailModal: {primarySelector:'#saveEducationDetailBtn', cancelSelector:'#cancelEducationDetailBtn'},
-  educationCopyModal: {primarySelector:'#confirmEducationCopyBtn', cancelSelector:'#cancelEducationCopyBtn'}
+  educationCopyModal: {primarySelector:'#confirmEducationCopyBtn', cancelSelector:'#cancelEducationCopyBtn'},
+  resetDefaultsConfirmModal: {primarySelector:'#confirmResetDefaultsConfirmBtn', cancelSelector:'#cancelResetDefaultsConfirmBtn'}
 };
 function focusModalPrimaryActionButton(modalId){
   const modal = document.getElementById(modalId);
@@ -4338,7 +4355,7 @@ function buildEducationGrid(data = {}){
     const abroadType = data[`c${i}_abroad_type`] ?? "なし";
     const abroadAmount = attrValue(data[`c${i}_abroad_amount`], 0);
     html += `<td class="edu-cell"><div class="edu-cell-inner"><select id="c${i}_abroad_type">${abroadOptions.map(opt => `<option value="${escapeAttr(opt)}" ${String(abroadType) === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select><div style="height:6px"></div><div class="input-unit"><input id="c${i}_abroad_amount" type="number" class="moneybox" value="${abroadAmount}" step="1"><span class="suffix">万円</span></div></div></td>`;
-    html += `<td class="edu-cell edu-cell-detail"><div class="edu-cell-inner"><button type="button" class="loan-detail-btn edu-detail-open-btn" data-edu-detail-open="${i}">${detailBtnLabel}</button><input type="hidden" id="c${i}_detail_json" value="${escapeAttr(detailHiddenValue)}"></div></td>`;
+    html += `<td class="edu-cell edu-cell-detail"><div class="edu-cell-inner"><button type="button" class="loan-detail-btn edu-detail-open-btn" data-edu-detail-open="${i}">${detailBtnLabel}</button><button type="button" class="edu-reset-btn" data-edu-reset="${i}">初期化</button><input type="hidden" id="c${i}_detail_json" value="${escapeAttr(detailHiddenValue)}"></div></td>`;
     html += `</tr>`;
   }
   body.innerHTML = html;
@@ -5081,7 +5098,7 @@ function isVisibleForTab(el){
 }
 function isInsideHiddenLayer(el){
   if(!el || !el.closest) return false;
-  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]');
+  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]');
 }
 function isTabNavigableElement(el){
   if(!el || !el.matches) return false;
@@ -5109,7 +5126,7 @@ function shouldDeferLiveNumericFormatting(el){
   return !!el.closest("#simpleModePanel, #loanDetailModal, #loanDetailConflictModal, #incomeCurveModal, #pensionHelperModal, #educationDetailModal, #educationCopyModal, #insuranceAssistModal, #withdrawalRuleModal, #crashTestModal, #fireDiagnosisModal, #monteCarloSettingsModal");
 }
 function getOpenModal(){
-  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #loanDetailModal.show, #loanDetailConflictModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show');
+  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #resetDefaultsConfirmModal.show, #loanDetailModal.show, #loanDetailConflictModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show');
 }
 function getTabScopeRoot(){
   return getOpenModal() || document.body;
@@ -5136,7 +5153,7 @@ function collectTableFocusables(table){
 function collectFocusableFlow(node, scopeRoot, out, seen){
   if(!node || node.nodeType !== 1 || seen.has(node)) return;
   if(node !== scopeRoot && node.matches){
-    if(node.matches('#tabContextMenu, #rowContextMenu, #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), [hidden], [aria-hidden="true"]')) return;
+    if(node.matches('#tabContextMenu, #rowContextMenu, #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]')) return;
   }
 
   if(node !== scopeRoot && isTabNavigableElement(node)){
@@ -5350,6 +5367,111 @@ function invalidateSimulationCaches(){
   monteCompareResultCache.clear();
   monteStaticSeriesCache.clear();
   monteSharedShockCache.clear();
+}
+
+const SIMPLE_SOCIAL_INPUT_IDS = [
+  "socialNationalPensionOn","socialNationalPensionAnnual","socialHealthOn","social_self_healthMode","social_sp_healthMode",
+  "socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"
+];
+const SIMPLE_PENSION_TAX_INPUT_IDS = [
+  "taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxPublicPensionDeductionUnder65","taxPublicPensionDeduction65Plus","taxResidentRatePct"
+];
+const SIMPLE_SOCIAL_DEFAULT_OVERRIDES = {
+  socialNationalPensionOn:true,
+  socialNationalPensionAnnual:"21.5",
+  socialHealthOn:true,
+  social_self_healthMode:"kokuho",
+  social_sp_healthMode:"kokuho",
+  socialVoluntaryAnnual:"30",
+  socialKokuhoRatePct:"10",
+  socialKokuhoBaseAnnual:"8",
+  socialKokuhoCapAnnual:"100",
+  socialNursingAnnual:"8",
+  socialLateElderlyAnnual:"12"
+};
+const SIMPLE_PENSION_TAX_DEFAULT_OVERRIDES = {
+  taxOn:true,
+  taxIncomeBasicDeduction:"58",
+  taxResidentBasicDeduction:"43",
+  taxPublicPensionDeductionUnder65:"60",
+  taxPublicPensionDeduction65Plus:"110",
+  taxResidentRatePct:"10"
+};
+const SIMPLE_EDUCATION_STAGE_KEYS = ["preschool","elem","junior","high","uni","grad"];
+let resetDefaultsConfirmAction = null;
+function setElementValueFromStoredDefault(el, value){
+  if(!el) return;
+  if(el.type === 'checkbox') el.checked = parseStoredCheckboxValue(value, false);
+  else el.value = value == null ? '' : String(value);
+}
+function applyDefaultValuesToIds(ids, defaults, overrides){
+  (Array.isArray(ids) ? ids : []).forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const value = Object.prototype.hasOwnProperty.call(overrides || {}, id)
+      ? overrides[id]
+      : (defaults ? defaults[id] : '');
+    setElementValueFromStoredDefault(el, value);
+  });
+}
+function resetEducationRowToDefaults(childIndex){
+  const idx = Math.max(1, Number(childIndex) || 1);
+  const defaults = getDefaultScenarioTemplate();
+  SIMPLE_EDUCATION_STAGE_KEYS.forEach(stage=>{
+    const typeId = `c${idx}_${stage}_type`;
+    const extraId = `c${idx}_${stage}_extra`;
+    const typeEl = document.getElementById(typeId);
+    const extraEl = document.getElementById(extraId);
+    const defaultType = defaults[typeId] ?? (typeEl?.options?.[0]?.value || '');
+    setElementValueFromStoredDefault(typeEl, defaultType);
+    if(typeEl) typeEl.dataset.prevType = String(defaultType || '');
+    setElementValueFromStoredDefault(extraEl, defaults[extraId] ?? getSimpleEducationExtraInputValue(stage, defaultType, ''));
+  });
+  setElementValueFromStoredDefault(document.getElementById(`c${idx}_abroad_type`), defaults[`c${idx}_abroad_type`] ?? 'なし');
+  setElementValueFromStoredDefault(document.getElementById(`c${idx}_abroad_amount`), defaults[`c${idx}_abroad_amount`] ?? '0');
+  setElementValueFromStoredDefault(document.getElementById(`c${idx}_detail_json`), defaults[`c${idx}_detail_json`] ?? '');
+  const openBtn = document.querySelector(`#eduBody [data-edu-detail-open="${idx}"]`);
+  if(openBtn) openBtn.textContent = '詳細';
+  syncCurrentScenarioFromDOM(false);
+  requestDraw();
+  persistState();
+}
+function resetSimpleSocialTableToDefaults(){
+  applyDefaultValuesToIds(SIMPLE_SOCIAL_INPUT_IDS, getDefaultScenarioTemplate(), SIMPLE_SOCIAL_DEFAULT_OVERRIDES);
+  syncCurrentScenarioFromDOM(false);
+  requestDraw();
+  persistState();
+}
+function resetSimplePensionTaxTableToDefaults(){
+  applyDefaultValuesToIds(SIMPLE_PENSION_TAX_INPUT_IDS, getDefaultScenarioTemplate(), SIMPLE_PENSION_TAX_DEFAULT_OVERRIDES);
+  syncCurrentScenarioFromDOM(false);
+  requestDraw();
+  persistState();
+}
+function openResetDefaultsConfirmDialog(message, onConfirm){
+  const modal = document.getElementById('resetDefaultsConfirmModal');
+  if(!modal) return;
+  const messageEl = document.getElementById('resetDefaultsConfirmMessage');
+  if(messageEl) messageEl.innerHTML = message || 'この設定を初期値に戻します。現在の値は元に戻せません。実行しますか？';
+  resetDefaultsConfirmAction = typeof onConfirm === 'function' ? onConfirm : null;
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('resetDefaultsConfirmModal');
+  resetModalInnerScrollPositions('resetDefaultsConfirmModal');
+  applyTabOrder();
+  focusModalPrimaryActionButton('resetDefaultsConfirmModal');
+}
+function closeResetDefaultsConfirmDialog(){
+  const modal = document.getElementById('resetDefaultsConfirmModal');
+  if(!modal) return;
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  resetDefaultsConfirmAction = null;
+}
+function confirmResetDefaultsConfirmDialog(){
+  const action = resetDefaultsConfirmAction;
+  closeResetDefaultsConfirmDialog();
+  if(typeof action === 'function') action();
 }
 
 function refreshRowLabelTexts(){
@@ -7338,6 +7460,7 @@ function getScenarioFromDOM(){
       bucketFloorYears:Math.max(0, numInput("withdrawalBucketFloorYears", 1) || 0),
       bucketDefenseOn:!!document.getElementById("withdrawalBucketDefenseOn")?.checked,
       bucketDefenseThreshold:((numInput("withdrawalBucketDefenseThresholdPct", -15) || 0) / 100),
+      bucketDefenseRecoveryPct:Math.max(0, numInput("withdrawalBucketDefenseRecoveryPct", 95) || 0) / 100,
       orderMode:document.getElementById("withdrawalOrderMode")?.value || "auto",
       orderManualJson:document.getElementById("withdrawalOrderManualJson")?.value || "[]"
     },
@@ -12114,6 +12237,7 @@ function getWithdrawalPolicyConfig(cfg){
     bucketFloorYears:Math.max(0, Number(src.bucketFloorYears ?? 1) || 0),
     bucketDefenseOn:src.bucketDefenseOn !== false,
     bucketDefenseThreshold:Number(src.bucketDefenseThreshold ?? -0.15) || 0,
+    bucketDefenseRecoveryPct:Math.max(0, Number(src.bucketDefenseRecoveryPct ?? 0.95) || 0),
     orderMode: src.orderMode === 'manual' ? 'manual' : 'auto',
     orderManualIds
   };
@@ -12243,29 +12367,77 @@ function getInvestmentReturnForYear(annualState, investments){
   const dividends = Math.max(0, Number(annualState?.dividendIncome || 0));
   return (current + dividends) / begin - 1;
 }
-function calculateWithdrawalNeeds(cfg, rule, annualNeed, depTotal, invTotal, liability, annualInvestmentReturn){
+function createBucketDefenseState(){
+  return {
+    active:false,
+    anchorValue:0,
+    triggerYearAge:null,
+    triggerReturn:0,
+    recoveryTarget:0
+  };
+}
+function calculateWithdrawalNeeds(cfg, rule, annualNeed, depTotal, invTotal, liability, annualInvestmentReturn, annualState=null, bucketDefenseState=null, age=null){
   const need = Math.max(0, Number(annualNeed) || 0);
   const dep = Math.max(0, Number(depTotal) || 0);
   const inv = Math.max(0, Number(invTotal) || 0);
   const debt = Math.max(0, Number(liability) || 0);
   const totalNet = Math.max(0, dep + inv - debt);
   if(isBasicWithdrawalMode(rule.mode)){
-    return {floorBuffer:0, targetBuffer:0, allowProactive:false, defensive:false};
+    return {floorBuffer:0, targetBuffer:0, allowProactive:false, defensive:false, defenseActive:false, defenseAnchorValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
   }
   if(rule.mode === 'rebalance'){
     const pctTarget = totalNet * Math.max(0, Number(rule.rebalanceCashPct || 0));
     const floor = need * Math.max(0, Number(rule.rebalanceBufferYears || 0));
     const target = Math.max(floor, pctTarget);
-    return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false};
+    return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false, defenseActive:false, defenseAnchorValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
   }
   if(rule.mode === 'bucket'){
     const floor = need * Math.max(0, Number(rule.bucketFloorYears || 0));
     const target = need * Math.max(0, Number(rule.bucketTargetYears || 0));
-    const defensive = !!rule.bucketDefenseOn && Number(annualInvestmentReturn || 0) <= Number(rule.bucketDefenseThreshold || 0);
-    return {floorBuffer:floor, targetBuffer:target, allowProactive:!defensive, defensive};
+    const state = bucketDefenseState || createBucketDefenseState();
+    const threshold = Number(rule.bucketDefenseThreshold || 0);
+    const recoveryPct = Math.max(0, Number(rule.bucketDefenseRecoveryPct ?? 0.95) || 0);
+    let defensive = false;
+    if(!!rule.bucketDefenseOn){
+      const anchor = Math.max(0, Number(state.anchorValue || 0));
+      const recoveryTarget = anchor * recoveryPct;
+      if(state.active){
+        const canCheckRecovery = age == null || state.triggerYearAge == null || Number(age) !== Number(state.triggerYearAge);
+        if(anchor <= 0.0001){
+          state.active = false;
+        }else if(canCheckRecovery && inv >= recoveryTarget - 0.0001){
+          state.active = false;
+        }
+      }
+      if(!state.active && Number(annualInvestmentReturn || 0) <= threshold){
+        state.active = true;
+        state.anchorValue = Math.max(0, Number(annualState?.beginningInvestmentTotal || 0));
+        state.triggerYearAge = Number.isFinite(Number(age)) ? Number(age) : null;
+        state.triggerReturn = Number(annualInvestmentReturn || 0) || 0;
+      }
+      state.recoveryTarget = Math.max(0, Number(state.anchorValue || 0)) * recoveryPct;
+      defensive = !!state.active;
+    }else{
+      state.active = false;
+      state.anchorValue = 0;
+      state.triggerYearAge = null;
+      state.triggerReturn = 0;
+      state.recoveryTarget = 0;
+    }
+    return {
+      floorBuffer:floor,
+      targetBuffer:target,
+      allowProactive:!defensive,
+      defensive,
+      defenseActive:!!state.active,
+      defenseAnchorValue:Math.max(0, Number(state.anchorValue || 0)),
+      defenseRecoveryTarget:Math.max(0, Number(state.recoveryTarget || 0)),
+      defenseTriggerReturn:Number(state.triggerReturn || 0) || 0,
+      defenseTriggerAge:Number.isFinite(Number(state.triggerYearAge)) ? Number(state.triggerYearAge) : null
+    };
   }
   const target = need * Math.max(0, Number(rule.currentBufferYears || 0));
-  return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false};
+  return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false, defenseActive:false, defenseAnchorValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
 }
 function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualNeed, shortageNeed, annualState, ruleNeeds){
   let remainingNeed = Math.max(0, Number(shortageNeed) || 0);
@@ -12301,7 +12473,12 @@ function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualN
       floorBuffer: ruleNeeds.floorBuffer || 0,
       targetBuffer: ruleNeeds.targetBuffer || 0,
       defensive: !!ruleNeeds.defensive,
-      annualNeed: annualNeed || 0
+      annualNeed: annualNeed || 0,
+      bucketDefenseActive: !!ruleNeeds.defenseActive,
+      bucketDefenseAnchorValue: Number(ruleNeeds.defenseAnchorValue || 0) || 0,
+      bucketDefenseRecoveryTarget: Number(ruleNeeds.defenseRecoveryTarget || 0) || 0,
+      bucketDefenseTriggerReturn: Number(ruleNeeds.defenseTriggerReturn || 0) || 0,
+      bucketDefenseTriggerAge: Number.isFinite(Number(ruleNeeds.defenseTriggerAge)) ? Number(ruleNeeds.defenseTriggerAge) : null
     };
   }
 }
@@ -12359,6 +12536,7 @@ function simulate(cfg, random=false, opts={}){
   let liability = 0;
   const receiptState = ensureReceiptState();
   const withdrawalPolicy = getWithdrawalPolicyConfig(cfg);
+  const bucketDefenseState = createBucketDefenseState();
 
   const labels = finalOnly ? null : [];
   const totalAssets = finalOnly ? null : [];
@@ -12487,7 +12665,7 @@ function simulate(cfg, random=false, opts={}){
       const shortageNeed = consumeDepositsForNeed(-net, deposits);
       if(shortageNeed > 0.0001){
         const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-        const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn);
+        const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
         ruleNeeds.mode = withdrawalPolicy.mode;
         const liabilityRef = {value:liability};
         applyWithdrawalRule(cfg, age, deposits, investments, liabilityRef, annualNeed, shortageNeed, annualState, ruleNeeds);
@@ -12498,7 +12676,7 @@ function simulate(cfg, random=false, opts={}){
     processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState);
 
     const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn);
+    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
     ruleNeeds.mode = withdrawalPolicy.mode;
     if(ruleNeeds.targetBuffer > 0 || ruleNeeds.floorBuffer > 0){
       const liabilityRef = {value:liability};
@@ -12506,7 +12684,7 @@ function simulate(cfg, random=false, opts={}){
       liability = liabilityRef.value;
     }
 
-    if(!annualState.withdrawalRuleInfo){ annualState.withdrawalRuleInfo = {mode:withdrawalPolicy.mode, floorBuffer:0, targetBuffer:0, defensive:false, annualNeed:0}; }
+    if(!annualState.withdrawalRuleInfo){ annualState.withdrawalRuleInfo = {mode:withdrawalPolicy.mode, floorBuffer:0, targetBuffer:0, defensive:false, annualNeed:0, bucketDefenseActive:false, bucketDefenseAnchorValue:0, bucketDefenseRecoveryTarget:0, bucketDefenseTriggerReturn:0, bucketDefenseTriggerAge:null}; }
     const depTotal = deposits.reduce((s,d)=>s+d.amount,0);
     const invTotal = investments.reduce((s,i)=>s+i.amount,0);
     const safeTotal = safeAssetObj.totalSafeAssets || 0;
@@ -13973,6 +14151,7 @@ const WITHDRAWAL_RULE_MODAL_IDS = [
   "withdrawalBucketFloorYears",
   "withdrawalBucketDefenseOn",
   "withdrawalBucketDefenseThresholdPct",
+  "withdrawalBucketDefenseRecoveryPct",
   "withdrawalCompareMode",
   "withdrawalCompareParamRule",
   "withdrawalCompareParamKey",
@@ -14240,6 +14419,7 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
   let liability = 0;
   const receiptState = ensureReceiptState();
   const withdrawalPolicy = getWithdrawalPolicyConfig(cfg);
+  const bucketDefenseState = createBucketDefenseState();
   let finalAtLife = null;
   let depletionAge = null;
   let retireAsset = null;
@@ -14326,7 +14506,7 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
       const shortageNeed = consumeDepositsForNeed(-net, deposits);
       if(shortageNeed > 0.0001){
         const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-        const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn);
+        const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
         ruleNeeds.mode = withdrawalPolicy.mode;
         const liabilityRef = {value:liability};
         applyWithdrawalRule(cfg, age, deposits, investments, liabilityRef, annualNeed, shortageNeed, annualState, ruleNeeds);
@@ -14337,7 +14517,7 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
     processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState);
 
     const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn);
+    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
     ruleNeeds.mode = withdrawalPolicy.mode;
     if(ruleNeeds.targetBuffer > 0 || ruleNeeds.floorBuffer > 0){
       const liabilityRef = {value:liability};
@@ -14815,6 +14995,7 @@ function renderWithdrawalRuleSummary(){
   const bucketFloor = numInput('withdrawalBucketFloorYears', 1) || 0;
   const defenseOn = !!document.getElementById('withdrawalBucketDefenseOn')?.checked;
   const defensePct = numInput('withdrawalBucketDefenseThresholdPct', -15) || 0;
+  const defenseRecoveryPct = numInput('withdrawalBucketDefenseRecoveryPct', 95) || 0;
   const fixedRatePct = numInput('withdrawalFixedRatePct', 4) || 0;
   const fixedAmountYearly = numInput('withdrawalFixedAmountYearly', 300) || 0;
   const startSummary = getWithdrawalStartConditionSummary();
@@ -14825,7 +15006,7 @@ function renderWithdrawalRuleSummary(){
   else if(mode === 'basic_lump') html = `<strong>一括全額取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点で、その時点の運用資産を全額取り崩します。`;
   else if(mode === 'basic_hybrid') html = `<strong>一部一括＋残り分割</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点に ${formatNumberJP(basicHybridLumpAmount, 1)} 万円を一括で取り崩し、残額はその時点の運用資産残高をもとに自動計算して、翌年から ${basicHybridPeriodYears} 年間で均等に分割して取り崩します。`;
   else if(mode === 'rebalance') html = `<strong>目標配分リバランス型</strong><br>生活費 ${rebalanceYears} 年分を最低現金として持ちつつ、年末に現金比率 ${cashPct}% を目標に不足分を投資資産から補充します。`;
-  else if(mode === 'bucket') html = `<strong>バケツ戦略型</strong><br>短期バケツ目標 ${bucketTarget} 年分、最低維持ライン ${bucketFloor} 年分です。` + (defenseOn ? ` 年間の投資資産リターンが ${defensePct}% 以下の年は、防御ルールにより目標までの補充を止め、最低ラインまでに抑えます。` : ' 防御ルールは使いません。');
+  else if(mode === 'bucket') html = `<strong>バケツ戦略型</strong><br>短期バケツ目標 ${bucketTarget} 年分、最低維持ライン ${bucketFloor} 年分です。` + (defenseOn ? ` 年間の投資資産リターンが発動ライン ${defensePct}% 以下になった年は防衛モードへ入り、目標までの補充を止め、最低ラインまでに抑えます。防衛モードは、発動年の前年末運用資産残高を基準に、その ${defenseRecoveryPct}% まで回復するまで継続します。<br><span class="small muted">防御ルール発動ライン: 年間の投資資産リターンがこの値以下になった年に、防衛モードへ入る基準です。 解除回復率: 防衛発動年の前年末運用資産残高を基準に、その何%まで回復したら防衛モードを解除するかを示します。</span>` : ' 防御ルールは使いません。');
   else if(mode === 'current') html = `<strong>固定年数バッファ型</strong><br>生活費 ${currentYears} 年分の現金バッファを固定的に維持し、不足したら投資資産から補充します。主要生活支出には、生活費・住居費・保険料・定期支出・教育費の継続部分などを含み、臨時支出や入学一時金などの単発費用は含みません。`;
   else html = `<strong>毎年分割取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点の運用資産残高をもとに、${basicAnnualPeriodYears} 年で均等に分割した金額を自動計算し、各年の開始時点に取り崩します。`;
   html += `<br><span class="small muted">売却順序: ${orderMode === 'manual' ? '手動' : '自動（課税 → その他 → NISA → DC系。同一区分内では含み益率が低いもの優先、さらに残高が大きいもの優先）'}</span>`;
@@ -15149,7 +15330,7 @@ document.getElementById("cancelWithdrawalRuleBtn")?.addEventListener("click", ca
 document.getElementById("saveWithdrawalRuleBtn")?.addEventListener("click", saveWithdrawalRuleModal);
 
 document.getElementById("withdrawalBucketDefenseOn")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); });
-["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); }));
+["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalBucketDefenseRecoveryPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); }));
 document.getElementById("withdrawalStartConditionValue")?.addEventListener("input", ()=>{ persistWithdrawalStartConditionValueControl(); withdrawalCompareCache=null; renderWithdrawalRuleSummary(); });
 document.getElementById("withdrawalRuleMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); });
 document.getElementById("withdrawalStartConditionMode")?.addEventListener("change", handleWithdrawalStartConditionModeChange);
@@ -16002,6 +16183,16 @@ document.getElementById('insuranceAssistModal')?.addEventListener('mousedown', (
 document.getElementById('insuranceAssistModal')?.addEventListener('mouseup', (e)=>{ if(insuranceAssistBackdropPointerDown && e.target === e.currentTarget) closeInsuranceAssistModal(); insuranceAssistBackdropPointerDown = false; });
 
 document.getElementById('eduBody')?.addEventListener('click', (e)=>{
+  const resetBtn = e.target.closest('[data-edu-reset]');
+  if(resetBtn){
+    const childIndex = +(resetBtn.dataset.eduReset || 0);
+    if(childIndex > 0){
+      const data = migrateLegacyData(getAllInputs());
+      const childLabel = getRowLabel(data, 'child', childIndex);
+      openResetDefaultsConfirmDialog(`「${escapeHtml(childLabel)}」の教育費設定を初期値に戻します。現在の値は元に戻せません。実行しますか？`, ()=>resetEducationRowToDefaults(childIndex));
+    }
+    return;
+  }
   const btn = e.target.closest('[data-edu-detail-open]');
   if(!btn) return;
   openEducationDetailModal(+(btn.dataset.eduDetailOpen || 0));
@@ -16027,6 +16218,21 @@ document.getElementById('eduBody')?.addEventListener('change', (e)=>{
   persistState();
 });
 document.getElementById('eduCopyBtn')?.addEventListener('click', openEducationCopyModal);
+document.getElementById('resetSocialSimpleBtn')?.addEventListener('click', ()=>{
+  openResetDefaultsConfirmDialog('社会保険料（簡易）の設定を初期値に戻します。現在の値は元に戻せません。実行しますか？', resetSimpleSocialTableToDefaults);
+});
+document.getElementById('resetPensionTaxSimpleBtn')?.addEventListener('click', ()=>{
+  openResetDefaultsConfirmDialog('公的年金課税（簡易）の設定を初期値に戻します。現在の値は元に戻せません。実行しますか？', resetSimplePensionTaxTableToDefaults);
+});
+document.getElementById('cancelResetDefaultsConfirmBtn')?.addEventListener('click', closeResetDefaultsConfirmDialog);
+document.getElementById('confirmResetDefaultsConfirmBtn')?.addEventListener('click', confirmResetDefaultsConfirmDialog);
+document.getElementById('resetDefaultsConfirmModal')?.addEventListener('click', (e)=>{
+  if(e.target === e.currentTarget) closeResetDefaultsConfirmDialog();
+});
+document.querySelector('#resetDefaultsConfirmModal .modal-card')?.addEventListener('click', (e)=>e.stopPropagation());
+['mousedown','mouseup','dblclick','selectstart'].forEach(evt=>{
+  document.querySelector('#resetDefaultsConfirmModal .modal-card')?.addEventListener(evt, (e)=>e.stopPropagation());
+});
 document.getElementById('cancelEducationCopyBtn')?.addEventListener('click', closeEducationCopyModal);
 document.getElementById('confirmEducationCopyBtn')?.addEventListener('click', confirmEducationCopy);
 document.getElementById('eduCopyFrom')?.addEventListener('change', ()=>{
