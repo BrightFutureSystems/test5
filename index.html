@@ -2779,8 +2779,15 @@ function isCheckedAttr(v, fallback=false){
 
 const DYNAMIC_SECTIONS = ["child","dep","safeAsset","inv","futureInv","sumInv","reginc","inc","insPay","insRecv","rent","homeMaint","life","period","extra"];
 let dynamicCounts = {child:1,dep:1,safeAsset:1,inv:1,futureInv:1,sumInv:1,reginc:1,inc:1,insPay:1,insRecv:1,rent:1,homeMaint:4,life:1,period:1,extra:1};
+function parseAgeLikeValue(value){
+  if(value == null || value === "") return NaN;
+  const n = Number(value);
+  if(Number.isFinite(n)) return n;
+  const m = String(value).match(/-?\d+(?:\.\d+)?/);
+  return m ? Number(m[0]) : NaN;
+}
 function currentAgeValue(data){
-  const raw = data && data.age != null ? +data.age : (+document.getElementById("age")?.value || 50);
+  const raw = data && data.age != null ? parseAgeLikeValue(data.age) : parseAgeLikeValue(document.getElementById("age")?.value);
   return Number.isFinite(raw) ? raw : 50;
 }
 function currentBaseYearValue(data){
@@ -2791,6 +2798,105 @@ function currentBaseYearValue(data){
   }
   const raw = data && data.currentBaseYear != null ? +data.currentBaseYear : (+document.getElementById("currentBaseYear")?.value || fallback);
   return Number.isFinite(raw) && raw > 0 ? raw : fallback;
+}
+function currentSelfRetireAgeValue(data){
+  const raw = data && data.self_retire_age != null ? +data.self_retire_age : (+document.getElementById("self_retire_age")?.value || 65);
+  return Number.isFinite(raw) ? raw : 65;
+}
+function getDefaultRangeRowAges(prefix, index, data = {}){
+  const currentAge = currentAgeValue(data);
+  if(prefix === "life") {
+    const retireAge = currentSelfRetireAgeValue(data);
+    if(index === 1) return {fromAge: currentAge, toAge: retireAge};
+    if(index === 2) return {fromAge: Math.min(120, retireAge + 1), toAge: 120};
+  }
+  return {fromAge: currentAge, toAge: 120};
+}
+function getDefaultPointRowAge(prefix, data = {}){
+  const currentAge = currentAgeValue(data);
+  if(prefix === "inc") return Math.max(currentAge, 70);
+  if(prefix === "extra") return Math.max(currentAge, 55);
+  return currentAge;
+}
+function getPreferredInsuranceReceiveType(typeValue){
+  const type = String(typeValue || "生命保険");
+  if(type === "学資保険") return "学資金";
+  if(type === "個人年金保険") return "年金形式";
+  if(type === "生命保険") return "満期保険金";
+  return "その他";
+}
+function getFirstEnabledChildLabel(data = {}){
+  return getEnabledChildOptionList(data)[0]?.value || "";
+}
+function normalizeInsuranceChildValue(value, data = {}){
+  const labels = getEnabledChildOptionList(data).map(opt=> String(opt.value || ""));
+  const v = String(value || "");
+  if(v && labels.includes(v)) return v;
+  return labels[0] || "";
+}
+function getScholarshipLinkedSelfAges(targetChildValue, data = {}){
+  const targetChild = normalizeInsuranceChildValue(targetChildValue, data);
+  const fallback = {targetChild, lumpAge:18, annuityEndAge:21, payEndAge:18};
+  if(!targetChild) return fallback;
+  const selfBirth = String(data.selfBirthDate || "");
+  if(!selfBirth) return fallback;
+  const count = inferCount(data, "child");
+  let childBirth = "";
+  for(let i=1;i<=count;i++){
+    if(getRowLabel(data, "child", i) === targetChild){
+      childBirth = String(data[`child${i}_birthDate`] || "");
+      break;
+    }
+  }
+  const childParts = parseDateInput(childBirth);
+  if(!childParts) return fallback;
+  const lumpAge = calcAgeAtYearMonth(selfBirth, childParts.year + 18, childParts.month);
+  const annuityEndAge = calcAgeAtYearMonth(selfBirth, childParts.year + 21, childParts.month);
+  return {
+    targetChild,
+    lumpAge: Number.isFinite(lumpAge) && lumpAge > 0 ? lumpAge : fallback.lumpAge,
+    annuityEndAge: Number.isFinite(annuityEndAge) && annuityEndAge > 0 ? annuityEndAge : fallback.annuityEndAge,
+    payEndAge: Number.isFinite(lumpAge) && lumpAge > 0 ? lumpAge : fallback.payEndAge
+  };
+}
+function getInsurancePayDefaultSpec(typeValue, data = {}, ownerValue = "本人", insuredValue = "本人"){
+  const type = String(typeValue || "生命保険");
+  const owner = normalizeInsurancePersonValue(ownerValue || "本人", data);
+  const currentAge = Math.max(0, currentAgeValue(data));
+  const make = (toAge, unit = "month", insured = owner, hasDefault = true) => ({toAge, unit, insured, hasDefault});
+  if(type === "学資保険"){
+    const linked = getScholarshipLinkedSelfAges(insuredValue, data);
+    return make(linked.payEndAge, "month", linked.targetChild || getFirstEnabledChildLabel(data) || owner, true);
+  }
+  if(type === "個人年金保険" || type === "生命保険") return make(Math.max(currentAge, 60), "month", owner, true);
+  if(["医療保険・がん保険","医療保険","がん保険","介護保険","火災保険","地震保険","自動車保険","その他"].includes(type)) return make(Math.max(currentAge, 120), "month", owner, true);
+  return make(Math.max(currentAge, 120), "month", owner, true);
+}
+function getInsuranceReceiveDefaultSpec(typeValue, receiveTypeValue, data = {}, targetChildValue = ""){
+  const type = String(typeValue || "生命保険");
+  const receiveType = String(receiveTypeValue || "満期保険金");
+  const currentAge = Math.max(0, currentAgeValue(data));
+  const make = (fromAge, toAge, unit, hasDefault = true) => ({fromAge, toAge, unit, hasDefault});
+  if(type === "学資保険") {
+    const linked = getScholarshipLinkedSelfAges(targetChildValue, data);
+    if(receiveType === "年金形式") return make(linked.lumpAge, linked.annuityEndAge, "year", true);
+    if(receiveType === "学資金" || receiveType === "満期保険金" || receiveType === "一時金") return make(linked.lumpAge, linked.lumpAge, "lump", true);
+    return make(linked.lumpAge, linked.lumpAge, "lump", true);
+  }
+  if(type === "個人年金保険") {
+    if(receiveType === "年金形式") return make(Math.max(currentAge, 65), Math.max(currentAge, 75), "year", true);
+    if(receiveType === "満期保険金" || receiveType === "一時金") return make(Math.max(currentAge, 65), Math.max(currentAge, 65), "lump", true);
+    return make(Math.max(currentAge, 65), Math.max(currentAge, 75), "year", true);
+  }
+  if(type === "生命保険") {
+    if(receiveType === "年金形式") return make(Math.max(currentAge, 65), Math.max(currentAge, 75), "year", true);
+    if(receiveType === "満期保険金" || receiveType === "一時金") return make(Math.max(currentAge, 65), Math.max(currentAge, 65), "lump", true);
+    return make(Math.max(currentAge, 65), Math.max(currentAge, 65), "lump", true);
+  }
+  return make(currentAge, currentAge, "lump", false);
+}
+function isInsuranceReceiveAutoDefaultTarget(typeValue, receiveTypeValue){
+  return !!getInsuranceReceiveDefaultSpec(typeValue, receiveTypeValue, getAllInputs()).hasDefault;
 }
 function getTimeModeValue(data, prefix, index){
   const raw = String(data?.[`${prefix}${index}_timeUnit`] || "age");
@@ -2891,7 +2997,7 @@ const ROW_FIELD_MAP = {
   reginc:["fromAge","toAge","val","timeUnit","name","custom"],
   inc:["age","val","timeUnit","name","custom"],
   insPay:["type","owner","insured","fromAge","toAge","val","unit","name","custom"],
-  insRecv:["type","receiveType","receiver","fromAge","toAge","val","unit","name","custom"],
+  insRecv:["type","receiveType","receiver","targetChild","fromAge","toAge","val","unit","name","custom"],
   rent:["fromAge","toAge","val","timeUnit","name","custom"],
   homeMaint:["fromAge","toAge","val","timeUnit","name","custom"],
   life:["fromAge","toAge","val","timeUnit","name","custom"],
@@ -2899,7 +3005,7 @@ const ROW_FIELD_MAP = {
   extra:["age","val","timeUnit","name","custom"]
 };
 const DEFAULT_ROW_LABEL_PREFIX = {child:"子",dep:"預貯金",safeAsset:"安全資産",inv:"運用",futureInv:"投資",sumInv:"積立",reginc:"定期収入",inc:"臨時収入",insPay:"保険料",insRecv:"保険受取",rent:"家賃",homeMaint:"持ち家維持費",life:"生活費",period:"定期支出",extra:"臨時支出",crashTest:"暴落"};
-const DEFAULT_ROW_COUNT = {child:1,dep:1,safeAsset:1,inv:1,futureInv:1,sumInv:1,reginc:1,inc:1,insPay:1,insRecv:1,rent:1,homeMaint:4,life:1,period:1,extra:1};
+const DEFAULT_ROW_COUNT = {child:1,dep:1,safeAsset:1,inv:1,futureInv:1,sumInv:1,reginc:1,inc:1,insPay:1,insRecv:1,rent:1,homeMaint:4,life:2,period:1,extra:1};
 const HOME_MAINT_DEFAULT_LABELS = ["固定資産税・都市計画税","火災保険・地震保険","修繕・メンテナンス","管理費・修繕積立金"];
 const INSURANCE_TYPE_OPTIONS = ["生命保険","医療保険・がん保険","医療保険","がん保険","学資保険","個人年金保険","介護保険","火災保険","地震保険","自動車保険","その他"];
 const INSURANCE_RECEIVE_TYPE_OPTIONS = ["満期保険金","一時金","年金形式","学資金","その他"];
@@ -3037,56 +3143,158 @@ function deleteDynamicRow(type, index){
     dynamicCounts[type] = 1;
     let next = {...data};
     for(const k of Object.keys(next)){
-      if(k.match(new RegExp(`^${type}\d+_`)) || (type === "child" && k.match(/^c\d+_/))) delete next[k];
+      if(k.match(new RegExp(`^${type}\\d+_`)) || (type === "child" && k.match(/^c\d+_/))) delete next[k];
     }
-    let preservedBaseDate = "";
-    let preservedBaseYear = "";
-    if(["sumInv","life","rent"].includes(type)){
-      preservedBaseDate = String(data.baseDate || document.getElementById("baseDate")?.value || "");
-      preservedBaseYear = String(parseDateInput(preservedBaseDate)?.year || data.currentBaseYear || document.getElementById("currentBaseYear")?.value || "");
-      if(preservedBaseDate) next.baseDate = preservedBaseDate;
-      if(preservedBaseYear) next.currentBaseYear = preservedBaseYear;
-      next = ensureSimpleRepresentativeSlots(next).data;
-      const currentAgeRaw = calcAgeFromBirthDate(String(next.selfBirthDate || document.getElementById("selfBirthDate")?.value || ""), preservedBaseDate || String(next.baseDate || ""));
-      const currentAge = Math.max(0, Math.round(Number(currentAgeRaw != null ? currentAgeRaw : currentAgeValue(next)) || 0));
-      const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
-      next.baseDate = preservedBaseDate || next.baseDate;
-      next.currentBaseYear = preservedBaseYear || next.currentBaseYear;
-      next.age = currentAge;
-      if(type === "sumInv"){
-        next.sumInv1_fromAge = currentAge;
-        next.sumInv1_toAge = retireAge;
-        next.sumInv1_fromAge_auto = "1";
-        next.sumInv1_toAge_auto = "1";
-        if(next.sumInv1_amount == null || next.sumInv1_amount === "") next.sumInv1_amount = 0;
-        if(next.sumInv1_rate == null || next.sumInv1_rate === "") next.sumInv1_rate = 0;
-        if(next.sumInv1_owner == null || next.sumInv1_owner === "") next.sumInv1_owner = "本人";
-        if(next.sumInv1_cur == null || next.sumInv1_cur === "") next.sumInv1_cur = "万円";
-        if(next.sumInv1_accountType == null || next.sumInv1_accountType === "") next.sumInv1_accountType = "課税";
-        if(next.sumInv1_idecoCategory == null) next.sumInv1_idecoCategory = "";
-        if(next.sumInv1_lastNonTaxableAccountType == null) next.sumInv1_lastNonTaxableAccountType = "";
-        setRowLabelMeta(next, "sumInv", 1, defaultRowLabel("sumInv", 1), false);
-      }else if(type === "life"){
-        next.life1_fromAge = currentAge;
-        next.life1_toAge = retireAge;
-        next.life1_fromAge_auto = "1";
-        next.life1_toAge_auto = "1";
-        next.life1_timeUnit = "age";
-        next.life2_fromAge = Math.min(120, retireAge + 1);
-        next.life2_toAge = 120;
-        next.life2_fromAge_auto = "1";
-        next.life2_toAge_auto = "1";
-        next.life2_timeUnit = "age";
-        setRowLabelMeta(next, "life", 1, defaultRowLabel("life", 1), false);
-        setRowLabelMeta(next, "life", 2, defaultRowLabel("life", 2), false);
-      }else if(type === "rent"){
-        next.rent1_fromAge = currentAge;
-        next.rent1_toAge = 120;
-        next.rent1_fromAge_auto = "1";
-        next.rent1_toAge_auto = "1";
-        next.rent1_timeUnit = "age";
-        setRowLabelMeta(next, "rent", 1, defaultRowLabel("rent", 1), false);
-      }
+    const preservedBaseDate = String(data.baseDate || document.getElementById("baseDate")?.value || "");
+    const preservedBaseYear = String(parseDateInput(preservedBaseDate)?.year || data.currentBaseYear || document.getElementById("currentBaseYear")?.value || "");
+    if(preservedBaseDate) next.baseDate = preservedBaseDate;
+    if(preservedBaseYear) next.currentBaseYear = preservedBaseYear;
+    const currentAgeRaw = calcAgeFromBirthDate(String(next.selfBirthDate || document.getElementById("selfBirthDate")?.value || ""), preservedBaseDate || String(next.baseDate || ""));
+    const currentAge = Math.max(0, Math.round(Number(currentAgeRaw != null ? currentAgeRaw : currentAgeValue(next)) || 0));
+    const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
+    next.baseDate = preservedBaseDate || next.baseDate;
+    next.currentBaseYear = preservedBaseYear || next.currentBaseYear;
+    next.age = currentAge;
+    if(["sumInv","life","rent"].includes(type)) next = ensureSimpleRepresentativeSlots(next).data;
+    if(type === "sumInv"){
+      next.sumInv1_fromAge = currentAge;
+      next.sumInv1_toAge = retireAge;
+      next.sumInv1_fromAge_auto = "1";
+      next.sumInv1_toAge_auto = "1";
+      if(next.sumInv1_amount == null || next.sumInv1_amount === "") next.sumInv1_amount = 0;
+      if(next.sumInv1_rate == null || next.sumInv1_rate === "") next.sumInv1_rate = 0;
+      if(next.sumInv1_owner == null || next.sumInv1_owner === "") next.sumInv1_owner = "本人";
+      if(next.sumInv1_cur == null || next.sumInv1_cur === "") next.sumInv1_cur = "万円";
+      if(next.sumInv1_accountType == null || next.sumInv1_accountType === "") next.sumInv1_accountType = "課税";
+      if(next.sumInv1_idecoCategory == null) next.sumInv1_idecoCategory = "";
+      if(next.sumInv1_lastNonTaxableAccountType == null) next.sumInv1_lastNonTaxableAccountType = "";
+      setRowLabelMeta(next, "sumInv", 1, defaultRowLabel("sumInv", 1), false);
+    }else if(type === "life"){
+      next.life1_fromAge = currentAge;
+      next.life1_toAge = retireAge;
+      next.life1_fromAge_auto = "1";
+      next.life1_toAge_auto = "1";
+      next.life1_timeUnit = "age";
+      next.life2_fromAge = Math.min(120, retireAge + 1);
+      next.life2_toAge = 120;
+      next.life2_fromAge_auto = "1";
+      next.life2_toAge_auto = "1";
+      next.life2_timeUnit = "age";
+      setRowLabelMeta(next, "life", 1, defaultRowLabel("life", 1), false);
+      setRowLabelMeta(next, "life", 2, defaultRowLabel("life", 2), false);
+    }else if(type === "rent"){
+      next.rent1_fromAge = currentAge;
+      next.rent1_toAge = 120;
+      next.rent1_fromAge_auto = "1";
+      next.rent1_toAge_auto = "1";
+      next.rent1_timeUnit = "age";
+      setRowLabelMeta(next, "rent", 1, defaultRowLabel("rent", 1), false);
+    }else if(type === "dep"){
+      next.dep1_owner = "本人";
+      next.dep1_amount = 0;
+      next.dep1_cur = "万円";
+      next.dep1_rate = 0.2;
+      next.dep1_taxOn = true;
+      setRowLabelMeta(next, "dep", 1, defaultRowLabel("dep", 1), false);
+    }else if(type === "safeAsset"){
+      next.safeAsset1_owner = "本人";
+      next.safeAsset1_type = "定期預金";
+      next.safeAsset1_amount = 0;
+      next.safeAsset1_cur = "万円";
+      next.safeAsset1_rate = 0.5;
+      next.safeAsset1_startAge = currentAge;
+      next.safeAsset1_duration = "1y";
+      next.safeAsset1_rollover = "deposit";
+      next.safeAsset1_taxOn = true;
+      setRowLabelMeta(next, "safeAsset", 1, defaultRowLabel("safeAsset", 1), false);
+    }else if(type === "inv"){
+      next.inv1_owner = "本人";
+      next.inv1_accountType = "課税";
+      next.inv1_cost = 0;
+      next.inv1_amount = 0;
+      next.inv1_cur = "万円";
+      next.inv1_rate = 4;
+      next.inv1_dividendRate = 0;
+      next.inv1_idecoCategory = "";
+      next.inv1_rowId = "inv_row_1";
+      setRowLabelMeta(next, "inv", 1, defaultRowLabel("inv", 1), false);
+    }else if(type === "futureInv"){
+      next.futureInv1_owner = "本人";
+      next.futureInv1_accountType = "課税";
+      next.futureInv1_age = currentAge;
+      next.futureInv1_amount = 0;
+      next.futureInv1_cur = "万円";
+      next.futureInv1_rate = 4;
+      next.futureInv1_dividendRate = 0;
+      next.futureInv1_idecoCategory = "";
+      setRowLabelMeta(next, "futureInv", 1, defaultRowLabel("futureInv", 1), false);
+    }else if(type === "reginc"){
+      next.reginc1_fromAge = currentAge;
+      next.reginc1_toAge = 120;
+      next.reginc1_timeUnit = "age";
+      next.reginc1_val = 0;
+      next.reginc1_inflationOn = false;
+      setRowLabelMeta(next, "reginc", 1, defaultRowLabel("reginc", 1), false);
+    }else if(type === "inc"){
+      next.inc1_age = Math.max(currentAge, 70);
+      next.inc1_timeUnit = "age";
+      next.inc1_val = 0;
+      next.inc1_inflationOn = false;
+      setRowLabelMeta(next, "inc", 1, defaultRowLabel("inc", 1), false);
+    }else if(type === "insPay"){
+      const paySpec = getInsurancePayDefaultSpec("生命保険", next, "本人", "本人");
+      const derivedStart = deriveInsuranceStartYearMonthFromAge(currentAge, preservedBaseDate, currentAge);
+      next.insPay1_type = "生命保険";
+      next.insPay1_owner = "本人";
+      next.insPay1_insured = paySpec.insured || "本人";
+      next.insPay1_fromAge = currentAge;
+      next.insPay1_startYear = derivedStart.year || "";
+      next.insPay1_startMonth = derivedStart.month || 1;
+      next.insPay1_toAge = paySpec.toAge;
+      next.insPay1_val = 0;
+      next.insPay1_unit = paySpec.unit || "month";
+      next.insPay1_inflationOn = false;
+      setRowLabelMeta(next, "insPay", 1, defaultRowLabel("insPay", 1), false);
+    }else if(type === "insRecv"){
+      const recvType = getPreferredInsuranceReceiveType("生命保険");
+      const recvSpec = getInsuranceReceiveDefaultSpec("生命保険", recvType, next, "");
+      next.insRecv1_type = "生命保険";
+      next.insRecv1_receiveType = recvType;
+      next.insRecv1_receiver = "本人";
+      next.insRecv1_targetChild = "";
+      next.insRecv1_fromAge = recvSpec.fromAge;
+      next.insRecv1_toAge = recvSpec.toAge;
+      next.insRecv1_val = 0;
+      next.insRecv1_unit = recvSpec.unit || "lump";
+      next.insRecv1_inflationOn = false;
+      setRowLabelMeta(next, "insRecv", 1, defaultRowLabel("insRecv", 1), false);
+    }else if(type === "homeMaint"){
+      next.homeMaint1_fromAge = currentAge;
+      next.homeMaint1_toAge = 120;
+      next.homeMaint1_timeUnit = "age";
+      next.homeMaint1_val = 0;
+      next.homeMaint1_inflationOn = false;
+      setRowLabelMeta(next, "homeMaint", 1, defaultRowLabel("homeMaint", 1), false);
+    }else if(type === "period"){
+      next.period1_fromAge = currentAge;
+      next.period1_toAge = 120;
+      next.period1_timeUnit = "age";
+      next.period1_val = 0;
+      next.period1_inflationOn = false;
+      setRowLabelMeta(next, "period", 1, defaultRowLabel("period", 1), false);
+    }else if(type === "extra"){
+      next.extra1_age = Math.max(currentAge, 55);
+      next.extra1_timeUnit = "age";
+      next.extra1_val = 0;
+      next.extra1_inflationOn = false;
+      setRowLabelMeta(next, "extra", 1, defaultRowLabel("extra", 1), false);
+    }else if(type === "child"){
+      next.child1_enabled = false;
+      next.child1_birthDate = "";
+      next.child1_school = "年少未満";
+      next.child1_schoolManual = "false";
+      next.child1_allowanceOn = false;
+      setRowLabelMeta(next, "child", 1, defaultRowLabel("child", 1), false);
     }
     setAllInputs(next);
     if(["sumInv","life","rent"].includes(type)){
@@ -3099,6 +3307,40 @@ function deleteDynamicRow(type, index){
     }
     updatePeriodDisplays();
     if(type === "child") updateChildAllowanceSummary();
+    persistState();
+    return;
+  }
+  if(type === "life" && index === 1 && count > 1){
+    const next = {...data};
+    const currentAge = Math.max(0, Math.round(Number(currentAgeValue(next)) || 0));
+    const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
+    next.life1_fromAge = currentAge;
+    next.life1_toAge = retireAge;
+    next.life1_fromAge_auto = "1";
+    next.life1_toAge_auto = "1";
+    next.life1_timeUnit = "age";
+    if(next.life1_val == null || next.life1_val === "") next.life1_val = 0;
+    setRowLabelMeta(next, "life", 1, defaultRowLabel("life", 1), false);
+    renderDynamicSections(next);
+    setAllInputs(next);
+    updatePeriodDisplays();
+    persistState();
+    return;
+  }
+  if(type === "life" && index === 2 && count > 1){
+    const next = {...data};
+    const currentAge = Math.max(0, Math.round(Number(currentAgeValue(next)) || 0));
+    const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
+    next.life2_fromAge = Math.min(120, retireAge + 1);
+    next.life2_toAge = 120;
+    next.life2_fromAge_auto = "1";
+    next.life2_toAge_auto = "1";
+    next.life2_timeUnit = "age";
+    if(next.life2_val == null || next.life2_val === "") next.life2_val = 0;
+    setRowLabelMeta(next, "life", 2, defaultRowLabel("life", 2), false);
+    renderDynamicSections(next);
+    setAllInputs(next);
+    updatePeriodDisplays();
     persistState();
     return;
   }
@@ -3371,7 +3613,7 @@ function inferCount(data, type){
     reginc:/^reginc(\d+)_(fromAge|toAge|age|val|timeUnit)$/,
     inc:/^inc(\d+)_(age|val|timeUnit)$/,
     insPay:/^insPay(\d+)_(type|owner|insured|fromAge|toAge|val|unit)$/,
-    insRecv:/^insRecv(\d+)_(type|receiveType|receiver|fromAge|toAge|val|unit)$/,
+    insRecv:/^insRecv(\d+)_(type|receiveType|receiver|targetChild|fromAge|toAge|val|unit)$/,
     rent:/^rent(\d+)_(fromAge|toAge|age|val|timeUnit)$/,
     homeMaint:/^homeMaint(\d+)_(fromAge|toAge|age|val)$/,
     life:/^life(\d+)_(fromAge|toAge|age|val|timeUnit)$/,
@@ -3664,8 +3906,9 @@ function renderRangeRows(prefix, bodyId, label, suffix, step, defaultVal, data =
   let html="";
   for(let i=1;i<=dynamicCounts[prefix];i++){
     const timeMode = useTimeMode ? getTimeModeValue(data, prefix, i) : "age";
-    const fromStored = Number(data[`${prefix}${i}_fromAge`] ?? currentAge) || currentAge;
-    const toStored = Number(data[`${prefix}${i}_toAge`] ?? 120) || 120;
+    const defaults = getDefaultRangeRowAges(prefix, i, data);
+    const fromStored = Number(data[`${prefix}${i}_fromAge`] ?? defaults.fromAge) || defaults.fromAge;
+    const toStored = Number(data[`${prefix}${i}_toAge`] ?? defaults.toAge) || defaults.toAge;
     const fromVal = attrValue(convertStoredAgeToDisplayValue(fromStored, timeMode, currentAge, baseYear), currentAge);
     const toVal = attrValue(convertStoredAgeToDisplayValue(toStored, timeMode, currentAge, baseYear), 120);
     const val = attrValue(data[`${prefix}${i}_${amountField}`], defaultVal);
@@ -3684,8 +3927,9 @@ function renderPointRows(prefix, bodyId, label, suffix, defaultAge, defaultVal, 
   let html="";
   for(let i=1;i<=dynamicCounts[prefix];i++){
     const timeMode = useTimeMode ? getTimeModeValue(data, prefix, i) : "age";
-    const storedAge = Number(data[`${prefix}${i}_age`] ?? (i===1 ? defaultAge : 0)) || (i===1 ? defaultAge : 0);
-    const ageVal = attrValue(convertStoredAgeToDisplayValue(storedAge, timeMode, currentAge, baseYear), i===1 ? defaultAge : 0);
+    const rowDefaultAge = getDefaultPointRowAge(prefix, data);
+    const storedAge = Number(data[`${prefix}${i}_age`] ?? rowDefaultAge) || rowDefaultAge;
+    const ageVal = attrValue(convertStoredAgeToDisplayValue(storedAge, timeMode, currentAge, baseYear), rowDefaultAge);
     const val = attrValue(data[`${prefix}${i}_${amountField}`], i===1 ? defaultVal : 0);
     const inflOn = !!data[`${prefix}${i}_inflationOn`];
     const timeModeSelect = useTimeMode ? `<select id="${prefix}${i}_timeUnit" class="time-unit-select" data-prev-value="${timeMode}"><option value="age" ${timeMode === "age" ? "selected" : ""}>歳</option><option value="year" ${timeMode === "year" ? "selected" : ""}>年</option></select>` : `<span class="suffix">歳</span>`;
@@ -3702,16 +3946,21 @@ function renderInsurancePayRows(data = {}){
   for(let i=1;i<=dynamicCounts.insPay;i++){
     const typeVal = data[`insPay${i}_type`] ?? "生命保険";
     const ownerVal = normalizeInsurancePersonValue(data[`insPay${i}_owner`] ?? "本人", data);
-    const insuredVal = normalizeInsurancePersonValue(data[`insPay${i}_insured`] ?? "本人", data);
+    const rawInsuredVal = normalizeInsurancePersonValue(data[`insPay${i}_insured`] ?? "本人", data);
+    const defaultSpec = getInsurancePayDefaultSpec(typeVal, data, ownerVal, rawInsuredVal);
+    const insuredVal = defaultSpec.hasDefault ? normalizeInsurancePersonValue(data[`insPay${i}_insured`] ?? defaultSpec.insured, data) : rawInsuredVal;
     const fromAgeVal = Number(data[`insPay${i}_fromAge`] ?? currentAge) || currentAge;
     const derivedStart = deriveInsuranceStartYearMonthFromAge(fromAgeVal, baseDateValue, currentAge);
     const startYearVal = Number(data[`insPay${i}_startYear`] ?? derivedStart.year) || derivedStart.year || '';
     const startMonthVal = Number(data[`insPay${i}_startMonth`] ?? derivedStart.month) || derivedStart.month || 1;
-    const toVal = attrValue(data[`insPay${i}_toAge`], 120);
+    const toVal = attrValue(data[`insPay${i}_toAge`], defaultSpec.toAge);
     const val = attrValue(data[`insPay${i}_val`], 0);
-    const unitVal = data[`insPay${i}_unit`] ?? "month";
+    const unitVal = data[`insPay${i}_unit`] ?? defaultSpec.unit;
     const inflOn = !!data[`insPay${i}_inflationOn`];
-    html += `<tr>${buildRowLabelCell("insPay", i, data)}<td><select id="insPay${i}_type">${buildOptionsHtml(INSURANCE_TYPE_OPTIONS, typeVal)}</select></td><td><select id="insPay${i}_owner">${buildOptionsHtml(personOptions, ownerVal)}</select></td><td><select id="insPay${i}_insured">${buildOptionsHtml(personOptions, insuredVal)}</select></td><td><div class="insurance-pay-period-wrap"><select id="insPay${i}_startYear" class="insurance-pay-year-select">${buildInsuranceYearOptionsHtml(startYearVal, baseDateValue, currentAge)}</select><span class="suffix">年</span><select id="insPay${i}_startMonth" class="insurance-pay-month-select">${buildMonthOptionsHtml(startMonthVal)}</select><span class="suffix">月</span><span class="suffix">〜</span><input id="insPay${i}_toAge" type="number" class="agebox insurance-pay-end-age" value="${toVal}"><span class="suffix">歳</span><input id="insPay${i}_fromAge" type="hidden" value="${fromAgeVal}"></div></td><td><div class="input-unit center"><input id="insPay${i}_val" type="number" class="moneybox" value="${val}" step="0.1"><span class="suffix">万円</span></div></td><td><select id="insPay${i}_unit">${buildOptionsHtml(INSURANCE_PAY_UNIT_OPTIONS, unitVal)}</select></td><td><label class="inline-check"><input id="insPay${i}_inflationOn" type="checkbox" ${inflOn ? "checked" : ""}></label></td></tr>`;
+    const defaultToAttr = defaultSpec.hasDefault ? defaultSpec.toAge : toVal;
+    const defaultUnitAttr = escapeAttr(String(defaultSpec.hasDefault ? defaultSpec.unit : unitVal));
+    const defaultInsuredAttr = escapeAttr(String(defaultSpec.hasDefault ? insuredVal : rawInsuredVal));
+    html += `<tr>${buildRowLabelCell("insPay", i, data)}<td><select id="insPay${i}_type">${buildOptionsHtml(INSURANCE_TYPE_OPTIONS, typeVal)}</select></td><td><select id="insPay${i}_owner">${buildOptionsHtml(personOptions, ownerVal)}</select></td><td><select id="insPay${i}_insured" data-default-person="${defaultInsuredAttr}">${buildOptionsHtml(personOptions, insuredVal)}</select></td><td><div class="insurance-pay-period-wrap"><select id="insPay${i}_startYear" class="insurance-pay-year-select">${buildInsuranceYearOptionsHtml(startYearVal, baseDateValue, currentAge)}</select><span class="suffix">年</span><select id="insPay${i}_startMonth" class="insurance-pay-month-select">${buildMonthOptionsHtml(startMonthVal)}</select><span class="suffix">月</span><span class="suffix">〜</span><input id="insPay${i}_toAge" type="number" class="agebox insurance-pay-end-age" value="${toVal}" data-default-age="${defaultToAttr}"><span class="suffix">歳</span><input id="insPay${i}_fromAge" type="hidden" value="${fromAgeVal}"></div></td><td><div class="input-unit center"><input id="insPay${i}_val" type="number" class="moneybox" value="${val}" step="0.1"><span class="suffix">万円</span></div></td><td><select id="insPay${i}_unit" data-default-unit="${defaultUnitAttr}">${buildOptionsHtml(INSURANCE_PAY_UNIT_OPTIONS, unitVal)}</select></td><td><label class="inline-check"><input id="insPay${i}_inflationOn" type="checkbox" ${inflOn ? "checked" : ""}></label></td></tr>`;
   }
   body.innerHTML = html;
 }
@@ -3723,14 +3972,193 @@ function renderInsuranceReceiveRows(data = {}){
     const typeVal = data[`insRecv${i}_type`] ?? "生命保険";
     const receiveTypeVal = data[`insRecv${i}_receiveType`] ?? "満期保険金";
     const receiverVal = normalizeInsurancePersonValue(data[`insRecv${i}_receiver`] ?? "本人", data);
-    const fromVal = attrValue(data[`insRecv${i}_fromAge`], 65);
-    const toVal = attrValue(data[`insRecv${i}_toAge`], 65);
+    const targetChildVal = normalizeInsuranceChildValue(data[`insRecv${i}_targetChild`] ?? "", data);
+    const defaultSpec = getInsuranceReceiveDefaultSpec(typeVal, receiveTypeVal, data, targetChildVal);
+    const fromStored = data[`insRecv${i}_fromAge`];
+    const toStored = data[`insRecv${i}_toAge`];
+    const unitStored = data[`insRecv${i}_unit`];
+    const fromVal = attrValue(fromStored, defaultSpec.fromAge);
+    const toVal = attrValue(toStored, defaultSpec.toAge);
     const val = attrValue(data[`insRecv${i}_val`], 0);
-    const unitVal = data[`insRecv${i}_unit`] ?? "lump";
+    const unitVal = unitStored ?? defaultSpec.unit;
     const inflOn = !!data[`insRecv${i}_inflationOn`];
-    html += `<tr>${buildRowLabelCell("insRecv", i, data)}<td><select id="insRecv${i}_type">${buildOptionsHtml(INSURANCE_TYPE_OPTIONS.filter(v=>!["火災保険","地震保険","自動車保険"].includes(v)), typeVal)}</select></td><td><select id="insRecv${i}_receiveType">${buildOptionsHtml(INSURANCE_RECEIVE_TYPE_OPTIONS, receiveTypeVal)}</select></td><td><select id="insRecv${i}_receiver">${buildOptionsHtml(personOptions, receiverVal)}</select></td><td><div class="input-unit center"><input id="insRecv${i}_fromAge" type="number" class="agebox" value="${fromVal}"><span class="suffix">歳</span></div></td><td><div class="input-unit center"><input id="insRecv${i}_toAge" type="number" class="agebox" value="${toVal}"><span class="suffix">歳</span></div></td><td><div class="input-unit center"><input id="insRecv${i}_val" type="number" class="moneybox" value="${val}" step="0.1"><span class="suffix">万円</span></div></td><td><select id="insRecv${i}_unit">${buildOptionsHtml(INSURANCE_RECEIVE_UNIT_OPTIONS, unitVal)}</select></td><td><label class="inline-check"><input id="insRecv${i}_inflationOn" type="checkbox" ${inflOn ? "checked" : ""}></label></td></tr>`;
+    const defaultFromAttr = defaultSpec.hasDefault ? defaultSpec.fromAge : attrValue(fromStored, defaultSpec.fromAge);
+    const defaultToAttr = defaultSpec.hasDefault ? defaultSpec.toAge : attrValue(toStored, defaultSpec.toAge);
+    const defaultUnitAttr = defaultSpec.hasDefault ? defaultSpec.unit : escapeAttr(String(unitVal || "lump"));
+    html += `<tr>${buildRowLabelCell("insRecv", i, data)}<td><select id="insRecv${i}_type">${buildOptionsHtml(INSURANCE_TYPE_OPTIONS.filter(v=>!["火災保険","地震保険","自動車保険"].includes(v)), typeVal)}</select></td><td><select id="insRecv${i}_receiveType">${buildOptionsHtml(INSURANCE_RECEIVE_TYPE_OPTIONS, receiveTypeVal)}</select></td><td><select id="insRecv${i}_receiver">${buildOptionsHtml(personOptions, receiverVal)}</select><input id="insRecv${i}_targetChild" type="hidden" value="${escapeAttr(targetChildVal)}"></td><td><div class="input-unit center"><input id="insRecv${i}_fromAge" type="number" class="agebox" value="${fromVal}" data-default-age="${defaultFromAttr}"><span class="suffix">歳</span></div></td><td><div class="input-unit center"><input id="insRecv${i}_toAge" type="number" class="agebox" value="${toVal}" data-default-age="${defaultToAttr}"><span class="suffix">歳</span></div></td><td><div class="input-unit center"><input id="insRecv${i}_val" type="number" class="moneybox" value="${val}" step="0.1"><span class="suffix">万円</span></div></td><td><select id="insRecv${i}_unit" data-default-unit="${defaultUnitAttr}">${buildOptionsHtml(INSURANCE_RECEIVE_UNIT_OPTIONS, unitVal)}</select></td><td><label class="inline-check"><input id="insRecv${i}_inflationOn" type="checkbox" ${inflOn ? "checked" : ""}></label></td></tr>`;
   }
   body.innerHTML = html;
+}
+
+function syncInsurancePayDefaults(index){
+  const typeEl = document.getElementById(`insPay${index}_type`);
+  const ownerEl = document.getElementById(`insPay${index}_owner`);
+  const insuredEl = document.getElementById(`insPay${index}_insured`);
+  const toEl = document.getElementById(`insPay${index}_toAge`);
+  const unitEl = document.getElementById(`insPay${index}_unit`);
+  if(!(typeEl instanceof HTMLSelectElement) || !(ownerEl instanceof HTMLSelectElement) || !(insuredEl instanceof HTMLSelectElement) || !(toEl instanceof HTMLInputElement) || !(unitEl instanceof HTMLSelectElement)) return;
+  const prevDefaultTo = Number(toEl.dataset.defaultAge || 0) || 0;
+  const prevDefaultUnit = unitEl.dataset.defaultUnit || "month";
+  const prevDefaultInsured = insuredEl.dataset.defaultPerson || "本人";
+  const currentTo = parseAgeLikeValue(toEl.value);
+  const currentUnit = unitEl.value || "month";
+  const currentInsured = insuredEl.value || "本人";
+  const nextSpec = getInsurancePayDefaultSpec(typeEl.value, getAllInputs(), ownerEl.value, currentInsured);
+  if(!nextSpec.hasDefault){
+    toEl.dataset.defaultAge = String(Number.isFinite(currentTo) ? currentTo : 0);
+    unitEl.dataset.defaultUnit = currentUnit;
+    insuredEl.dataset.defaultPerson = currentInsured;
+    return;
+  }
+  if(!Number.isFinite(currentTo) || currentTo === prevDefaultTo) toEl.value = String(nextSpec.toAge);
+  if(currentUnit === prevDefaultUnit || !currentUnit) unitEl.value = nextSpec.unit;
+  if(currentInsured === prevDefaultInsured || !currentInsured || (typeEl.value === '学資保険' && !getEnabledChildOptionList(getAllInputs()).map(opt=>opt.value).includes(currentInsured))) insuredEl.value = nextSpec.insured;
+  toEl.dataset.defaultAge = String(nextSpec.toAge);
+  unitEl.dataset.defaultUnit = nextSpec.unit;
+  insuredEl.dataset.defaultPerson = nextSpec.insured;
+}
+
+function syncInsuranceReceiveDefaults(index){
+  const typeEl = document.getElementById(`insRecv${index}_type`);
+  const receiveTypeEl = document.getElementById(`insRecv${index}_receiveType`);
+  const fromEl = document.getElementById(`insRecv${index}_fromAge`);
+  const toEl = document.getElementById(`insRecv${index}_toAge`);
+  const unitEl = document.getElementById(`insRecv${index}_unit`);
+  if(!(typeEl instanceof HTMLSelectElement) || !(receiveTypeEl instanceof HTMLSelectElement) || !(fromEl instanceof HTMLInputElement) || !(toEl instanceof HTMLInputElement) || !(unitEl instanceof HTMLSelectElement)) return;
+  const prevDefaultFrom = Number(fromEl.dataset.defaultAge || 0) || 0;
+  const prevDefaultTo = Number(toEl.dataset.defaultAge || 0) || 0;
+  const prevDefaultUnit = unitEl.dataset.defaultUnit || "lump";
+  const currentFrom = parseAgeLikeValue(fromEl.value);
+  const currentTo = parseAgeLikeValue(toEl.value);
+  const currentUnit = unitEl.value || "lump";
+  const targetChildEl = document.getElementById(`insRecv${index}_targetChild`);
+  if(targetChildEl instanceof HTMLInputElement && typeEl.value === '学資保険' && !targetChildEl.value){
+    targetChildEl.value = getFirstEnabledChildLabel(getAllInputs()) || '';
+  }
+  const targetChildValue = targetChildEl instanceof HTMLInputElement ? targetChildEl.value : '';
+  const nextSpec = getInsuranceReceiveDefaultSpec(typeEl.value, receiveTypeEl.value, getAllInputs(), targetChildValue);
+  if(!nextSpec.hasDefault){
+    fromEl.dataset.defaultAge = String(Number.isFinite(currentFrom) ? currentFrom : 0);
+    toEl.dataset.defaultAge = String(Number.isFinite(currentTo) ? currentTo : 0);
+    unitEl.dataset.defaultUnit = currentUnit;
+    return;
+  }
+  if(!Number.isFinite(currentFrom) || currentFrom === prevDefaultFrom) fromEl.value = String(nextSpec.fromAge);
+  if(!Number.isFinite(currentTo) || currentTo === prevDefaultTo) toEl.value = String(nextSpec.toAge);
+  if(currentUnit === prevDefaultUnit || !currentUnit) unitEl.value = nextSpec.unit;
+  fromEl.dataset.defaultAge = String(nextSpec.fromAge);
+  toEl.dataset.defaultAge = String(nextSpec.toAge);
+  unitEl.dataset.defaultUnit = nextSpec.unit;
+}
+
+function applyBaseDateDefaultFollow(prevData = {}, nextData = {}){
+  const rangePrefixes = ["reginc","rent","homeMaint","life","period"];
+  rangePrefixes.forEach(prefix=>{
+    const count = inferCount(nextData, prefix);
+    for(let i=1;i<=count;i++){
+      if(isRowCustom(nextData, prefix, i)) continue;
+      const oldDefaults = getDefaultRangeRowAges(prefix, i, prevData);
+      const newDefaults = getDefaultRangeRowAges(prefix, i, nextData);
+      const fromKey = `${prefix}${i}_fromAge`;
+      const toKey = `${prefix}${i}_toAge`;
+      const fromVal = Number(nextData[fromKey] ?? oldDefaults.fromAge) || oldDefaults.fromAge;
+      const toVal = Number(nextData[toKey] ?? oldDefaults.toAge) || oldDefaults.toAge;
+      if(fromVal === oldDefaults.fromAge) nextData[fromKey] = newDefaults.fromAge;
+      if(toVal === oldDefaults.toAge) nextData[toKey] = newDefaults.toAge;
+    }
+  });
+
+  const pointPrefixes = ["inc","extra"];
+  pointPrefixes.forEach(prefix=>{
+    const count = inferCount(nextData, prefix);
+    for(let i=1;i<=count;i++){
+      if(isRowCustom(nextData, prefix, i)) continue;
+      const oldDefault = getDefaultPointRowAge(prefix, prevData);
+      const newDefault = getDefaultPointRowAge(prefix, nextData);
+      const key = `${prefix}${i}_age`;
+      const val = Number(nextData[key] ?? oldDefault) || oldDefault;
+      if(val === oldDefault) nextData[key] = newDefault;
+    }
+  });
+
+  const oldCurrentAge = currentAgeValue(prevData);
+  const newCurrentAge = currentAgeValue(nextData);
+
+  const futureCount = inferCount(nextData, "futureInv");
+  for(let i=1;i<=futureCount;i++){
+    if(isRowCustom(nextData, "futureInv", i)) continue;
+    const key = `futureInv${i}_age`;
+    const val = Number(nextData[key] ?? oldCurrentAge) || oldCurrentAge;
+    if(val === oldCurrentAge) nextData[key] = newCurrentAge;
+  }
+
+  const safeCount = inferCount(nextData, "safeAsset");
+  for(let i=1;i<=safeCount;i++){
+    if(isRowCustom(nextData, "safeAsset", i)) continue;
+    const key = `safeAsset${i}_startAge`;
+    const val = Number(nextData[key] ?? oldCurrentAge) || oldCurrentAge;
+    if(val === oldCurrentAge) nextData[key] = newCurrentAge;
+  }
+
+  const sumCount = inferCount(nextData, "sumInv");
+  for(let i=1;i<=sumCount;i++){
+    if(isRowCustom(nextData, "sumInv", i)) continue;
+    const fromKey = `sumInv${i}_fromAge`;
+    const toKey = `sumInv${i}_toAge`;
+    const oldDefaults = {fromAge:oldCurrentAge, toAge:120};
+    const newDefaults = {fromAge:newCurrentAge, toAge:120};
+    const fromVal = Number(nextData[fromKey] ?? oldDefaults.fromAge) || oldDefaults.fromAge;
+    const toVal = Number(nextData[toKey] ?? oldDefaults.toAge) || oldDefaults.toAge;
+    if(fromVal === oldDefaults.fromAge) nextData[fromKey] = newDefaults.fromAge;
+    if(toVal === oldDefaults.toAge) nextData[toKey] = newDefaults.toAge;
+  }
+
+  const payCount = inferCount(nextData, "insPay");
+  for(let i=1;i<=payCount;i++){
+    if(isRowCustom(nextData, "insPay", i)) continue;
+    const fromKey = `insPay${i}_fromAge`;
+    const fromVal = Number(nextData[fromKey] ?? oldCurrentAge) || oldCurrentAge;
+    if(fromVal === oldCurrentAge) nextData[fromKey] = newCurrentAge;
+    const typeVal = nextData[`insPay${i}_type`] ?? '生命保険';
+    const ownerVal = nextData[`insPay${i}_owner`] ?? '本人';
+    const insuredVal = nextData[`insPay${i}_insured`] ?? ownerVal;
+    const oldPaySpec = getInsurancePayDefaultSpec(typeVal, prevData, ownerVal, insuredVal);
+    const newPaySpec = getInsurancePayDefaultSpec(typeVal, nextData, ownerVal, insuredVal);
+    const toKey = `insPay${i}_toAge`;
+    const toVal = Number(nextData[toKey] ?? oldPaySpec.toAge) || oldPaySpec.toAge;
+    if(toVal === oldPaySpec.toAge) nextData[toKey] = newPaySpec.toAge;
+    const oldDerived = deriveInsuranceStartYearMonthFromAge(oldCurrentAge, prevData.baseDate || '', oldCurrentAge);
+    const newDerived = deriveInsuranceStartYearMonthFromAge(newCurrentAge, nextData.baseDate || '', newCurrentAge);
+    const yearKey = `insPay${i}_startYear`;
+    const monthKey = `insPay${i}_startMonth`;
+    const yearVal = Number(nextData[yearKey] ?? oldDerived.year) || oldDerived.year;
+    const monthVal = Number(nextData[monthKey] ?? oldDerived.month) || oldDerived.month;
+    if(yearVal === oldDerived.year && monthVal === oldDerived.month){
+      nextData[yearKey] = newDerived.year;
+      nextData[monthKey] = newDerived.month;
+    }
+  }
+
+  const recvCount = inferCount(nextData, "insRecv");
+  for(let i=1;i<=recvCount;i++){
+    if(isRowCustom(nextData, "insRecv", i)) continue;
+    const typeVal = nextData[`insRecv${i}_type`] ?? "生命保険";
+    const receiveTypeVal = nextData[`insRecv${i}_receiveType`] ?? "満期保険金";
+    const targetChildVal = nextData[`insRecv${i}_targetChild`] ?? prevData[`insRecv${i}_targetChild`] ?? '';
+    const oldSpec = getInsuranceReceiveDefaultSpec(typeVal, receiveTypeVal, prevData, targetChildVal);
+    const newSpec = getInsuranceReceiveDefaultSpec(typeVal, receiveTypeVal, nextData, targetChildVal);
+    const fromKey = `insRecv${i}_fromAge`;
+    const toKey = `insRecv${i}_toAge`;
+    const unitKey = `insRecv${i}_unit`;
+    const fromVal = Number(nextData[fromKey] ?? oldSpec.fromAge) || oldSpec.fromAge;
+    const toVal = Number(nextData[toKey] ?? oldSpec.toAge) || oldSpec.toAge;
+    const unitVal = String(nextData[unitKey] ?? oldSpec.unit);
+    if(fromVal === oldSpec.fromAge) nextData[fromKey] = newSpec.fromAge;
+    if(toVal === oldSpec.toAge) nextData[toKey] = newSpec.toAge;
+    if(unitVal === oldSpec.unit) nextData[unitKey] = newSpec.unit;
+  }
+
+  return nextData;
 }
 
 function getEnabledChildOptionList(data = {}){
@@ -3738,7 +4166,13 @@ function getEnabledChildOptionList(data = {}){
   const count = inferCount(data, "child");
   for(let i=1;i<=count;i++){
     const enabledRaw = data[`child${i}_enabled`];
-    const enabled = enabledRaw == null ? (i === 1) : !(enabledRaw === false || String(enabledRaw) === "false");
+    const birthDate = String(data[`child${i}_birthDate`] || "").trim();
+    const schoolVal = String(data[`child${i}_school`] || "").trim();
+    const labelVal = String(getRowLabel(data, "child", i) || "").trim();
+    const hasMeaningfulData = !!birthDate || (!!schoolVal && schoolVal !== '年少未満') || (!!labelVal && labelVal !== `子${i}`);
+    const enabled = enabledRaw == null
+      ? (i === 1 || hasMeaningfulData)
+      : !(enabledRaw === false || String(enabledRaw) === "false");
     if(!enabled) continue;
     list.push({value:getRowLabel(data, "child", i), label:getRowLabel(data, "child", i), index:i});
   }
@@ -3843,8 +4277,14 @@ function syncInsuranceAssistTypeUI(applyDefaults = false){
     if(nameEl) nameEl.value = getNextInsuranceAssistName(currentData, type);
     if(type === 'scholarship'){
       const childVal = document.getElementById('insuranceAssistScholarshipChild')?.value || getEnabledChildOptionList(currentData)[0]?.value || '子1';
+      const linked = getScholarshipLinkedSelfAges(childVal, currentData);
       if(insuredEl) insuredEl.value = childVal;
-      if(payEndEl) payEndEl.value = 18;
+      if(payEndEl) payEndEl.value = linked.payEndAge;
+      const scholarshipStartEl = document.getElementById('insuranceAssistScholarshipReceiveStartAge');
+      const scholarshipEndEl = document.getElementById('insuranceAssistScholarshipReceiveEndAge');
+      const scholarshipTypeEl = document.getElementById('insuranceAssistScholarshipReceiveType');
+      if(scholarshipStartEl) scholarshipStartEl.value = linked.lumpAge;
+      if(scholarshipEndEl) scholarshipEndEl.value = scholarshipTypeEl?.value === 'year' ? linked.annuityEndAge : linked.lumpAge;
     }else if(type === 'personal_pension'){
       if(insuredEl) insuredEl.value = document.getElementById('insuranceAssistOwner')?.value || '本人';
       if(payEndEl) payEndEl.value = 60;
@@ -3875,12 +4315,14 @@ function openInsuranceAssistModal(){
   if(payUnitEl) payUnitEl.innerHTML = buildOptionsHtml(INSURANCE_PAY_UNIT_OPTIONS, 'month');
   const startYear = parseDateInput(data.baseDate || '')?.year || new Date().getFullYear();
   const startMonth = parseDateInput(data.baseDate || '')?.month || 1;
+  const scholarshipChildDefault = scholarshipChildEl?.value || getEnabledChildOptionList(data)[0]?.value || '子1';
+  const scholarshipLinked = getScholarshipLinkedSelfAges(scholarshipChildDefault, data);
   const defaults = {
     insuranceAssistPremium:0,
-    insuranceAssistPayEndAge:18,
+    insuranceAssistPayEndAge:scholarshipLinked.payEndAge,
     insuranceAssistScholarshipReceiveAmount:0,
-    insuranceAssistScholarshipReceiveStartAge:18,
-    insuranceAssistScholarshipReceiveEndAge:18,
+    insuranceAssistScholarshipReceiveStartAge:scholarshipLinked.lumpAge,
+    insuranceAssistScholarshipReceiveEndAge:scholarshipLinked.lumpAge,
     insuranceAssistPensionAmount:0,
     insuranceAssistPensionStartAge:65,
     insuranceAssistPensionEndAge:75
@@ -3977,6 +4419,7 @@ function applyInsuranceAssistModal(){
       data[`insRecv${recvIndex}_type`] = '学資保険';
       data[`insRecv${recvIndex}_receiveType`] = modal.scholarshipReceiveType === 'year' ? '学資金' : '満期保険金';
       data[`insRecv${recvIndex}_receiver`] = modal.scholarshipReceiver;
+      data[`insRecv${recvIndex}_targetChild`] = modal.scholarshipChild;
       data[`insRecv${recvIndex}_fromAge`] = modal.scholarshipReceiveStartAge;
       data[`insRecv${recvIndex}_toAge`] = modal.scholarshipReceiveEndAge;
       data[`insRecv${recvIndex}_val`] = modal.scholarshipReceiveAmount;
@@ -4006,7 +4449,7 @@ function renderFutureInvestmentRows(data = {}){
   let html="";
   const currentAge = currentAgeValue(data);
   for(let i=1;i<=dynamicCounts.futureInv;i++){
-    const ageVal = attrValue(data[`futureInv${i}_age`], i===1 ? currentAge : 0);
+    const ageVal = attrValue(data[`futureInv${i}_age`], currentAge);
     const amountVal = attrValue(data[`futureInv${i}_amount`], 0);
     const curVal = escapeAttr(data[`futureInv${i}_cur`] ?? "万円");
     const rateVal = attrValue(data[`futureInv${i}_rate`], 4);
@@ -7567,6 +8010,7 @@ function getScenarioFromDOM(){
           type:document.getElementById(`insRecv${i}_type`)?.value || "生命保険",
           receiveType:document.getElementById(`insRecv${i}_receiveType`)?.value || "満期保険金",
           receiver:document.getElementById(`insRecv${i}_receiver`)?.value || "本人",
+          targetChild:document.getElementById(`insRecv${i}_targetChild`)?.value || "",
           fromAge:numInput(`insRecv${i}_fromAge`, 0),
           toAge:numInput(`insRecv${i}_toAge`, 0),
           val:numInput(`insRecv${i}_val`, 0),
@@ -9564,7 +10008,7 @@ function buildDefaultCrashTestRow(index=0){
   return {
     name: defaultRowLabel("crashTest", index + 1),
     custom: false,
-    enabled: true,
+    enabled: false,
     preset: "custom",
     timingType: "fixed",
     timingValue: getDefaultCrashTestAge(),
@@ -9717,7 +10161,7 @@ function buildCrashTimingCell(row){
   const afterLabel = buildCrashTimingOptionLabel('after_retire', afterValue);
   const timingTypeOptions = `<option value="fixed" ${row.timingType === "fixed" ? "selected" : ""}>${fixedLabel}</option><option value="after_retire" ${row.timingType === "after_retire" ? "selected" : ""}>${afterLabel}</option>`;
   const currentValue = row.timingType === "after_retire" ? afterValue : fixedValue;
-  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1"><span class="suffix crash-timing-unit">${unit}</span><input type="hidden" data-crash-field="fixedTimingValue" value="${fixedValue}"><input type="hidden" data-crash-field="afterRetireTimingValue" value="${afterValue}"></div>`;
+  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1" inputmode="numeric"><span class="suffix crash-timing-unit">${unit}</span><input type="hidden" data-crash-field="fixedTimingValue" value="${fixedValue}"><input type="hidden" data-crash-field="afterRetireTimingValue" value="${afterValue}"></div>`;
 }
 function getCrashTestDraftRowState(rowIndex){
   return normalizeCrashTestRow(crashTestDraft[rowIndex] || buildDefaultCrashTestRow(rowIndex), rowIndex);
@@ -9807,8 +10251,8 @@ function renderCrashTestRows(){
       <td class="crash-toggle-cell"><label class="inline-check"><input type="checkbox" data-crash-field="enabled" ${row.enabled ? "checked" : ""}></label></td>
       <td><select data-crash-field="preset">${presetOptions}</select></td>
       <td>${buildCrashTimingCell(row)}</td>
-      <td><div class="input-unit center"><input type="number" class="ratebox" data-crash-field="dropPct" value="${Number(row.dropPct).toFixed(1)}" step="0.1"><span class="suffix">%</span></div></td>
-      <td><div class="input-unit center"><input type="number" class="agebox" data-crash-field="recoveryYears" value="${row.recoveryYears}" step="1"><span class="suffix">年</span></div></td>
+      <td><div class="input-unit center"><input type="number" class="ratebox" data-crash-field="dropPct" value="${Number(row.dropPct).toFixed(1)}" step="0.1" inputmode="decimal"><span class="suffix">%</span></div></td>
+      <td><div class="input-unit center"><input type="number" class="agebox" data-crash-field="recoveryYears" value="${row.recoveryYears}" step="1" inputmode="numeric"><span class="suffix">年</span></div></td>
     </tr>`;
   }).join("");
   renderCrashTestSummary(crashTestDraft);
@@ -15469,6 +15913,14 @@ document.getElementById("childAllowanceOn")?.addEventListener("change", ()=>{
   requestDraw();
   persistState();
 });
+document.getElementById("childRows")?.addEventListener("change", (e)=>{
+  const input = e.target.closest('input[id^="child"][id$="_enabled"]');
+  if(!input || !input.checked) return;
+  const match = input.id.match(/^child(\d+)_enabled$/);
+  if(!match) return;
+  const storeEl = document.getElementById(`child${match[1]}_allowanceOn`);
+  if(storeEl && !storeEl.checked) storeEl.checked = true;
+});
 ["taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxPublicPensionDeductionUnder65","taxPublicPensionDeduction65Plus","taxResidentRatePct","socialNationalPensionOn","socialHealthOn","socialNationalPensionAnnual","social_self_healthMode","social_sp_healthMode","socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"].forEach(id=>{
   const el = document.getElementById(id);
   if(!el) return;
@@ -15743,6 +16195,75 @@ document.addEventListener("click", (e)=>{
     if(type === "child") updateChildAllowanceSummary();
     requestDraw();
     persistState();
+  }
+});
+document.addEventListener("change", (e)=>{
+  const el = e.target;
+  if(!(el instanceof HTMLElement)) return;
+  if(el.id === "baseDate"){
+    const nextData = migrateLegacyData(getAllInputs());
+    const prevData = migrateLegacyData(getAllInputs());
+    const prevBaseDate = String((el.dataset.mainInputSnapshot ?? "") || prevData.baseDate || "");
+    if(prevBaseDate) prevData.baseDate = prevBaseDate;
+    const prevParsedBase = parseDateInput(prevBaseDate);
+    if(prevParsedBase) prevData.currentBaseYear = prevParsedBase.year;
+    const prevAge = parseAgeLikeValue(calcAgeFromBirthDate(String(prevData.selfBirthDate || ""), String(prevData.baseDate || "")));
+    const prevSpAge = parseAgeLikeValue(calcAgeFromBirthDate(String(prevData.spouseBirthDate || ""), String(prevData.baseDate || "")));
+    const nextAge = parseAgeLikeValue(calcAgeFromBirthDate(String(nextData.selfBirthDate || ""), String(nextData.baseDate || "")));
+    const nextSpAge = parseAgeLikeValue(calcAgeFromBirthDate(String(nextData.spouseBirthDate || ""), String(nextData.baseDate || "")));
+    if(Number.isFinite(prevAge)) prevData.age = prevAge;
+    if(Number.isFinite(prevSpAge)) prevData.spouseAge = prevSpAge;
+    if(Number.isFinite(nextAge)) nextData.age = nextAge;
+    if(Number.isFinite(nextSpAge)) nextData.spouseAge = nextSpAge;
+    applyBaseDateDefaultFollow(prevData, nextData);
+    setAllInputs(nextData);
+    rememberMainInputSnapshot(el);
+    if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) scenarios[currentTab].data = migrateLegacyData(getAllInputs());
+    monteMode = false;
+    requestDraw();
+    persistState();
+    return;
+  }
+  const payMatch = String(el.id || "").match(/^insPay(\d+)_(type|owner|insured)$/);
+  if(payMatch){
+    const rowIndex = Number(payMatch[1]);
+    syncInsurancePayDefaults(rowIndex);
+    monteMode = false;
+    requestDraw();
+    persistState();
+    return;
+  }
+  const m = String(el.id || "").match(/^insRecv(\d+)_(type|receiveType|receiver)$/);
+  if(m){
+    const rowIndex = Number(m[1]);
+    const typeEl = document.getElementById(`insRecv${rowIndex}_type`);
+    const receiveTypeEl = document.getElementById(`insRecv${rowIndex}_receiveType`);
+    const receiverEl = document.getElementById(`insRecv${rowIndex}_receiver`);
+    const targetChildEl = document.getElementById(`insRecv${rowIndex}_targetChild`);
+    if(typeEl instanceof HTMLSelectElement && receiveTypeEl instanceof HTMLSelectElement){
+      if(m[2] === "type"){
+        receiveTypeEl.value = getPreferredInsuranceReceiveType(typeEl.value);
+      }
+      if(targetChildEl instanceof HTMLInputElement && typeEl.value === '学資保険'){
+        const allData = getAllInputs();
+        const enabledChildLabels = getEnabledChildOptionList(allData).map(opt=>String(opt.value || ''));
+        const receiverVal = receiverEl instanceof HTMLSelectElement ? receiverEl.value : '';
+        if(receiverVal && enabledChildLabels.includes(receiverVal)){
+          targetChildEl.value = receiverVal;
+        }else if(!targetChildEl.value || !enabledChildLabels.includes(targetChildEl.value)){
+          targetChildEl.value = getFirstEnabledChildLabel(allData) || '';
+        }
+      }
+    }
+    syncInsuranceReceiveDefaults(rowIndex);
+    monteMode = false;
+    requestDraw();
+    persistState();
+    return;
+  }
+  if(el.id === 'insuranceAssistScholarshipChild' || el.id === 'insuranceAssistScholarshipReceiveType'){
+    if(getInsuranceAssistSelectedType() === 'scholarship') syncInsuranceAssistTypeUI(true), document.getElementById('insuranceAssistPayEndAge').value = getScholarshipLinkedSelfAges(document.getElementById('insuranceAssistScholarshipChild')?.value || '子1', migrateLegacyData(getAllInputs())).payEndAge;
+    return;
   }
 });
 
@@ -16170,6 +16691,7 @@ document.querySelectorAll('input[name="insuranceAssistType"]').forEach(el=>el.ad
       const insuredEl = document.getElementById('insuranceAssistInsured');
       if(insuredEl) insuredEl.value = document.getElementById('insuranceAssistScholarshipChild')?.value || '子1';
     }
+    if(id === 'insuranceAssistInsured' && getInsuranceAssistSelectedType() === 'scholarship'){ const insuredVal = document.getElementById('insuranceAssistInsured')?.value || '子1'; const scholarshipChildEl = document.getElementById('insuranceAssistScholarshipChild'); if(scholarshipChildEl) scholarshipChildEl.value = insuredVal; const linkedAges = getScholarshipLinkedSelfAges(insuredVal, migrateLegacyData(getAllInputs())); document.getElementById('insuranceAssistPayEndAge').value = linkedAges.payEndAge; document.getElementById('insuranceAssistScholarshipReceiveStartAge').value = linkedAges.lumpAge; document.getElementById('insuranceAssistScholarshipReceiveEndAge').value = (document.getElementById('insuranceAssistScholarshipReceiveType')?.value === 'year') ? linkedAges.annuityEndAge : linkedAges.lumpAge; }
     updateInsuranceAssistPreview();
   });
 });
