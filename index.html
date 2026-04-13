@@ -392,6 +392,9 @@
   #detailStickyNav.sticky-nav-initializing .detail-sticky-btn{
     transition:none !important;
   }
+  .mode-panel-preparing{
+    visibility:hidden !important;
+  }
   .detail-sticky-target{scroll-margin-top:calc(var(--detail-sticky-top, 54px) + 48px);}
   .simple-mode-placeholder{
     border:1px dashed #cbd5e1;
@@ -7453,6 +7456,7 @@ let detailStickyPendingTargetTop = null;
 let detailStickyPendingUntil = 0;
 let detailStickySettledTargetId = "";
 let detailStickySettledUntil = 0;
+let pendingInputModeReveal = "";
 let detailStickyScrollHandlerBound = false;
 
 function getDetailStickyNav(){
@@ -7602,11 +7606,21 @@ function buildDetailStickyNav(){
       requestAnimationFrame(()=>{
         refreshActiveDetailStickySectionFromScroll();
         nav.classList.remove("sticky-nav-initializing");
+        if(pendingInputModeReveal === "detail"){
+          restoreInputModeScroll("detail");
+          panel.classList.remove("mode-panel-preparing");
+          pendingInputModeReveal = "";
+        }
       });
     });
   }else{
     setActiveDetailStickySection("");
     nav.classList.remove("sticky-nav-initializing");
+    if(pendingInputModeReveal === "detail"){
+      restoreInputModeScroll("detail");
+      panel.classList.remove("mode-panel-preparing");
+      pendingInputModeReveal = "";
+    }
   }
 }
 
@@ -7719,14 +7733,22 @@ function captureCurrentInputModeScroll(){
 function restoreInputModeScroll(mode){
   const inputsEl = document.getElementById("inputs");
   if(!inputsEl) return;
-  const top = Math.max(0, +(getInputModeScrollStore()[normalizeInputMode(mode)] || 0));
-  requestAnimationFrame(()=>{
-    inputsEl.scrollTop = top;
-  });
+  const normalizedMode = normalizeInputMode(mode);
+  const targetTop = Math.max(0, +(getInputModeScrollStore()[normalizedMode] || 0));
+  let tries = 0;
+  const apply = ()=>{
+    const maxTop = Math.max(0, (inputsEl.scrollHeight || 0) - (inputsEl.clientHeight || 0));
+    const nextTop = Math.min(targetTop, maxTop);
+    inputsEl.scrollTop = nextTop;
+    tries += 1;
+    if(tries < 4) requestAnimationFrame(apply);
+  };
+  requestAnimationFrame(apply);
 }
 function setInputMode(mode, options = {}){
   const nextMode = normalizeInputMode(mode);
   const resetScroll = options && options.preserveScroll === false;
+  const detailPanel = document.getElementById("detailModePanel");
   if(currentInputMode === nextMode){
     updateInputModeUI();
     if(resetScroll){
@@ -7742,6 +7764,12 @@ function setInputMode(mode, options = {}){
   captureCurrentInputModeScroll();
   const inputsEl = document.getElementById("inputs");
   const nextStoredTop = Math.max(0, +(getInputModeScrollStore()[nextMode] || 0));
+  if(detailPanel) detailPanel.classList.remove("mode-panel-preparing");
+  pendingInputModeReveal = "";
+  if(nextMode === "detail" && detailPanel){
+    detailPanel.classList.add("mode-panel-preparing");
+    pendingInputModeReveal = "detail";
+  }
   currentInputMode = nextMode;
   if(inputsEl){
     inputsEl.scrollTop = resetScroll ? 0 : nextStoredTop;
@@ -7750,7 +7778,7 @@ function setInputMode(mode, options = {}){
   if(resetScroll){
     if(inputsEl) inputsEl.scrollTop = 0;
     getInputModeScrollStore()[nextMode] = 0;
-  }else{
+  }else if(nextMode !== "detail"){
     restoreInputModeScroll(nextMode);
   }
   if(options.persist !== false) persistState();
