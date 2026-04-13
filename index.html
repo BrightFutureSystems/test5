@@ -396,6 +396,48 @@
     visibility:hidden !important;
   }
   .detail-sticky-target{scroll-margin-top:calc(var(--detail-sticky-top, 54px) + 48px);}
+  #simpleStickyNav{
+    position:sticky;
+    top:var(--simple-sticky-top, 0px);
+    z-index:24;
+    display:flex;
+    gap:4px;
+    align-items:center;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+    overscroll-behavior-y:none;
+    scrollbar-width:none;
+    padding:4px;
+    margin:0 0 10px;
+    background:#f1f5f9;
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+  }
+  #simpleStickyNav::after{
+    content:"";
+    position:absolute;
+    left:-1px;
+    right:-1px;
+    bottom:-6px;
+    height:8px;
+    background:#f1f5f9;
+    border-bottom-left-radius:16px;
+    border-bottom-right-radius:16px;
+    pointer-events:none;
+  }
+  #simpleStickyNav::before{content:none;}
+  #simpleStickyNav::-webkit-scrollbar{display:none;height:0;width:0;}
+  #simpleStickyNav[hidden]{display:none !important;}
+  #simpleStickyNav.sticky-nav-initializing{
+    visibility:hidden;
+  }
+  #simpleStickyNav.sticky-nav-initializing .detail-sticky-btn{
+    transition:none !important;
+  }
+  .simple-sticky-target{scroll-margin-top:calc(var(--simple-sticky-top, 0px) + 48px);}
   .simple-mode-placeholder{
     border:1px dashed #cbd5e1;
     border-radius:12px;
@@ -1101,6 +1143,7 @@
     .simple-mode-field-label-main{gap:6px;}
     .simple-mode-inline-check{font-size:11px;}
     #detailStickyNav{top:var(--detail-sticky-top, 50px);padding:4px;gap:0;border-radius:16px;}
+    #simpleStickyNav{top:var(--simple-sticky-top, 0px);padding:4px;gap:0;border-radius:16px;}
     .detail-sticky-btn{padding:9px 14px;font-size:12px;}
     .basic-table{table-layout:fixed;}
     .basic-table th,.basic-table td{padding:4px;}
@@ -2121,6 +2164,7 @@
 
         </div>
     <div id="simpleModePanel" class="mode-panel" hidden>
+      <div id="simpleStickyNav" hidden aria-label="簡単モード内セクション移動"></div>
       <div id="simpleModeRoot" class="simple-mode-root"></div>
       <div class="simple-mode-note">簡単モードは、各テーブルの先頭代表位置のみを操作します。詳細モード側で追加した他の行や詳細設定は保持され、計算にも引き続き反映されます。</div>
     </div>
@@ -5932,7 +5976,9 @@ function getAllInputs(){
   const baseYear = currentBaseYearValue();
   document.querySelectorAll("input, select").forEach(el=>{
     if(!el.id) return;
-    if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal"))) return;
+    const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
+    const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
+    if(((inSimplePanel && !inSimpleBasicInfo)) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal")))) return;
     if(el.type === "checkbox"){
       data[el.id] = el.checked;
       return;
@@ -6709,6 +6755,19 @@ const SIMPLE_MODE_BLOCKS = [
     ]
   }
 ];
+const SIMPLE_MODE_NAV_ITEMS = [
+  { id:"basicInfoSection", title:"基本情報" },
+  { id:"simpleSectionAssets", title:"資産・前提", blockKey:"assets" },
+  { id:"simpleSectionWorking", title:"現役期", blockKey:"working" },
+  { id:"simpleSectionRetire", title:"退職条件", blockKey:"retire" },
+  { id:"simpleSectionOldage", title:"老後", blockKey:"after" }
+];
+const SIMPLE_MODE_BLOCK_SECTION_IDS = {
+  assets:"simpleSectionAssets",
+  working:"simpleSectionWorking",
+  retire:"simpleSectionRetire",
+  after:"simpleSectionOldage"
+};
 const SIMPLE_MODE_FIELDS = SIMPLE_MODE_BLOCKS.flatMap(block=>block.fields);
 const SIMPLE_AUTO_INFL_FLAG_IDS = {
   life1:"simpleAutoInflLife1",
@@ -6942,7 +7001,10 @@ function buildSimpleModeFieldHtml(def){
 function renderSimpleMode(){
   const root = getSimpleModeRoot();
   if(!root) return;
-  root.innerHTML = SIMPLE_MODE_BLOCKS.map(block=>`<section class="simple-mode-card" data-simple-block="${block.key}"><div class="simple-mode-card-title"><span class="simple-mode-card-title-main">${escapeHtml(block.title)}</span><span class="simple-mode-card-note">${escapeHtml(block.note)}</span></div>${block.fields.map(buildSimpleModeFieldHtml).join("")}</section>`).join("");
+  root.innerHTML = SIMPLE_MODE_BLOCKS.map(block=>{
+    const sectionId = SIMPLE_MODE_BLOCK_SECTION_IDS[block.key] || `simpleSection_${block.key}`;
+    return `<section id="${sectionId}" class="simple-mode-card simple-sticky-target" data-simple-block="${block.key}"><div class="simple-mode-card-title"><span class="simple-mode-card-title-main">${escapeHtml(block.title)}</span><span class="simple-mode-card-note">${escapeHtml(block.note)}</span></div>${block.fields.map(buildSimpleModeFieldHtml).join("")}</section>`;
+  }).join("");
   refreshSimpleModeLockState();
 }
 function refreshSimpleModeFieldLockState(key){
@@ -7446,8 +7508,17 @@ function updateDetailStickyTop(){
   const inputsEl = document.getElementById("inputs");
   if(!inputsEl) return;
   inputsEl.style.setProperty("--detail-sticky-top", `0px`);
+  inputsEl.style.setProperty("--simple-sticky-top", `0px`);
 }
 
+let simpleStickySections = [];
+let currentSimpleStickySectionId = "";
+let simpleStickyPendingTargetId = "";
+let simpleStickyPendingTargetTop = null;
+let simpleStickyPendingUntil = 0;
+let simpleStickySettledTargetId = "";
+let simpleStickySettledUntil = 0;
+let simpleStickyNavBuilt = false;
 let detailStickySections = [];
 let detailStickyObserver = null;
 let currentDetailStickySectionId = "";
@@ -7458,6 +7529,192 @@ let detailStickySettledTargetId = "";
 let detailStickySettledUntil = 0;
 let pendingInputModeReveal = "";
 let detailStickyScrollHandlerBound = false;
+let pendingDetailRestoreScrollTop = null;
+
+function getSimpleStickyNav(){
+  return document.getElementById("simpleStickyNav");
+}
+
+function setActiveSimpleStickySection(sectionId){
+  currentSimpleStickySectionId = sectionId || "";
+  const nav = getSimpleStickyNav();
+  if(!nav) return;
+  nav.querySelectorAll(".detail-sticky-btn").forEach(btn=>{
+    const active = !!sectionId && btn.dataset.targetId === sectionId;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function getSimpleStickyScrollOffset(){
+  const stickyNav = getSimpleStickyNav();
+  return (stickyNav && !stickyNav.hidden ? stickyNav.offsetHeight : 0);
+}
+
+function getSimpleStickyAnchorTop(){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl) return 0;
+  const rect = inputsEl.getBoundingClientRect();
+  return rect.top + getSimpleStickyScrollOffset();
+}
+
+function getSimpleStickySectionForScroll(){
+  if(!simpleStickySections.length) return "";
+  const anchorTop = getSimpleStickyAnchorTop();
+  let activeId = simpleStickySections[0].id;
+  for(const sec of simpleStickySections){
+    const secTop = sec.element.getBoundingClientRect().top;
+    if(secTop <= anchorTop + 1) activeId = sec.id;
+    else break;
+  }
+  return activeId;
+}
+
+function getSimpleStickySectionForScrollTop(targetScrollTop){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl || !simpleStickySections.length) return "";
+  const inputsRect = inputsEl.getBoundingClientRect();
+  const currentTop = Math.round(inputsEl.scrollTop || 0);
+  const anchorScrollTop = Math.max(0, Math.round(targetScrollTop || 0)) + getSimpleStickyScrollOffset();
+  let activeId = simpleStickySections[0].id;
+  for(const sec of simpleStickySections){
+    const sectionScrollTop = currentTop + (sec.element.getBoundingClientRect().top - inputsRect.top);
+    if(sectionScrollTop <= anchorScrollTop + 1) activeId = sec.id;
+    else break;
+  }
+  return activeId;
+}
+
+function refreshActiveSimpleStickySectionFromScroll(){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl || !simpleStickySections.length) return;
+  const now = Date.now();
+  const currentTop = Math.round(inputsEl.scrollTop || 0);
+  const liveSectionId = getSimpleStickySectionForScroll();
+  if(simpleStickyPendingTargetId){
+    let arrived = false;
+    if(simpleStickyPendingTargetTop != null){
+      const targetEl = document.getElementById(simpleStickyPendingTargetId);
+      if(targetEl){
+        const diff = Math.abs(targetEl.getBoundingClientRect().top - getSimpleStickyAnchorTop());
+        arrived = diff <= 2;
+      }else{
+        arrived = Math.abs(currentTop - simpleStickyPendingTargetTop) <= 2;
+      }
+    }
+    const expired = now >= simpleStickyPendingUntil;
+    if(arrived || expired){
+      const targetId = simpleStickyPendingTargetId;
+      simpleStickyPendingTargetId = "";
+      simpleStickyPendingTargetTop = null;
+      simpleStickyPendingUntil = 0;
+      simpleStickySettledTargetId = targetId;
+      simpleStickySettledUntil = now + 1200;
+      setActiveSimpleStickySection(targetId);
+      return;
+    }
+    setActiveSimpleStickySection(simpleStickyPendingTargetId || liveSectionId);
+    return;
+  }
+  if(simpleStickySettledTargetId && now < simpleStickySettledUntil){
+    setActiveSimpleStickySection(simpleStickySettledTargetId);
+    return;
+  }
+  simpleStickySettledTargetId = "";
+  simpleStickySettledUntil = 0;
+  setActiveSimpleStickySection(liveSectionId);
+}
+
+function scrollSimpleSectionIntoView(sectionId){
+  const section = document.getElementById(sectionId);
+  const inputsEl = document.getElementById("inputs");
+  if(!section || !inputsEl) return;
+  const anchorTop = getSimpleStickyAnchorTop();
+  const sectionTop = section.getBoundingClientRect().top;
+  const delta = sectionTop - anchorTop;
+  const currentTop = Math.round(inputsEl.scrollTop || 0);
+  const desiredTop = Math.round(currentTop + delta);
+  const maxTop = Math.max(0, (inputsEl.scrollHeight || 0) - (inputsEl.clientHeight || 0));
+  const targetTop = Math.max(0, Math.min(desiredTop, maxTop));
+  const noMeaningfulScroll = Math.abs(targetTop - currentTop) <= 2;
+  const clampedAtEdge = targetTop === maxTop && desiredTop > maxTop + 2;
+  simpleStickyPendingTargetId = "";
+  simpleStickyPendingTargetTop = null;
+  simpleStickyPendingUntil = 0;
+  simpleStickySettledTargetId = sectionId;
+  simpleStickySettledUntil = Date.now() + ((noMeaningfulScroll || clampedAtEdge) ? 1600 : 1200);
+  setActiveSimpleStickySection(sectionId);
+  if(noMeaningfulScroll){
+    return;
+  }
+  if(!clampedAtEdge){
+    simpleStickyPendingTargetId = sectionId;
+    simpleStickyPendingTargetTop = targetTop;
+    simpleStickyPendingUntil = Date.now() + 1600;
+  }
+  inputsEl.scrollTo({ top: targetTop, behavior: "smooth" });
+}
+
+function buildSimpleStickyNav(){
+  const panel = document.getElementById("simpleModePanel");
+  const nav = getSimpleStickyNav();
+  if(!panel || !nav) return;
+  const basicSection = document.getElementById("basicInfoSection");
+  if(basicSection) basicSection.classList.add("simple-sticky-target");
+  simpleStickySections = SIMPLE_MODE_NAV_ITEMS.map(item=>{
+    const element = item.blockKey ? panel.querySelector(`[data-simple-block="${item.blockKey}"]`) : document.getElementById(item.id);
+    if(!element) return null;
+    if(item.id) element.id = item.id;
+    if(item.blockKey && SIMPLE_MODE_BLOCK_SECTION_IDS[item.blockKey]) element.id = SIMPLE_MODE_BLOCK_SECTION_IDS[item.blockKey];
+    element.classList.add("simple-sticky-target");
+    return { id: element.id, title: item.title, element };
+  }).filter(Boolean);
+  nav.classList.add("sticky-nav-initializing");
+  const initialSimpleTop = Math.max(0, +(getInputModeScrollStore().simple || 0));
+  const initialActiveId = simpleStickySections.length ? getSimpleStickySectionForScrollTop(initialSimpleTop) : "";
+  currentSimpleStickySectionId = initialActiveId;
+  nav.innerHTML = simpleStickySections.map(sec=>{
+    const activeClass = sec.id === initialActiveId ? ' active' : '';
+    const pressed = sec.id === initialActiveId ? 'true' : 'false';
+    return `<button type="button" class="detail-sticky-btn${activeClass}" data-target-id="${sec.id}" aria-pressed="${pressed}">${sec.title}</button>`;
+  }).join("");
+  nav.querySelectorAll(".detail-sticky-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      scrollSimpleSectionIntoView(btn.dataset.targetId);
+    });
+  });
+  simpleStickyPendingTargetId = "";
+  simpleStickyPendingTargetTop = null;
+  simpleStickyPendingUntil = 0;
+  simpleStickySettledTargetId = initialActiveId || "";
+  simpleStickySettledUntil = Date.now() + 260;
+  simpleStickyNavBuilt = true;
+  if(simpleStickySections.length){
+    setActiveSimpleStickySection(initialActiveId);
+    requestAnimationFrame(()=>{
+      refreshActiveSimpleStickySectionFromScroll();
+      nav.classList.remove("sticky-nav-initializing");
+    });
+  }else{
+    setActiveSimpleStickySection("");
+    nav.classList.remove("sticky-nav-initializing");
+  }
+}
+
+function updateSimpleStickyNavVisibility(){
+  const nav = getSimpleStickyNav();
+  if(!nav) return;
+  nav.hidden = !(currentInputMode === "simple" && simpleStickySections.length);
+  if(nav.hidden){
+    simpleStickyPendingTargetId = "";
+    simpleStickyPendingTargetTop = null;
+    simpleStickyPendingUntil = 0;
+    return;
+  }
+  if(simpleStickySections.length){
+    refreshActiveSimpleStickySectionFromScroll();
+  }
+}
 
 function getDetailStickyNav(){
   return document.getElementById("detailStickyNav");
@@ -7559,8 +7816,13 @@ function ensureDetailStickyScrollHandler(){
   if(!inputsEl) return;
   inputsEl.addEventListener("scroll", ()=>{
     getInputModeScrollStore()[normalizeInputMode(currentInputMode)] = Math.max(0, inputsEl.scrollTop || 0);
-    if(currentInputMode !== "detail") return;
-    refreshActiveDetailStickySectionFromScroll();
+    if(currentInputMode === "detail"){
+      refreshActiveDetailStickySectionFromScroll();
+      return;
+    }
+    if(currentInputMode === "simple"){
+      refreshActiveSimpleStickySectionFromScroll();
+    }
   }, { passive:true });
   detailStickyScrollHandlerBound = true;
 }
@@ -7595,7 +7857,7 @@ function buildDetailStickyNav(){
       section.classList.add("detail-sticky-target");
       return { id, title, element: section };
     });
-  const initialDetailTop = Math.max(0, +(getInputModeScrollStore().detail || 0));
+  const initialDetailTop = Math.max(0, +(pendingDetailRestoreScrollTop != null ? pendingDetailRestoreScrollTop : (getInputModeScrollStore().detail || 0)));
   const initialActiveId = detailStickySections.length ? getDetailStickySectionForScrollTop(initialDetailTop) : "";
   currentDetailStickySectionId = initialActiveId;
   nav.innerHTML = detailStickySections.map(sec=>{
@@ -7618,6 +7880,7 @@ function buildDetailStickyNav(){
   if(detailStickySections.length){
     setActiveDetailStickySection(initialActiveId);
     const finalize = ()=>{
+      pendingDetailRestoreScrollTop = null;
       refreshActiveDetailStickySectionFromScroll();
       nav.classList.remove("sticky-nav-initializing");
       if(pendingInputModeReveal === "detail"){
@@ -7632,6 +7895,7 @@ function buildDetailStickyNav(){
     }
   }else{
     setActiveDetailStickySection("");
+    pendingDetailRestoreScrollTop = null;
     nav.classList.remove("sticky-nav-initializing");
     if(pendingInputModeReveal === "detail"){
       panel.classList.remove("mode-panel-preparing");
@@ -7678,9 +7942,14 @@ function relocateBasicInfoSection(mode){
   const simplePanel = document.getElementById("simpleModePanel");
   const detailPanel = document.getElementById("detailModePanel");
   const detailNav = document.getElementById("detailStickyNav");
+  const simpleNav = document.getElementById("simpleStickyNav");
   if(!section || !simplePanel || !detailPanel) return;
   if(mode === "simple"){
-    if(simplePanel.firstElementChild !== section) simplePanel.prepend(section);
+    if(simpleNav && simpleNav.parentElement === simplePanel){
+      if(simpleNav.nextElementSibling !== section) simpleNav.insertAdjacentElement("afterend", section);
+    }else if(simplePanel.firstElementChild !== section){
+      simplePanel.prepend(section);
+    }
     return;
   }
   if(detailNav && detailNav.parentElement === detailPanel){
@@ -7786,21 +8055,28 @@ function setInputMode(mode, options = {}){
   captureCurrentInputModeScroll();
   const inputsEl = document.getElementById("inputs");
   const nextStoredTop = Math.max(0, +(getInputModeScrollStore()[nextMode] || 0));
+  if(nextMode === "detail") pendingDetailRestoreScrollTop = nextStoredTop;
   if(detailPanel) detailPanel.classList.remove("mode-panel-preparing");
   pendingInputModeReveal = "";
-  if(nextMode === "detail" && detailPanel){
-    detailPanel.classList.add("mode-panel-preparing");
-    pendingInputModeReveal = "detail";
-  }
   currentInputMode = nextMode;
   if(inputsEl){
-    inputsEl.scrollTop = resetScroll ? 0 : (nextMode === "detail" ? (inputsEl.scrollTop || 0) : nextStoredTop);
+    inputsEl.scrollTop = resetScroll ? 0 : nextStoredTop;
   }
+  if(nextMode !== "detail") pendingDetailRestoreScrollTop = null;
   updateInputModeUI();
   if(resetScroll){
     if(inputsEl) inputsEl.scrollTop = 0;
     getInputModeScrollStore()[nextMode] = 0;
-  }else if(nextMode !== "detail"){
+  }else if(nextMode === "detail"){
+    restoreInputModeScroll("detail", {
+      tries: 4,
+      onDone: ()=>{
+        if(typeof refreshActiveDetailStickySectionFromScroll === "function"){
+          refreshActiveDetailStickySectionFromScroll();
+        }
+      }
+    });
+  }else{
     restoreInputModeScroll(nextMode);
   }
   if(options.persist !== false) persistState();
@@ -7819,9 +8095,13 @@ function updateInputModeUI(){
   relocateResultBar(mode);
   if(inputsEl) inputsEl.dataset.inputMode = mode;
   updateInputModeToggleButton();
-  if(hasScenario && mode === "simple") syncSimpleModeFromDetail();
+  if(hasScenario && mode === "simple"){
+    syncSimpleModeFromDetail();
+    buildSimpleStickyNav();
+  }
   if(hasScenario && mode === "detail") buildDetailStickyNav();
   updateDetailStickyTop();
+  updateSimpleStickyNavVisibility();
   updateDetailStickyNavVisibility();
   applyTabOrder();
 }
@@ -15985,11 +16265,18 @@ function saveIncomeCurveModal(){
 document.getElementById("inputModeToggleBtn")?.addEventListener("click", ()=>{
   toggleInputModeWithFlip();
 });
+buildSimpleStickyNav();
 buildDetailStickyNav();
 updateDetailStickyTop();
 window.addEventListener("resize", ()=>{
   updateDetailStickyTop();
   setupDetailStickyObserver();
+  if(currentInputMode === "simple"){
+    buildSimpleStickyNav();
+    updateSimpleStickyNavVisibility();
+  }else{
+    updateDetailStickyNavVisibility();
+  }
 });
 document.getElementById("addTabBtn").addEventListener("click", ()=>{
   addTab(); draw(); persistState();
@@ -16661,7 +16948,9 @@ document.addEventListener("input", (e)=>{
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#insuranceAssistModal"))) return;
+  const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
+  const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
+  if((inSimplePanel && !inSimpleBasicInfo) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#insuranceAssistModal")))) return;
   if(/^(reginc|inc|rent|homeMaint|life|period|extra)\d+_timeUnit$/.test(el.id)){
     const match = el.id.match(/^(reginc|inc|rent|homeMaint|life|period|extra)(\d+)_timeUnit$/);
     if(match){
@@ -16719,7 +17008,9 @@ function commitMainInputChange(e){
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal"))) return;
+  const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
+  const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
+  if((inSimplePanel && !inSimpleBasicInfo) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal")))) return;
   if((e?.type === "focusout" || e?.type === "change") && /^child\d+_allowanceOn$/.test(el.id)) return;
   if(e?.type === "focusout" && el.id === "childAllowanceOn") return;
   if(e?.type === "focusout" && mainInputSnapshotUnchanged(el)) return;
@@ -16795,7 +17086,9 @@ document.addEventListener("focusin", (e)=>{
   if(!(el instanceof HTMLElement)) return;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el.closest && (el.closest("#simpleModePanel") || el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal"))) return;
+  const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
+  const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
+  if((inSimplePanel && !inSimpleBasicInfo) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal")))) return;
   rememberMainInputSnapshot(el);
 }, true);
 document.addEventListener("change", commitMainInputChange);
@@ -17383,6 +17676,7 @@ window.addEventListener("load", ()=>{
   renderTabs();
   enableHorizontalDragScroll(document.getElementById("tabScroller"));
   enableHorizontalDragScroll(document.getElementById("detailStickyNav"), { allowButtonDrag:true });
+  enableHorizontalDragScroll(document.getElementById("simpleStickyNav"), { allowButtonDrag:true });
   updateInputModeUI();
   syncAllBirthDateDerivedFields();
   syncSimpleModeSumInvAutoAgesInDOM();
