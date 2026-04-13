@@ -7498,6 +7498,21 @@ function getDetailStickySectionForScroll(){
   return activeId;
 }
 
+function getDetailStickySectionForScrollTop(targetScrollTop){
+  const inputsEl = document.getElementById("inputs");
+  if(!inputsEl || !detailStickySections.length) return "";
+  const inputsRect = inputsEl.getBoundingClientRect();
+  const currentTop = Math.round(inputsEl.scrollTop || 0);
+  const anchorScrollTop = Math.max(0, Math.round(targetScrollTop || 0)) + getDetailStickyScrollOffset();
+  let activeId = detailStickySections[0].id;
+  for(const sec of detailStickySections){
+    const sectionScrollTop = currentTop + (sec.element.getBoundingClientRect().top - inputsRect.top);
+    if(sectionScrollTop <= anchorScrollTop + 1) activeId = sec.id;
+    else break;
+  }
+  return activeId;
+}
+
 function refreshActiveDetailStickySectionFromScroll(){
   const inputsEl = document.getElementById("inputs");
   if(!inputsEl || !detailStickySections.length) return;
@@ -7580,7 +7595,8 @@ function buildDetailStickyNav(){
       section.classList.add("detail-sticky-target");
       return { id, title, element: section };
     });
-  const initialActiveId = detailStickySections.length ? getDetailStickySectionForScroll() : "";
+  const initialDetailTop = Math.max(0, +(getInputModeScrollStore().detail || 0));
+  const initialActiveId = detailStickySections.length ? getDetailStickySectionForScrollTop(initialDetailTop) : "";
   currentDetailStickySectionId = initialActiveId;
   nav.innerHTML = detailStickySections.map(sec=>{
     const activeClass = sec.id === initialActiveId ? ' active' : '';
@@ -7595,29 +7611,29 @@ function buildDetailStickyNav(){
   detailStickyPendingTargetId = "";
   detailStickyPendingTargetTop = null;
   detailStickyPendingUntil = 0;
-  detailStickySettledTargetId = "";
-  detailStickySettledUntil = 0;
+  detailStickySettledTargetId = initialActiveId || "";
+  detailStickySettledUntil = Date.now() + 260;
   ensureDetailStickyScrollHandler();
   setupDetailStickyObserver();
   if(detailStickySections.length){
-    refreshActiveDetailStickySectionFromScroll();
-    requestAnimationFrame(()=>{
+    setActiveDetailStickySection(initialActiveId);
+    const finalize = ()=>{
       refreshActiveDetailStickySectionFromScroll();
-      requestAnimationFrame(()=>{
-        refreshActiveDetailStickySectionFromScroll();
-        nav.classList.remove("sticky-nav-initializing");
-        if(pendingInputModeReveal === "detail"){
-          restoreInputModeScroll("detail");
-          panel.classList.remove("mode-panel-preparing");
-          pendingInputModeReveal = "";
-        }
-      });
-    });
+      nav.classList.remove("sticky-nav-initializing");
+      if(pendingInputModeReveal === "detail"){
+        panel.classList.remove("mode-panel-preparing");
+        pendingInputModeReveal = "";
+      }
+    };
+    if(pendingInputModeReveal === "detail"){
+      restoreInputModeScroll("detail", { tries:4, onDone: finalize });
+    }else{
+      requestAnimationFrame(finalize);
+    }
   }else{
     setActiveDetailStickySection("");
     nav.classList.remove("sticky-nav-initializing");
     if(pendingInputModeReveal === "detail"){
-      restoreInputModeScroll("detail");
       panel.classList.remove("mode-panel-preparing");
       pendingInputModeReveal = "";
     }
@@ -7730,18 +7746,24 @@ function captureCurrentInputModeScroll(){
   if(!inputsEl) return;
   getInputModeScrollStore()[normalizeInputMode(currentInputMode)] = Math.max(0, inputsEl.scrollTop || 0);
 }
-function restoreInputModeScroll(mode){
+function restoreInputModeScroll(mode, options = {}){
   const inputsEl = document.getElementById("inputs");
   if(!inputsEl) return;
   const normalizedMode = normalizeInputMode(mode);
   const targetTop = Math.max(0, +(getInputModeScrollStore()[normalizedMode] || 0));
+  const triesMax = Math.max(1, +(options.tries || 4));
+  const onDone = typeof options.onDone === "function" ? options.onDone : null;
   let tries = 0;
   const apply = ()=>{
     const maxTop = Math.max(0, (inputsEl.scrollHeight || 0) - (inputsEl.clientHeight || 0));
     const nextTop = Math.min(targetTop, maxTop);
     inputsEl.scrollTop = nextTop;
     tries += 1;
-    if(tries < 4) requestAnimationFrame(apply);
+    if(tries < triesMax){
+      requestAnimationFrame(apply);
+      return;
+    }
+    if(onDone) onDone();
   };
   requestAnimationFrame(apply);
 }
@@ -7772,7 +7794,7 @@ function setInputMode(mode, options = {}){
   }
   currentInputMode = nextMode;
   if(inputsEl){
-    inputsEl.scrollTop = resetScroll ? 0 : nextStoredTop;
+    inputsEl.scrollTop = resetScroll ? 0 : (nextMode === "detail" ? (inputsEl.scrollTop || 0) : nextStoredTop);
   }
   updateInputModeUI();
   if(resetScroll){
