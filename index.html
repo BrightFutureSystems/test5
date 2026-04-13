@@ -17912,18 +17912,41 @@ window.addEventListener("load", ()=>{
     if(!chart) return;
     const canvas = document.getElementById("chart");
     if(!canvas || e.target !== canvas) return;
-    const elements = chart.getElementsAtEventForMode(e, "nearest", {intersect:false}, false) || [];
-    if(!elements.length){
+    const rect = canvas.getBoundingClientRect();
+    const clientX = typeof e.clientX === "number" ? e.clientX : (rect.left + rect.width / 2);
+    const clientY = typeof e.clientY === "number" ? e.clientY : (rect.top + rect.height / 2);
+    const position = {x:clientX - rect.left, y:clientY - rect.top};
+    const sameIndexElements = chart.getElementsAtEventForMode(
+      e,
+      "index",
+      { intersect:false, axis:"x" },
+      false
+    ) || [];
+    let chosen = null;
+    if(sameIndexElements.length){
+      let bestDist = Infinity;
+      for(const item of sameIndexElements){
+        const meta = chart.getDatasetMeta(item.datasetIndex);
+        const point = meta?.data?.[item.index];
+        if(!point || typeof point.y !== 'number') continue;
+        const dist = Math.abs(point.y - position.y);
+        if(dist < bestDist){
+          bestDist = dist;
+          chosen = item;
+        }
+      }
+    }
+    if(!chosen){
+      const nearestElements = chart.getElementsAtEventForMode(e, "nearest", {intersect:false}, false) || [];
+      chosen = nearestElements[0] || null;
+    }
+    if(!chosen){
       chart.setActiveElements([]);
       chart.tooltip?.setActiveElements?.([], {x:0, y:0});
       chart.update("none");
       return;
     }
-    const activeElements = elements.map(item=>({datasetIndex:item.datasetIndex, index:item.index}));
-    const rect = canvas.getBoundingClientRect();
-    const clientX = typeof e.clientX === "number" ? e.clientX : (rect.left + rect.width / 2);
-    const clientY = typeof e.clientY === "number" ? e.clientY : (rect.top + rect.height / 2);
-    const position = {x:clientX - rect.left, y:clientY - rect.top};
+    const activeElements = [{ datasetIndex:chosen.datasetIndex, index:chosen.index }];
     chart.setActiveElements(activeElements);
     chart.tooltip?.setActiveElements?.(activeElements, position);
     chart.update("none");
