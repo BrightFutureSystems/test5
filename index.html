@@ -2653,6 +2653,7 @@ const DRAW_DEBOUNCE_MS = 50;
 const PERSIST_DEBOUNCE_MS = 300;
 
 let chart = null;
+let chartAxisSelectionGuide = null;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
@@ -14126,26 +14127,23 @@ function pluginLines(cfg, sim, monteInfo=null){
         ctx.beginPath(); ctx.moveTo(x.left,y0); ctx.lineTo(x.right,y0); ctx.stroke();
       }
 
-      if(graphType !== "asset"){
-        ctx.restore();
-        return;
-      }
+      if(graphType === "asset"){
+        const pxLife = x.getPixelForValue(cfg.lifeExpect);
+        ctx.strokeStyle = "#2563eb";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pxLife,y.top); ctx.lineTo(pxLife,y.bottom); ctx.stroke();
+        ctx.fillStyle = "#2563eb";
+        ctx.font = "12px Arial";
+        ctx.fillText(`想定寿命：${cfg.lifeExpect}歳`, Math.min(pxLife+6, x.right-96), y.top+16);
 
-      const pxLife = x.getPixelForValue(cfg.lifeExpect);
-      ctx.strokeStyle = "#2563eb";
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(pxLife,y.top); ctx.lineTo(pxLife,y.bottom); ctx.stroke();
-      ctx.fillStyle = "#2563eb";
-      ctx.font = "12px Arial";
-      ctx.fillText(`想定寿命：${cfg.lifeExpect}歳`, Math.min(pxLife+6, x.right-96), y.top+16);
-
-      if(sim.depletionAge){
-        const pxD = x.getPixelForValue(sim.depletionAge);
-        ctx.strokeStyle = "#111827";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(pxD,y.top); ctx.lineTo(pxD,y.bottom); ctx.stroke();
-        ctx.fillStyle = "#111827";
-        ctx.fillText(`資産寿命：${sim.depletionAge}歳`, Math.min(pxD+6, x.right-90), y.bottom-8);
+        if(sim.depletionAge){
+          const pxD = x.getPixelForValue(sim.depletionAge);
+          ctx.strokeStyle = "#111827";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(pxD,y.top); ctx.lineTo(pxD,y.bottom); ctx.stroke();
+          ctx.fillStyle = "#111827";
+          ctx.fillText(`資産寿命：${sim.depletionAge}歳`, Math.min(pxD+6, x.right-90), y.bottom-8);
+        }
       }
 
       if(monteInfo){
@@ -14189,10 +14187,64 @@ function pluginLines(cfg, sim, monteInfo=null){
           }
         }
       }
+      if(chartAxisSelectionGuide && chartAxisSelectionGuide.axis){
+        const guide = chartAxisSelectionGuide;
+        const area = chart.chartArea;
+        ctx.save();
+        ctx.lineWidth = 1.5;
+        if(guide.axis === "x" && Number.isFinite(guide.startPx) && Number.isFinite(guide.currentPx)){
+          const left = Math.max(area.left, Math.min(area.right, Math.min(guide.startPx, guide.currentPx)));
+          const right = Math.max(area.left, Math.min(area.right, Math.max(guide.startPx, guide.currentPx)));
+          ctx.fillStyle = "rgba(37,99,235,0.08)";
+          ctx.fillRect(left, area.top, Math.max(1, right - left), area.bottom - area.top);
+          ctx.strokeStyle = "rgba(37,99,235,0.9)";
+          ctx.beginPath(); ctx.moveTo(left, area.top); ctx.lineTo(left, area.bottom); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(right, area.top); ctx.lineTo(right, area.bottom); ctx.stroke();
+        }else if(guide.axis === "y" && Number.isFinite(guide.startPx) && Number.isFinite(guide.currentPx)){
+          const top = Math.max(area.top, Math.min(area.bottom, Math.min(guide.startPx, guide.currentPx)));
+          const bottom = Math.max(area.top, Math.min(area.bottom, Math.max(guide.startPx, guide.currentPx)));
+          ctx.fillStyle = "rgba(37,99,235,0.08)";
+          ctx.fillRect(area.left, top, area.right - area.left, Math.max(1, bottom - top));
+          ctx.strokeStyle = "rgba(37,99,235,0.9)";
+          ctx.beginPath(); ctx.moveTo(area.left, top); ctx.lineTo(area.right, top); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(area.left, bottom); ctx.lineTo(area.right, bottom); ctx.stroke();
+        }
+        ctx.restore();
+      }
       ctx.restore();
     }
   };
 }
+
+function getAdaptiveXAxisStepSize(minValue, maxValue){
+  const min = Number(minValue);
+  const max = Number(maxValue);
+  const range = Math.max(0, Math.abs(max - min));
+  if(range <= 25) return 1;
+  if(range <= 50) return 2;
+  if(range <= 80) return 5;
+  if(range <= 120) return 10;
+  return 20;
+}
+function applyAdaptiveXAxisTicksToChart(activeChart){
+  if(!activeChart?.options?.scales?.x) return;
+  const xOptions = activeChart.options.scales.x || {};
+  const optionMin = Number(xOptions.min);
+  const optionMax = Number(xOptions.max);
+  const scaleMin = Number(activeChart.scales?.x?.min);
+  const scaleMax = Number(activeChart.scales?.x?.max);
+  const xMin = Number.isFinite(optionMin) ? optionMin : (Number.isFinite(scaleMin) ? scaleMin : NaN);
+  const xMax = Number.isFinite(optionMax) ? optionMax : (Number.isFinite(scaleMax) ? scaleMax : NaN);
+  if(!Number.isFinite(xMin) || !Number.isFinite(xMax)) return;
+  const ticks = xOptions.ticks || (xOptions.ticks = {});
+  ticks.stepSize = getAdaptiveXAxisStepSize(xMin, xMax);
+  ticks.autoSkip = false;
+  ticks.precision = 0;
+  ticks.maxRotation = 0;
+  ticks.minRotation = 0;
+  ticks.maxTicksLimit = Math.max(2, Math.ceil(Math.abs(xMax - xMin)) + 1);
+}
+
 function getSimulationDisplayRangeText(sim){
   const windows = Array.isArray(sim?.calendarYearWindows) ? sim.calendarYearWindows : [];
   if(!windows.length) return "シミュレーション全期間";
@@ -14266,10 +14318,24 @@ function getCalendarWindowTickLabel(sim, xValue){
   return [`${target}歳`, `${win.year}年`];
 }
 
+function shouldHideEdgeTick(index, ticks){
+  return Array.isArray(ticks) && ticks.length >= 2 && (index === 0 || index === ticks.length - 1);
+}
+function formatMainChartXAxisTick(sim, value, index, ticks){
+  if(shouldHideEdgeTick(index, ticks)) return '';
+  return getCalendarWindowTickLabel(sim, value);
+}
+function formatMainChartYAxisTick(value, index, ticks){
+  if(shouldHideEdgeTick(index, ticks)) return '';
+  return `${Math.round(Number(value) || 0).toLocaleString()}万円`;
+}
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
   const axis = getAxisBounds(yData, cfg, symmetric);
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
+  const xMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
+  const xMax = cfg.xAxisMax;
+  const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
   const yTitleMap = {
     asset:"総資産（万円）",
     assetBreakdown:"総資産（万円）",
@@ -14304,8 +14370,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax), max:cfg.xAxisMax, offset:false, bounds:"ticks", ticks:{stepSize:5, callback(value){ return getCalendarWindowTickLabel(extra.simRef, value); }}, title:{display:true,text:getXAxisTitleText()}},
-      y:{title:{display:true,text:yTitleMap[graphType] || "金額（万円）"}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown")}
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      y:{title:{display:true,text:yTitleMap[graphType] || "金額（万円）"}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks); }}}
     }
   };
   if(graphType === "education"){
@@ -17758,6 +17824,404 @@ function resetChartAxesToAuto(options = {}){
   if(persist) persistState();
   if(redraw) draw();
 }
+function syncChartAxisStateFromChartInstance(activeChart, options = {}){
+  if(!activeChart?.options?.scales) return;
+  applyAdaptiveXAxisTicksToChart(activeChart);
+  const scales = activeChart.scales || {};
+  const xScale = scales.x;
+  const yScale = scales.y;
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
+  const fixedScaleEl = document.getElementById("fixedScale");
+  const fixedScaleMinEl = document.getElementById("fixedScaleMin");
+  const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
+  if(xScale){
+    const xMin = Number.isFinite(Number(xScale.min)) ? Number(xScale.min) : Number(activeChart.options.scales.x?.min);
+    const xMax = Number.isFinite(Number(xScale.max)) ? Number(xScale.max) : Number(activeChart.options.scales.x?.max);
+    if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
+    if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
+  }
+  if(yScale){
+    const yMin = Number.isFinite(Number(yScale.min)) ? Number(yScale.min) : Number(activeChart.options.scales.y?.min);
+    const yMax = Number.isFinite(Number(yScale.max)) ? Number(yScale.max) : Number(activeChart.options.scales.y?.max);
+    if(Number.isFinite(yMin) && fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
+    if(Number.isFinite(yMax) && fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
+    if(fixedScaleEl) fixedScaleEl.checked = !!options.lockYScale;
+  }
+  formatNumericInputDisplay(fixedScaleMinEl, true);
+  formatNumericInputDisplay(fixedScaleMaxEl, true);
+}
+function isFinePointerDevice(){
+  try{
+    return window.matchMedia('(pointer:fine)').matches && !window.matchMedia('(pointer:coarse)').matches;
+  }catch(_e){
+    return !('ontouchstart' in window);
+  }
+}
+
+function setupChartAxisZoomInteractions(){
+  const canvas = document.getElementById("chart");
+  if(!(canvas instanceof HTMLCanvasElement)) return;
+  if(canvas.dataset.chartAxisZoomInit === "1") return;
+  canvas.dataset.chartAxisZoomInit = "1";
+  let zoomState = null;
+  let suppressClickUntil = 0;
+  const AXIS_X_BAND = 30;
+  const AXIS_Y_BAND = 34;
+  const MIN_DRAG_PX = 6;
+  const getCanvasPoint = (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x:e.clientX - rect.left,
+      y:e.clientY - rect.top
+    };
+  };
+  const getAxisZone = (pt)=>{
+    if(!chart?.chartArea || !chart?.scales?.x || !chart?.scales?.y) return null;
+    const area = chart.chartArea;
+    const inXBand = pt.x >= area.left && pt.x <= area.right && pt.y >= area.bottom && pt.y <= area.bottom + AXIS_X_BAND;
+    if(inXBand) return "x";
+    const inYBand = pt.x >= Math.max(0, area.left - AXIS_Y_BAND) && pt.x <= area.left && pt.y >= area.top && pt.y <= area.bottom;
+    if(inYBand) return "y";
+    return null;
+  };
+  const finishZoom = (shouldPersist)=>{
+    if(!zoomState) return;
+    const state = zoomState;
+    zoomState = null;
+    chartAxisSelectionGuide = null;
+    if(chart) chart.update("none");
+    if(!state.moved || !chart?.scales?.x || !chart?.scales?.y) return;
+    const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
+    let changed = false;
+    if(state.axis === "x"){
+      const minPx = Math.max(xScale.left, Math.min(xScale.right, Math.min(state.startPx, state.currentPx)));
+      const maxPx = Math.max(xScale.left, Math.min(xScale.right, Math.max(state.startPx, state.currentPx)));
+      if((maxPx - minPx) >= MIN_DRAG_PX){
+        const minVal = xScale.getValueForPixel(minPx);
+        const maxVal = xScale.getValueForPixel(maxPx);
+        if(Number.isFinite(minVal) && Number.isFinite(maxVal) && Math.abs(maxVal - minVal) > 1e-9){
+          chart.options.scales.x.min = Math.max(0, Math.round(Math.min(minVal, maxVal)));
+          chart.options.scales.x.max = Math.min(120, Math.round(Math.max(minVal, maxVal)));
+          changed = chart.options.scales.x.max > chart.options.scales.x.min;
+        }
+      }
+    }else if(state.axis === "y"){
+      const minPx = Math.max(yScale.top, Math.min(yScale.bottom, Math.min(state.startPx, state.currentPx)));
+      const maxPx = Math.max(yScale.top, Math.min(yScale.bottom, Math.max(state.startPx, state.currentPx)));
+      if((maxPx - minPx) >= MIN_DRAG_PX){
+        const valueA = yScale.getValueForPixel(minPx);
+        const valueB = yScale.getValueForPixel(maxPx);
+        if(Number.isFinite(valueA) && Number.isFinite(valueB) && Math.abs(valueA - valueB) > 1e-9){
+          chart.options.scales.y.min = Math.min(valueA, valueB);
+          chart.options.scales.y.max = Math.max(valueA, valueB);
+          changed = true;
+        }
+      }
+    }
+    if(!changed) return;
+    suppressClickUntil = Date.now() + 250;
+    syncChartAxisStateFromChartInstance(chart, {
+      lockYScale: state.axis === "y" ? true : !!document.getElementById("fixedScale")?.checked
+    });
+    chart.update("none");
+    if(shouldPersist) persistState();
+  };
+  canvas.addEventListener("mousedown", (e)=>{
+    if(e.button !== 0) return;
+    if(!isFinePointerDevice()) return;
+    const pt = getCanvasPoint(e);
+    const axis = getAxisZone(pt);
+    if(!axis) return;
+    zoomState = {
+      axis,
+      startPx: axis === "x" ? pt.x : pt.y,
+      currentPx: axis === "x" ? pt.x : pt.y,
+      moved:false
+    };
+    chartAxisSelectionGuide = {
+      axis,
+      startPx: axis === "x" ? pt.x : pt.y,
+      currentPx: axis === "x" ? pt.x : pt.y
+    };
+    if(chart) chart.update("none");
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  window.addEventListener("mousemove", (e)=>{
+    if(!zoomState) return;
+    const pt = getCanvasPoint(e);
+    const coord = zoomState.axis === "x" ? pt.x : pt.y;
+    if(!zoomState.moved && Math.abs(coord - zoomState.startPx) < MIN_DRAG_PX) return;
+    zoomState.moved = true;
+    zoomState.currentPx = coord;
+    chartAxisSelectionGuide = {axis: zoomState.axis, startPx: zoomState.startPx, currentPx: coord};
+    if(chart) chart.update("none");
+    e.preventDefault();
+  }, {passive:false});
+  window.addEventListener("mouseup", ()=>{
+    finishZoom(true);
+  });
+  window.addEventListener("mouseleave", ()=>{
+    finishZoom(true);
+  });
+  canvas.addEventListener("click", (e)=>{
+    if(Date.now() < suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+}
+
+function setupChartPanInteractions(){
+  const canvas = document.getElementById("chart");
+  if(!(canvas instanceof HTMLCanvasElement)) return;
+  if(canvas.dataset.chartPanInit === "1") return;
+  canvas.dataset.chartPanInit = "1";
+  let panState = null;
+  let suppressClickUntil = 0;
+  const getPoint = (e)=>({x:Number(e.offsetX), y:Number(e.offsetY)});
+  const finishPan = (shouldPersist)=>{
+    if(!panState) return;
+    const moved = !!panState.moved;
+    panState = null;
+    if(moved){
+      suppressClickUntil = Date.now() + 250;
+      if(shouldPersist) persistState();
+    }
+  };
+  canvas.addEventListener('mousedown', (e)=>{
+    if(e.button !== 0) return;
+    if(!isFinePointerDevice()) return;
+    if(!chart?.chartArea || !chart?.scales?.x || !chart?.scales?.y) return;
+    const pt = getPoint(e);
+    const area = chart.chartArea;
+    if(pt.x < area.left || pt.x > area.right || pt.y < area.top || pt.y > area.bottom) return;
+    panState = {
+      startX: pt.x,
+      startY: pt.y,
+      startMinX: Number(chart.scales.x.min),
+      startMaxX: Number(chart.scales.x.max),
+      startMinY: Number(chart.scales.y.min),
+      startMaxY: Number(chart.scales.y.max),
+      moved:false
+    };
+    canvas.classList.add('chart-pan-active');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!panState || !chart?.scales?.x || !chart?.scales?.y) return;
+    const rect = canvas.getBoundingClientRect();
+    const pt = {x:e.clientX - rect.left, y:e.clientY - rect.top};
+    const dx = pt.x - panState.startX;
+    const dy = pt.y - panState.startY;
+    if(!panState.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+    panState.moved = true;
+    const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
+    const startMinPx = xScale.getPixelForValue(panState.startMinX);
+    const startMaxPx = xScale.getPixelForValue(panState.startMaxX);
+    const newMinX = xScale.getValueForPixel(startMinPx - dx);
+    const newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+    const startMinYPx = yScale.getPixelForValue(panState.startMinY);
+    const startMaxYPx = yScale.getPixelForValue(panState.startMaxY);
+    const newMinY = yScale.getValueForPixel(startMinYPx - dy);
+    const newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+    if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
+      chart.options.scales.x.min = newMinX;
+      chart.options.scales.x.max = newMaxX;
+    }
+    if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
+      chart.options.scales.y.min = Math.min(newMinY, newMaxY);
+      chart.options.scales.y.max = Math.max(newMinY, newMaxY);
+    }
+    syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
+    chart.update('none');
+    e.preventDefault();
+  }, {passive:false});
+  window.addEventListener('mouseup', ()=>{
+    canvas.classList.remove('chart-pan-active');
+    finishPan(true);
+  });
+  window.addEventListener('mouseleave', ()=>{
+    canvas.classList.remove('chart-pan-active');
+    finishPan(true);
+  });
+  canvas.addEventListener('click', (e)=>{
+    if(Date.now() < suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+}
+
+
+function setupChartTouchInteractions(){
+  const canvas = document.getElementById("chart");
+  if(!(canvas instanceof HTMLCanvasElement)) return;
+  if(canvas.dataset.chartTouchInit === "1") return;
+  canvas.dataset.chartTouchInit = "1";
+  let touchState = null;
+  let suppressClickUntil = 0;
+  const MIN_TOUCH_MOVE = 6;
+  const getTouchPoint = (touch)=>{
+    const rect = canvas.getBoundingClientRect();
+    return {x:touch.clientX - rect.left, y:touch.clientY - rect.top};
+  };
+  const getDistance = (a, b)=>Math.hypot((b.x - a.x), (b.y - a.y));
+  const isInsideChartArea = (pt)=>{
+    const area = chart?.chartArea;
+    if(!area) return false;
+    return pt.x >= area.left && pt.x <= area.right && pt.y >= area.top && pt.y <= area.bottom;
+  };
+  const isZoomedFromDefaults = ()=>{
+    if(!chart?.scales?.x || !chart?.scales?.y) return false;
+    const defaults = computeChartAxisAutoDefaults();
+    const xOptions = chart.options?.scales?.x || {};
+    const currMinX = Number.isFinite(Number(xOptions.min)) ? Number(xOptions.min) : Number(chart.scales.x.min);
+    const currMaxX = Number.isFinite(Number(xOptions.max)) ? Number(xOptions.max) : Number(chart.scales.x.max);
+    const fixedScaleOn = !!document.getElementById("fixedScale")?.checked;
+    return Math.abs(currMinX - defaults.xMin) > 0.01 || Math.abs(currMaxX - defaults.xMax) > 0.01 || fixedScaleOn;
+  };
+  const finishTouchInteraction = (shouldPersist)=>{
+    if(!touchState) return;
+    const moved = !!touchState.moved;
+    touchState = null;
+    if(moved){
+      suppressClickUntil = Date.now() + 300;
+      if(shouldPersist) persistState();
+    }
+  };
+  canvas.addEventListener('touchstart', (e)=>{
+    if(!chart?.scales?.x || !chart?.scales?.y) return;
+    if(e.touches.length >= 2){
+      const a = getTouchPoint(e.touches[0]);
+      const b = getTouchPoint(e.touches[1]);
+      const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
+      if(!isInsideChartArea(center)) return;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      touchState = {
+        type:'pinch',
+        startA:a,
+        startB:b,
+        startDist:Math.max(1, getDistance(a, b)),
+        startCenter:center,
+        startMinX:Number(chart.scales.x.min),
+        startMaxX:Number(chart.scales.x.max),
+        startMinY:Number(chart.scales.y.min),
+        startMaxY:Number(chart.scales.y.max),
+        centerValueX:xScale.getValueForPixel(center.x),
+        centerValueY:yScale.getValueForPixel(center.y),
+        xRatio:(center.x - xScale.left) / Math.max(1, xScale.right - xScale.left),
+        yRatio:(Number(chart.scales.y.max) - yScale.getValueForPixel(center.y)) / Math.max(1e-9, Number(chart.scales.y.max) - Number(chart.scales.y.min)),
+        moved:false
+      };
+      e.preventDefault();
+      return;
+    }
+    if(e.touches.length === 1 && isZoomedFromDefaults()){
+      const pt = getTouchPoint(e.touches[0]);
+      if(!isInsideChartArea(pt)) return;
+      touchState = {
+        type:'pan',
+        startX:pt.x,
+        startY:pt.y,
+        startMinX:Number(chart.scales.x.min),
+        startMaxX:Number(chart.scales.x.max),
+        startMinY:Number(chart.scales.y.min),
+        startMaxY:Number(chart.scales.y.max),
+        moved:false
+      };
+      e.preventDefault();
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchmove', (e)=>{
+    if(!touchState || !chart?.scales?.x || !chart?.scales?.y) return;
+    if(touchState.type === 'pinch'){
+      if(e.touches.length < 2) return;
+      const a = getTouchPoint(e.touches[0]);
+      const b = getTouchPoint(e.touches[1]);
+      const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
+      const dist = Math.max(1, getDistance(a, b));
+      const delta = Math.abs(dist - touchState.startDist) + Math.abs(center.x - touchState.startCenter.x) + Math.abs(center.y - touchState.startCenter.y);
+      if(!touchState.moved && delta < MIN_TOUCH_MOVE) return;
+      touchState.moved = true;
+      const zoomFactor = dist / Math.max(1, touchState.startDist);
+      const startRangeX = Math.max(1, touchState.startMaxX - touchState.startMinX);
+      const startRangeY = Math.max(1e-9, touchState.startMaxY - touchState.startMinY);
+      let newRangeX = Math.max(1, Math.min(120, startRangeX / Math.max(0.2, zoomFactor)));
+      let newMinX = touchState.centerValueX - newRangeX * touchState.xRatio;
+      let newMaxX = newMinX + newRangeX;
+      if(newMinX < 0){ newMaxX -= newMinX; newMinX = 0; }
+      if(newMaxX > 120){ newMinX -= (newMaxX - 120); newMaxX = 120; }
+      newMinX = Math.max(0, newMinX);
+      newMaxX = Math.min(120, newMaxX);
+      if(newMaxX - newMinX < 1){
+        const centerX = (newMinX + newMaxX) / 2;
+        newMinX = Math.max(0, centerX - 0.5);
+        newMaxX = Math.min(120, centerX + 0.5);
+      }
+      let newRangeY = startRangeY / Math.max(0.2, zoomFactor);
+      const centerRatioY = Math.max(0, Math.min(1, touchState.yRatio));
+      let newMaxY = touchState.centerValueY + newRangeY * (1 - centerRatioY);
+      let newMinY = newMaxY - newRangeY;
+      if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
+        chart.options.scales.x.min = Math.round(newMinX * 100) / 100;
+        chart.options.scales.x.max = Math.round(newMaxX * 100) / 100;
+      }
+      if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
+        chart.options.scales.y.min = Math.min(newMinY, newMaxY);
+        chart.options.scales.y.max = Math.max(newMinY, newMaxY);
+      }
+      syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
+      chart.update('none');
+      e.preventDefault();
+      return;
+    }
+    if(touchState.type === 'pan'){
+      if(e.touches.length !== 1) return;
+      const pt = getTouchPoint(e.touches[0]);
+      const dx = pt.x - touchState.startX;
+      const dy = pt.y - touchState.startY;
+      if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
+      touchState.moved = true;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const startMinPx = xScale.getPixelForValue(touchState.startMinX);
+      const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
+      const newMinX = xScale.getValueForPixel(startMinPx - dx);
+      const newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+      const startMinYPx = yScale.getPixelForValue(touchState.startMinY);
+      const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
+      const newMinY = yScale.getValueForPixel(startMinYPx - dy);
+      const newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+      if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
+        chart.options.scales.x.min = Math.max(0, Math.min(120, newMinX));
+        chart.options.scales.x.max = Math.max(0, Math.min(120, newMaxX));
+      }
+      if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
+        chart.options.scales.y.min = Math.min(newMinY, newMaxY);
+        chart.options.scales.y.max = Math.max(newMinY, newMaxY);
+      }
+      syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
+      chart.update('none');
+      e.preventDefault();
+    }
+  }, {passive:false});
+  const handleTouchEnd = ()=>{
+    finishTouchInteraction(true);
+  };
+  canvas.addEventListener('touchend', handleTouchEnd, {passive:true});
+  canvas.addEventListener('touchcancel', handleTouchEnd, {passive:true});
+  canvas.addEventListener('click', (e)=>{
+    if(Date.now() < suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+}
 
 function enableHorizontalDragScroll(scroller, options = {}){
   if(!(scroller instanceof HTMLElement)) return;
@@ -17960,6 +18424,9 @@ window.addEventListener("load", ()=>{
     e.stopPropagation();
     resetChartAxesToAuto();
   });
+  setupChartPanInteractions();
+  setupChartAxisZoomInteractions();
+  setupChartTouchInteractions();
   ["chartAxisYMin","chartAxisYMax"].forEach(id=>{
     const el = document.getElementById(id);
     if(el){
