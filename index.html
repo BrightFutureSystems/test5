@@ -14120,6 +14120,24 @@ function pluginLines(cfg, sim, monteInfo=null){
       const y = scales.y;
       ctx.save();
 
+      if(x && Array.isArray(x.ticks) && x.ticks.length){
+        ctx.save();
+        ctx.strokeStyle = "rgba(148,163,184,0.28)";
+        ctx.lineWidth = 1;
+        for(const tick of x.ticks){
+          const value = Number(tick?.value);
+          if(!Number.isFinite(value)) continue;
+          const px = x.getPixelForValue(value);
+          if(!Number.isFinite(px) || px < x.left - 0.5 || px > x.right + 0.5) continue;
+          const alignedPx = Math.round(px) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(alignedPx, y.top);
+          ctx.lineTo(alignedPx, y.bottom);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       if(y && y.min <= 0 && y.max >= 0){
         const y0 = y.getPixelForValue(0);
         ctx.lineWidth = 1.5;
@@ -14392,7 +14410,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
       y:{title:{display:true,text:yTitleMap[graphType] || "金額（万円）"}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks); }}}
     }
   };
