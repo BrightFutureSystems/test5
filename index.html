@@ -14220,11 +14220,30 @@ function getAdaptiveXAxisStepSize(minValue, maxValue){
   const min = Number(minValue);
   const max = Number(maxValue);
   const range = Math.max(0, Math.abs(max - min));
-  if(range <= 16) return 1;
-  if(range <= 32) return 2;
-  if(range <= 60) return 5;
-  if(range <= 100) return 10;
+  if(range <= 20) return 1;
+  if(range <= 36) return 2;
+  if(range <= 72) return 5;
+  if(range <= 120) return 10;
   return 20;
+}
+function buildAdaptiveXAxisTickValues(minValue, maxValue){
+  const min = Number(minValue);
+  const max = Number(maxValue);
+  if(!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return [];
+  const step = getAdaptiveXAxisStepSize(min, max);
+  const values = [];
+  let start = Math.ceil(min / step) * step;
+  const end = Math.floor(max / step) * step;
+  const epsilon = 1e-9;
+  for(let v = start; v <= end + epsilon; v += step){
+    const rounded = Math.round(v * 1000000) / 1000000;
+    values.push(rounded);
+  }
+  if(!values.length){
+    const fallback = Math.round(((min + max) / 2) * 1000000) / 1000000;
+    values.push(fallback);
+  }
+  return values;
 }
 function applyAdaptiveXAxisTicksToChart(activeChart){
   if(!activeChart?.options?.scales?.x) return;
@@ -14242,7 +14261,11 @@ function applyAdaptiveXAxisTicksToChart(activeChart){
   ticks.precision = 0;
   ticks.maxRotation = 0;
   ticks.minRotation = 0;
-  ticks.maxTicksLimit = 9;
+  ticks.maxTicksLimit = 14;
+  xOptions.afterBuildTicks = (scale)=>{
+    const values = buildAdaptiveXAxisTickValues(scale.min, scale.max);
+    scale.ticks = values.map(v=>({ value:v }));
+  };
 }
 
 function getSimulationDisplayRangeText(sim){
@@ -14322,7 +14345,6 @@ function shouldHideEdgeTick(index, ticks){
   return Array.isArray(ticks) && ticks.length >= 2 && (index === 0 || index === ticks.length - 1);
 }
 function formatMainChartXAxisTick(sim, value, index, ticks){
-  if(shouldHideEdgeTick(index, ticks)) return '';
   return getCalendarWindowTickLabel(sim, value);
 }
 function formatMainChartYAxisTick(value, index, ticks){
@@ -14370,7 +14392,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
       y:{title:{display:true,text:yTitleMap[graphType] || "金額（万円）"}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks); }}}
     }
   };
