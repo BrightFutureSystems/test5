@@ -14220,10 +14220,10 @@ function getAdaptiveXAxisStepSize(minValue, maxValue){
   const min = Number(minValue);
   const max = Number(maxValue);
   const range = Math.max(0, Math.abs(max - min));
-  if(range <= 25) return 1;
-  if(range <= 50) return 2;
-  if(range <= 80) return 5;
-  if(range <= 120) return 10;
+  if(range <= 16) return 1;
+  if(range <= 32) return 2;
+  if(range <= 60) return 5;
+  if(range <= 100) return 10;
   return 20;
 }
 function applyAdaptiveXAxisTicksToChart(activeChart){
@@ -14242,7 +14242,7 @@ function applyAdaptiveXAxisTicksToChart(activeChart){
   ticks.precision = 0;
   ticks.maxRotation = 0;
   ticks.minRotation = 0;
-  ticks.maxTicksLimit = Math.max(2, Math.ceil(Math.abs(xMax - xMin)) + 1);
+  ticks.maxTicksLimit = 9;
 }
 
 function getSimulationDisplayRangeText(sim){
@@ -14294,7 +14294,7 @@ function getXAxisLabelMode(){
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
   if(mode === "calendar") return "暦年（年）";
-  return "年齢（歳） / 暦年";
+  return "年齢（歳）／暦年（年）";
 }
 function getCalendarWindowTooltipTitle(sim, xValue){
   const mode = getXAxisLabelMode();
@@ -14312,10 +14312,10 @@ function getCalendarWindowTickLabel(sim, xValue){
   const target = Number(xValue);
   if(!Number.isFinite(target)) return `${xValue}`;
   const win = getCalendarWindowForXAxisValue(sim, target);
-  if(!win) return mode === "calendar" ? `${target}年` : `${target}歳`;
-  if(mode === "age") return `${target}歳`;
-  if(mode === "calendar") return `${win.year}年`;
-  return [`${target}歳`, `${win.year}年`];
+  if(!win) return mode === "calendar" ? `${target}` : `${target}`;
+  if(mode === "age") return `${target}`;
+  if(mode === "calendar") return `${win.year}`;
+  return [`${target}`, `${win.year}`];
 }
 
 function shouldHideEdgeTick(index, ticks){
@@ -18070,6 +18070,8 @@ function setupChartTouchInteractions(){
     return {x:touch.clientX - rect.left, y:touch.clientY - rect.top};
   };
   const getDistance = (a, b)=>Math.hypot((b.x - a.x), (b.y - a.y));
+  let lastCanvasTapTime = 0;
+  let lastCanvasTapPoint = null;
   const isInsideChartArea = (pt)=>{
     const area = chart?.chartArea;
     if(!area) return false;
@@ -18102,12 +18104,16 @@ function setupChartTouchInteractions(){
       if(!isInsideChartArea(center)) return;
       const xScale = chart.scales.x;
       const yScale = chart.scales.y;
+      const startDx = Math.abs(b.x - a.x);
+      const startDy = Math.abs(b.y - a.y);
       touchState = {
         type:'pinch',
         startA:a,
         startB:b,
         startDist:Math.max(1, getDistance(a, b)),
         startCenter:center,
+        startDx:Math.max(1, startDx),
+        startDy:Math.max(1, startDy),
         startMinX:Number(chart.scales.x.min),
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
@@ -18148,10 +18154,11 @@ function setupChartTouchInteractions(){
       const delta = Math.abs(dist - touchState.startDist) + Math.abs(center.x - touchState.startCenter.x) + Math.abs(center.y - touchState.startCenter.y);
       if(!touchState.moved && delta < MIN_TOUCH_MOVE) return;
       touchState.moved = true;
-      const zoomFactor = dist / Math.max(1, touchState.startDist);
+      const scaleXFactor = Math.abs(b.x - a.x) / Math.max(1, touchState.startDx);
+      const scaleYFactor = Math.abs(b.y - a.y) / Math.max(1, touchState.startDy);
       const startRangeX = Math.max(1, touchState.startMaxX - touchState.startMinX);
       const startRangeY = Math.max(1e-9, touchState.startMaxY - touchState.startMinY);
-      let newRangeX = Math.max(1, Math.min(120, startRangeX / Math.max(0.2, zoomFactor)));
+      let newRangeX = Math.max(1, Math.min(120, startRangeX / Math.max(0.2, scaleXFactor || 1)));
       let newMinX = touchState.centerValueX - newRangeX * touchState.xRatio;
       let newMaxX = newMinX + newRangeX;
       if(newMinX < 0){ newMaxX -= newMinX; newMinX = 0; }
@@ -18163,7 +18170,7 @@ function setupChartTouchInteractions(){
         newMinX = Math.max(0, centerX - 0.5);
         newMaxX = Math.min(120, centerX + 0.5);
       }
-      let newRangeY = startRangeY / Math.max(0.2, zoomFactor);
+      let newRangeY = startRangeY / Math.max(0.2, scaleYFactor || 1);
       const centerRatioY = Math.max(0, Math.min(1, touchState.yRatio));
       let newMaxY = touchState.centerValueY + newRangeY * (1 - centerRatioY);
       let newMinY = newMaxY - newRangeY;
@@ -18211,7 +18218,22 @@ function setupChartTouchInteractions(){
     }
   }, {passive:false});
   const handleTouchEnd = ()=>{
+    const endedState = touchState;
     finishTouchInteraction(true);
+    if(endedState && !endedState.moved){
+      const now = Date.now();
+      const pt = endedState.startCenter ? endedState.startCenter : {x:endedState.startX, y:endedState.startY};
+      const closeEnough = !lastCanvasTapPoint || Math.hypot((pt?.x || 0) - (lastCanvasTapPoint.x || 0), (pt?.y || 0) - (lastCanvasTapPoint.y || 0)) <= 28;
+      if(lastCanvasTapTime && (now - lastCanvasTapTime) <= 350 && closeEnough){
+        lastCanvasTapTime = 0;
+        lastCanvasTapPoint = null;
+        suppressClickUntil = Date.now() + 400;
+        resetChartAxesToAuto({persist:true, redraw:true});
+        return;
+      }
+      lastCanvasTapTime = now;
+      lastCanvasTapPoint = pt;
+    }
   };
   canvas.addEventListener('touchend', handleTouchEnd, {passive:true});
   canvas.addEventListener('touchcancel', handleTouchEnd, {passive:true});
