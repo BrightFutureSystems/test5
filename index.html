@@ -16792,7 +16792,8 @@ document.getElementById("graphType").addEventListener("change", ()=>{
   if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
   if(fixedScaleEl) fixedScaleEl.checked = false;
-  monteMode ? runMonte() : requestDraw();
+  monteMode = false;
+  requestDraw();
   persistState();
 });
 document.getElementById("overlayToggle").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
