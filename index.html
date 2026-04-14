@@ -7097,7 +7097,7 @@ const SIMPLE_MODE_BLOCKS = [
       {key:"depAmount", label:"現在の預貯金額", unit:"万円", min:0, max:10000, step:10, displayDigits:0},
       {key:"invAmount", label:"現在の運用資産額", unit:"万円", min:0, max:20000, step:10, displayDigits:0, help:"今まで積み立てた資産も、ここに含めて入力します。"},
       {key:"invRate", label:"運用資産の利回り", unit:"%", min:-5, max:12, step:0.1},
-      {key:"sumInvAmount", label:"積立投資額（月）", unit:"万円 / 月", min:0, max:50, step:0.5, help:"これから積み立てる投資額を入力します。デフォルトでは、現在年齢〜リタイア年齢まで自動継続です。詳細モードで積立期間を変更している場合は、その設定を維持します。"},
+      {key:"sumInvAmount", label:"積立投資額（月）", unit:"万円 / 月", min:0, max:50, step:0.5, help:"これから積み立てる投資額を入力します。デフォルトでは、現在年齢〜リタイア年齢まで自動継続です。詳細モードで積立期間を変更している場合は、その設定を維持します。非課税（NISA等）をONにすると、簡単モードではつみたてNISAとして扱い、年間120万円・生涯1800万円の上限を超える分は積み立てません。"},
       {key:"sumInvRate", label:"積立投資の利回り", unit:"%", min:-5, max:12, step:0.1},
       {key:"inflRate", label:"インフレ率", unit:"%", min:-1, max:8, step:0.1, help:"生活費・家賃・教育費に適用します。"}
     ]
@@ -7551,7 +7551,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
     next.sumInv1_cur = "万円";
     next.sumInv1_rate = Number(values.sumInvRate) || 0;
     next.sumInv1_owner = "本人";
-    next.sumInv1_accountType = values.sumInvTaxFree ? "成長NISA" : "課税";
+    next.sumInv1_accountType = values.sumInvTaxFree ? "つみたてNISA" : "課税";
     next.sumInv1_idecoCategory = "";
     next.sumInv1_fromAge_auto = "1";
     next.sumInv1_toAge_auto = "1";
@@ -7754,7 +7754,7 @@ function writeSimpleModeValueToDetailByKey(key, simpleValue){
       if(!accountTypeEl) break;
       const currentAccountType = normalizeAccountType(accountTypeEl.value || "課税");
       if(simpleValue){
-        const restoreAccountType = getRememberedSimpleModeLastNonTaxableAccountType() || (isSimpleModeNonTaxableAccountType(currentAccountType) ? currentAccountType : "") || "成長NISA";
+        const restoreAccountType = getRememberedSimpleModeLastNonTaxableAccountType() || (isSimpleModeNonTaxableAccountType(currentAccountType) ? currentAccountType : "") || "つみたてNISA";
         accountTypeEl.value = restoreAccountType;
         accountTypeEl.setAttribute("value", restoreAccountType);
         rememberSimpleModeLastNonTaxableAccountType(restoreAccountType);
