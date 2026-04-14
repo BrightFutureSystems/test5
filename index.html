@@ -579,6 +579,31 @@
   .split-btn-toggle{padding:7px 8px;min-width:36px;font-weight:700;}
   .split-btn-group:hover{background:#f4f4f4;}
   .split-btn-group > button:hover{background:#f4f4f4;}
+.overlay-style-preview{display:inline-block;width:44px;height:0;border-top:3px solid #2563eb;border-radius:999px;vertical-align:middle;}
+  .overlay-style-color{position:absolute !important;opacity:0;pointer-events:none;width:1px !important;height:1px !important;padding:0;border:0;}
+  .overlay-style-color-wrap{position:relative;display:flex;align-items:center;justify-content:center;}
+  .overlay-style-color-btn{width:30px;height:30px;border:1px solid #cbd5e1;border-radius:8px;padding:0;display:inline-block;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
+  .overlay-style-palette{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);display:none;z-index:20;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.16);padding:8px;width:168px;}
+  .overlay-style-palette.show{display:block;}
+  .overlay-style-palette-grid{display:grid;grid-template-columns:repeat(6, 1fr);gap:6px;margin-bottom:8px;}
+  .overlay-style-palette-swatch{width:20px;height:20px;border:1px solid #cbd5e1;border-radius:6px;padding:0;cursor:pointer;display:inline-block;}
+  .overlay-style-palette-detail{width:100%;padding:6px 8px;font-size:12px;}
+  .overlay-style-width{width:72px !important;min-width:72px !important;}
+  .overlay-style-line{width:88px !important;min-width:88px !important;}
+  .overlay-settings-modal{width:min(638px, calc(100vw - 20px)) !important;max-width:calc(100vw - 20px) !important;max-height:min(92vh, 860px);overflow:auto;}
+  .overlay-settings-note{color:var(--muted);font-size:.92rem;line-height:1.55;margin-bottom:10px;}
+  .overlay-settings-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .overlay-settings-table{width:100%;min-width:100%;border-collapse:collapse;table-layout:auto;}
+  .overlay-settings-table th,.overlay-settings-table td{border:1px solid var(--border);padding:6px;text-align:center;vertical-align:middle;}
+  .overlay-settings-table th{background:#fafafa;line-height:1.35;}
+  .overlay-settings-table th:nth-child(1),.overlay-settings-table td:nth-child(1){width:68px;min-width:68px;}
+  .overlay-settings-table th:nth-child(2){width:auto;min-width:180px;text-align:center;white-space:nowrap;}
+  .overlay-settings-table td:nth-child(2){width:auto;min-width:180px;text-align:left;white-space:nowrap;}
+  .overlay-settings-table th:nth-child(3),.overlay-settings-table td:nth-child(3){width:56px;min-width:56px;}
+  .overlay-settings-table th:nth-child(4),.overlay-settings-table td:nth-child(4){width:112px;min-width:112px;}
+  .overlay-settings-table th:nth-child(5),.overlay-settings-table td:nth-child(5){width:88px;min-width:88px;}
+  .overlay-settings-table th:nth-child(6),.overlay-settings-table td:nth-child(6){width:96px;min-width:96px;}
+  .overlay-settings-table .overlay-condition-name{display:inline-block;width:100%;max-width:none;font-weight:400;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
   .monte-settings-modal{width:min(760px, calc(100vw - 20px));max-height:min(92vh, 860px);overflow:auto;}
   .monte-settings-grid{display:flex;flex-direction:column;gap:12px;}
   .monte-settings-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
@@ -670,7 +695,7 @@
   .agebox{width:84px !important}
   .moneybox{width:96px !important}
   .periodbox{width:72px !important}
-  .graph-select{width:92px !important}
+  .graph-select{width:148px !important;height:36px !important;min-height:36px !important;padding-top:5px !important;padding-bottom:5px !important;}
   .period-line{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;justify-content:center;width:100%;}
   .period-range{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;justify-content:center;width:100%;}
 .time-unit-select{width:64px !important;min-width:64px !important;}
@@ -1168,7 +1193,7 @@
       max-width:100%;
     }
     #chartAxisBtn{left:8px;bottom:14px;padding:4px 9px;font-size:11px;}
-    .graph-select{width:110px;}
+    .graph-select{width:110px;height:36px;min-height:36px;}
     .grid2{grid-template-columns:1fr}
     #inputs{max-height:calc(100vh - 360px)}
     #tabsBar{gap:3px;align-items:flex-end;flex-wrap:nowrap;margin:2px 0 4px;padding-top:4px;}
@@ -1434,8 +1459,7 @@
     <div id="chartTopBar">
       <div id="leftTopControls">
         <div class="field">
-          <label for="graphType">グラフ</label>
-          <select id="graphType" class="graph-select">
+          <select id="graphType" class="graph-select" aria-label="グラフ種類">
             <option value="asset">総資産</option>
             <option value="assetBreakdown">総資産内訳</option>
             <option value="investment">運用資産内訳</option>
@@ -1444,7 +1468,11 @@
             <option value="education">教育費</option>
           </select>
         </div>
-        <label class="inline-check"><input type="checkbox" id="overlayToggle"> 全条件重ね描き</label>
+        <div class="split-btn-group">
+          <button id="overlayApplyBtn" type="button" class="compact-btn split-btn-main">重ね描き</button>
+          <button id="overlayMenuBtn" type="button" class="compact-btn split-btn-toggle" aria-label="重ね描き設定">▼</button>
+        </div>
+        <input type="checkbox" id="overlayToggle" hidden>
         <input id="fixedScale" type="checkbox" hidden>
         <input id="fixedScaleMin" type="text" class="moneybox" value="-50000" spellcheck="false" autocomplete="off" hidden>
         <input id="fixedScaleMax" type="text" inputmode="decimal" class="moneybox" value="50000" spellcheck="false" autocomplete="off" hidden>
@@ -2144,7 +2172,24 @@
     </div>
   </div>
 
-  <div id="resetDefaultsConfirmModal" class="modal-backdrop" aria-hidden="true">
+  <div id="overlaySettingsModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card overlay-settings-modal" role="dialog" aria-modal="true" aria-labelledby="overlaySettingsTitle">
+      <div id="overlaySettingsTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">重ね描き設定</div>
+      <div class="overlay-settings-note">現在の条件を基準に、表示対象・色・線種・線幅を条件ごとに設定します。初回は現在条件のみ表示ONで作成されます。</div>
+      <div class="overlay-settings-table-wrap">
+        <table class="overlay-settings-table">
+          <thead><tr><th>表示</th><th>条件名</th><th>色</th><th>線種</th><th>線幅</th><th>プレビュー</th></tr></thead>
+          <tbody id="overlaySettingsBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button type="button" id="cancelOverlaySettingsBtn">キャンセル</button>
+        <button type="button" id="saveOverlaySettingsBtn">保存</button>
+      </div>
+    </div>
+  </div>
+
+<div id="resetDefaultsConfirmModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resetDefaultsConfirmTitle">
       <div id="resetDefaultsConfirmTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">初期値に戻しますか？</div>
       <div id="resetDefaultsConfirmMessage" class="modal-text">この設定を初期値に戻します。現在の値は元に戻せません。実行しますか？</div>
@@ -2657,6 +2702,9 @@ let chartAxisSelectionGuide = null;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
+let nextScenarioIdSeq = 1;
+const DEFAULT_OVERLAY_LINE_WIDTH = 2;
+const DEFAULT_OVERLAY_LINE_STYLE = "solid";
 let currentInputMode = "detail";
 let inputModeScrollPositions = {simple:0, detail:0};
 let monteMode = false;
@@ -2740,6 +2788,198 @@ function setNormalSimCacheByData(data, cfg, sim){
     pruneNormalSimCacheIfNeeded();
   }
   return entry;
+}
+function createScenarioId(){ return `cond_${nextScenarioIdSeq++}`; }
+function ensureScenarioIds(){
+  let maxSeen = 0;
+  (scenarios || []).forEach(s=>{
+    if(!s) return;
+    if(!s.id) s.id = createScenarioId();
+    const m = String(s.id || '').match(/cond_(\d+)/);
+    if(m) maxSeen = Math.max(maxSeen, Number(m[1]) || 0);
+  });
+  nextScenarioIdSeq = Math.max(nextScenarioIdSeq, maxSeen + 1);
+}
+function getDefaultOverlayColorByIndex(idx){ return TAB_COLORS[idx % TAB_COLORS.length]; }
+function normalizeOverlayLineStyle(value){ return ["solid","dashed","dotted"].includes(value) ? value : DEFAULT_OVERLAY_LINE_STYLE; }
+function normalizeOverlayLineWidth(value){ const n = Number(value); return Number.isFinite(n) && n > 0 ? Math.min(4, Math.max(1, Math.round(n))) : DEFAULT_OVERLAY_LINE_WIDTH; }
+function buildDefaultOverlayStylesForScenario(tabIndex){
+  ensureScenarioIds();
+  const map = {};
+  (scenarios || []).forEach((s, idx)=>{
+    if(!s?.id) return;
+    map[s.id] = { visible: idx === tabIndex, color: getDefaultOverlayColorByIndex(idx), lineStyle: DEFAULT_OVERLAY_LINE_STYLE, lineWidth: DEFAULT_OVERLAY_LINE_WIDTH };
+  });
+  return map;
+}
+function normalizeOverlayStylesMap(rawMap, ownerTabIndex){
+  ensureScenarioIds();
+  const ownerIdx = Number.isFinite(ownerTabIndex) ? ownerTabIndex : currentTab;
+  const src = rawMap && typeof rawMap === 'object' ? rawMap : {};
+  const normalized = {};
+  let anyVisible = false;
+  (scenarios || []).forEach((s, idx)=>{
+    if(!s?.id) return;
+    const raw = src[s.id] || {};
+    const item = { visible: raw.visible === true, color: typeof raw.color === 'string' && raw.color ? raw.color : getDefaultOverlayColorByIndex(idx), lineStyle: normalizeOverlayLineStyle(raw.lineStyle), lineWidth: normalizeOverlayLineWidth(raw.lineWidth) };
+    if(item.visible) anyVisible = true;
+    normalized[s.id] = item;
+  });
+  return normalized;
+}
+function isOverlayStylesEffectivelyVisible(rawMap, ownerTabIndex = currentTab){
+  const normalized = normalizeOverlayStylesMap(rawMap, ownerTabIndex);
+  return Object.values(normalized).some(item => item && item.visible === true);
+}
+function getOverlayStylesForTab(tabIndex, opts = {}){
+  ensureScenarioIds();
+  const scenario = scenarios?.[tabIndex];
+  if(!scenario) return {};
+  scenario.data = migrateLegacyData(scenario.data || {});
+  if(!scenario.overlayStyles && scenario.data.overlayStyles) scenario.overlayStyles = JSON.parse(JSON.stringify(scenario.data.overlayStyles));
+  if((!scenario.overlayStyles || opts.forceRebuild === true) && !scenario.data.overlayStyles) scenario.overlayStyles = buildDefaultOverlayStylesForScenario(tabIndex);
+  const normalized = normalizeOverlayStylesMap(scenario.overlayStyles || scenario.data.overlayStyles || {}, tabIndex);
+  scenario.overlayStyles = JSON.parse(JSON.stringify(normalized));
+  scenario.data.overlayStyles = JSON.parse(JSON.stringify(normalized));
+  return normalized;
+}
+function cleanupOverlayStylesForAllScenarios(){
+  ensureScenarioIds();
+  (scenarios || []).forEach((s, idx)=>{
+    if(!s) return;
+    s.data = migrateLegacyData(s.data || {});
+    const raw = s.overlayStyles || s.data.overlayStyles;
+    if(raw){ const normalized = normalizeOverlayStylesMap(raw, idx); s.data.overlayStyles = normalized; s.overlayStyles = JSON.parse(JSON.stringify(normalized)); }
+  });
+}
+function getOverlayEntriesForTab(tabIndex){
+  const styles = getOverlayStylesForTab(tabIndex);
+  return (scenarios || []).map((s, idx)=>({ scenario: s, index: idx, style: styles[s.id] || {visible:false, color:getDefaultOverlayColorByIndex(idx), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH} }));
+}
+function hasVisibleOverlaySelection(tabIndex){
+  const styles = scenarios?.[tabIndex]?.overlayStyles || scenarios?.[tabIndex]?.data?.overlayStyles;
+  return isOverlayStylesEffectivelyVisible(styles, tabIndex);
+}
+function getLineDashByOverlayStyle(lineStyle){ if(lineStyle === 'dashed') return [6,4]; if(lineStyle === 'dotted') return [2,3]; return []; }
+function applyOverlayStyleToDatasets(datasets, style, graphType){
+  const color = style?.color || '#2563eb';
+  const lineWidth = normalizeOverlayLineWidth(style?.lineWidth);
+  const dash = getLineDashByOverlayStyle(style?.lineStyle);
+  return (datasets || []).map(ds=>{
+    const next = {...ds};
+    if(graphType === 'incomeExpense' && typeof next.label === 'string' && next.label.includes('支出')){
+      next.borderDash = dash.length ? dash.slice() : [6,4];
+      next.borderColor = color;
+      next.borderWidth = lineWidth;
+      return next;
+    }
+    if(graphType === 'assetBreakdown' && typeof next.label === 'string' && next.label.includes('安全資産')) return next;
+    next.borderColor = color;
+    next.borderWidth = lineWidth;
+    next.borderDash = dash.length ? dash.slice() : [];
+    if(next.type === 'line') next.backgroundColor = color + '22';
+    return next;
+  });
+}
+function setOverlayModeEnabled(enabled){ const overlayToggleEl = document.getElementById('overlayToggle'); if(overlayToggleEl) overlayToggleEl.checked = !!enabled; }
+const OVERLAY_COLOR_PRESETS = [
+  '#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#111827',
+  '#0f766e','#db2777','#0891b2','#65a30d','#f59e0b','#6b7280'
+];
+function normalizeColorHex(value){
+  const s = String(value || '').trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(s) ? s : '';
+}
+function syncOverlayColorControls(row){
+  if(!row) return;
+  const colorEl = row.querySelector('[data-overlay-field="color"]');
+  const colorBtn = row.querySelector('[data-overlay-field="colorButton"]');
+  if(!colorEl || !colorBtn) return;
+  const normalized = normalizeColorHex(colorEl.value) || '#2563eb';
+  colorEl.value = normalized;
+  colorBtn.style.background = normalized;
+  colorBtn.setAttribute('aria-label', `色を選択 (${normalized})`);
+}
+function closeOverlayColorPalettes(exceptRow = null){
+  document.querySelectorAll('#overlaySettingsBody .overlay-style-palette.show').forEach(el=>{
+    if(exceptRow && exceptRow.contains(el)) return;
+    el.classList.remove('show');
+  });
+}
+function buildOverlayColorPaletteHtml(color){
+  const normalized = normalizeColorHex(color) || '#2563eb';
+  const swatches = OVERLAY_COLOR_PRESETS.map(hex=>`<button type="button" class="overlay-style-palette-swatch" data-overlay-color-swatch="${hex}" title="${hex}" style="background:${hex};${hex===normalized?'box-shadow:0 0 0 2px #111827 inset;':''}"></button>`).join('');
+  return `<div class="overlay-style-color-wrap"><button type="button" class="overlay-style-color-btn" data-overlay-field="colorButton" style="background:${normalized};" aria-label="色を選択 (${normalized})"></button><input type="color" class="overlay-style-color" data-overlay-field="color" aria-label="色を選択" value="${escapeHtml(normalized)}"><div class="overlay-style-palette" data-overlay-field="colorPalette"><div class="overlay-style-palette-grid">${swatches}</div><button type="button" class="overlay-style-palette-detail" data-overlay-field="colorDetail">詳細な色を選ぶ</button></div></div>`;
+}
+function rebuildOverlaySettingsTable(){
+  const body = document.getElementById('overlaySettingsBody');
+  if(!body) return;
+  const entries = getOverlayEntriesForTab(currentTab);
+  body.innerHTML = entries.map(entry=>{
+    const s = entry.scenario;
+    const style = entry.style || {};
+    const previewStyle = style.lineStyle === 'dashed' ? 'border-top-style:dashed;' : (style.lineStyle === 'dotted' ? 'border-top-style:dotted;' : 'border-top-style:solid;');
+    const resolvedColor = style.color || getDefaultOverlayColorByIndex(entry.index);
+    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${style.lineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${style.lineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${style.lineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(style.lineWidth)===1?'selected':''}>1</option><option value="2" ${Number(style.lineWidth)===2?'selected':''}>2</option><option value="3" ${Number(style.lineWidth)===3?'selected':''}>3</option><option value="4" ${Number(style.lineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview" style="border-top-color:${escapeHtml(resolvedColor)};border-top-width:${normalizeOverlayLineWidth(style.lineWidth)}px;${previewStyle}"></span></td></tr>`;
+  }).join('');
+}
+function openOverlaySettingsModal(){
+  if(!scenarios.length) return;
+  rebuildOverlaySettingsTable();
+  closeOverlayColorPalettes();
+  const modal = document.getElementById('overlaySettingsModal');
+  if(!modal) return;
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  resetModalScrollPosition('overlaySettingsModal');
+  resetModalInnerScrollPositions('overlaySettingsModal');
+  applyTabOrder();
+  focusModalPrimaryActionButton('overlaySettingsModal');
+}
+function closeOverlaySettingsModal(){
+  const modal = document.getElementById('overlaySettingsModal');
+  if(!modal) return;
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  closeOverlayColorPalettes();
+}
+function collectOverlaySettingsFromModal(){
+  const body = document.getElementById('overlaySettingsBody');
+  const next = {};
+  body?.querySelectorAll('tr[data-scenario-id]').forEach((row, idx)=>{
+    const scenarioId = row.dataset.scenarioId;
+    if(!scenarioId) return;
+    next[scenarioId] = {
+      visible: !!row.querySelector('[data-overlay-field="visible"]')?.checked,
+      color: row.querySelector('[data-overlay-field="color"]')?.value || getDefaultOverlayColorByIndex(idx),
+      lineStyle: normalizeOverlayLineStyle(row.querySelector('[data-overlay-field="lineStyle"]')?.value),
+      lineWidth: normalizeOverlayLineWidth(row.querySelector('[data-overlay-field="lineWidth"]')?.value)
+    };
+  });
+  return normalizeOverlayStylesMap(next, currentTab);
+}
+function refreshOverlayPreviewForRow(row){
+  syncOverlayColorControls(row);
+  const preview = row?.querySelector('.overlay-style-preview');
+  if(!preview) return;
+  const color = row.querySelector('[data-overlay-field="color"]')?.value || '#2563eb';
+  const lineStyle = normalizeOverlayLineStyle(row.querySelector('[data-overlay-field="lineStyle"]')?.value);
+  const lineWidth = normalizeOverlayLineWidth(row.querySelector('[data-overlay-field="lineWidth"]')?.value);
+  preview.style.borderTopColor = color;
+  preview.style.borderTopWidth = `${lineWidth}px`;
+  preview.style.borderTopStyle = lineStyle === 'dashed' ? 'dashed' : (lineStyle === 'dotted' ? 'dotted' : 'solid');
+}
+function saveOverlaySettingsModal(){
+  if(!scenarios[currentTab]) return;
+  scenarios[currentTab].data = migrateLegacyData(scenarios[currentTab].data || {});
+  const overlayStyles = collectOverlaySettingsFromModal();
+  scenarios[currentTab].overlayStyles = JSON.parse(JSON.stringify(overlayStyles));
+  scenarios[currentTab].data.overlayStyles = JSON.parse(JSON.stringify(overlayStyles));
+  const visible = isOverlayStylesEffectivelyVisible(overlayStyles, currentTab);
+  setOverlayModeEnabled(visible);
+  closeOverlaySettingsModal();
+  monteMode ? runMonte() : requestDraw({immediate:true});
+  persistState();
 }
 function getOrBuildNormalScenarioCache(scenario, currentScenario, currentCfg, currentSim){
   if(!scenario) return {cfg: mergeDisplaySettingsIntoCfg(currentCfg, currentCfg), sim: currentSim};
@@ -2988,9 +3228,12 @@ function normalizeScenarioNames(){
     const item = s && typeof s === "object" ? s : {name: defaultScenarioName(i), data:{}};
     const custom = item.custom === true || item.custom === "true";
     return {
+      ...item,
+      id: item.id || '',
       name: custom ? String(item.name || defaultScenarioName(i)) : defaultScenarioName(i),
       custom,
-      data: item.data || {}
+      data: item.data || {},
+      overlayStyles: item.overlayStyles ? JSON.parse(JSON.stringify(item.overlayStyles)) : item.overlayStyles
     };
   });
 }
@@ -3756,6 +3999,7 @@ const STANDARD_ACTION_MODAL_CONFIG = {
   loanDetailConflictModal: {primarySelector:'#useStoredLoanDetailBtn', cancelSelector:'#cancelLoanDetailConflictBtn'},
   educationDetailModal: {primarySelector:'#saveEducationDetailBtn', cancelSelector:'#cancelEducationDetailBtn'},
   educationCopyModal: {primarySelector:'#confirmEducationCopyBtn', cancelSelector:'#cancelEducationCopyBtn'},
+  overlaySettingsModal: {primarySelector:'#saveOverlaySettingsBtn', cancelSelector:'#cancelOverlaySettingsBtn'},
   resetDefaultsConfirmModal: {primarySelector:'#confirmResetDefaultsConfirmBtn', cancelSelector:'#cancelResetDefaultsConfirmBtn'},
   chartAxisModal: {primarySelector:'#saveChartAxisBtn', cancelSelector:'#cancelChartAxisBtn'}
 };
@@ -5814,7 +6058,7 @@ function isVisibleForTab(el){
 }
 function isInsideHiddenLayer(el){
   if(!el || !el.closest) return false;
-  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]');
+  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #overlaySettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]');
 }
 function isTabNavigableElement(el){
   if(!el || !el.matches) return false;
@@ -5842,7 +6086,7 @@ function shouldDeferLiveNumericFormatting(el){
   return !!el.closest("#simpleModePanel, #loanDetailModal, #loanDetailConflictModal, #incomeCurveModal, #pensionHelperModal, #educationDetailModal, #educationCopyModal, #insuranceAssistModal, #withdrawalRuleModal, #crashTestModal, #fireDiagnosisModal, #monteCarloSettingsModal");
 }
 function getOpenModal(){
-  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #resetDefaultsConfirmModal.show, #loanDetailModal.show, #loanDetailConflictModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show');
+  return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #resetDefaultsConfirmModal.show, #loanDetailModal.show, #loanDetailConflictModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show, #overlaySettingsModal.show');
 }
 function getTabScopeRoot(){
   return getOpenModal() || document.body;
@@ -6074,7 +6318,12 @@ function getAllInputs(){
 }
 function syncCurrentScenarioFromDOM(persistLocal = false){
   if(!scenarios.length || currentTab < 0 || !scenarios[currentTab]) return;
-  scenarios[currentTab].data = migrateLegacyData(getAllInputs());
+  const prevData = migrateLegacyData(scenarios[currentTab].data || {});
+  const nextData = migrateLegacyData(getAllInputs());
+  const preservedOverlayStyles = scenarios[currentTab].overlayStyles || prevData.overlayStyles;
+  if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
+  scenarios[currentTab].data = nextData;
+  if(preservedOverlayStyles) scenarios[currentTab].overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
   if(persistLocal){
     persistState();
   }
@@ -6230,7 +6479,13 @@ function setAllInputs(data){
   updateWithdrawalRuleModalUI();
 }
 function ensureScenarioSaved(){
-  if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) scenarios[currentTab].data = migrateLegacyData(getAllInputs());
+  if(!(scenarios.length && currentTab >= 0 && scenarios[currentTab])) return;
+  const prevData = scenarios[currentTab].data || {};
+  const nextData = migrateLegacyData(getAllInputs());
+  const preservedOverlayStyles = scenarios[currentTab].overlayStyles || prevData.overlayStyles;
+  if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
+  scenarios[currentTab].data = nextData;
+  if(preservedOverlayStyles) scenarios[currentTab].overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
 }
 function formatLoanSummaryAmount(val){
   const n = Math.round((Number(val) || 0) * 10) / 10;
@@ -8186,7 +8441,7 @@ function updateInputModeUI(){
 function addTab(){
   ensureScenarioSaved();
   const baseData = getDefaultScenarioTemplate();
-  scenarios.push({name:defaultScenarioName(scenarios.length), custom:false, data:deepClone(baseData)});
+  scenarios.push({id:createScenarioId(), name:defaultScenarioName(scenarios.length), custom:false, data:deepClone(baseData)});
   normalizeScenarioNames();
   currentTab = scenarios.length - 1;
   setAllInputs(scenarios[currentTab].data);
@@ -8197,7 +8452,7 @@ function duplicateTab(tabIndex = currentTab){
   if(!scenarios.length || tabIndex < 0 || !scenarios[tabIndex]) return;
   ensureScenarioSaved();
   const src = scenarios[tabIndex];
-  scenarios.splice(tabIndex + 1, 0, {name: defaultScenarioName(tabIndex + 1), custom:false, data: deepClone(src.data || {})});
+  scenarios.splice(tabIndex + 1, 0, {id:createScenarioId(), name: defaultScenarioName(tabIndex + 1), custom:false, data: deepClone(src.data || {})});
   normalizeScenarioNames();
   currentTab = tabIndex + 1;
   setAllInputs(scenarios[currentTab].data);
@@ -8241,6 +8496,7 @@ function confirmDeleteCurrentTab(){
   ensureScenarioSaved();
   const deleteIndex = pendingDeleteTabIndex;
   scenarios.splice(deleteIndex, 1);
+  cleanupOverlayStylesForAllScenarios();
   normalizeScenarioNames();
   if(!scenarios.length){
     currentTab = -1;
@@ -8302,9 +8558,11 @@ function switchGraphToAssetFromTabClick(){
   if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
   if(fixedScaleEl) fixedScaleEl.checked = false;
+  setOverlayModeEnabled(false);
   monteMode = false;
 }
 function renderTabs(){
+  ensureScenarioIds();
   normalizeScenarioNames();
   const el = document.getElementById("tabButtons");
   el.innerHTML = scenarios.map((s,i)=>{
@@ -14512,9 +14770,10 @@ function draw(){
   monteMode = false;
   ensureScenarioSaved();
   const graphType = document.getElementById("graphType").value;
-  const overlay = document.getElementById("overlayToggle").checked;
+  const overlay = !!document.getElementById("overlayToggle").checked;
   const currentScenario = scenarios[currentTab];
-  const targets = overlay ? scenarios : [currentScenario];
+  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible) : [];
+  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:TAB_COLORS[currentTab % TAB_COLORS.length], lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
 
   const currentDisplayCfg = getScenarioFromDOM();
   const currentCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
@@ -14526,13 +14785,15 @@ function draw(){
   let firstCfg = null;
   let baseSim = null;
 
-  targets.forEach((s, idx)=>{
+  targets.forEach((entry, idx)=>{
+    const s = entry.scenario || entry;
     const {cfg, sim} = getScenarioConfigAndSimForDrawing(s, currentScenario, currentCfg, currentSim);
     if(idx===0){
       firstCfg = cfg;
       baseSim = sim;
     }
-    datasets.push(...buildDatasetsByGraphType(sim, graphType, TAB_COLORS[idx % TAB_COLORS.length], overlay, s.name));
+    const baseDatasets = buildDatasetsByGraphType(sim, graphType, entry.style?.color || TAB_COLORS[idx % TAB_COLORS.length], overlay, s.name);
+    datasets.push(...(overlay ? applyOverlayStyleToDatasets(baseDatasets, entry.style, graphType) : baseDatasets));
     const arrays = {
       asset: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
       cashflow: [...getVisibleSeriesValues(sim.labels, sim.annualCashflow, cfg.xAxisMax)],
@@ -14560,9 +14821,10 @@ function runMonte(){
   clearScheduledDraw();
   monteMode = true;
   ensureScenarioSaved();
-  const overlay = document.getElementById("overlayToggle").checked;
+  const overlay = !!document.getElementById("overlayToggle").checked;
   const currentScenario = scenarios[currentTab];
-  const targets = overlay ? scenarios : [currentScenario];
+  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible) : [];
+  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:TAB_COLORS[currentTab % TAB_COLORS.length], lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
   const currentDisplayCfg = getScenarioFromDOM();
   const currentBaseCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
   const currentCfg = currentBaseCache.cfg;
@@ -14574,7 +14836,8 @@ function runMonte(){
   let baseSim = null;
   let monteInfo = null;
 
-  targets.forEach((s, idx)=>{
+  targets.forEach((entry, idx)=>{
+    const s = entry.scenario || entry;
     const {cfg, base} = getScenarioMonteBaseForDrawing(s, currentScenario, currentCfg, currentBaseSim);
     const monteSettings = currentMonteSettings;
     const trials = clampMonteTrials(monteSettings.trials || 80);
@@ -14591,7 +14854,9 @@ function runMonte(){
     const prob = monteRun.prob;
     const best = displayBundle.best || [];
     const worst = displayBundle.worst || [];
-    const color = TAB_COLORS[idx % TAB_COLORS.length];
+    const color = entry.style?.color || TAB_COLORS[idx % TAB_COLORS.length];
+    const overlayDash = getLineDashByOverlayStyle(entry.style?.lineStyle);
+    const overlayWidth = normalizeOverlayLineWidth(entry.style?.lineWidth);
     const allSame = !!displayBundle.allSame;
     const plotLabels = Array.isArray(base.labels) ? base.labels.slice() : [];
     const basePlot = buildMontePlotSeries(cfg, plotLabels, base.totalAssets);
@@ -14606,9 +14871,9 @@ function runMonte(){
           borderColor:color + "33", borderWidth:1, order:100
         }));
       });
-      datasets.push(makeLineDataset(`${s.name} ワースト`, worstPlot.labels, worstPlot.values, {borderColor:color, borderDash:[5,4], borderWidth:2, order:4}));
-      datasets.push(makeLineDataset(`${s.name} ベスト`, bestPlot.labels, bestPlot.values, {borderColor:color, borderWidth:2, order:3}));
-      datasets.push(makeLineDataset(`${s.name} 一定利率`, basePlot.labels, basePlot.values, {borderColor:color, borderWidth:3, order:2}));
+      datasets.push(makeLineDataset(`${s.name} ワースト`, worstPlot.labels, worstPlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [5,4], borderWidth:overlayWidth, order:4}));
+      datasets.push(makeLineDataset(`${s.name} ベスト`, bestPlot.labels, bestPlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:overlayWidth, order:3}));
+      datasets.push(makeLineDataset(`${s.name} 一定利率`, basePlot.labels, basePlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:Math.max(overlayWidth, 2), order:2}));
     }else{
       displayPlots.forEach(plot=>{
         datasets.push(makeLineDataset("", plot.labels, plot.values, {
@@ -14683,6 +14948,7 @@ function runMonte(){
 
 function getSaveData(){
   ensureScenarioSaved();
+  cleanupOverlayStylesForAllScenarios();
   captureCurrentInputModeScroll();
   return {
     scenarios,
@@ -14734,6 +15000,7 @@ function loadFromURL(){
     currentTab = data.currentTab || 0;
     currentInputMode = normalizeInputMode(data.currentInputMode);
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
+    cleanupOverlayStylesForAllScenarios();
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
     updatePeriodDisplays();
     renderTabs();
@@ -14754,6 +15021,7 @@ function loadFromLocal(){
     currentTab = data.currentTab || 0;
     currentInputMode = normalizeInputMode(data.currentInputMode);
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
+    cleanupOverlayStylesForAllScenarios();
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
     updatePeriodDisplays();
     renderTabs();
@@ -16580,6 +16848,19 @@ document.getElementById("deleteRowModal")?.addEventListener("focusout", handleDe
   chartAxisModalCard?.addEventListener("mousedown", (e)=>{ e.stopPropagation(); chartAxisBackdropPointerDown = false; });
   chartAxisModalCard?.addEventListener("touchstart", (e)=>{ e.stopPropagation(); chartAxisBackdropPointerDown = false; }, {passive:true});
 }
+let overlaySettingsBackdropPointerDown = false;
+const overlaySettingsModalEl = document.getElementById('overlaySettingsModal');
+const overlaySettingsModalCard = overlaySettingsModalEl?.querySelector('.modal-card');
+if(overlaySettingsModalEl && overlaySettingsModalCard){
+  overlaySettingsModalEl.addEventListener('pointerdown', (e)=>{ overlaySettingsBackdropPointerDown = (e.target === overlaySettingsModalEl); }, true);
+  overlaySettingsModalEl.addEventListener('click', (e)=>{
+    if(e.target === overlaySettingsModalEl && overlaySettingsBackdropPointerDown) closeOverlaySettingsModal();
+    overlaySettingsBackdropPointerDown = false;
+  });
+  overlaySettingsModalCard.addEventListener('click', (e)=>{ if(!e.target?.closest?.('.overlay-style-color-wrap')) closeOverlayColorPalettes(); e.stopPropagation(); overlaySettingsBackdropPointerDown = false; });
+  overlaySettingsModalCard.addEventListener('mousedown', (e)=>{ if(!e.target?.closest?.('.overlay-style-color-wrap')) closeOverlayColorPalettes(); e.stopPropagation(); overlaySettingsBackdropPointerDown = false; });
+  overlaySettingsModalCard.addEventListener('touchstart', (e)=>{ e.stopPropagation(); overlaySettingsBackdropPointerDown = false; }, {passive:true});
+}
 Object.keys(STANDARD_ACTION_MODAL_CONFIG).forEach((modalId)=>{
   document.getElementById(modalId)?.addEventListener('keydown', handleStandardActionModalKeydown, true);
 });
@@ -16813,6 +17094,66 @@ document.getElementById("graphType").addEventListener("change", ()=>{
   persistState();
 });
 document.getElementById("overlayToggle").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
+document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
+  if(!scenarios.length) return;
+  getOverlayStylesForTab(currentTab);
+  setOverlayModeEnabled(hasVisibleOverlaySelection(currentTab));
+  monteMode ? runMonte() : requestDraw({immediate:true});
+  persistState();
+});
+document.getElementById("overlayMenuBtn")?.addEventListener("click", (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  openOverlaySettingsModal();
+});
+document.getElementById("cancelOverlaySettingsBtn")?.addEventListener("click", closeOverlaySettingsModal);
+document.getElementById("saveOverlaySettingsBtn")?.addEventListener("click", saveOverlaySettingsModal);
+document.getElementById("overlaySettingsBody")?.addEventListener("click", (e)=>{
+  const row = e.target?.closest?.('tr[data-scenario-id]');
+  if(!row) return;
+  if(e.target?.matches?.('[data-overlay-field="colorButton"]')){
+    e.preventDefault();
+    const palette = row.querySelector('[data-overlay-field="colorPalette"]');
+    if(!palette) return;
+    const willShow = !palette.classList.contains('show');
+    closeOverlayColorPalettes(willShow ? row : null);
+    palette.classList.toggle('show', willShow);
+    return;
+  }
+  if(e.target?.matches?.('[data-overlay-color-swatch]')){
+    e.preventDefault();
+    const colorEl = row.querySelector('[data-overlay-field="color"]');
+    if(colorEl) colorEl.value = e.target.getAttribute('data-overlay-color-swatch') || colorEl.value;
+    syncOverlayColorControls(row);
+    refreshOverlayPreviewForRow(row);
+    const palette = row.querySelector('[data-overlay-field="colorPalette"]');
+    if(palette) palette.classList.remove('show');
+    return;
+  }
+  if(e.target?.matches?.('[data-overlay-field="colorDetail"]')){
+    e.preventDefault();
+    row.querySelector('[data-overlay-field="color"]')?.click();
+    return;
+  }
+});
+document.getElementById("overlaySettingsBody")?.addEventListener("input", (e)=>{
+  const row = e.target?.closest?.('tr[data-scenario-id]');
+  if(!row) return;
+  if(e.target?.matches?.('[data-overlay-field="color"]')) syncOverlayColorControls(row);
+  refreshOverlayPreviewForRow(row);
+});
+document.getElementById("overlaySettingsBody")?.addEventListener("change", (e)=>{
+  const row = e.target?.closest?.('tr[data-scenario-id]');
+  if(!row) return;
+  if(e.target?.matches?.('[data-overlay-field="color"]')) syncOverlayColorControls(row);
+  refreshOverlayPreviewForRow(row);
+});
+document.addEventListener('click', (e)=>{
+  const modal = document.getElementById('overlaySettingsModal');
+  if(!modal?.classList.contains('show')) return;
+  if(e.target?.closest?.('#overlaySettingsBody .overlay-style-color-wrap')) return;
+  closeOverlayColorPalettes();
+});
 document.getElementById("fixedScale").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
 function commitAxisControlChange(e){
   const el = e?.target;
@@ -17041,7 +17382,7 @@ document.addEventListener("click", (e)=>{
     const type = addBtn.dataset.addRow;
     rerenderDynamicSection(type, ((dynamicCounts[type] ?? 0)) + 1);
     monteMode = false;
-    if(scenarios.length && currentTab >= 0) scenarios[currentTab].data = getAllInputs();
+    if(scenarios.length && currentTab >= 0) syncCurrentScenarioFromDOM(false);
     if(type === "child") updateChildAllowanceSummary();
     requestDraw();
     persistState();
@@ -17068,7 +17409,7 @@ document.addEventListener("change", (e)=>{
     applyBaseDateDefaultFollow(prevData, nextData);
     setAllInputs(nextData);
     rememberMainInputSnapshot(el);
-    if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) scenarios[currentTab].data = migrateLegacyData(getAllInputs());
+    if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) syncCurrentScenarioFromDOM(false);
     monteMode = false;
     requestDraw();
     persistState();
