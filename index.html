@@ -7551,7 +7551,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
     next.sumInv1_cur = "万円";
     next.sumInv1_rate = Number(values.sumInvRate) || 0;
     next.sumInv1_owner = "本人";
-    next.sumInv1_accountType = values.sumInvTaxFree ? "成長NISA" : "課税";
+    next.sumInv1_accountType = values.sumInvTaxFree ? "つみたてNISA" : "課税";
     next.sumInv1_idecoCategory = "";
     next.sumInv1_fromAge_auto = "1";
     next.sumInv1_toAge_auto = "1";
@@ -7754,7 +7754,7 @@ function writeSimpleModeValueToDetailByKey(key, simpleValue){
       if(!accountTypeEl) break;
       const currentAccountType = normalizeAccountType(accountTypeEl.value || "課税");
       if(simpleValue){
-        const restoreAccountType = getRememberedSimpleModeLastNonTaxableAccountType() || (isSimpleModeNonTaxableAccountType(currentAccountType) ? currentAccountType : "") || "成長NISA";
+        const restoreAccountType = getRememberedSimpleModeLastNonTaxableAccountType() || (isSimpleModeNonTaxableAccountType(currentAccountType) ? currentAccountType : "") || "つみたてNISA";
         accountTypeEl.value = restoreAccountType;
         accountTypeEl.setAttribute("value", restoreAccountType);
         rememberSimpleModeLastNonTaxableAccountType(restoreAccountType);
@@ -10423,21 +10423,14 @@ function getResolvedReceiptSetting(cfg, owner, accountType){
   const key = getReceiptSettingKey(owner, accountType);
   const raw = (cfg.receiptSettings || {})[key] || {method:"一括", lumpAge:0, lumpRatio:50, pensionStart:0, pensionEnd:0};
   const defaultStart = getDefaultReceiptStartAge(cfg, owner, accountType);
-  const normalizeReceiptAgeForSimulation = (value)=>{
-    const num = Number(value || 0) || 0;
-    if(accountType === "退職金") return Math.max(0, Math.floor(num));
-    return num;
-  };
-  const startRaw = raw.pensionStart > 0 ? raw.pensionStart : defaultStart;
-  const start = normalizeReceiptAgeForSimulation(startRaw);
-  const endBaseRaw = raw.pensionEnd > 0 ? raw.pensionEnd : Math.max(startRaw, startRaw + 9);
-  const endBase = normalizeReceiptAgeForSimulation(endBaseRaw);
+  const start = raw.pensionStart > 0 ? raw.pensionStart : defaultStart;
+  const endBase = raw.pensionEnd > 0 ? raw.pensionEnd : Math.max(start, start + 9);
   return {
     key,
     owner,
     accountType,
     method: raw.method || "一括",
-    lumpAge: normalizeReceiptAgeForSimulation(raw.lumpAge > 0 ? raw.lumpAge : defaultStart),
+    lumpAge: raw.lumpAge > 0 ? raw.lumpAge : defaultStart,
     lumpRatio: clampReceiptRatio(raw.lumpRatio == null ? 50 : raw.lumpRatio),
     pensionStart: start,
     pensionEnd: Math.max(start, endBase)
