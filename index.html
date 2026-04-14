@@ -14620,6 +14620,7 @@ function runMonte(){
   updateResultCards(currentCfg, currentSim);
   renderCashflowTable(currentSim);
 
+  const monteYAxisUnitSpec = getMainChartYAxisUnitSpec(yData);
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"line",
@@ -14653,7 +14654,11 @@ function runMonte(){
       },
       scales:{
         x:{type:"linear", min:Math.min(firstCfg.xAxisMin ?? firstCfg.age, getMonteDistributionAxisMax(firstCfg)), max:getMonteDistributionAxisMax(firstCfg), offset:false, bounds:"ticks", ticks:{stepSize:5, callback(value){ return getCalendarWindowTickLabel(baseSim, value); }}, title:{display:true,text:getXAxisTitleText()}},
-        y:{title:{display:true,text:"総資産（万円）"}, ...getAxisBounds(yData, firstCfg, false)}
+        y:{
+          title:{display:true,text:`総資産（${monteYAxisUnitSpec.label}）`},
+          ...getAxisBounds(yData, firstCfg, false),
+          ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, monteYAxisUnitSpec); }}
+        }
       }
     },
     plugins:[pluginLines(firstCfg, baseSim, monteInfo)]
@@ -17936,7 +17941,10 @@ function resetChartAxesToAuto(options = {}){
   formatNumericInputDisplay(fixedScaleMinEl, true);
   formatNumericInputDisplay(fixedScaleMaxEl, true);
   if(persist) persistState();
-  if(redraw) draw();
+  if(redraw){
+    if(monteMode) runMonte();
+    else draw();
+  }
 }
 function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   if(!activeChart?.options?.scales) return;
