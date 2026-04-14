@@ -14368,17 +14368,8 @@ function formatMainChartXAxisTick(sim, value, index, ticks){
 function getMainChartYAxisUnitSpec(values){
   const nums = (values || []).filter(v=>Number.isFinite(v));
   const absMax = nums.length ? Math.max(...nums.map(v=>Math.abs(Number(v) || 0))) : 0;
-  const specs = [
-    {threshold:100000000, divisor:100000000, label:"兆円"},
-    {threshold:10000000, divisor:10000000, label:"千億円"},
-    {threshold:1000000, divisor:1000000, label:"百億円"},
-    {threshold:100000, divisor:100000, label:"十億円"},
-    {threshold:10000, divisor:10000, label:"億円"},
-    {threshold:1000, divisor:1000, label:"千万円"}
-  ];
-  for(const spec of specs){
-    if(absMax >= spec.threshold) return spec;
-  }
+  if(absMax >= 100000000) return {threshold:100000000, divisor:100000000, label:"兆円"};
+  if(absMax >= 10000) return {threshold:10000, divisor:10000, label:"億円"};
   return {threshold:0, divisor:1, label:"万円"};
 }
 function formatScaledAxisNumber(value){
@@ -16788,7 +16779,17 @@ document.addEventListener("focusin", (e)=>{
   setTimeout(()=>{ enforceFocusWithinOpenModal(); }, 0);
 }, true);
 document.getElementById("copyUrlBtn").addEventListener("click", copyURL);
-document.getElementById("graphType").addEventListener("change", ()=>{ requestDraw(); persistState(); });
+document.getElementById("graphType").addEventListener("change", ()=>{
+  const currentAge = numInput("age", 0);
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
+  const fixedScaleEl = document.getElementById("fixedScale");
+  if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
+  if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
+  if(fixedScaleEl) fixedScaleEl.checked = false;
+  monteMode ? runMonte() : requestDraw();
+  persistState();
+});
 document.getElementById("overlayToggle").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
 document.getElementById("fixedScale").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
 function commitAxisControlChange(e){
