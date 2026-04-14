@@ -17775,6 +17775,28 @@ function computeChartAxisAutoDefaults(){
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
+function computeChartAxisGestureOuterBounds(){
+  const defaults = computeChartAxisAutoDefaults();
+  const cfg = getScenarioFromDOM();
+  const graphType = document.getElementById("graphType")?.value || "asset";
+  const xMin = defaults.xMin;
+  const xMax = 120;
+  const yData = [];
+  if(chart?.data?.datasets){
+    chart.data.datasets.forEach(ds=>{
+      (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
+        const x = Number(point?.x);
+        const y = Number(point?.y);
+        if(!Number.isFinite(y)) return;
+        if(Number.isFinite(x) && (x < xMin || x > xMax)) return;
+        yData.push(y);
+      });
+    });
+  }
+  const symmetric = ["cashflow","incomeExpense"].includes(graphType);
+  const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
+  return {xMin, xMax, yMin: axis.min, yMax: axis.max};
+}
 function syncChartAxisModalFromState(){
   const xMinEl = document.getElementById("chartAxisXMin");
   const xMaxEl = document.getElementById("chartAxisXMax");
@@ -18120,11 +18142,14 @@ function setupChartTouchInteractions(){
   const isZoomedFromDefaults = ()=>{
     if(!chart?.scales?.x || !chart?.scales?.y) return false;
     const defaults = computeChartAxisAutoDefaults();
+    const gestureBounds = computeChartAxisGestureOuterBounds();
     const xOptions = chart.options?.scales?.x || {};
     const currMinX = Number.isFinite(Number(xOptions.min)) ? Number(xOptions.min) : Number(chart.scales.x.min);
     const currMaxX = Number.isFinite(Number(xOptions.max)) ? Number(xOptions.max) : Number(chart.scales.x.max);
     const fixedScaleOn = !!document.getElementById("fixedScale")?.checked;
-    return Math.abs(currMinX - defaults.xMin) > 0.01 || Math.abs(currMaxX - defaults.xMax) > 0.01 || fixedScaleOn;
+    const atDefaultX = Math.abs(currMinX - defaults.xMin) <= 0.01 && Math.abs(currMaxX - defaults.xMax) <= 0.01;
+    const atGestureOuterX = Math.abs(currMinX - gestureBounds.xMin) <= 0.01 && Math.abs(currMaxX - gestureBounds.xMax) <= 0.01;
+    return (!atDefaultX && !atGestureOuterX) || fixedScaleOn;
   };
   const finishTouchInteraction = (shouldPersist)=>{
     if(!touchState) return;
@@ -18194,26 +18219,33 @@ function setupChartTouchInteractions(){
       const delta = Math.abs(dist - touchState.startDist) + Math.abs(center.x - touchState.startCenter.x) + Math.abs(center.y - touchState.startCenter.y);
       if(!touchState.moved && delta < MIN_TOUCH_MOVE) return;
       touchState.moved = true;
+      const gestureBounds = computeChartAxisGestureOuterBounds();
       const scaleXFactor = Math.abs(b.x - a.x) / Math.max(1, touchState.startDx);
       const scaleYFactor = Math.abs(b.y - a.y) / Math.max(1, touchState.startDy);
       const startRangeX = Math.max(1, touchState.startMaxX - touchState.startMinX);
       const startRangeY = Math.max(1e-9, touchState.startMaxY - touchState.startMinY);
-      let newRangeX = Math.max(1, Math.min(120, startRangeX / Math.max(0.2, scaleXFactor || 1)));
+      const outerRangeX = Math.max(1, gestureBounds.xMax - gestureBounds.xMin);
+      let newRangeX = Math.max(1, Math.min(outerRangeX, startRangeX / Math.max(0.2, scaleXFactor || 1)));
       let newMinX = touchState.centerValueX - newRangeX * touchState.xRatio;
       let newMaxX = newMinX + newRangeX;
-      if(newMinX < 0){ newMaxX -= newMinX; newMinX = 0; }
-      if(newMaxX > 120){ newMinX -= (newMaxX - 120); newMaxX = 120; }
-      newMinX = Math.max(0, newMinX);
-      newMaxX = Math.min(120, newMaxX);
+      if(newMinX < gestureBounds.xMin){ newMaxX += (gestureBounds.xMin - newMinX); newMinX = gestureBounds.xMin; }
+      if(newMaxX > gestureBounds.xMax){ newMinX -= (newMaxX - gestureBounds.xMax); newMaxX = gestureBounds.xMax; }
+      newMinX = Math.max(gestureBounds.xMin, newMinX);
+      newMaxX = Math.min(gestureBounds.xMax, newMaxX);
       if(newMaxX - newMinX < 1){
         const centerX = (newMinX + newMaxX) / 2;
-        newMinX = Math.max(0, centerX - 0.5);
-        newMaxX = Math.min(120, centerX + 0.5);
+        newMinX = Math.max(gestureBounds.xMin, centerX - 0.5);
+        newMaxX = Math.min(gestureBounds.xMax, centerX + 0.5);
       }
-      let newRangeY = startRangeY / Math.max(0.2, scaleYFactor || 1);
+      const outerRangeY = Math.max(1e-9, gestureBounds.yMax - gestureBounds.yMin);
+      let newRangeY = Math.max(1e-9, Math.min(outerRangeY, startRangeY / Math.max(0.2, scaleYFactor || 1)));
       const centerRatioY = Math.max(0, Math.min(1, touchState.yRatio));
       let newMaxY = touchState.centerValueY + newRangeY * (1 - centerRatioY);
       let newMinY = newMaxY - newRangeY;
+      if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
+      if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
+      newMinY = Math.max(gestureBounds.yMin, newMinY);
+      newMaxY = Math.min(gestureBounds.yMax, newMaxY);
       if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
         chart.options.scales.x.min = Math.round(newMinX * 100) / 100;
         chart.options.scales.x.max = Math.round(newMaxX * 100) / 100;
@@ -18234,21 +18266,32 @@ function setupChartTouchInteractions(){
       const dy = pt.y - touchState.startY;
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
       touchState.moved = true;
+      const gestureBounds = computeChartAxisGestureOuterBounds();
       const xScale = chart.scales.x;
       const yScale = chart.scales.y;
       const startMinPx = xScale.getPixelForValue(touchState.startMinX);
       const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
-      const newMinX = xScale.getValueForPixel(startMinPx - dx);
-      const newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+      let newMinX = xScale.getValueForPixel(startMinPx - dx);
+      let newMaxX = xScale.getValueForPixel(startMaxPx - dx);
       const startMinYPx = yScale.getPixelForValue(touchState.startMinY);
       const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
-      const newMinY = yScale.getValueForPixel(startMinYPx - dy);
-      const newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+      let newMinY = yScale.getValueForPixel(startMinYPx - dy);
+      let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
       if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
-        chart.options.scales.x.min = Math.max(0, Math.min(120, newMinX));
-        chart.options.scales.x.max = Math.max(0, Math.min(120, newMaxX));
+        const rangeX = newMaxX - newMinX;
+        if(rangeX <= (gestureBounds.xMax - gestureBounds.xMin)){
+          if(newMinX < gestureBounds.xMin){ newMaxX += (gestureBounds.xMin - newMinX); newMinX = gestureBounds.xMin; }
+          if(newMaxX > gestureBounds.xMax){ newMinX -= (newMaxX - gestureBounds.xMax); newMaxX = gestureBounds.xMax; }
+        }
+        chart.options.scales.x.min = Math.max(gestureBounds.xMin, Math.min(gestureBounds.xMax, newMinX));
+        chart.options.scales.x.max = Math.max(gestureBounds.xMin, Math.min(gestureBounds.xMax, newMaxX));
       }
       if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
+        const rangeY = newMaxY - newMinY;
+        if(rangeY <= (gestureBounds.yMax - gestureBounds.yMin)){
+          if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
+          if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
+        }
         chart.options.scales.y.min = Math.min(newMinY, newMaxY);
         chart.options.scales.y.max = Math.max(newMinY, newMaxY);
       }
