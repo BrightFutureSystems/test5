@@ -14365,9 +14365,45 @@ function shouldHideEdgeTick(index, ticks){
 function formatMainChartXAxisTick(sim, value, index, ticks){
   return getCalendarWindowTickLabel(sim, value);
 }
-function formatMainChartYAxisTick(value, index, ticks){
+function getMainChartYAxisUnitSpec(values){
+  const nums = (values || []).filter(v=>Number.isFinite(v));
+  const absMax = nums.length ? Math.max(...nums.map(v=>Math.abs(Number(v) || 0))) : 0;
+  const specs = [
+    {threshold:100000000, divisor:100000000, label:"兆円"},
+    {threshold:10000000, divisor:10000000, label:"千億円"},
+    {threshold:1000000, divisor:1000000, label:"百億円"},
+    {threshold:100000, divisor:100000, label:"十億円"},
+    {threshold:10000, divisor:10000, label:"億円"},
+    {threshold:1000, divisor:1000, label:"千万円"}
+  ];
+  for(const spec of specs){
+    if(absMax >= spec.threshold) return spec;
+  }
+  return {threshold:0, divisor:1, label:"万円"};
+}
+function formatScaledAxisNumber(value){
+  const num = Number(value) || 0;
+  const abs = Math.abs(num);
+  let digits = 0;
+  if(abs > 0 && abs < 10) digits = 1;
+  const rounded = digits ? Number(num.toFixed(digits)) : Math.round(num);
+  return rounded.toLocaleString(undefined, {maximumFractionDigits: digits, minimumFractionDigits: 0});
+}
+function formatMainChartYAxisTick(value, index, ticks, unitSpec){
   if(shouldHideEdgeTick(index, ticks)) return '';
-  return `${Math.round(Number(value) || 0).toLocaleString()}万円`;
+  const divisor = Math.max(1e-9, Number(unitSpec?.divisor) || 1);
+  return formatScaledAxisNumber((Number(value) || 0) / divisor);
+}
+function getMainChartBaseYAxisTitle(graphType){
+  const titleMap = {
+    asset:"総資産",
+    assetBreakdown:"総資産",
+    investment:"総運用資産",
+    incomeExpense:"収入／支出",
+    cashflow:"年間収支",
+    education:"年間教育費"
+  };
+  return titleMap[graphType] || "金額";
 }
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
@@ -14376,14 +14412,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const xMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
   const xMax = cfg.xAxisMax;
   const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
-  const yTitleMap = {
-    asset:"総資産（万円）",
-    assetBreakdown:"総資産（万円）",
-    investment:"総運用資産（万円）",
-    incomeExpense:"収入／支出（万円）",
-    cashflow:"年間収支（万円）",
-    education:"年間教育費（万円）"
-  };
+  const yUnitSpec = getMainChartYAxisUnitSpec(yData);
   const options = {
     animation:false,
     responsive:true,
@@ -14411,13 +14440,22 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     },
     scales:{
       x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
-      y:{title:{display:true,text:yTitleMap[graphType] || "金額（万円）"}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks); }}}
+      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
   if(graphType === "education"){
     options.scales.y.stacked = true;
-    const rightAxis = getAxisBounds(extra.educationCumData || [0], {...cfg, fixedScale:false}, false);
-    options.scales.y1 = {position:"right", min:0, max:rightAxis.max, grid:{drawOnChartArea:false}, title:{display:true,text:"教育費累計（万円）"}};
+    const rightAxisData = extra.educationCumData || [0];
+    const rightAxis = getAxisBounds(rightAxisData, {...cfg, fixedScale:false}, false);
+    const rightAxisUnitSpec = getMainChartYAxisUnitSpec(rightAxisData);
+    options.scales.y1 = {
+      position:"right",
+      min:0,
+      max:rightAxis.max,
+      grid:{drawOnChartArea:false},
+      title:{display:true,text:`教育費累計（${rightAxisUnitSpec.label}）`},
+      ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
+    };
   }
   return options;
 }
@@ -17753,24 +17791,48 @@ function setChartAxisModalLabelMode(mode){
   const normalized = ["age","calendar","both"].includes(String(mode)) ? String(mode) : "both";
   document.querySelectorAll('input[name="chartAxisLabelMode"]').forEach(r=>{ r.checked = (r.value === normalized); });
 }
+function collectVisibleMainChartYValues(xMin, xMax, graphType){
+  const yData = [];
+  if(!chart?.data?.datasets) return yData;
+  const stacked = graphType === "incomeExpense" || graphType === "assetBreakdown" || graphType === "education";
+  if(stacked){
+    const posByX = new Map();
+    const negByX = new Map();
+    chart.data.datasets.forEach(ds=>{
+      if(ds?.yAxisID && ds.yAxisID !== 'y') return;
+      (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
+        const x = Number(point?.x);
+        const y = Number(point?.y);
+        if(!Number.isFinite(x) || !Number.isFinite(y)) return;
+        if(x < xMin || x > xMax) return;
+        if(y >= 0) posByX.set(x, (posByX.get(x) || 0) + y);
+        else negByX.set(x, (negByX.get(x) || 0) + y);
+      });
+    });
+    posByX.forEach(v=>{ if(Number.isFinite(v)) yData.push(v); });
+    negByX.forEach(v=>{ if(Number.isFinite(v)) yData.push(v); });
+    return yData;
+  }
+  chart.data.datasets.forEach(ds=>{
+    if(ds?.yAxisID && ds.yAxisID !== 'y') return;
+    (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
+      const x = Number(point?.x);
+      const y = Number(point?.y);
+      if(!Number.isFinite(y)) return;
+      if(Number.isFinite(x) && (x < xMin || x > xMax)) return;
+      yData.push(y);
+    });
+  });
+  return yData;
+}
+
 function computeChartAxisAutoDefaults(){
   const cfg = getScenarioFromDOM();
   const graphType = document.getElementById("graphType")?.value || "asset";
   const currentAge = numInput("age", 0);
   const xMin = Math.max(0, Math.min(120, currentAge));
   const xMax = Math.max(xMin, Math.min(120, Math.max(100, currentAge)));
-  const yData = [];
-  if(chart?.data?.datasets){
-    chart.data.datasets.forEach(ds=>{
-      (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
-        const x = Number(point?.x);
-        const y = Number(point?.y);
-        if(!Number.isFinite(y)) return;
-        if(Number.isFinite(x) && (x < xMin || x > xMax)) return;
-        yData.push(y);
-      });
-    });
-  }
+  const yData = collectVisibleMainChartYValues(xMin, xMax, graphType);
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
@@ -17781,18 +17843,7 @@ function computeChartAxisGestureOuterBounds(){
   const graphType = document.getElementById("graphType")?.value || "asset";
   const xMin = defaults.xMin;
   const xMax = defaults.xMax;
-  const yData = [];
-  if(chart?.data?.datasets){
-    chart.data.datasets.forEach(ds=>{
-      (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
-        const x = Number(point?.x);
-        const y = Number(point?.y);
-        if(!Number.isFinite(y)) return;
-        if(Number.isFinite(x) && (x < xMin || x > xMax)) return;
-        yData.push(y);
-      });
-    });
-  }
+  const yData = collectVisibleMainChartYValues(xMin, xMax, graphType);
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
@@ -18255,19 +18306,28 @@ function setupChartTouchInteractions(){
       const outerRangeY = Math.max(1e-9, gestureBounds.yMax - gestureBounds.yMin);
       let newRangeY = Math.max(1e-9, Math.min(outerRangeY, startRangeY / Math.max(0.2, scaleYFactor || 1)));
       const symmetricYZoom = ["cashflow","incomeExpense"].includes(document.getElementById("graphType")?.value || "asset");
-      const centerRatioY = symmetricYZoom ? 0.5 : Math.max(0, Math.min(1, touchState.yRatio));
       let newMaxY;
       let newMinY;
-      if(newRangeY >= outerRangeY * 0.995){
+      if(newRangeY >= outerRangeY * 0.995 || scaleYFactor === 1){
         newMinY = gestureBounds.yMin;
         newMaxY = gestureBounds.yMax;
+      }else if(symmetricYZoom){
+        const centerY = (gestureBounds.yMin + gestureBounds.yMax) / 2;
+        const halfRangeY = newRangeY / 2;
+        newMinY = centerY - halfRangeY;
+        newMaxY = centerY + halfRangeY;
       }else{
+        const centerRatioY = Math.max(0, Math.min(1, touchState.yRatio));
         newMaxY = touchState.centerValueY + newRangeY * (1 - centerRatioY);
         newMinY = newMaxY - newRangeY;
         if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
         if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
         newMinY = Math.max(gestureBounds.yMin, newMinY);
         newMaxY = Math.min(gestureBounds.yMax, newMaxY);
+      }
+      if((newMaxY - newMinY) >= outerRangeY * 0.985){
+        newMinY = gestureBounds.yMin;
+        newMaxY = gestureBounds.yMax;
       }
       if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
         chart.options.scales.x.min = Math.round(newMinX * 100) / 100;
