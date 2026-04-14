@@ -8292,6 +8292,18 @@ function closeTabContextMenu(){
   menu.classList.remove("show");
   menu.setAttribute("aria-hidden", "true");
 }
+function switchGraphToAssetFromTabClick(){
+  const graphTypeEl = document.getElementById("graphType");
+  const currentAge = numInput("age", 0);
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
+  const fixedScaleEl = document.getElementById("fixedScale");
+  if(graphTypeEl) graphTypeEl.value = "asset";
+  if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
+  if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
+  if(fixedScaleEl) fixedScaleEl.checked = false;
+  monteMode = false;
+}
 function renderTabs(){
   normalizeScenarioNames();
   const el = document.getElementById("tabButtons");
@@ -8328,8 +8340,12 @@ function renderTabs(){
           }
         }
         getInputModeScrollStore()[normalizeInputMode(currentInputMode)] = 0;
+        switchGraphToAssetFromTabClick();
+        requestDraw({immediate:true});
+        persistState();
         return;
       }
+      switchGraphToAssetFromTabClick();
       switchTab(idx);
     });
     btn.addEventListener("contextmenu", (e)=>{
