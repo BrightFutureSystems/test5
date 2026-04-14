@@ -1132,6 +1132,35 @@
     padding:9px 10px;
   }
   .tab-context-menu button:hover{background:#f4f4f4;}
+  .overflow-menu{
+    position:fixed;
+    display:none;
+    min-width:198px;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 10px 24px rgba(0,0,0,.16);
+    padding:6px;
+    z-index:1100;
+  }
+  .overflow-menu.show{display:block;}
+  .overflow-menu button{
+    display:block;
+    width:100%;
+    text-align:left;
+    border:none;
+    background:transparent;
+    border-radius:8px;
+    padding:9px 10px;
+  }
+  .overflow-menu button:hover{background:#f4f4f4;}
+  .overflow-menu-separator{
+    height:1px;
+    margin:6px 4px;
+    background:#e5e7eb;
+    border-radius:999px;
+  }
+  .legacy-top-actions[hidden]{display:none !important;}
   @media (max-width:900px), (pointer:coarse){
     #chartWrap,
     #chartWrap.chart-wrap-rel{
@@ -1481,20 +1510,36 @@
         <input id="xAxisLabelMode" type="hidden" value="both">
       </div>
       <div id="rightTopControls">
-        <button id="withdrawalRuleBtn" type="button" class="compact-btn">取り崩し設定</button>
-        <button id="crashTestBtn" type="button" class="compact-btn">暴落設定</button>
-        <button id="fireDiagnosisBtn" type="button" class="compact-btn">FIRE診断</button>
-        <div class="split-btn-group">
-          <button id="runMonteBtn" type="button" class="compact-btn split-btn-main">確率計算</button>
-          <button id="openMonteSettingsBtn" type="button" class="compact-btn split-btn-toggle" aria-label="モンテカルロ設定">▼</button>
+        <div class="legacy-top-actions" hidden aria-hidden="true">
+          <button id="withdrawalRuleBtn" type="button" class="compact-btn">取り崩し設定</button>
+          <button id="crashTestBtn" type="button" class="compact-btn">暴落設定</button>
+          <button id="fireDiagnosisBtn" type="button" class="compact-btn">FIRE診断</button>
+          <div class="split-btn-group">
+            <button id="runMonteBtn" type="button" class="compact-btn split-btn-main">確率計算</button>
+            <button id="openMonteSettingsBtn" type="button" class="compact-btn split-btn-toggle" aria-label="モンテカルロ設定">▼</button>
+          </div>
+          <button id="copyUrlBtn" type="button" class="compact-btn">結果共有</button>
         </div>
-        <button id="copyUrlBtn" type="button" class="compact-btn">結果共有</button>
+        <button id="overflowMenuBtn" type="button" class="compact-btn" aria-label="メニュー" aria-haspopup="menu" aria-expanded="false">⋯</button>
       </div>
     </div>
 
     <div id="chartCanvasStickyWrap">
       <canvas id="chart"></canvas>
-      <button id="chartAxisBtn" type="button" aria-label="軸設定を開く">軸</button>
+      <button id="chartAxisBtn" type="button" aria-label="軸設定を開く" hidden>軸</button>
+    </div>
+
+    <div id="overflowMenu" class="overflow-menu" aria-hidden="true">
+      <button id="overflowMenuAxisBtn" type="button">グラフ軸設定</button>
+      <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
+      <button id="overflowMenuWithdrawalBtn" type="button">取り崩し設定</button>
+      <button id="overflowMenuCrashBtn" type="button">暴落設定</button>
+      <button id="overflowMenuMonteSettingsBtn" type="button">モンテカルロ設定</button>
+      <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
+      <button id="overflowMenuMonteRunBtn" type="button">モンテカルロ計算</button>
+      <button id="overflowMenuFireBtn" type="button">FIRE診断</button>
+      <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
+      <button id="overflowMenuShareBtn" type="button">結果共有</button>
     </div>
 
   </div>
@@ -8547,6 +8592,36 @@ function closeTabContextMenu(){
   if(!menu) return;
   menu.classList.remove("show");
   menu.setAttribute("aria-hidden", "true");
+}
+function openOverflowMenu(anchorEl){
+  const menu = document.getElementById("overflowMenu");
+  const trigger = document.getElementById("overflowMenuBtn");
+  if(!menu || !trigger || !anchorEl) return;
+  closeTabContextMenu();
+  closeRowContextMenu();
+  menu.classList.add("show");
+  menu.setAttribute("aria-hidden", "false");
+  trigger.setAttribute("aria-expanded", "true");
+  menu.style.left = "0px";
+  menu.style.top = "0px";
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  let left = anchorRect.right - menuRect.width;
+  let top = anchorRect.bottom + 6;
+  if(left < 8) left = 8;
+  if(left + menuRect.width > window.innerWidth - 8) left = window.innerWidth - menuRect.width - 8;
+  if(top + menuRect.height > window.innerHeight - 8) top = Math.max(8, anchorRect.top - menuRect.height - 6);
+  menu.style.left = `${Math.max(8, left)}px`;
+  menu.style.top = `${Math.max(8, top)}px`;
+}
+function closeOverflowMenu(){
+  const menu = document.getElementById("overflowMenu");
+  const trigger = document.getElementById("overflowMenuBtn");
+  if(menu){
+    menu.classList.remove("show");
+    menu.setAttribute("aria-hidden", "true");
+  }
+  if(trigger) trigger.setAttribute("aria-expanded", "false");
 }
 function switchGraphToAssetFromTabClick(){
   const graphTypeEl = document.getElementById("graphType");
@@ -16797,6 +16872,44 @@ window.addEventListener("resize", ()=>{
 document.getElementById("addTabBtn").addEventListener("click", ()=>{
   addTab(); draw(); persistState();
 });
+document.getElementById("overflowMenuBtn")?.addEventListener("click", (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  const menu = document.getElementById("overflowMenu");
+  if(menu?.classList.contains("show")){
+    closeOverflowMenu();
+  }else{
+    openOverflowMenu(e.currentTarget);
+  }
+});
+document.getElementById("overflowMenuAxisBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  openChartAxisModal();
+});
+document.getElementById("overflowMenuWithdrawalBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  openWithdrawalRuleModal();
+});
+document.getElementById("overflowMenuCrashBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  openCrashTestModal();
+});
+document.getElementById("overflowMenuMonteSettingsBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  openMonteSettingsModal();
+});
+document.getElementById("overflowMenuMonteRunBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  runMonte();
+});
+document.getElementById("overflowMenuFireBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  openFireDiagnosisModal();
+});
+document.getElementById("overflowMenuShareBtn")?.addEventListener("click", ()=>{
+  closeOverflowMenu();
+  copyURL();
+});
 document.getElementById("tabMenuDuplicateBtn").addEventListener("click", ()=>{
   const idx = +(document.getElementById("tabContextMenu").dataset.tabIndex || currentTab);
   closeTabContextMenu();
@@ -16873,6 +16986,10 @@ document.addEventListener("pointerdown", (e)=>{
   if(rowMenu && rowMenu.classList.contains("show") && !rowMenu.contains(e.target) && !e.target.closest("[data-row-menu]")){
     closeRowContextMenu();
   }
+  const overflowMenu = document.getElementById("overflowMenu");
+  if(overflowMenu && overflowMenu.classList.contains("show") && !overflowMenu.contains(e.target) && !e.target.closest("#overflowMenuBtn")){
+    closeOverflowMenu();
+  }
 }, true);
 document.addEventListener("click", (e)=>{
   const menu = document.getElementById("tabContextMenu");
@@ -16883,10 +17000,14 @@ document.addEventListener("click", (e)=>{
   if(rowMenu && rowMenu.classList.contains("show") && !rowMenu.contains(e.target) && !e.target.closest("[data-row-menu]")){
     closeRowContextMenu();
   }
+  const overflowMenu = document.getElementById("overflowMenu");
+  if(overflowMenu && overflowMenu.classList.contains("show") && !overflowMenu.contains(e.target) && !e.target.closest("#overflowMenuBtn")){
+    closeOverflowMenu();
+  }
 });
-document.addEventListener("scroll", ()=>{ closeTabContextMenu(); closeRowContextMenu(); }, true);
+document.addEventListener("scroll", ()=>{ closeTabContextMenu(); closeRowContextMenu(); closeOverflowMenu(); }, true);
 document.addEventListener("keydown", (e)=>{
-  if(e.key === "Escape"){ closeTabContextMenu(); closeRowContextMenu(); }
+  if(e.key === "Escape"){ closeTabContextMenu(); closeRowContextMenu(); closeOverflowMenu(); }
 });
 document.getElementById("withdrawalRuleBtn")?.addEventListener("click", openWithdrawalRuleModal);
 document.getElementById("runWithdrawalCompareBtn")?.addEventListener("click", runWithdrawalComparison);
