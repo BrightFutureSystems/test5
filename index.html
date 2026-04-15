@@ -19063,10 +19063,10 @@ function setupChartTouchInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
-        centerValueX:xScale.getValueForPixel(center.x),
-        centerValueY:yScale.getValueForPixel(center.y),
-        xRatio:(center.x - xScale.left) / Math.max(1, xScale.right - xScale.left),
-        yRatio:(Number(chart.scales.y.max) - yScale.getValueForPixel(center.y)) / Math.max(1e-9, Number(chart.scales.y.max) - Number(chart.scales.y.min)),
+        startValueAX:xScale.getValueForPixel(a.x),
+        startValueBX:xScale.getValueForPixel(b.x),
+        startValueAY:yScale.getValueForPixel(a.y),
+        startValueBY:yScale.getValueForPixel(b.y),
         moved:false
       };
       e.preventDefault();
@@ -19102,56 +19102,59 @@ function setupChartTouchInteractions(){
       const gestureBounds = computeChartAxisGestureOuterBounds();
       const currentDx = Math.abs(b.x - a.x);
       const currentDy = Math.abs(b.y - a.y);
-      const scaleXFactor = currentDx / Math.max(1, touchState.startDx);
-      let scaleYFactor = currentDy / Math.max(1, touchState.startDy);
-      if(touchState.startDy < 18 || currentDy < 12 || Math.abs(currentDy - touchState.startDy) < 6){
-        scaleYFactor = 1;
-      }else{
-        scaleYFactor = Math.max(0.5, Math.min(2, 1 + (scaleYFactor - 1) * 0.7));
-      }
-      const startRangeX = Math.max(1, touchState.startMaxX - touchState.startMinX);
-      const startRangeY = Math.max(1e-9, touchState.startMaxY - touchState.startMinY);
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const xLeft = xScale.left;
+      const xRight = xScale.right;
+      const xWidth = Math.max(1, xRight - xLeft);
+      const yTop = yScale.top;
+      const yBottom = yScale.bottom;
+      const yHeight = Math.max(1, yBottom - yTop);
       const outerRangeX = Math.max(1, gestureBounds.xMax - gestureBounds.xMin);
-      let newRangeX = Math.max(1, Math.min(outerRangeX, startRangeX / Math.max(0.2, scaleXFactor || 1)));
-      let newMinX;
-      let newMaxX;
-      if(newRangeX >= outerRangeX * 0.995){
-        newMinX = gestureBounds.xMin;
-        newMaxX = gestureBounds.xMax;
-      }else{
-        newMinX = touchState.centerValueX - newRangeX * touchState.xRatio;
-        newMaxX = newMinX + newRangeX;
-        if(newMinX < gestureBounds.xMin){ newMaxX += (gestureBounds.xMin - newMinX); newMinX = gestureBounds.xMin; }
-        if(newMaxX > gestureBounds.xMax){ newMinX -= (newMaxX - gestureBounds.xMax); newMaxX = gestureBounds.xMax; }
-        newMinX = Math.max(gestureBounds.xMin, newMinX);
-        newMaxX = Math.min(gestureBounds.xMax, newMaxX);
-        if(newMaxX - newMinX < 1){
-          const centerX = (newMinX + newMaxX) / 2;
-          newMinX = Math.max(gestureBounds.xMin, centerX - 0.5);
-          newMaxX = Math.min(gestureBounds.xMax, centerX + 0.5);
+      let newMinX = touchState.startMinX;
+      let newMaxX = touchState.startMaxX;
+      if(currentDx >= 8){
+        const t1x = (a.x - xLeft) / xWidth;
+        const t2x = (b.x - xLeft) / xWidth;
+        const dtX = t2x - t1x;
+        if(Math.abs(dtX) > 0.001){
+          let newRangeX = (touchState.startValueBX - touchState.startValueAX) / dtX;
+          if(Number.isFinite(newRangeX)){
+            newRangeX = Math.max(1, Math.min(outerRangeX, Math.abs(newRangeX)));
+            newMinX = touchState.startValueAX - t1x * newRangeX;
+            newMaxX = newMinX + newRangeX;
+            if(newMinX < gestureBounds.xMin){ newMaxX += (gestureBounds.xMin - newMinX); newMinX = gestureBounds.xMin; }
+            if(newMaxX > gestureBounds.xMax){ newMinX -= (newMaxX - gestureBounds.xMax); newMaxX = gestureBounds.xMax; }
+            newMinX = Math.max(gestureBounds.xMin, newMinX);
+            newMaxX = Math.min(gestureBounds.xMax, newMaxX);
+            if(newMaxX - newMinX < 1){
+              const centerX = (newMinX + newMaxX) / 2;
+              newMinX = Math.max(gestureBounds.xMin, centerX - 0.5);
+              newMaxX = Math.min(gestureBounds.xMax, centerX + 0.5);
+            }
+          }
         }
       }
       const outerRangeY = Math.max(1e-9, gestureBounds.yMax - gestureBounds.yMin);
-      let newRangeY = Math.max(1e-9, Math.min(outerRangeY, startRangeY / Math.max(0.2, scaleYFactor || 1)));
       const symmetricYZoom = ["cashflow","incomeExpense"].includes(document.getElementById("graphType")?.value || "asset");
-      let newMaxY;
-      let newMinY;
-      if(newRangeY >= outerRangeY * 0.995 || scaleYFactor === 1){
-        newMinY = gestureBounds.yMin;
-        newMaxY = gestureBounds.yMax;
-      }else if(symmetricYZoom){
-        const centerY = (gestureBounds.yMin + gestureBounds.yMax) / 2;
-        const halfRangeY = newRangeY / 2;
-        newMinY = centerY - halfRangeY;
-        newMaxY = centerY + halfRangeY;
-      }else{
-        const centerRatioY = Math.max(0, Math.min(1, touchState.yRatio));
-        newMaxY = touchState.centerValueY + newRangeY * (1 - centerRatioY);
-        newMinY = newMaxY - newRangeY;
-        if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
-        if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
-        newMinY = Math.max(gestureBounds.yMin, newMinY);
-        newMaxY = Math.min(gestureBounds.yMax, newMaxY);
+      let newMinY = touchState.startMinY;
+      let newMaxY = touchState.startMaxY;
+      if(!symmetricYZoom && currentDy >= 10){
+        const t1y = (yBottom - a.y) / yHeight;
+        const t2y = (yBottom - b.y) / yHeight;
+        const dtY = t2y - t1y;
+        if(Math.abs(dtY) > 0.001){
+          let newRangeY = (touchState.startValueBY - touchState.startValueAY) / dtY;
+          if(Number.isFinite(newRangeY)){
+            newRangeY = Math.max(1e-9, Math.min(outerRangeY, Math.abs(newRangeY)));
+            newMinY = touchState.startValueAY - t1y * newRangeY;
+            newMaxY = newMinY + newRangeY;
+            if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
+            if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
+            newMinY = Math.max(gestureBounds.yMin, newMinY);
+            newMaxY = Math.min(gestureBounds.yMax, newMaxY);
+          }
+        }
       }
       if((newMaxY - newMinY) >= outerRangeY * 0.985){
         newMinY = gestureBounds.yMin;
