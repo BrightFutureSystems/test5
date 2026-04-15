@@ -1323,14 +1323,27 @@
     .delete-curve-point-btn{padding:4px 6px;font-size:11px;min-width:auto;}
   }
 
-  .cashflow-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .cashflow-table{width:max-content;min-width:100%;table-layout:fixed;border-collapse:collapse;}
-  .cashflow-table th,.cashflow-table td{white-space:nowrap;font-size:12px;min-width:90px;}
-  .cashflow-table thead th{position:sticky;top:0;background:#f8fafc;z-index:2;}
-  .cashflow-table .cashflow-item-col{position:sticky;left:0;z-index:3;min-width:190px;width:190px;background:#f8fafc;text-align:left;padding-left:10px;}
-  .cashflow-table tbody th.cashflow-item-col{z-index:1;background:#fff;}
+  .cashflow-table-shell{display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;}
+  .cashflow-top-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;background:#f8fafc;border-bottom:1px solid var(--border);scrollbar-gutter:stable both-edges;}
+  .cashflow-top-scroll-inner{height:1px;}
+  .cashflow-table-wrap{position:relative;overflow:auto;-webkit-overflow-scrolling:touch;max-height:680px;scrollbar-gutter:stable both-edges;background:#fff;}
+  .cashflow-table-wrap::before{content:"";position:sticky;left:0;top:0;bottom:0;width:0;display:block;z-index:6;box-shadow:1px 0 0 #d1d5db;}
+  .cashflow-table{width:max-content;min-width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;background:#fff;}
+  .cashflow-table th,.cashflow-table td{white-space:nowrap;font-size:12px;min-width:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;}
+  .cashflow-table thead th{position:sticky;top:0;background:#f8fafc;z-index:4;}
+  .cashflow-table thead th:first-child{z-index:8;}
+  .cashflow-table .cashflow-item-col{position:sticky;left:0;z-index:7;min-width:190px;width:190px;background:#fff;text-align:left;padding-left:10px;background-clip:padding-box;border-left:1px solid var(--border);box-shadow:1px 0 0 #d1d5db, 10px 0 10px -10px rgba(15,23,42,.14);}
+  .cashflow-table .cashflow-item-col::after{content:"";position:absolute;top:0;right:-12px;bottom:0;width:12px;background:linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0));pointer-events:none;}
+  .cashflow-table thead .cashflow-item-col{background:#f8fafc;}
   .cashflow-table .cashflow-year-col{min-width:86px;width:86px;}
   .cashflow-table .cashflow-item-group{background:#f3f4f6;font-weight:700;}
+  .cashflow-table .cashflow-sticky-row > th, .cashflow-table .cashflow-sticky-row > td{position:sticky;z-index:5;background:#f8fafc;}
+  .cashflow-table .cashflow-sticky-row > th.cashflow-item-col{z-index:9;background:#f8fafc;}
+  .cashflow-table tr.cashflow-highlight-income > th, .cashflow-table tr.cashflow-highlight-income > td{background:#f0fdf4;}
+  .cashflow-table tr.cashflow-highlight-expense > th, .cashflow-table tr.cashflow-highlight-expense > td{background:#fef2f2;}
+  .cashflow-table tr.cashflow-highlight-tax > th, .cashflow-table tr.cashflow-highlight-tax > td{background:#fff7ed;}
+  .cashflow-table tr.cashflow-highlight-balance > th, .cashflow-table tr.cashflow-highlight-balance > td{background:#eff6ff;}
+  .cashflow-table tr.cashflow-highlight-asset > th, .cashflow-table tr.cashflow-highlight-asset > td{background:#f5f3ff;}
   .cashflow-neg{color:#b91c1c;font-weight:700;}
   .cashflow-pos{color:#15803d;font-weight:700;}
   .cashflow-muted{color:#6b7280;}
@@ -2236,6 +2249,7 @@
           <thead><tr><th>表示</th><th>条件名</th><th>色</th><th>線種</th><th>線幅</th><th>プレビュー</th></tr></thead>
           <tbody id="overlaySettingsBody"></tbody>
         </table>
+        </div>
       </div>
       <div class="modal-actions" style="margin-top:14px;">
         <button type="button" id="cancelOverlaySettingsBtn">キャンセル</button>
@@ -2676,8 +2690,10 @@
       <h2>年度別収支表</h2>
       <div class="help">現在表示中の条件について、社会保険料・税を含めた簡易の年度別収支表を表示します。v195では項目を行、各年を列にして、年ごとの列幅をそろえて見やすくしています。</div>
       <div id="cashflowSummaryNote" class="stack-note"></div>
-      <div class="cashflow-table-wrap table-scroll">
-        <table class="center-table cashflow-table">
+      <div class="cashflow-table-shell">
+        <div id="cashflowTopScroll" class="cashflow-top-scroll"><div id="cashflowTopScrollInner" class="cashflow-top-scroll-inner"></div></div>
+        <div id="cashflowTableWrap" class="cashflow-table-wrap table-scroll">
+        <table id="cashflowTable" class="center-table cashflow-table">
           <thead id="annualCashflowHead"></thead>
           <tbody id="annualCashflowBody"></tbody>
         </table>
@@ -2708,9 +2724,8 @@ const INCOME_COLORS = {self:"#2563eb",spouse:"#60a5fa",pension:"#0f766e",regular
 const EXPENSE_COLORS = {life:"#ef4444",rent:"#fb7185",homeMaint:"#a16207",insurance:"#0891b2",education:"#f97316",loan:"#b91c1c",periodic:"#7c2d12",extra:"#dc2626",social:"#7c3aed",tax:"#334155"};
 const INVESTMENT_COLORS = ["#2563eb","#16a34a","#dc2626","#7c3aed","#d97706"];
 const CASHFLOW_TABLE_COLUMNS = [
-  {label:"西暦", path:"year", type:"int"},
-  {label:"本人年齢", path:"ages.self", type:"int"},
-  {label:"配偶者年齢", path:"ages.spouse", type:"int"},
+  {label:"本人年齢", path:"ages.self", type:"int", stickyMeta:true},
+  {label:"配偶者年齢", path:"ages.spouse", type:"int", stickyMeta:true},
   {label:"勤労収入合計", path:"income.work.total"},
   {label:"年金収入", path:"income.pension.total"},
   {label:"定期収入", path:"income.other.regular"},
@@ -13207,26 +13222,78 @@ function formatCashflowDisplayValue(value, type='money'){
   const n = Math.round((Number(value) || 0) * 10) / 10;
   return n.toLocaleString('ja-JP', {minimumFractionDigits:0, maximumFractionDigits:1});
 }
+function getCashflowRowHighlightClass(label){
+  if(label === '収入合計(A)') return 'cashflow-highlight-income';
+  if(label === '支出合計(B)') return 'cashflow-highlight-expense';
+  if(label === '税社保合計') return 'cashflow-highlight-tax';
+  if(label === '年間収支(A-B)' || label === '税社保反映後収支' || label === '年末の現預金額') return 'cashflow-highlight-balance';
+  if(label === '年末の総資産額') return 'cashflow-highlight-asset';
+  return '';
+}
+function buildCashflowChildColumns(rows){
+  const names = [];
+  rows.forEach(row=>{
+    (row?.ages?.children || []).forEach(child=>{
+      const name = child?.name || '';
+      if(name && !names.includes(name)) names.push(name);
+    });
+  });
+  return names.map(name=>({
+    label:`${name}年齢`,
+    stickyMeta:true,
+    type:'int',
+    valueGetter: row => {
+      const child = (row?.ages?.children || []).find(item => (item?.name || '') === name);
+      return child ? child.age : '';
+    }
+  }));
+}
+function syncCashflowTopScrollbar(){
+  const top = document.getElementById('cashflowTopScroll');
+  const inner = document.getElementById('cashflowTopScrollInner');
+  const wrap = document.getElementById('cashflowTableWrap');
+  const table = document.getElementById('cashflowTable');
+  if(!top || !inner || !wrap || !table) return;
+  const fullWidth = Math.max(table.scrollWidth, wrap.clientWidth);
+  inner.style.width = `${fullWidth}px`;
+  top.style.display = fullWidth > wrap.clientWidth + 2 ? 'block' : 'none';
+  if(Math.abs(top.scrollLeft - wrap.scrollLeft) > 1) top.scrollLeft = wrap.scrollLeft;
+}
+function updateCashflowStickyOffsets(){
+  const table = document.getElementById('cashflowTable');
+  if(!table) return;
+  const headerRow = table.querySelector('thead tr');
+  const headerHeight = headerRow ? headerRow.getBoundingClientRect().height : 0;
+  let offset = headerHeight;
+  table.querySelectorAll('tbody tr.cashflow-sticky-row').forEach(row => {
+    row.style.setProperty('--cashflow-sticky-top', `${offset}px`);
+    row.querySelectorAll('th,td').forEach(cell => { cell.style.top = `${offset}px`; });
+    offset += row.getBoundingClientRect().height;
+  });
+}
 function renderCashflowTable(sim){
   const thead = document.getElementById('annualCashflowHead');
   const tbody = document.getElementById('annualCashflowBody');
   const note = document.getElementById('cashflowSummaryNote');
   if(!thead || !tbody) return;
   const rows = Array.isArray(sim?.yearlyRows) ? sim.yearlyRows : [];
+  const columns = rows.length ? [...CASHFLOW_TABLE_COLUMNS.slice(0,2), ...buildCashflowChildColumns(rows), ...CASHFLOW_TABLE_COLUMNS.slice(2)] : CASHFLOW_TABLE_COLUMNS;
   thead.innerHTML = rows.length
     ? `<tr><th class="cashflow-item-col">項目</th>${rows.map(row=>`<th class="cashflow-year-col">${escapeHtml(String(row?.year ?? ''))}年</th>`).join('')}</tr>`
     : `<tr><th class="cashflow-item-col">項目</th></tr>`;
-  tbody.innerHTML = CASHFLOW_TABLE_COLUMNS.map(col=>{
+  tbody.innerHTML = columns.map(col=>{
     const cells = rows.map(row=>{
-      const raw = getValueByPath(row, col.path);
+      const raw = typeof col.valueGetter === 'function' ? col.valueGetter(row) : getValueByPath(row, col.path);
+      const numeric = Number(raw);
       const cls = col.type === 'text'
         ? (col.className || 'cashflow-muted')
         : (col.className === 'cashflow-posneg'
-          ? ((Number(raw) || 0) < 0 ? 'cashflow-neg' : ((Number(raw) || 0) > 0 ? 'cashflow-pos' : 'cashflow-muted'))
+          ? (raw === '' || raw == null ? 'cashflow-muted' : (numeric < 0 ? 'cashflow-neg' : (numeric > 0 ? 'cashflow-pos' : 'cashflow-muted')))
           : (col.className || ''));
-      return `<td class="${cls}">${formatCashflowDisplayValue(raw, col.type || 'money')}</td>`;
+      return `<td class="${cls}">${raw === '' || raw == null ? '' : formatCashflowDisplayValue(raw, col.type || 'money')}</td>`;
     }).join('');
-    return `<tr><th class="cashflow-item-col">${escapeHtml(col.label)}</th>${cells}</tr>`;
+    const rowClass = [col.stickyMeta ? 'cashflow-sticky-row' : '', getCashflowRowHighlightClass(col.label)].filter(Boolean).join(' ');
+    return `<tr class="${rowClass}"><th class="cashflow-item-col">${escapeHtml(col.label)}</th>${cells}</tr>`;
   }).join('');
   if(note){
     const first = rows[0];
@@ -13236,10 +13303,32 @@ function renderCashflowTable(sim){
     const periodText = rows.length
       ? `${firstWindow?.start || ((first?.year ?? '') + '年')}〜${lastWindow?.end || ((last?.year ?? '') + '年')}`
       : '';
-    note.textContent = rows.length ? `表示期間：${periodText} / 年次列：各暦年（初年度のみ基準日から年末まで） / 取り崩しルール：${getWithdrawalRuleLabel(first?.meta?.withdrawalRule?.mode)} / 防御ルール：${first?.meta?.withdrawalRule?.defensiveLabel || 'なし'} / 項目を行、各年を列にして比較できるようにしています。生活費不足の売却額と現金バッファ補充の売却額を分けて表示しています。計算側は yearlyRows、表示側は renderCashflowTable に分けてあり、将来の分離もしやすい構成です。` : '';
+    note.textContent = rows.length ? `表示期間：${periodText} / 年次列：各暦年（初年度のみ基準日から年末まで） / 取り崩しルール：${getWithdrawalRuleLabel(first?.meta?.withdrawalRule?.mode)} / 防御ルール：${first?.meta?.withdrawalRule?.defensiveLabel || 'なし'} / 上部に横スクロールバーを置き、本人・配偶者・子ども年齢までは固定表示にしています。` : '';
   }
+  requestAnimationFrame(()=>{ updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); });
 }
 
+
+function setupCashflowScrollSync(){
+  const top = document.getElementById('cashflowTopScroll');
+  const wrap = document.getElementById('cashflowTableWrap');
+  if(!top || !wrap || top.dataset.bound === '1') return;
+  let syncing = false;
+  top.addEventListener('scroll', ()=>{
+    if(syncing) return;
+    syncing = true;
+    wrap.scrollLeft = top.scrollLeft;
+    syncing = false;
+  }, {passive:true});
+  wrap.addEventListener('scroll', ()=>{
+    if(syncing) return;
+    syncing = true;
+    top.scrollLeft = wrap.scrollLeft;
+    syncing = false;
+  }, {passive:true});
+  window.addEventListener('resize', ()=>{ requestAnimationFrame(()=>{ updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); }); });
+  top.dataset.bound = '1';
+}
 function normalizeOwner(owner){
   return owner === "配偶者" ? "配偶者" : "本人";
 }
@@ -19082,6 +19171,7 @@ window.addEventListener("load", ()=>{
     updateInputsVisibility();
   }
   renderTabs();
+  setupCashflowScrollSync();
   enableHorizontalDragScroll(document.getElementById("tabScroller"));
   enableHorizontalDragScroll(document.getElementById("detailStickyNav"), { allowButtonDrag:true });
   enableHorizontalDragScroll(document.getElementById("simpleStickyNav"), { allowButtonDrag:true });
