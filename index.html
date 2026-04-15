@@ -1329,14 +1329,16 @@
   .cashflow-table-wrap{position:relative;overflow:auto;-webkit-overflow-scrolling:touch;max-height:520px;scrollbar-gutter:stable both-edges;background:#fff;max-width:100%;width:100%;min-width:0;}
   .cashflow-table-wrap::before{content:"";position:sticky;left:0;top:0;bottom:0;width:var(--cashflow-item-col-width);display:block;z-index:6;background:#fff;pointer-events:none;}
   .cashflow-table-wrap::after{content:"";position:sticky;left:0;top:0;width:var(--cashflow-item-col-width);height:1px;display:block;z-index:10;background:transparent;pointer-events:none;}
-  .cashflow-table{width:max-content;min-width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;background:#fff;border-left:1px solid var(--border);border-top:1px solid var(--border);}
-  .cashflow-table th,.cashflow-table td{white-space:nowrap;font-size:12px;min-width:90px;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:5px 6px;background-clip:padding-box;}
+  .cashflow-table{width:max-content;min-width:100%;table-layout:auto;border-collapse:separate;border-spacing:0;background:#fff;border-left:1px solid var(--border);border-top:1px solid var(--border);}
+  .cashflow-table th,.cashflow-table td{white-space:nowrap;font-size:12px;min-width:1px;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:5px 6px;background-clip:padding-box;}
   .cashflow-table thead th{position:sticky;top:0;background:#f8fafc;z-index:4;box-shadow:none;}
   .cashflow-table thead th:first-child{z-index:8;}
   .cashflow-table .cashflow-item-col{position:sticky;left:0;z-index:7;min-width:var(--cashflow-item-col-width);width:var(--cashflow-item-col-width);background:#fff;text-align:left;padding-left:8px;padding-right:6px;background-clip:padding-box;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
   .cashflow-table .cashflow-item-col::after{content:none;}
   .cashflow-table thead .cashflow-item-col{background:#f8fafc;}
-  .cashflow-table .cashflow-year-col{min-width:86px;width:86px;}
+  .cashflow-table .cashflow-year-col{min-width:1px;width:auto;text-align:center;}
+  .cashflow-table .cashflow-cell-money{text-align:right;}
+  .cashflow-table .cashflow-cell-age,.cashflow-table .cashflow-cell-int,.cashflow-table .cashflow-cell-text{text-align:center;}
   .cashflow-table .cashflow-item-group{background:#f3f4f6;font-weight:700;}
   .cashflow-table .cashflow-sticky-row > th, .cashflow-table .cashflow-sticky-row > td{position:sticky;z-index:5;background:#f8fafc;box-shadow:none;}
   .cashflow-table .cashflow-sticky-row > th.cashflow-item-col{z-index:9;background:#f8fafc;box-shadow:none;}
@@ -1475,7 +1477,7 @@
 
   @media (max-width:900px){
     .withdrawal-compare-subcontrols{grid-template-columns:1fr;}
-    .cashflow-table-shell{--cashflow-item-col-width:160px;}
+    .cashflow-table-shell{--cashflow-item-col-width:120px;}
     .cashflow-table-wrap{overflow:auto;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:328px;}
     .cashflow-top-scroll{display:none !important;-webkit-overflow-scrolling:touch;}
     .cashflow-table .cashflow-sticky-mobile-off > th,
@@ -2758,8 +2760,8 @@ const INCOME_COLORS = {self:"#2563eb",spouse:"#60a5fa",pension:"#0f766e",regular
 const EXPENSE_COLORS = {life:"#ef4444",rent:"#fb7185",homeMaint:"#a16207",insurance:"#0891b2",education:"#f97316",loan:"#b91c1c",periodic:"#7c2d12",extra:"#dc2626",social:"#7c3aed",tax:"#334155"};
 const INVESTMENT_COLORS = ["#2563eb","#16a34a","#dc2626","#7c3aed","#d97706"];
 const CASHFLOW_TABLE_COLUMNS = [
-  {label:"本人年齢", path:"ages.self", type:"int", stickyMeta:true},
-  {label:"配偶者年齢", path:"ages.spouse", type:"int", metaRow:true},
+  {label:"本人年齢", path:"ages.self", type:"age", stickyMeta:true},
+  {label:"配偶者年齢", path:"ages.spouse", type:"age", metaRow:true},
   {label:"勤労収入合計", path:"income.work.total"},
   {label:"年金収入", path:"income.pension.total"},
   {label:"定期収入", path:"income.other.regular"},
@@ -4105,7 +4107,8 @@ const STANDARD_ACTION_MODAL_CONFIG = {
   educationCopyModal: {primarySelector:'#confirmEducationCopyBtn', cancelSelector:'#cancelEducationCopyBtn'},
   overlaySettingsModal: {primarySelector:'#saveOverlaySettingsBtn', cancelSelector:'#cancelOverlaySettingsBtn'},
   resetDefaultsConfirmModal: {primarySelector:'#confirmResetDefaultsConfirmBtn', cancelSelector:'#cancelResetDefaultsConfirmBtn'},
-  chartAxisModal: {primarySelector:'#saveChartAxisBtn', cancelSelector:'#cancelChartAxisBtn'}
+  chartAxisModal: {primarySelector:'#saveChartAxisBtn', cancelSelector:'#cancelChartAxisBtn'},
+  cashflowModal: {primarySelector:'#closeCashflowModalBtn', cancelSelector:'#closeCashflowModalBtn'}
 };
 function focusModalPrimaryActionButton(modalId){
   const modal = document.getElementById(modalId);
@@ -13254,9 +13257,11 @@ function getValueByPath(obj, path){
   return String(path || '').split('.').reduce((acc, key)=> acc == null ? undefined : acc[key], obj);
 }
 function formatCashflowDisplayValue(value, type='money'){
-  if(type === 'int') return String(Math.round(Number(value || 0)));
-  const n = Math.round((Number(value) || 0) * 10) / 10;
-  return n.toLocaleString('ja-JP', {minimumFractionDigits:0, maximumFractionDigits:1});
+  const num = Number(value || 0);
+  if(type === 'age') return `${Math.round(num)}歳`;
+  if(type === 'int') return String(Math.round(num));
+  const n = Math.round(num);
+  return n.toLocaleString('ja-JP', {minimumFractionDigits:0, maximumFractionDigits:0});
 }
 function getCashflowRowHighlightClass(label){
   if(label === '収入合計(A)') return 'cashflow-highlight-income';
@@ -13279,7 +13284,7 @@ function buildCashflowChildColumns(rows){
     stickyMeta:false,
     metaRow:true,
     mobileSticky:false,
-    type:'int',
+    type:'age',
     valueGetter: row => {
       const child = (row?.ages?.children || []).find(item => (item?.name || '') === name);
       return child ? child.age : '';
@@ -13317,6 +13322,45 @@ function updateCashflowStickyOffsets(){
     if(!skipSticky) offset += row.getBoundingClientRect().height;
   });
 }
+function updateCashflowColumnSizing(){
+  const table = document.getElementById('cashflowTable');
+  const shell = document.querySelector('#cashflowModal .cashflow-table-shell');
+  if(!table || !shell) return;
+  const allRows = Array.from(table.querySelectorAll('tr'));
+  if(!allRows.length) return;
+  allRows.forEach(row=>{
+    Array.from(row.children).forEach((cell, idx)=>{
+      if(idx > 0){
+        cell.style.width = '';
+        cell.style.minWidth = '';
+        cell.style.maxWidth = '';
+      }
+    });
+  });
+  let itemWidth = 0;
+  table.querySelectorAll('.cashflow-item-col').forEach(cell=>{
+    itemWidth = Math.max(itemWidth, Math.ceil(cell.scrollWidth) + 2);
+  });
+  itemWidth = Math.max(76, itemWidth);
+  shell.style.setProperty('--cashflow-item-col-width', `${itemWidth}px`);
+  const colCount = Math.max(...allRows.map(row => row.children.length));
+  for(let colIdx = 1; colIdx < colCount; colIdx += 1){
+    let colWidth = 0;
+    allRows.forEach(row=>{
+      const cell = row.children[colIdx];
+      if(!cell) return;
+      colWidth = Math.max(colWidth, Math.ceil(cell.scrollWidth) + 2);
+    });
+    colWidth = Math.max(34, colWidth);
+    allRows.forEach(row=>{
+      const cell = row.children[colIdx];
+      if(!cell) return;
+      cell.style.width = `${colWidth}px`;
+      cell.style.minWidth = `${colWidth}px`;
+      cell.style.maxWidth = `${colWidth}px`;
+    });
+  }
+}
 function renderCashflowTable(sim){
   const thead = document.getElementById('annualCashflowHead');
   const tbody = document.getElementById('annualCashflowBody');
@@ -13331,11 +13375,12 @@ function renderCashflowTable(sim){
     const cells = rows.map(row=>{
       const raw = typeof col.valueGetter === 'function' ? col.valueGetter(row) : getValueByPath(row, col.path);
       const numeric = Number(raw);
-      const cls = col.type === 'text'
+      const valueClass = col.type === 'age' ? 'cashflow-cell-age' : (col.type === 'int' ? 'cashflow-cell-int' : (col.type === 'text' ? 'cashflow-cell-text' : 'cashflow-cell-money'));
+      const cls = [col.type === 'text'
         ? (col.className || 'cashflow-muted')
         : (col.className === 'cashflow-posneg'
           ? (raw === '' || raw == null ? 'cashflow-muted' : (numeric < 0 ? 'cashflow-neg' : (numeric > 0 ? 'cashflow-pos' : 'cashflow-muted')))
-          : (col.className || ''));
+          : (col.className || '')), valueClass].filter(Boolean).join(' ');
       return `<td class="${cls}">${raw === '' || raw == null ? '' : formatCashflowDisplayValue(raw, col.type || 'money')}</td>`;
     }).join('');
     const rowClass = [col.stickyMeta ? 'cashflow-sticky-row' : '', col.metaRow ? 'cashflow-meta-row' : '', col.mobileSticky === false ? 'cashflow-sticky-mobile-off' : '', getCashflowRowHighlightClass(col.label)].filter(Boolean).join(' ');
@@ -13351,7 +13396,7 @@ function renderCashflowTable(sim){
       : '';
     note.textContent = rows.length ? `表示期間：${periodText} / 年次列：各暦年（初年度のみ基準日から年末まで） / 取り崩しルール：${getWithdrawalRuleLabel(first?.meta?.withdrawalRule?.mode)} / 防御ルール：${first?.meta?.withdrawalRule?.defensiveLabel || 'なし'} / 本人年齢を固定表示し、配偶者年齢・子ども年齢は色分け表示しています。` : '';
   }
-  requestAnimationFrame(()=>{ updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); });
+  requestAnimationFrame(()=>{ updateCashflowColumnSizing(); updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); });
 }
 
 
@@ -13373,7 +13418,7 @@ function setupCashflowScrollSync(){
     if(!isMobileLike()) top.scrollLeft = wrap.scrollLeft;
     syncing = false;
   }, {passive:true});
-  window.addEventListener('resize', ()=>{ requestAnimationFrame(()=>{ updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); }); });
+  window.addEventListener('resize', ()=>{ requestAnimationFrame(()=>{ updateCashflowColumnSizing(); updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); }); });
   top.dataset.bound = '1';
 }
 function normalizeOwner(owner){
@@ -17060,6 +17105,7 @@ function openCashflowModal(){
   resetModalScrollPosition("cashflowModal");
   resetModalInnerScrollPositions("cashflowModal");
   requestAnimationFrame(()=>{
+    updateCashflowColumnSizing();
     updateCashflowStickyOffsets();
     syncCashflowTopScrollbar();
   });
