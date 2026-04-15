@@ -2239,7 +2239,7 @@
           <div class="chart-axis-section-title">X軸表示</div>
           <div class="chart-axis-radio-row">
             <label><input type="radio" name="chartAxisLabelMode" value="age"> 年齢（歳）</label>
-            <label><input type="radio" name="chartAxisLabelMode" value="calendar"> 暦年（年）</label>
+            <label><input type="radio" name="chartAxisLabelMode" value="calendar"> 西暦（年）</label>
             <label><input type="radio" name="chartAxisLabelMode" value="both" checked> 両方</label>
           </div>
         </div>
@@ -13299,8 +13299,8 @@ function renderCashflowTable(sim){
   const rows = Array.isArray(sim?.yearlyRows) ? sim.yearlyRows : [];
   const columns = rows.length ? [...CASHFLOW_TABLE_COLUMNS.slice(0,2), ...buildCashflowChildColumns(rows), ...CASHFLOW_TABLE_COLUMNS.slice(2)] : CASHFLOW_TABLE_COLUMNS;
   thead.innerHTML = rows.length
-    ? `<tr><th class="cashflow-item-col">項目</th>${rows.map(row=>`<th class="cashflow-year-col">${escapeHtml(String(row?.year ?? ''))}年</th>`).join('')}</tr>`
-    : `<tr><th class="cashflow-item-col">項目</th></tr>`;
+    ? `<tr><th class="cashflow-item-col">西暦</th>${rows.map(row=>`<th class="cashflow-year-col">${escapeHtml(String(row?.year ?? ''))}年</th>`).join('')}</tr>`
+    : `<tr><th class="cashflow-item-col">西暦</th></tr>`;
   tbody.innerHTML = columns.map(col=>{
     const cells = rows.map(row=>{
       const raw = typeof col.valueGetter === 'function' ? col.valueGetter(row) : getValueByPath(row, col.path);
@@ -14828,18 +14828,18 @@ function getXAxisLabelMode(){
 }
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
-  if(mode === "calendar") return "暦年（年）";
-  return "年齢（歳）／暦年（年）";
+  if(mode === "calendar") return "西暦（年）";
+  return "年齢（歳）／西暦（年）";
 }
 function getCalendarWindowTooltipTitle(sim, xValue){
   const mode = getXAxisLabelMode();
   const target = Number(xValue);
-  if(!Number.isFinite(target)) return mode === "calendar" ? `暦年：${xValue}` : `年齢：${xValue}`;
+  if(!Number.isFinite(target)) return mode === "calendar" ? `西暦：${xValue}` : `年齢：${xValue}`;
   const win = getCalendarWindowForXAxisValue(sim, target);
-  if(!win) return mode === "calendar" ? `暦年：${target}年` : `年齢：${target}歳`;
+  if(!win) return mode === "calendar" ? `西暦：${target}年` : `年齢：${target}歳`;
   const endInclusive = addDaysToParts(win.end, -1);
   if(mode === "age") return `年齢：${target}歳（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
-  if(mode === "calendar") return `暦年：${win.year}年（年齢 ${target}歳）`;
+  if(mode === "calendar") return `西暦：${win.year}年（年齢 ${target}歳）`;
   return `年齢：${target}歳 / ${win.year}年（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
 }
 function getCalendarWindowTickLabel(sim, xValue){
