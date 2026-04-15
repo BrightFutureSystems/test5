@@ -1356,6 +1356,7 @@
   .cashflow-modal-grid{display:flex;flex-direction:column;gap:10px;min-width:0;}
   .cashflow-modal-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
   .cashflow-modal-shell{display:flex;flex-direction:column;min-width:0;}
+  .cashflow-modal-unit-note{align-self:flex-end;margin:-2px 0 6px;color:#6b7280;font-size:12px;line-height:1.4;text-align:right;}
   .cashflow-modal .cashflow-table-shell{width:100%;max-width:100%;}
   .cashflow-modal .cashflow-table-wrap{max-height:min(72vh, 760px);}
   .cashflow-modal .cashflow-top-scroll{display:none !important;}
@@ -2289,6 +2290,7 @@
       <div class="cashflow-modal-grid">
         <div class="cashflow-modal-note">現在表示中の条件について、社会保険料・税を含めた簡易の年度別収支表を表示します。前スレッドで調整した固定行・固定列・色・罫線・マスキング・スマホスクロール挙動をそのまま引き継いでいます。</div>
         <div id="cashflowSummaryNote" class="stack-note"></div>
+        <div class="cashflow-modal-unit-note">（金額の単位：万円）</div>
         <div class="cashflow-modal-shell">
           <div class="cashflow-table-shell">
             <div id="cashflowTopScroll" class="cashflow-top-scroll"><div id="cashflowTopScrollInner" class="cashflow-top-scroll-inner"></div></div>
@@ -17295,6 +17297,18 @@ document.getElementById("openMonteSettingsBtn")?.addEventListener("click", (e)=>
   openMonteSettingsModal();
 });
 document.getElementById("closeCashflowModalBtn")?.addEventListener("click", closeCashflowModal);
+document.addEventListener("keydown", (e)=>{
+  const modal = document.getElementById("cashflowModal");
+  if(!modal || !modal.classList.contains("show")) return;
+  if(getOpenModal() !== modal) return;
+  if(e.key !== "Escape" && e.key !== "Enter") return;
+  if(e.key === "Enter" && (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing)) return;
+  const target = e.target;
+  if(target && target.tagName === "TEXTAREA") return;
+  e.preventDefault();
+  e.stopPropagation();
+  closeCashflowModal();
+}, true);
 document.getElementById("cancelMonteSettingsBtn")?.addEventListener("click", closeMonteSettingsModal);
 document.getElementById("saveMonteSettingsBtn")?.addEventListener("click", saveMonteSettingsModal);
 document.getElementById("monteSettingsModel")?.addEventListener("change", updateMonteSettingsModalUI);
