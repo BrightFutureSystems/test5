@@ -2810,6 +2810,10 @@ const PERSIST_DEBOUNCE_MS = 300;
 
 let chart = null;
 let chartAxisSelectionGuide = null;
+let educationRightAxisOverride = null;
+let chartAxisPendingAutoLeft = false;
+let chartAxisPendingAutoRight = false;
+let chartAxisApplyingAutoDefaults = false;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
@@ -14448,6 +14452,7 @@ function getAxisBounds(arr, cfg, symmetric=false){
   if(!values.length) return symmetric ? {min:-1, max:1} : {min:0, max:1};
   let minVal = Math.min(...values);
   let maxVal = Math.max(...values);
+  const positiveHeadroomFactor = 0.8;
 
   if(symmetric){
     const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal), 1);
@@ -14460,7 +14465,7 @@ function getAxisBounds(arr, cfg, symmetric=false){
   if(minVal === maxVal){
     if(minVal === 0) return {min:0, max:1};
     const mag = Math.abs(minVal);
-    const raw = mag / 0.8;
+    const raw = minVal > 0 ? (mag / positiveHeadroomFactor) : (mag / 0.8);
     const step = niceNumber(raw / 5);
     if(minVal > 0){
       return {min:0, max:Math.ceil(raw / step) * step};
@@ -14469,7 +14474,7 @@ function getAxisBounds(arr, cfg, symmetric=false){
   }
 
   const rawMin = minVal >= 0 ? 0 : minVal / 0.8;
-  const rawMax = maxVal <= 0 ? 0 : maxVal / 0.8;
+  const rawMax = maxVal <= 0 ? 0 : maxVal / positiveHeadroomFactor;
   const span = Math.max(rawMax - rawMin, 1);
   const step = niceNumber(span / 6);
   const min = rawMin >= 0 ? 0 : Math.floor(rawMin / step) * step;
@@ -14791,7 +14796,7 @@ function pluginLines(cfg, sim, monteInfo=null){
           ctx.strokeStyle = "rgba(37,99,235,0.9)";
           ctx.beginPath(); ctx.moveTo(left, area.top); ctx.lineTo(left, area.bottom); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(right, area.top); ctx.lineTo(right, area.bottom); ctx.stroke();
-        }else if(guide.axis === "y" && Number.isFinite(guide.startPx) && Number.isFinite(guide.currentPx)){
+        }else if((guide.axis === "y" || guide.axis === "y1") && Number.isFinite(guide.startPx) && Number.isFinite(guide.currentPx)){
           const top = Math.max(area.top, Math.min(area.bottom, Math.min(guide.startPx, guide.currentPx)));
           const bottom = Math.max(area.top, Math.min(area.bottom, Math.max(guide.startPx, guide.currentPx)));
           ctx.fillStyle = "rgba(37,99,235,0.08)";
@@ -14969,9 +14974,21 @@ function getMainChartBaseYAxisTitle(graphType){
   };
   return titleMap[graphType] || "金額";
 }
+function getEducationRightAxisBounds(rightAxisData, cfg){
+  const autoAxis = getAxisBounds(rightAxisData, {...cfg, fixedScale:false}, false);
+  if(educationRightAxisOverride && Number.isFinite(educationRightAxisOverride.min) && Number.isFinite(educationRightAxisOverride.max) && educationRightAxisOverride.max > educationRightAxisOverride.min){
+    return {
+      min:Number(educationRightAxisOverride.min),
+      max:Number(educationRightAxisOverride.max),
+      autoMax:Number(autoAxis.max)
+    };
+  }
+  return {min:0, max:Number(autoAxis.max), autoMax:Number(autoAxis.max)};
+}
+
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
-  const axis = getAxisBounds(yData, cfg, symmetric);
+  const axis = getAxisBounds(yData, {...cfg, _graphType:graphType}, symmetric);
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   const xMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
   const xMax = cfg.xAxisMax;
@@ -15010,11 +15027,11 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   if(graphType === "education"){
     options.scales.y.stacked = true;
     const rightAxisData = extra.educationCumData || [0];
-    const rightAxis = getAxisBounds(rightAxisData, {...cfg, fixedScale:false}, false);
+    const rightAxis = getEducationRightAxisBounds(rightAxisData, cfg);
     const rightAxisUnitSpec = getMainChartYAxisUnitSpec(rightAxisData);
     options.scales.y1 = {
       position:"right",
-      min:0,
+      min:rightAxis.min,
       max:rightAxis.max,
       grid:{drawOnChartArea:false},
       title:{display:true,text:`教育費累計（${rightAxisUnitSpec.label}）`},
@@ -15098,7 +15115,7 @@ function draw(){
       cashflow: [...getVisibleSeriesValues(sim.labels, sim.annualCashflow, cfg.xAxisMax)],
       education: getVisibleSeriesValues(sim.labels, sim.annualEducation, cfg.xAxisMax),
       incomeExpense: [...getVisibleSeriesValues(sim.labels, sim.annualIncome, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualExpense.map(v=>-v), cfg.xAxisMax)],
-      assetBreakdown: [...getVisibleSeriesValues(sim.labels, sim.totalDeposits, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.totalInvestments, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.totalLiability.map(v=>-v), cfg.xAxisMax)],
+      assetBreakdown: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
       investment: [...getVisibleSeriesValues(sim.labels, sim.totalInvestments, cfg.xAxisMax), ...Object.values(sim.invSeries).flatMap(series => getVisibleSeriesValues(sim.labels, series, cfg.xAxisMax))]
     };
     yData.push(...(arrays[graphType] || [0]));
@@ -18607,10 +18624,21 @@ function syncChartAxisModalFromState(){
   const xMaxEl = document.getElementById("chartAxisXMax");
   const yMinEl = document.getElementById("chartAxisYMin");
   const yMaxEl = document.getElementById("chartAxisYMax");
-  if(xMinEl) xMinEl.value = String(numInput("xAxisMin", numInput("age", 0)));
-  if(xMaxEl) xMaxEl.value = String(numInput("xAxisMax", Math.min(120, Math.max(100, numInput("age", 0)))));
-  if(yMinEl) yMinEl.value = String(numValue(document.getElementById("fixedScaleMin")?.value, -50000));
-  if(yMaxEl) yMaxEl.value = String(numValue(document.getElementById("fixedScaleMax")?.value, 50000));
+  const chartScales = chart?.scales || {};
+  const chartX = chartScales.x;
+  const chartY = chartScales.y;
+  const fallbackXMin = numInput("xAxisMin", numInput("age", 0));
+  const fallbackXMax = numInput("xAxisMax", Math.min(120, Math.max(100, numInput("age", 0))));
+  const fallbackYMin = numValue(document.getElementById("fixedScaleMin")?.value, -50000);
+  const fallbackYMax = numValue(document.getElementById("fixedScaleMax")?.value, 50000);
+  const currentXMin = Number.isFinite(Number(chartX?.min)) ? Number(chartX.min) : fallbackXMin;
+  const currentXMax = Number.isFinite(Number(chartX?.max)) ? Number(chartX.max) : fallbackXMax;
+  const currentYMin = Number.isFinite(Number(chartY?.min)) ? Number(chartY.min) : fallbackYMin;
+  const currentYMax = Number.isFinite(Number(chartY?.max)) ? Number(chartY.max) : fallbackYMax;
+  if(xMinEl) xMinEl.value = String(Math.round(currentXMin));
+  if(xMaxEl) xMaxEl.value = String(Math.round(currentXMax));
+  if(yMinEl) yMinEl.value = String(Math.round(currentYMin));
+  if(yMaxEl) yMaxEl.value = String(Math.round(currentYMax));
   formatNumericInputDisplay(yMinEl, true);
   formatNumericInputDisplay(yMaxEl, true);
   setChartAxisModalLabelMode(getXAxisLabelMode());
@@ -18629,6 +18657,9 @@ function applyChartAxisAutoDefaultsToModal(){
   formatNumericInputDisplay(yMaxEl, true);
 }
 function openChartAxisModal(){
+  chartAxisPendingAutoLeft = false;
+  chartAxisPendingAutoRight = false;
+  chartAxisApplyingAutoDefaults = false;
   syncChartAxisModalFromState();
   const modal = document.getElementById("chartAxisModal");
   modal?.classList.add("show");
@@ -18639,6 +18670,9 @@ function openChartAxisModal(){
   focusModalPrimaryActionButton("chartAxisModal");
 }
 function closeChartAxisModal(){
+  chartAxisPendingAutoLeft = false;
+  chartAxisPendingAutoRight = false;
+  chartAxisApplyingAutoDefaults = false;
   const modal = document.getElementById("chartAxisModal");
   modal?.classList.remove("show");
   modal?.setAttribute("aria-hidden", "true");
@@ -18657,9 +18691,12 @@ function saveChartAxisModal(){
   const xAxisMinEl = document.getElementById("xAxisMin");
   const xAxisMaxEl = document.getElementById("xAxisMax");
   const xAxisLabelModeEl = document.getElementById("xAxisLabelMode");
-  if(fixedScaleEl) fixedScaleEl.checked = true;
+  if(fixedScaleEl) fixedScaleEl.checked = !chartAxisPendingAutoLeft;
   if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
   if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
+  if(chartAxisPendingAutoRight){
+    educationRightAxisOverride = null;
+  }
   if(xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
   if(xAxisLabelModeEl) xAxisLabelModeEl.value = mode;
@@ -18669,13 +18706,22 @@ function saveChartAxisModal(){
   closeChartAxisModal();
   draw();
 }
+function markChartAxisManualEdit(){
+  if(chartAxisApplyingAutoDefaults) return;
+  chartAxisPendingAutoLeft = false;
+}
 function applyChartAxisAutoAndSave(){
+  chartAxisApplyingAutoDefaults = true;
   applyChartAxisAutoDefaultsToModal();
+  chartAxisApplyingAutoDefaults = false;
+  chartAxisPendingAutoLeft = true;
+  chartAxisPendingAutoRight = ((document.getElementById("graphType")?.value || "asset") === "education");
 }
 function resetChartAxesToAuto(options = {}){
   const persist = options.persist !== false;
   const redraw = options.redraw !== false;
   const defaults = computeChartAxisAutoDefaults();
+  educationRightAxisOverride = null;
   const fixedScaleEl = document.getElementById("fixedScale");
   const fixedScaleMinEl = document.getElementById("fixedScaleMin");
   const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
@@ -18738,6 +18784,7 @@ function setupChartAxisZoomInteractions(){
   let suppressClickUntil = 0;
   const AXIS_X_BAND = 30;
   const AXIS_Y_BAND = 34;
+  const AXIS_Y_RIGHT_BAND = 34;
   const MIN_DRAG_PX = 6;
   const getCanvasPoint = (e)=>{
     const rect = canvas.getBoundingClientRect();
@@ -18753,6 +18800,12 @@ function setupChartAxisZoomInteractions(){
     if(inXBand) return "x";
     const inYBand = pt.x >= Math.max(0, area.left - AXIS_Y_BAND) && pt.x <= area.left && pt.y >= area.top && pt.y <= area.bottom;
     if(inYBand) return "y";
+    const graphType = document.getElementById("graphType")?.value || "asset";
+    const y1Scale = chart?.scales?.y1;
+    const rightAxisLeft = y1Scale ? Math.min(Number(y1Scale.left), Number(area.right)) : NaN;
+    const rightAxisRight = y1Scale ? Math.max(Number(y1Scale.right), Number(area.right)) : NaN;
+    const inRightYBand = graphType === "education" && y1Scale && Number.isFinite(rightAxisLeft) && Number.isFinite(rightAxisRight) && pt.x >= rightAxisLeft && pt.x <= rightAxisRight && pt.y >= area.top && pt.y <= area.bottom;
+    if(inRightYBand) return "y1";
     return null;
   };
   const finishZoom = (shouldPersist)=>{
@@ -18787,6 +18840,24 @@ function setupChartAxisZoomInteractions(){
           chart.options.scales.y.min = Math.min(valueA, valueB);
           chart.options.scales.y.max = Math.max(valueA, valueB);
           changed = true;
+        }
+      }
+    }else if(state.axis === "y1"){
+      const y1Scale = chart.scales.y1;
+      if(y1Scale){
+        const minPx = Math.max(y1Scale.top, Math.min(y1Scale.bottom, Math.min(state.startPx, state.currentPx)));
+        const maxPx = Math.max(y1Scale.top, Math.min(y1Scale.bottom, Math.max(state.startPx, state.currentPx)));
+        if((maxPx - minPx) >= MIN_DRAG_PX){
+          const valueA = y1Scale.getValueForPixel(minPx);
+          const valueB = y1Scale.getValueForPixel(maxPx);
+          if(Number.isFinite(valueA) && Number.isFinite(valueB) && Math.abs(valueA - valueB) > 1e-9){
+            const nextMin = Math.min(valueA, valueB);
+            const nextMax = Math.max(valueA, valueB);
+            chart.options.scales.y1.min = nextMin;
+            chart.options.scales.y1.max = nextMax;
+            educationRightAxisOverride = {min:nextMin, max:nextMax};
+            changed = true;
+          }
         }
       }
     }
@@ -19324,6 +19395,11 @@ window.addEventListener("load", ()=>{
   document.getElementById("cancelChartAxisBtn")?.addEventListener("click", closeChartAxisModal);
   document.getElementById("saveChartAxisBtn")?.addEventListener("click", saveChartAxisModal);
   document.getElementById("chartAxisAutoBtn")?.addEventListener("click", applyChartAxisAutoAndSave);
+  ["chartAxisXMin","chartAxisXMax","chartAxisYMin","chartAxisYMax"].forEach(id=>{
+    const el = document.getElementById(id);
+    el?.addEventListener("input", markChartAxisManualEdit);
+    el?.addEventListener("change", markChartAxisManualEdit);
+  });
   function updateChartTooltipFromPointerEvent(e){
     if(!chart) return;
     const canvas = document.getElementById("chart");
