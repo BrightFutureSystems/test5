@@ -2734,7 +2734,7 @@ const EXPENSE_COLORS = {life:"#ef4444",rent:"#fb7185",homeMaint:"#a16207",insura
 const INVESTMENT_COLORS = ["#2563eb","#16a34a","#dc2626","#7c3aed","#d97706"];
 const CASHFLOW_TABLE_COLUMNS = [
   {label:"本人年齢", path:"ages.self", type:"int", stickyMeta:true},
-  {label:"配偶者年齢", path:"ages.spouse", type:"int"},
+  {label:"配偶者年齢", path:"ages.spouse", type:"int", metaRow:true},
   {label:"勤労収入合計", path:"income.work.total"},
   {label:"年金収入", path:"income.pension.total"},
   {label:"定期収入", path:"income.other.regular"},
