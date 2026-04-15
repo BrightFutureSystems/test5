@@ -19136,10 +19136,9 @@ function setupChartTouchInteractions(){
         }
       }
       const outerRangeY = Math.max(1e-9, gestureBounds.yMax - gestureBounds.yMin);
-      const symmetricYZoom = ["cashflow","incomeExpense"].includes(document.getElementById("graphType")?.value || "asset");
       let newMinY = touchState.startMinY;
       let newMaxY = touchState.startMaxY;
-      if(!symmetricYZoom && currentDy >= 10){
+      if(currentDy >= 10){
         const t1y = (yBottom - a.y) / yHeight;
         const t2y = (yBottom - b.y) / yHeight;
         const dtY = t2y - t1y;
