@@ -13247,7 +13247,7 @@ function buildCashflowChildColumns(rows){
   });
   return names.map(name=>({
     label:`${name}年齢`,
-    stickyMeta:true,
+    stickyMeta:false,
     mobileSticky:false,
     type:'int',
     valueGetter: row => {
