@@ -14182,6 +14182,7 @@ function buildMonteStaticSeries(cfg){
 }
 
 function simulate(cfg, random=false, opts={}){
+  const includeCashflowTable = opts.includeCashflowTable === true;
   const compact = !!opts.compact;
   const finalOnly = !!opts.finalOnly;
   const finalLifeIndex = Math.max(0, Number(opts.lifeIndex) || 0);
@@ -14389,9 +14390,11 @@ function simulate(cfg, random=false, opts={}){
         principalSeries[key].push(investments[idx]?.cost || 0);
       });
       for(let c=1;c<=dynamicCounts.dep;c++) depositSeries[c].push(deposits[c-1]?.amount || 0);
-      const annualRow = buildAnnualYearlyRow(cfg, age, yearIndex, {total:income, parts:incomeObj.parts}, expenseObj, socialObj, taxObj, depTotal, safeTotal, invTotal, liability, annualState, beginningTotal);
-      yearlyRows.push(annualRow);
-      calendarYearWindows.push(annualRow?.meta?.calendarWindow || null);
+      if(includeCashflowTable){
+        const annualRow = buildAnnualYearlyRow(cfg, age, yearIndex, {total:income, parts:incomeObj.parts}, expenseObj, socialObj, taxObj, depTotal, safeTotal, invTotal, liability, annualState, beginningTotal);
+        yearlyRows.push(annualRow);
+        calendarYearWindows.push(annualRow?.meta?.calendarWindow || null);
+      }
     }
   }
 
@@ -15102,7 +15105,6 @@ function draw(){
   });
 
   updateResultCards(currentCfg, currentSim);
-  renderCashflowTable(currentSim);
 
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
@@ -15195,7 +15197,6 @@ function runMonte(){
   });
   const currentSim = currentBaseSim;
   updateResultCards(currentCfg, currentSim);
-  renderCashflowTable(currentSim);
 
   const monteYAxisUnitSpec = getMainChartYAxisUnitSpec(yData);
   if(chart) chart.destroy();
@@ -17105,6 +17106,12 @@ document.getElementById("overflowMenuBtn")?.addEventListener("click", (e)=>{
 });
 function openCashflowModal(){
   const modal = document.getElementById("cashflowModal");
+  const scenario = scenarios[currentTab];
+  if(scenario){
+    const displayCfg = getScenarioFromDOM();
+    const sim = simulate(displayCfg, false, {includeCashflowTable:true});
+    renderCashflowTable(sim);
+  }
   modal?.classList.add("show");
   modal?.setAttribute("aria-hidden", "false");
   resetModalScrollPosition("cashflowModal");
