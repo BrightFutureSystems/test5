@@ -1339,6 +1339,8 @@
   .cashflow-table .cashflow-item-group{background:#f3f4f6;font-weight:700;}
   .cashflow-table .cashflow-sticky-row > th, .cashflow-table .cashflow-sticky-row > td{position:sticky;z-index:5;background:#f8fafc;}
   .cashflow-table .cashflow-sticky-row > th.cashflow-item-col{z-index:9;background:#f8fafc;}
+  .cashflow-table .cashflow-meta-row > th, .cashflow-table .cashflow-meta-row > td{background:#f8fafc;}
+  .cashflow-table .cashflow-meta-row > th.cashflow-item-col{background:#f8fafc;}
   .cashflow-table tr.cashflow-highlight-income > th, .cashflow-table tr.cashflow-highlight-income > td{background:#f0fdf4;}
   .cashflow-table tr.cashflow-highlight-expense > th, .cashflow-table tr.cashflow-highlight-expense > td{background:#fef2f2;}
   .cashflow-table tr.cashflow-highlight-tax > th, .cashflow-table tr.cashflow-highlight-tax > td{background:#fff7ed;}
@@ -13248,6 +13250,7 @@ function buildCashflowChildColumns(rows){
   return names.map(name=>({
     label:`${name}年齢`,
     stickyMeta:false,
+    metaRow:true,
     mobileSticky:false,
     type:'int',
     valueGetter: row => {
@@ -13308,7 +13311,7 @@ function renderCashflowTable(sim){
           : (col.className || ''));
       return `<td class="${cls}">${raw === '' || raw == null ? '' : formatCashflowDisplayValue(raw, col.type || 'money')}</td>`;
     }).join('');
-    const rowClass = [col.stickyMeta ? 'cashflow-sticky-row' : '', col.mobileSticky === false ? 'cashflow-sticky-mobile-off' : '', getCashflowRowHighlightClass(col.label)].filter(Boolean).join(' ');
+    const rowClass = [col.stickyMeta ? 'cashflow-sticky-row' : '', col.metaRow ? 'cashflow-meta-row' : '', col.mobileSticky === false ? 'cashflow-sticky-mobile-off' : '', getCashflowRowHighlightClass(col.label)].filter(Boolean).join(' ');
     return `<tr class="${rowClass}"><th class="cashflow-item-col">${escapeHtml(col.label)}</th>${cells}</tr>`;
   }).join('');
   if(note){
