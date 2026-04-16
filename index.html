@@ -573,7 +573,7 @@
     left:10px;
     right:10px;
     bottom:4px;
-    border-top:3px var(--overlay-line-style, solid) var(--overlay-line-color, #2563eb);
+    border-top:var(--overlay-line-width, 3px) var(--overlay-line-style, solid) var(--overlay-line-color, #2563eb);
     pointer-events:none;
     opacity:.95;
   }
@@ -3126,7 +3126,24 @@ function syncWorkspaceOverlayAfterScenarioMutation(removedScenarioId = ''){
   workspaceOverlaySettings = normalizeOverlayStylesMap(previous, currentTab);
   if(removedScenarioId && workspaceOverlaySettings[removedScenarioId]) delete workspaceOverlaySettings[removedScenarioId];
   workspaceOverlaySettings = normalizeOverlayStylesMap(workspaceOverlaySettings, currentTab);
-  if(workspaceOverlayModeOn && scenarios.length && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
+  if(workspaceOverlayModeOn && scenarios.length) currentTab = getLeftmostVisibleOverlayIndex();
+}
+function getSafeActiveScenarioIndex(preferredIndex = currentTab){
+  if(!scenarios.length) return -1;
+  const normalizedPreferred = Number.isFinite(preferredIndex) ? Math.max(0, Math.min(scenarios.length - 1, preferredIndex)) : 0;
+  if(!workspaceOverlayModeOn) return normalizedPreferred;
+  const leftmostVisible = getLeftmostVisibleOverlayIndex();
+  if(leftmostVisible < 0 || leftmostVisible >= scenarios.length) return normalizedPreferred;
+  return isScenarioIncludedInOverlayByIndex(normalizedPreferred) ? normalizedPreferred : leftmostVisible;
+}
+function enforceOverlaySafeActiveScenario(preferredIndex = currentTab, opts = {}){
+  const nextIndex = getSafeActiveScenarioIndex(preferredIndex);
+  currentTab = nextIndex;
+  if(opts && opts.syncInputs && currentTab >= 0 && scenarios[currentTab]){
+    setAllInputs(scenarios[currentTab].data);
+    updatePeriodDisplays();
+  }
+  return currentTab;
 }
 function updateOverlayFeatureUI(){
   const toggleEl = document.getElementById('overlayToggle');
@@ -8756,7 +8773,7 @@ function addTab(){
   }else if(!workspaceOverlayModeOn){
     currentTab = insertIndex;
   }
-  setAllInputs(scenarios[currentTab].data);
+  enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
   updateInputsVisibility();
   renderTabs();
 }
@@ -8770,7 +8787,7 @@ function duplicateTab(tabIndex = currentTab){
   scenarios.splice(tabIndex + 1, 0, nextScenario);
   syncWorkspaceOverlayAfterScenarioMutation();
   if(!workspaceOverlayModeOn) currentTab = tabIndex + 1;
-  setAllInputs(scenarios[currentTab].data);
+  enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
   updateInputsVisibility();
   renderTabs();
 }
@@ -8823,9 +8840,8 @@ function confirmDeleteCurrentTab(){
     persistState();
     return;
   }
-  currentTab = Math.min(deleteIndex, scenarios.length - 1);
-  setAllInputs(scenarios[currentTab].data);
-  updatePeriodDisplays();
+  currentTab = workspaceOverlayModeOn ? getLeftmostVisibleOverlayIndex() : Math.min(deleteIndex, scenarios.length - 1);
+  enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
   monteMode = false;
   updateInputsVisibility();
   renderTabs();
@@ -8838,8 +8854,7 @@ function switchTab(i){
   if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(i)) return;
   ensureScenarioSaved();
   currentTab = i;
-  setAllInputs(scenarios[i].data);
-  updatePeriodDisplays();
+  enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
   monteMode = false;
   updateInputsVisibility();
   renderTabs();
@@ -9343,8 +9358,9 @@ function renderTabs(){
     const style = overlayIncluded ? (workspaceOverlaySettings[s.id] || {}) : {};
     const lineColor = style.color || getDefaultOverlayColorByIndex(i);
     const lineStyle = normalizeOverlayLineStyle(style.lineStyle);
+    const lineWidth = normalizeOverlayLineWidth(style.lineWidth);
     const title = overlayLocked ? "重ね描き対象外です。設定で追加してください" : "";
-    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}" ${title ? `title="${escapeHtml(title)}" aria-disabled="true"` : ""} style="${overlayIncluded ? `--overlay-line-color:${escapeHtml(lineColor)};--overlay-line-style:${escapeHtml(lineStyle)};` : ""}">${escapeHtml(s.name)}</button>`;
+    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}" ${title ? `title="${escapeHtml(title)}" aria-disabled="true"` : ""} style="${overlayIncluded ? `--overlay-line-color:${escapeHtml(lineColor)};--overlay-line-style:${escapeHtml(lineStyle)};--overlay-line-width:${escapeHtml(String(lineWidth))}px;` : ""}">${escapeHtml(s.name)}</button>`;
   }).join("");
   el.querySelectorAll(".tab-btn").forEach(btn=>{
     const idx = +btn.dataset.tabIndex;
@@ -15770,7 +15786,7 @@ function draw(){
   const graphType = document.getElementById("graphType").value;
   const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
-  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible) : [];
+  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice().reverse() : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:TAB_COLORS[currentTab % TAB_COLORS.length], lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
 
   const currentDisplayCfg = getScenarioFromDOM();
@@ -15820,7 +15836,7 @@ function runMonte(){
   ensureScenarioSaved();
   const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
-  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible) : [];
+  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice().reverse() : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:TAB_COLORS[currentTab % TAB_COLORS.length], lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
   const currentDisplayCfg = getScenarioFromDOM();
   const currentBaseCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
