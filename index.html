@@ -18896,6 +18896,55 @@ document.addEventListener("input", (e)=>{
   if(shouldRefreshChildAllowanceSummaryForElement(el)) updateChildAllowanceSummary();
   updateLoanSummary();
 });
+const pendingDateMainInputCommitTimers = new Map();
+function clearPendingDateMainInputCommit(el){
+  if(!el) return;
+  const key = el.id || el;
+  const timer = pendingDateMainInputCommitTimers.get(key);
+  if(timer){ clearTimeout(timer); pendingDateMainInputCommitTimers.delete(key); }
+}
+function performDeferredDateMainInputCommit(el){
+  if(!(el instanceof HTMLInputElement) || el.type !== "date") return;
+  const id = el.id || "";
+  if(!(id === "baseDate" || id === "selfBirthDate" || id === "spouseBirthDate" || /^child\d+_birthDate$/.test(id))) return;
+  if(id === "baseDate") syncAllBirthDateDerivedFields({forceSchoolAuto:true});
+  else if(/^child\d+_birthDate$/.test(id)){
+    const m = id.match(/^child(\d+)_birthDate$/);
+    if(m) syncChildDerivedFields(Number(m[1]), {forceSchoolAuto:true});
+  }else{
+    syncPersonBirthDateFields();
+  }
+  if(id === "baseDate"){
+    const nextContext = {currentAge: currentAgeValue(), baseYear: currentBaseYearValue()};
+    refreshAllTimeDisplays(timeDisplayContext, nextContext);
+  }
+  if(["age","currentBaseYear","baseDate"].includes(id)){
+    const nextContext = {currentAge: currentAgeValue(), baseYear: currentBaseYearValue()};
+    refreshAllTimeDisplays(timeDisplayContext, nextContext);
+  }
+  if(["age","baseDate","selfBirthDate","self_retire_year","self_retire_month"].includes(id)){
+    syncSimpleModePeriodAutoAgesInDOM();
+  }
+  monteMode = false;
+  updatePeriodDisplays();
+  syncCurrentScenarioFromDOM(false);
+  if(shouldRefreshChildAllowanceSummaryForElement(el)) updateChildAllowanceSummary();
+  updateLoanSummary();
+  requestDraw();
+  persistState();
+  rememberMainInputSnapshot(el);
+}
+function scheduleDateMainInputCommit(el){
+  if(!(el instanceof HTMLInputElement) || el.type !== "date") return;
+  clearPendingDateMainInputCommit(el);
+  const key = el.id || el;
+  const timer = setTimeout(()=>{
+    pendingDateMainInputCommitTimers.delete(key);
+    if(document.activeElement === el) return;
+    performDeferredDateMainInputCommit(el);
+  }, 120);
+  pendingDateMainInputCommitTimers.set(key, timer);
+}
 function getMainInputSnapshotValue(el){
   if(!el) return "";
   if(el.type === "checkbox") return el.checked ? "1" : "0";
@@ -18916,7 +18965,10 @@ function commitMainInputChange(e){
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  if(el instanceof HTMLInputElement && el.type === "date" && e?.type === "focusout") return;
+  if(el instanceof HTMLInputElement && el.type === "date"){
+    scheduleDateMainInputCommit(el);
+    return;
+  }
   const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
   const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
   if((inSimplePanel && !inSimpleBasicInfo) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal")))) return;
