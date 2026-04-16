@@ -567,6 +567,37 @@
     border-bottom-color:#fff;
     box-shadow:0 1px 2px rgba(15,23,42,.10);
   }
+  .tab-btn.tab-dragging{
+    visibility:hidden;
+  }
+  .tab-btn.tab-drag-animating{
+    transition:transform .16s ease;
+  }
+  .tab-btn-drag-ghost{
+    position:fixed;
+    z-index:1400;
+    pointer-events:none;
+    margin:0;
+    opacity:.32;
+    background:#fff;
+    color:#020617;
+    border-color:#cbd5e1;
+    border-bottom-color:#fff;
+    box-shadow:0 8px 20px rgba(15,23,42,.18);
+  }
+  .tab-btn.tab-drop-before::before,
+  .tab-btn.tab-drop-after::after{
+    content:"";
+    position:absolute;
+    top:6px;
+    bottom:6px;
+    width:3px;
+    border-radius:999px;
+    background:#2563eb;
+    pointer-events:none;
+  }
+  .tab-btn.tab-drop-before::before{left:-2px;}
+  .tab-btn.tab-drop-after::after{right:-2px;}
   #addTabBtn{
     min-width:46px;
     padding-left:10px;
@@ -2258,8 +2289,8 @@
           <div class="chart-axis-section-title">X軸表示</div>
           <div class="chart-axis-radio-row">
             <label><input type="radio" name="chartAxisLabelMode" value="age"> 年齢（歳）</label>
-            <label><input type="radio" name="chartAxisLabelMode" value="calendar"> 西暦（年）</label>
-            <label><input type="radio" name="chartAxisLabelMode" value="both" checked> 両方</label>
+            <label><input type="radio" name="chartAxisLabelMode" value="calendar"> 西暦（省略年）</label>
+            <label><input type="radio" name="chartAxisLabelMode" value="both" checked> 年齢（歳）／西暦（省略年）</label>
           </div>
         </div>
       </div>
@@ -2817,7 +2848,12 @@ let chartAxisApplyingAutoDefaults = false;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
+let tabDragScenarioId = "";
+let tabDropScenarioId = "";
+let tabDropInsertAfter = false;
+let tabMouseDragState = null;
 let nextScenarioIdSeq = 1;
+let nextScenarioSerial = 1;
 const DEFAULT_OVERLAY_LINE_WIDTH = 2;
 const DEFAULT_OVERLAY_LINE_STYLE = "solid";
 let currentInputMode = "detail";
@@ -2905,6 +2941,21 @@ function setNormalSimCacheByData(data, cfg, sim){
   return entry;
 }
 function createScenarioId(){ return `cond_${nextScenarioIdSeq++}`; }
+function defaultScenarioName(serial){
+  const n = Number(serial);
+  return `条件${Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1}`;
+}
+function isDefaultScenarioName(name, serial){ return String(name || "") === defaultScenarioName(serial); }
+function createScenarioRecord(data = {}, serial = nextScenarioSerial){
+  const resolvedSerial = Number.isFinite(Number(serial)) && Number(serial) >= 1 ? Math.floor(Number(serial)) : 1;
+  return {
+    id: createScenarioId(),
+    serial: resolvedSerial,
+    name: defaultScenarioName(resolvedSerial),
+    data: deepClone(data || {}),
+    overlayStyles: undefined
+  };
+}
 function ensureScenarioIds(){
   let maxSeen = 0;
   (scenarios || []).forEach(s=>{
@@ -2914,6 +2965,32 @@ function ensureScenarioIds(){
     if(m) maxSeen = Math.max(maxSeen, Number(m[1]) || 0);
   });
   nextScenarioIdSeq = Math.max(nextScenarioIdSeq, maxSeen + 1);
+}
+function normalizeScenarioSerial(value, fallback){
+  const n = Number(value);
+  if(Number.isFinite(n) && n >= 1) return Math.floor(n);
+  const fb = Number(fallback);
+  return Number.isFinite(fb) && fb >= 1 ? Math.floor(fb) : 1;
+}
+function ensureScenarioMetadata(){
+  ensureScenarioIds();
+  let maxSerial = 0;
+  scenarios = (scenarios || []).map((s, i)=>{
+    const item = s && typeof s === "object" ? s : {data:{}};
+    const serial = normalizeScenarioSerial(item.serial, i + 1);
+    maxSerial = Math.max(maxSerial, serial);
+    const fallbackName = defaultScenarioName(serial);
+    const nextName = String(item.name || "").trim() || fallbackName;
+    return {
+      ...item,
+      id: item.id || createScenarioId(),
+      serial,
+      name: nextName,
+      data: item.data || {},
+      overlayStyles: item.overlayStyles ? JSON.parse(JSON.stringify(item.overlayStyles)) : item.overlayStyles
+    };
+  });
+  nextScenarioSerial = scenarios.length ? Math.max(Number(nextScenarioSerial) || 1, maxSerial + 1) : 1;
 }
 function getDefaultOverlayColorByIndex(idx){ return TAB_COLORS[idx % TAB_COLORS.length]; }
 function normalizeOverlayLineStyle(value){ return ["solid","dashed","dotted"].includes(value) ? value : DEFAULT_OVERLAY_LINE_STYLE; }
@@ -3336,21 +3413,8 @@ function getOrBuildMonteRunCache(scenario, cfg, base, monteSettingsOverride){
   return value;
 }
 
-function defaultScenarioName(index){ return `条件${index+1}`; }
-function isDefaultScenarioName(name, index){ return String(name || "") === defaultScenarioName(index); }
 function normalizeScenarioNames(){
-  scenarios = (scenarios || []).map((s, i)=>{
-    const item = s && typeof s === "object" ? s : {name: defaultScenarioName(i), data:{}};
-    const custom = item.custom === true || item.custom === "true";
-    return {
-      ...item,
-      id: item.id || '',
-      name: custom ? String(item.name || defaultScenarioName(i)) : defaultScenarioName(i),
-      custom,
-      data: item.data || {},
-      overlayStyles: item.overlayStyles ? JSON.parse(JSON.stringify(item.overlayStyles)) : item.overlayStyles
-    };
-  });
+  ensureScenarioMetadata();
 }
 function getDefaultBirthDateForAge(baseDateValue, targetAge){
   const baseYear = parseDateInput(baseDateValue)?.year || new Date().getFullYear();
@@ -8569,10 +8633,13 @@ function updateInputModeUI(){
 function addTab(){
   const hadNoScenarios = !scenarios.length;
   if(!hadNoScenarios) ensureScenarioSaved();
-  const baseData = getDefaultScenarioTemplate();
-  scenarios.push({id:createScenarioId(), name:defaultScenarioName(scenarios.length), custom:false, data:deepClone(baseData)});
   normalizeScenarioNames();
-  currentTab = scenarios.length - 1;
+  const baseData = getDefaultScenarioTemplate();
+  const insertIndex = hadNoScenarios ? 0 : Math.min(Math.max(currentTab + 1, 0), scenarios.length);
+  const nextScenario = createScenarioRecord(baseData, nextScenarioSerial);
+  nextScenarioSerial += 1;
+  scenarios.splice(insertIndex, 0, nextScenario);
+  currentTab = insertIndex;
   if(hadNoScenarios){
     currentInputMode = "simple";
     inputModeScrollPositions = {simple:0, detail:0};
@@ -8584,9 +8651,11 @@ function addTab(){
 function duplicateTab(tabIndex = currentTab){
   if(!scenarios.length || tabIndex < 0 || !scenarios[tabIndex]) return;
   ensureScenarioSaved();
-  const src = scenarios[tabIndex];
-  scenarios.splice(tabIndex + 1, 0, {id:createScenarioId(), name: defaultScenarioName(tabIndex + 1), custom:false, data: deepClone(src.data || {})});
   normalizeScenarioNames();
+  const src = scenarios[tabIndex];
+  const nextScenario = createScenarioRecord(src.data || {}, nextScenarioSerial);
+  nextScenarioSerial += 1;
+  scenarios.splice(tabIndex + 1, 0, nextScenario);
   currentTab = tabIndex + 1;
   setAllInputs(scenarios[currentTab].data);
   updateInputsVisibility();
@@ -8598,8 +8667,6 @@ function renameTab(tabIndex = currentTab){
   const nextName = prompt("条件名を入力してください", current.name);
   if(nextName && nextName.trim()){
     current.name = nextName.trim();
-    current.custom = current.name !== defaultScenarioName(tabIndex);
-    normalizeScenarioNames();
     renderTabs();
     persistState();
   }
@@ -8632,6 +8699,7 @@ function confirmDeleteCurrentTab(){
   cleanupOverlayStylesForAllScenarios();
   normalizeScenarioNames();
   if(!scenarios.length){
+    nextScenarioSerial = 1;
     currentTab = -1;
     monteMode = false;
     updateInputsVisibility();
@@ -8640,7 +8708,7 @@ function confirmDeleteCurrentTab(){
     persistState();
     return;
   }
-  currentTab = Math.max(0, deleteIndex - 1);
+  currentTab = Math.min(deleteIndex, scenarios.length - 1);
   setAllInputs(scenarios[currentTab].data);
   updatePeriodDisplays();
   monteMode = false;
@@ -8724,27 +8792,284 @@ function switchGraphToAssetFromTabClick(){
   setOverlayModeEnabled(false);
   monteMode = false;
 }
+function clearTabDropIndicators(){
+  document.querySelectorAll('#tabButtons .tab-btn.tab-drop-before, #tabButtons .tab-btn.tab-drop-after').forEach(btn=>{
+    btn.classList.remove('tab-drop-before','tab-drop-after');
+  });
+}
+function clearTabTransforms(){
+  document.querySelectorAll('#tabButtons .tab-btn').forEach(btn=>{
+    btn.classList.remove('tab-drag-animating');
+    btn.style.transform = "";
+  });
+}
+function destroyTabDragGhost(){
+  if(tabMouseDragState?.ghostEl){
+    try{ tabMouseDragState.ghostEl.remove(); }catch(_err){}
+  }
+}
+function clearTabDragState(){
+  tabDragScenarioId = "";
+  tabDropScenarioId = "";
+  tabDropInsertAfter = false;
+  destroyTabDragGhost();
+  clearTabTransforms();
+  document.querySelectorAll('#tabButtons .tab-btn.tab-dragging').forEach(btn=>{
+    btn.classList.remove('tab-dragging');
+  });
+  clearTabDropIndicators();
+  tabMouseDragState = null;
+}
+function updateTabDropIndicator(_targetBtn, _insertAfter){
+  clearTabDropIndicators();
+}
+function getScenarioIndexById(id){
+  return (scenarios || []).findIndex(s => s?.id === id);
+}
+function reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter){
+  if(!dragScenarioId || !targetScenarioId || dragScenarioId === targetScenarioId) return false;
+  const fromIndex = getScenarioIndexById(dragScenarioId);
+  const targetIndex = getScenarioIndexById(targetScenarioId);
+  if(fromIndex < 0 || targetIndex < 0) return false;
+  const activeScenarioId = scenarios[currentTab]?.id || "";
+  const [movedScenario] = scenarios.splice(fromIndex, 1);
+  let insertIndex = targetIndex;
+  if(fromIndex < targetIndex) insertIndex -= 1;
+  if(insertAfter) insertIndex += 1;
+  insertIndex = Math.max(0, Math.min(insertIndex, scenarios.length));
+  scenarios.splice(insertIndex, 0, movedScenario);
+  currentTab = Math.max(0, scenarios.findIndex(s => s?.id === activeScenarioId));
+  renderTabs();
+  if(document.getElementById('overlaySettingsModal')?.classList.contains('show')){
+    rebuildOverlaySettingsTable();
+  }
+  requestDraw({immediate:true});
+  persistState();
+  return true;
+}
+function buildTabDragLayout(sourceBtn){
+  const tabButtonsEl = document.getElementById("tabButtons");
+  if(!tabButtonsEl || !sourceBtn) return null;
+  const btns = [...tabButtonsEl.querySelectorAll('.tab-btn')];
+  if(btns.length <= 1) return null;
+  const sourceRect = sourceBtn.getBoundingClientRect();
+  const siblings = btns.map(btn=>{
+    const rect = btn.getBoundingClientRect();
+    return {
+      btn,
+      id: String(btn.dataset.scenarioId || ""),
+      rect,
+      width: rect.width,
+      center: rect.left + rect.width / 2
+    };
+  });
+  const firstRect = siblings[0]?.rect;
+  const lastRect = siblings[siblings.length - 1]?.rect;
+  if(!firstRect || !lastRect) return null;
+  const containerStyle = getComputedStyle(tabButtonsEl);
+  const gapPx = parseFloat(containerStyle.columnGap || containerStyle.gap || "0") || 0;
+  return {
+    containerEl: tabButtonsEl,
+    buttons: siblings,
+    sourceRect,
+    minLeft: firstRect.left,
+    maxLeft: Math.max(firstRect.left, lastRect.right - sourceRect.width),
+    fixedTop: sourceRect.top,
+    width: sourceRect.width,
+    height: sourceRect.height,
+    gapPx
+  };
+}
+function createTabDragGhost(sourceBtn, rect){
+  const ghost = sourceBtn.cloneNode(true);
+  ghost.classList.add('tab-btn-drag-ghost');
+  ghost.classList.remove('active','tab-dragging','tab-drop-before','tab-drop-after','tab-drag-animating');
+  ghost.classList.add('active');
+  ghost.style.left = `${rect.left}px`;
+  ghost.style.top = `${rect.top}px`;
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.height = `${rect.height}px`;
+  document.body.appendChild(ghost);
+  return ghost;
+}
+function getProjectedTabOrder(layout, dragScenarioId, insertIndex){
+  const ids = layout.buttons.map(item=>item.id);
+  const fromIndex = ids.indexOf(dragScenarioId);
+  if(fromIndex < 0) return ids;
+  const nextIds = ids.slice();
+  nextIds.splice(fromIndex, 1);
+  const safeIndex = Math.max(0, Math.min(insertIndex, nextIds.length));
+  nextIds.splice(safeIndex, 0, dragScenarioId);
+  return nextIds;
+}
+function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
+  if(!layout) return;
+  const projectedIds = getProjectedTabOrder(layout, dragScenarioId, insertIndex);
+  const baseById = new Map(layout.buttons.map(item=>[item.id, item]));
+  const orderedRects = projectedIds.map(id=>baseById.get(id)).filter(Boolean);
+  let nextLeft = layout.buttons[0]?.rect.left || 0;
+  const projectedLeftById = new Map();
+  orderedRects.forEach((item, index)=>{
+    projectedLeftById.set(item.id, nextLeft);
+    nextLeft += item.rect.width;
+    if(index < orderedRects.length - 1) nextLeft += (layout.gapPx || 0);
+  });
+  clearTabDropIndicators();
+  layout.buttons.forEach(item=>{
+    item.btn.classList.add('tab-drag-animating');
+    if(item.id === dragScenarioId){
+      item.btn.style.transform = '';
+      return;
+    }
+    const targetLeft = projectedLeftById.get(item.id);
+    const deltaX = typeof targetLeft === 'number' ? (targetLeft - item.rect.left) : 0;
+    item.btn.style.transform = deltaX ? `translateX(${deltaX}px)` : '';
+  });
+}
+function updateTabMouseDrag(clientX, clientY){
+  const state = tabMouseDragState;
+  if(!state || !state.layout) return;
+  const layout = state.layout;
+  if(!state.started){
+    const dx = clientX - state.startClientX;
+    const dy = clientY - state.startClientY;
+    if(Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+    state.started = true;
+    tabDragScenarioId = state.dragScenarioId;
+    state.sourceBtn.classList.add('tab-dragging');
+    state.ghostEl = createTabDragGhost(state.sourceBtn, layout.sourceRect);
+    closeTabContextMenu();
+    closeOverflowMenu();
+    state.suppressClickOnce = true;
+  }
+  const rawLeft = clientX - state.pointerOffsetX;
+  const ghostLeft = Math.max(layout.minLeft, Math.min(layout.maxLeft, rawLeft));
+  state.currentLeft = ghostLeft;
+  if(state.ghostEl){
+    state.ghostEl.style.left = `${ghostLeft}px`;
+    state.ghostEl.style.top = `${layout.fixedTop}px`;
+  }
+  const others = layout.buttons.filter(item=>item.id !== state.dragScenarioId);
+  const candidateLefts = [];
+  let nextSlotLeft = layout.buttons[0]?.rect.left || ghostLeft;
+  for(let i=0;i<=others.length;i+=1){
+    candidateLefts.push(nextSlotLeft);
+    if(i < others.length){
+      nextSlotLeft += others[i].rect.width;
+      if(i < others.length - 1 || i === others.length - 1) nextSlotLeft += (layout.gapPx || 0);
+    }
+  }
+  let insertIndex = 0;
+  let bestDistance = Infinity;
+  for(let i=0;i<candidateLefts.length;i+=1){
+    const distance = Math.abs(ghostLeft - candidateLefts[i]);
+    if(distance < bestDistance){
+      bestDistance = distance;
+      insertIndex = i;
+    }
+  }
+  if(insertIndex <= 0){
+    state.targetScenarioId = layout.buttons[0]?.id || "";
+    state.insertAfter = false;
+  }else if(insertIndex >= others.length){
+    state.targetScenarioId = others[others.length - 1]?.id || "";
+    state.insertAfter = true;
+  }else{
+    state.targetScenarioId = others[insertIndex]?.id || "";
+    state.insertAfter = false;
+  }
+  tabDropScenarioId = state.targetScenarioId;
+  tabDropInsertAfter = state.insertAfter;
+  applyTabDragVisualOrder(layout, state.dragScenarioId, insertIndex);
+}
+function handleTabMouseMove(e){
+  if(!tabMouseDragState) return;
+  if(e.buttons === 0){
+    finishTabMouseDrag(true);
+    return;
+  }
+  e.preventDefault();
+  updateTabMouseDrag(e.clientX, e.clientY);
+}
+function finishTabMouseDrag(commit){
+  document.removeEventListener('mousemove', handleTabMouseMove);
+  const state = tabMouseDragState;
+  if(!state) return;
+  const shouldCommit = !!(commit && state.started && state.targetScenarioId);
+  if(state.started && state.sourceBtn) state.sourceBtn.__suppressClickAfterDrag = true;
+  const dragScenarioId = state.dragScenarioId;
+  const targetScenarioId = state.targetScenarioId;
+  const insertAfter = state.insertAfter;
+  clearTabDragState();
+  if(shouldCommit){
+    reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter);
+  }
+}
+function handleTabMouseUp(){
+  finishTabMouseDrag(true);
+}
 function renderTabs(){
-  ensureScenarioIds();
-  normalizeScenarioNames();
+  ensureScenarioMetadata();
   const el = document.getElementById("tabButtons");
   el.innerHTML = scenarios.map((s,i)=>{
     const cls = i===currentTab ? "tab-btn active" : "tab-btn";
-    return `<button type="button" class="${cls}" data-tab-index="${i}">${escapeHtml(s.name)}</button>`;
+    const draggingClass = s?.id && s.id === tabDragScenarioId ? " tab-dragging" : "";
+    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}">${escapeHtml(s.name)}</button>`;
   }).join("");
   el.querySelectorAll(".tab-btn").forEach(btn=>{
     const idx = +btn.dataset.tabIndex;
+    const scenarioId = String(btn.dataset.scenarioId || "");
     btn.style.userSelect = "none";
     btn.style.webkitUserSelect = "none";
     btn.style.webkitTouchCallout = "none";
     btn.addEventListener("selectstart", e=>e.preventDefault());
-    btn.addEventListener("dragstart", e=>e.preventDefault());
     let pressTimer = null;
     let longPressed = false;
+    let suppressClickOnce = false;
     const clearPressTimer = ()=>{
       if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
     };
+    btn.addEventListener("dragstart", (e)=>{
+      e.preventDefault();
+    });
+    btn.addEventListener("mousedown", (e)=>{
+      if(e.button !== 0) return;
+      if(!scenarioId || scenarios.length <= 1) return;
+      if(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return;
+      if(e.target.closest('input,select,textarea') && e.target !== btn) return;
+      const layout = buildTabDragLayout(btn);
+      if(!layout) return;
+      tabMouseDragState = {
+        dragScenarioId: scenarioId,
+        sourceBtn: btn,
+        layout,
+        started: false,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        pointerOffsetX: e.clientX - layout.sourceRect.left,
+        targetScenarioId: "",
+        insertAfter: false,
+        currentLeft: layout.sourceRect.left,
+        ghostEl: null
+      };
+      document.addEventListener('mousemove', handleTabMouseMove);
+      document.addEventListener('mouseup', handleTabMouseUp, {once:true});
+    });
     btn.addEventListener("click", (e)=>{
+      if(btn.__suppressClickAfterDrag){
+        btn.__suppressClickAfterDrag = false;
+        e.preventDefault();
+        return;
+      }
+      if(tabMouseDragState?.started){
+        e.preventDefault();
+        return;
+      }
+      if(suppressClickOnce){
+        suppressClickOnce = false;
+        e.preventDefault();
+        return;
+      }
       if(longPressed){
         longPressed = false;
         e.preventDefault();
@@ -8771,6 +9096,8 @@ function renderTabs(){
     });
     btn.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
+      clearPressTimer();
+      longPressed = false;
       openTabContextMenu(idx, e.clientX, e.clientY);
     });
     btn.addEventListener("touchstart", (e)=>{
@@ -14394,10 +14721,20 @@ function simulate(cfg, random=false, opts={}){
         principalSeries[key].push(investments[idx]?.cost || 0);
       });
       for(let c=1;c<=dynamicCounts.dep;c++) depositSeries[c].push(deposits[c-1]?.amount || 0);
+      calendarYearWindows.push((()=>{
+        const win = getCalendarYearWindow(cfg, yearIndex);
+        return win ? {
+          year: win.labelYear,
+          start: formatDatePartsYmd(win.startParts),
+          end: formatDatePartsYmd(addDaysToParts(win.endExclusiveParts, -1)),
+          dayCount: win.dayCount,
+          daysInCalendarYear: win.daysInCalendarYear,
+          yearFraction: win.yearFraction
+        } : null;
+      })());
       if(includeCashflowTable){
         const annualRow = buildAnnualYearlyRow(cfg, age, yearIndex, {total:income, parts:incomeObj.parts}, expenseObj, socialObj, taxObj, depTotal, safeTotal, invTotal, liability, annualState, beginningTotal);
         yearlyRows.push(annualRow);
-        calendarYearWindows.push(annualRow?.meta?.calendarWindow || null);
       }
     }
   }
@@ -14912,8 +15249,14 @@ function getXAxisLabelMode(){
 }
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
-  if(mode === "calendar") return "西暦（年）";
-  return "年齢（歳）／西暦（年）";
+  if(mode === "calendar") return "西暦（省略年）";
+  return "年齢（歳）／西暦（省略年）";
+}
+function formatXAxisCalendarYearShort(year){
+  const y = Math.round(Number(year) || 0);
+  if(!Number.isFinite(y)) return '';
+  if(y < 2100) return String(((y % 100) + 100) % 100).padStart(2, '0');
+  return String(y - 2000);
 }
 function getCalendarWindowTooltipTitle(sim, xValue){
   const mode = getXAxisLabelMode();
@@ -14931,10 +15274,10 @@ function getCalendarWindowTickLabel(sim, xValue){
   const target = Number(xValue);
   if(!Number.isFinite(target)) return `${xValue}`;
   const win = getCalendarWindowForXAxisValue(sim, target);
-  if(!win) return mode === "calendar" ? `${target}` : `${target}`;
+  const calendarShort = win ? formatXAxisCalendarYearShort(win.year) : '';
   if(mode === "age") return `${target}`;
-  if(mode === "calendar") return `${win.year}`;
-  return [`${target}`, `${win.year}`];
+  if(mode === "calendar") return calendarShort || `${target}`;
+  return calendarShort ? [`${target}`, calendarShort] : `${target}`;
 }
 
 function shouldHideEdgeTick(index, ticks){
@@ -15267,6 +15610,7 @@ function getSaveData(){
   return {
     scenarios,
     currentTab,
+    nextScenarioSerial,
     currentInputMode: normalizeInputMode(currentInputMode),
     inputModeScrollPositions: {...getInputModeScrollStore()}
   };
@@ -15311,7 +15655,8 @@ function loadFromURL(){
     const data = decodeData(d);
     scenarios = data.scenarios || [];
     normalizeScenarioNames();
-    currentTab = Number.isInteger(data.currentTab) ? data.currentTab : (scenarios.length ? 0 : -1);
+    nextScenarioSerial = Number.isFinite(Number(data.nextScenarioSerial)) ? Math.max(1, Math.floor(Number(data.nextScenarioSerial))) : nextScenarioSerial;
+    currentTab = Number.isInteger(data.currentTab) ? Math.max(-1, Math.min(data.currentTab, scenarios.length - 1)) : (scenarios.length ? 0 : -1);
     currentInputMode = normalizeInputMode(data.currentInputMode);
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
     cleanupOverlayStylesForAllScenarios();
@@ -15332,7 +15677,8 @@ function loadFromLocal(){
     const data = JSON.parse(raw);
     scenarios = data.scenarios || [];
     normalizeScenarioNames();
-    currentTab = Number.isInteger(data.currentTab) ? data.currentTab : (scenarios.length ? 0 : -1);
+    nextScenarioSerial = Number.isFinite(Number(data.nextScenarioSerial)) ? Math.max(1, Math.floor(Number(data.nextScenarioSerial))) : nextScenarioSerial;
+    currentTab = Number.isInteger(data.currentTab) ? Math.max(-1, Math.min(data.currentTab, scenarios.length - 1)) : (scenarios.length ? 0 : -1);
     currentInputMode = normalizeInputMode(data.currentInputMode);
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
     cleanupOverlayStylesForAllScenarios();
@@ -17194,6 +17540,12 @@ document.getElementById("tabMenuDeleteBtn").addEventListener("click", ()=>{
   const idx = +(document.getElementById("tabContextMenu").dataset.tabIndex || currentTab);
   closeTabContextMenu();
   openDeleteTabModal(idx);
+});
+document.addEventListener("mouseup", ()=>{
+  document.removeEventListener('mousemove', handleTabMouseMove);
+});
+window.addEventListener("blur", ()=>{
+  if(tabMouseDragState) finishTabMouseDrag(false);
 });
 document.getElementById("cancelDeleteTabBtn").addEventListener("click", ()=>{
   closeDeleteTabModal();
