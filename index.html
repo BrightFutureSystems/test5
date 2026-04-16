@@ -3198,40 +3198,76 @@ function updateOverlaySettingsNameColumnWidth(){
 }
 function openDetailedOverlayColorPicker(colorEl){
   if(!(colorEl instanceof HTMLInputElement)) return;
+  const normalized = normalizeColorHex(colorEl.value) || '#2563eb';
+  const syncValue = (nextValue)=>{
+    const next = normalizeColorHex(nextValue) || normalized;
+    colorEl.value = next;
+    colorEl.dispatchEvent(new Event('input', {bubbles:true}));
+    colorEl.dispatchEvent(new Event('change', {bubbles:true}));
+  };
   if(typeof colorEl.showPicker === 'function'){
     try{
+      colorEl.value = normalized;
       colorEl.showPicker();
       return;
     }catch(_err){}
   }
   const temp = document.createElement('input');
   temp.type = 'color';
-  temp.value = colorEl.value || '#2563eb';
-  temp.setAttribute('aria-hidden', 'true');
+  temp.value = normalized;
+  temp.setAttribute('aria-label', '色を選択');
   temp.tabIndex = -1;
   temp.style.position = 'fixed';
   temp.style.left = '50%';
   temp.style.top = '50%';
   temp.style.transform = 'translate(-50%, -50%)';
-  temp.style.width = '48px';
-  temp.style.height = '48px';
-  temp.style.opacity = '0.01';
+  temp.style.width = '56px';
+  temp.style.height = '56px';
+  temp.style.opacity = '0.001';
   temp.style.pointerEvents = 'auto';
-  temp.style.zIndex = '99999';
+  temp.style.zIndex = '2147483647';
   temp.style.padding = '0';
+  temp.style.margin = '0';
   temp.style.border = '0';
-  const cleanup = ()=>{ try{ temp.remove(); }catch(_err){} };
-  temp.addEventListener('input', ()=>{
-    colorEl.value = temp.value;
-    colorEl.dispatchEvent(new Event('input', {bubbles:true}));
-    colorEl.dispatchEvent(new Event('change', {bubbles:true}));
-  });
-  temp.addEventListener('change', cleanup, {once:true});
-  temp.addEventListener('blur', ()=>window.setTimeout(cleanup, 120), {once:true});
+  temp.style.background = 'transparent';
+  temp.style.appearance = 'none';
+  temp.style.webkitAppearance = 'none';
+  let cleaned = false;
+  const cleanup = ()=>{
+    if(cleaned) return;
+    cleaned = true;
+    try{ temp.remove(); }catch(_err){}
+  };
+  temp.addEventListener('input', ()=>syncValue(temp.value));
+  temp.addEventListener('change', ()=>{
+    syncValue(temp.value);
+    cleanup();
+  }, {once:true});
+  temp.addEventListener('blur', ()=>window.setTimeout(cleanup, 200), {once:true});
   document.body.appendChild(temp);
-  try{ temp.focus({preventScroll:true}); }catch(_err){}
-  try{ temp.click(); }catch(_err){}
-  window.setTimeout(cleanup, 3000);
+  const triggerPicker = ()=>{
+    try{ temp.focus({preventScroll:true}); }catch(_err){}
+    if(typeof temp.showPicker === 'function'){
+      try{
+        temp.showPicker();
+        return true;
+      }catch(_err){}
+    }
+    try{
+      temp.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true, view:window}));
+      return true;
+    }catch(_err){}
+    try{
+      temp.click();
+      return true;
+    }catch(_err){}
+    return false;
+  };
+  const opened = triggerPicker();
+  if(!opened){
+    window.requestAnimationFrame(()=>{ if(!cleaned) triggerPicker(); });
+  }
+  window.setTimeout(cleanup, 4000);
 }
 function applyOverlayStyleToDatasets(datasets, style, graphType){
   const color = style?.color || '#2563eb';
@@ -18313,7 +18349,7 @@ document.getElementById("overlayMenuBtn")?.addEventListener("click", (e)=>{
 });
 document.getElementById("cancelOverlaySettingsBtn")?.addEventListener("click", closeOverlaySettingsModal);
 document.getElementById("saveOverlaySettingsBtn")?.addEventListener("click", saveOverlaySettingsModal);
-document.getElementById("overlaySettingsBody")?.addEventListener("click", (e)=>{
+function handleOverlaySettingsColorInteraction(e){
   const row = e.target?.closest?.('tr[data-scenario-id]');
   if(!row) return;
   if(e.target?.matches?.('[data-overlay-field="colorButton"]')){
@@ -18337,10 +18373,20 @@ document.getElementById("overlaySettingsBody")?.addEventListener("click", (e)=>{
   }
   if(e.target?.matches?.('[data-overlay-field="colorDetail"]')){
     e.preventDefault();
+    e.stopPropagation();
     openDetailedOverlayColorPicker(row.querySelector('[data-overlay-field="color"]'));
     return;
   }
+}
+document.getElementById("overlaySettingsBody")?.addEventListener("click", handleOverlaySettingsColorInteraction);
+document.getElementById("overlaySettingsBody")?.addEventListener("pointerup", (e)=>{
+  if(!e.target?.matches?.('[data-overlay-field="colorDetail"]')) return;
+  handleOverlaySettingsColorInteraction(e);
 });
+document.getElementById("overlaySettingsBody")?.addEventListener("touchend", (e)=>{
+  if(!e.target?.matches?.('[data-overlay-field="colorDetail"]')) return;
+  handleOverlaySettingsColorInteraction(e);
+}, {passive:false});
 document.getElementById("overlaySettingsBody")?.addEventListener("input", (e)=>{
   const row = e.target?.closest?.('tr[data-scenario-id]');
   if(!row) return;
