@@ -18690,7 +18690,13 @@ document.addEventListener("change", (e)=>{
     if(Number.isFinite(nextAge)) nextData.age = nextAge;
     if(Number.isFinite(nextSpAge)) nextData.spouseAge = nextSpAge;
     applyBaseDateDefaultFollow(prevData, nextData);
-    setAllInputs(nextData);
+    const snapshotEl = document.getElementById("baseDate");
+    if(snapshotEl) snapshotEl.value = String(nextData.baseDate || snapshotEl.value || "");
+    syncAllBirthDateDerivedFields({forceSchoolAuto:true});
+    const nextContext = {currentAge: currentAgeValue(), baseYear: currentBaseYearValue()};
+    refreshAllTimeDisplays(timeDisplayContext, nextContext);
+    updatePeriodDisplays();
+    updateLoanSummary();
     rememberMainInputSnapshot(el);
     if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) syncCurrentScenarioFromDOM(false);
     monteMode = false;
@@ -18849,6 +18855,7 @@ document.addEventListener("input", (e)=>{
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
+  if(el instanceof HTMLInputElement && el.type === "date") return;
   const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
   const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
   if((inSimplePanel && !inSimpleBasicInfo) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#insuranceAssistModal")))) return;
@@ -18909,6 +18916,7 @@ function commitMainInputChange(e){
   const el = e.target;
   if(!(el.matches("input") || el.matches("select"))) return;
   if(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
+  if(el instanceof HTMLInputElement && el.type === "date" && e?.type === "focusout") return;
   const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
   const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
   if((inSimplePanel && !inSimpleBasicInfo) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal")))) return;
