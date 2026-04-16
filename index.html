@@ -2852,6 +2852,8 @@ let tabDragScenarioId = "";
 let tabDropScenarioId = "";
 let tabDropInsertAfter = false;
 let tabMouseDragState = null;
+let tabTouchDragPending = false;
+let tabDragAutoScrollFrame = 0;
 const TAB_TOUCH_DRAG_ARM_MS = 180;
 const TAB_TOUCH_CONTEXT_MENU_MS = 550;
 let nextScenarioIdSeq = 1;
@@ -8810,10 +8812,71 @@ function destroyTabDragGhost(){
     try{ tabMouseDragState.ghostEl.remove(); }catch(_err){}
   }
 }
+function stopTabDragAutoScroll(){
+  if(tabDragAutoScrollFrame){
+    cancelAnimationFrame(tabDragAutoScrollFrame);
+    tabDragAutoScrollFrame = 0;
+  }
+}
+function scheduleTabDragAutoScroll(){
+  if(tabDragAutoScrollFrame) return;
+  tabDragAutoScrollFrame = requestAnimationFrame(stepTabDragAutoScroll);
+}
+function updateTabDragAutoScroll(clientX){
+  const state = tabMouseDragState;
+  if(!state?.started){
+    stopTabDragAutoScroll();
+    return;
+  }
+  const scroller = document.getElementById('tabScroller');
+  if(!scroller) return;
+  const rect = scroller.getBoundingClientRect();
+  const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+  if(maxScroll <= 0){
+    state.autoScrollVelocity = 0;
+    stopTabDragAutoScroll();
+    return;
+  }
+  const edgeZone = Math.max(28, Math.min(56, rect.width * 0.16));
+  let velocity = 0;
+  if(clientX < rect.left + edgeZone && scroller.scrollLeft > 0){
+    const ratio = Math.max(0, Math.min(1, (rect.left + edgeZone - clientX) / edgeZone));
+    velocity = -Math.max(6, 20 * ratio);
+  }else if(clientX > rect.right - edgeZone && scroller.scrollLeft < maxScroll){
+    const ratio = Math.max(0, Math.min(1, (clientX - (rect.right - edgeZone)) / edgeZone));
+    velocity = Math.max(6, 20 * ratio);
+  }
+  state.autoScrollVelocity = velocity;
+  if(velocity){
+    scheduleTabDragAutoScroll();
+  }else{
+    stopTabDragAutoScroll();
+  }
+}
+function stepTabDragAutoScroll(){
+  tabDragAutoScrollFrame = 0;
+  const state = tabMouseDragState;
+  if(!state?.started || !state.autoScrollVelocity) return;
+  const scroller = document.getElementById('tabScroller');
+  if(!scroller) return;
+  const prevScrollLeft = scroller.scrollLeft;
+  const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+  const nextScrollLeft = Math.max(0, Math.min(maxScroll, prevScrollLeft + state.autoScrollVelocity));
+  scroller.scrollLeft = nextScrollLeft;
+  if(Math.abs(nextScrollLeft - prevScrollLeft) > 0.1){
+    state.layout = buildTabDragLayout(state.sourceBtn) || state.layout;
+    updateTabMouseDrag(state.lastClientX, state.lastClientY, true);
+  }
+  if(tabMouseDragState?.started && tabMouseDragState?.autoScrollVelocity){
+    scheduleTabDragAutoScroll();
+  }
+}
 function clearTabDragState(){
   tabDragScenarioId = "";
   tabDropScenarioId = "";
   tabDropInsertAfter = false;
+  tabTouchDragPending = false;
+  stopTabDragAutoScroll();
   destroyTabDragGhost();
   clearTabTransforms();
   document.querySelectorAll('#tabButtons .tab-btn.tab-dragging').forEach(btn=>{
@@ -8928,7 +8991,7 @@ function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
     item.btn.style.transform = deltaX ? `translateX(${deltaX}px)` : '';
   });
 }
-function updateTabMouseDrag(clientX, clientY){
+function updateTabMouseDrag(clientX, clientY, fromAutoScroll = false){
   const state = tabMouseDragState;
   if(!state || !state.layout) return;
   const layout = state.layout;
@@ -8944,6 +9007,8 @@ function updateTabMouseDrag(clientX, clientY){
     closeOverflowMenu();
     state.suppressClickOnce = true;
   }
+  state.lastClientX = clientX;
+  state.lastClientY = clientY;
   const rawLeft = clientX - state.pointerOffsetX;
   const ghostLeft = Math.max(layout.minLeft, Math.min(layout.maxLeft, rawLeft));
   state.currentLeft = ghostLeft;
@@ -8983,6 +9048,9 @@ function updateTabMouseDrag(clientX, clientY){
   tabDropScenarioId = state.targetScenarioId;
   tabDropInsertAfter = state.insertAfter;
   applyTabDragVisualOrder(layout, state.dragScenarioId, insertIndex);
+  if(!fromAutoScroll){
+    updateTabDragAutoScroll(clientX);
+  }
 }
 function createTabDragStateFromButton(btn, scenarioId, clientX, clientY){
   if(!btn || !scenarioId || scenarios.length <= 1) return null;
@@ -8999,6 +9067,9 @@ function createTabDragStateFromButton(btn, scenarioId, clientX, clientY){
     targetScenarioId: "",
     insertAfter: false,
     currentLeft: layout.sourceRect.left,
+    lastClientX: clientX,
+    lastClientY: clientY,
+    autoScrollVelocity: 0,
     ghostEl: null,
     touchMode: false,
     touchDragArmed: false,
@@ -9011,6 +9082,7 @@ function createTabDragStateFromButton(btn, scenarioId, clientX, clientY){
 }
 function clearTabTouchTimers(state){
   if(!state) return;
+  tabTouchDragPending = false;
   if(state.pressTimer){
     clearTimeout(state.pressTimer);
     state.pressTimer = null;
@@ -9054,8 +9126,10 @@ function handleTabTouchMove(e){
       return;
     }
   }
-  if(state.started){
+  if(state.touchDragArmed || state.started){
     e.preventDefault();
+  }
+  if(state.started){
     updateTabMouseDrag(touch.clientX, touch.clientY);
   }
 }
@@ -9133,6 +9207,7 @@ function renderTabs(){
       if(e.target.closest('input,select,textarea') && e.target !== btn) return;
       tabMouseDragState = createTabDragStateFromButton(btn, scenarioId, e.clientX, e.clientY);
       if(!tabMouseDragState) return;
+      tabTouchDragPending = false;
       document.addEventListener('mousemove', handleTabMouseMove);
       document.addEventListener('mouseup', handleTabMouseUp, {once:true});
     });
@@ -9190,6 +9265,7 @@ function renderTabs(){
       if(!dragState) return;
       dragState.touchMode = true;
       dragState.touchIdentifier = touch.identifier;
+      tabTouchDragPending = true;
       dragState.pressTimer = setTimeout(()=>{
         if(tabMouseDragState === dragState) dragState.touchDragArmed = true;
       }, TAB_TOUCH_DRAG_ARM_MS);
@@ -19745,6 +19821,7 @@ function enableHorizontalDragScroll(scroller, options = {}){
   };
   scroller.addEventListener("pointerdown", (e)=>{
     if(e.pointerType === "mouse" && e.button !== 0) return;
+    if(scroller.id === "tabScroller" && (tabTouchDragPending || tabMouseDragState?.touchMode)) return;
     if((scroller.scrollWidth - scroller.clientWidth) <= 2) return;
     if(e.target && e.target.closest){
       const interactive = e.target.closest('input, select, textarea, a, label' + (allowButtonDrag ? '' : ', button'));
@@ -19763,6 +19840,14 @@ function enableHorizontalDragScroll(scroller, options = {}){
   });
   scroller.addEventListener("pointermove", (e)=>{
     if(pointerId !== e.pointerId) return;
+    if(scroller.id === "tabScroller" && (tabTouchDragPending || tabMouseDragState?.touchMode)){
+      stopInertia();
+      pointerId = null;
+      dragActivated = false;
+      downTarget = null;
+      scroller.classList.remove("drag-scrolling");
+      return;
+    }
     const dx = e.clientX - startX;
     if(!dragActivated && Math.abs(dx) > 8){
       dragActivated = true;
