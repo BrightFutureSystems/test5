@@ -8976,8 +8976,8 @@ function getProjectedTabOrder(layout, dragScenarioId, insertIndex){
   nextIds.splice(safeIndex, 0, dragScenarioId);
   return nextIds;
 }
-function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
-  if(!layout) return;
+function getProjectedTabLeftMap(layout, dragScenarioId, insertIndex){
+  if(!layout) return new Map();
   const projectedIds = getProjectedTabOrder(layout, dragScenarioId, insertIndex);
   const baseById = new Map(layout.buttons.map(item=>[item.id, item]));
   const orderedRects = projectedIds.map(id=>baseById.get(id)).filter(Boolean);
@@ -8988,6 +8988,11 @@ function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
     nextLeft += item.width;
     if(index < orderedRects.length - 1) nextLeft += (layout.gapPx || 0);
   });
+  return projectedLeftById;
+}
+function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
+  if(!layout) return;
+  const projectedLeftById = getProjectedTabLeftMap(layout, dragScenarioId, insertIndex);
   clearTabDropIndicators();
   layout.buttons.forEach(item=>{
     item.btn.classList.add('tab-drag-animating');
@@ -9000,6 +9005,7 @@ function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
     item.btn.style.transform = deltaX ? `translateX(${deltaX}px)` : '';
   });
 }
+
 function updateTabMouseDrag(clientX, clientY, fromAutoScroll = false){
   const state = tabMouseDragState;
   if(!state || !state.layout) return;
@@ -9026,22 +9032,16 @@ function updateTabMouseDrag(clientX, clientY, fromAutoScroll = false){
     state.ghostEl.style.top = `${layout.fixedTop}px`;
   }
   const others = layout.buttons.filter(item=>item.id !== state.dragScenarioId);
-  const candidateLefts = [];
-  let nextSlotLeft = layout.buttons[0]?.baseLeft || ghostLeft;
-  for(let i=0;i<=others.length;i+=1){
-    candidateLefts.push(nextSlotLeft);
-    if(i < others.length){
-      nextSlotLeft += others[i].width;
-      if(i < others.length - 1 || i === others.length - 1) nextSlotLeft += (layout.gapPx || 0);
-    }
-  }
   let insertIndex = 0;
   let bestDistance = Infinity;
-  for(let i=0;i<candidateLefts.length;i+=1){
-    const distance = Math.abs(ghostLeft - candidateLefts[i]);
+  for(let insertCandidate=0; insertCandidate<=others.length; insertCandidate+=1){
+    const projectedLeftById = getProjectedTabLeftMap(layout, state.dragScenarioId, insertCandidate);
+    const candidateLeft = projectedLeftById.get(state.dragScenarioId);
+    if(typeof candidateLeft !== 'number') continue;
+    const distance = Math.abs(ghostLeft - candidateLeft);
     if(distance < bestDistance){
       bestDistance = distance;
-      insertIndex = i;
+      insertIndex = insertCandidate;
     }
   }
   if(insertIndex <= 0){
