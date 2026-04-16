@@ -3197,44 +3197,40 @@ function updateOverlaySettingsNameColumnWidth(){
 }
 function openDetailedOverlayColorPicker(colorEl){
   if(!(colorEl instanceof HTMLInputElement)) return;
-  const tryClick = ()=>{
-    try{ colorEl.click(); }catch(_err){}
-  };
   if(typeof colorEl.showPicker === 'function'){
     try{
       colorEl.showPicker();
       return;
     }catch(_err){}
   }
-  const prev = {
-    position: colorEl.style.position,
-    left: colorEl.style.left,
-    top: colorEl.style.top,
-    width: colorEl.style.width,
-    height: colorEl.style.height,
-    opacity: colorEl.style.opacity,
-    pointerEvents: colorEl.style.pointerEvents,
-    zIndex: colorEl.style.zIndex
-  };
-  colorEl.style.position = 'fixed';
-  colorEl.style.left = '50%';
-  colorEl.style.top = '50%';
-  colorEl.style.width = '48px';
-  colorEl.style.height = '48px';
-  colorEl.style.opacity = '0.01';
-  colorEl.style.pointerEvents = 'auto';
-  colorEl.style.zIndex = '9999';
-  tryClick();
-  window.setTimeout(()=>{
-    colorEl.style.position = prev.position;
-    colorEl.style.left = prev.left;
-    colorEl.style.top = prev.top;
-    colorEl.style.width = prev.width;
-    colorEl.style.height = prev.height;
-    colorEl.style.opacity = prev.opacity;
-    colorEl.style.pointerEvents = prev.pointerEvents;
-    colorEl.style.zIndex = prev.zIndex;
-  }, 800);
+  const temp = document.createElement('input');
+  temp.type = 'color';
+  temp.value = colorEl.value || '#2563eb';
+  temp.setAttribute('aria-hidden', 'true');
+  temp.tabIndex = -1;
+  temp.style.position = 'fixed';
+  temp.style.left = '50%';
+  temp.style.top = '50%';
+  temp.style.transform = 'translate(-50%, -50%)';
+  temp.style.width = '48px';
+  temp.style.height = '48px';
+  temp.style.opacity = '0.01';
+  temp.style.pointerEvents = 'auto';
+  temp.style.zIndex = '99999';
+  temp.style.padding = '0';
+  temp.style.border = '0';
+  const cleanup = ()=>{ try{ temp.remove(); }catch(_err){} };
+  temp.addEventListener('input', ()=>{
+    colorEl.value = temp.value;
+    colorEl.dispatchEvent(new Event('input', {bubbles:true}));
+    colorEl.dispatchEvent(new Event('change', {bubbles:true}));
+  });
+  temp.addEventListener('change', cleanup, {once:true});
+  temp.addEventListener('blur', ()=>window.setTimeout(cleanup, 120), {once:true});
+  document.body.appendChild(temp);
+  try{ temp.focus({preventScroll:true}); }catch(_err){}
+  try{ temp.click(); }catch(_err){}
+  window.setTimeout(cleanup, 3000);
 }
 function applyOverlayStyleToDatasets(datasets, style, graphType){
   const color = style?.color || '#2563eb';
@@ -8991,7 +8987,7 @@ function closeOverflowMenu(){
   }
   if(trigger) trigger.setAttribute("aria-expanded", "false");
 }
-function switchGraphToAssetFromTabClick(){
+function resetChartViewportForTabClick(){
   const currentAge = numInput("age", 0);
   const xAxisMinEl = document.getElementById("xAxisMin");
   const xAxisMaxEl = document.getElementById("xAxisMax");
@@ -9503,12 +9499,12 @@ function renderTabs(){
           }
         }
         getInputModeScrollStore()[normalizeInputMode(currentInputMode)] = 0;
-        switchGraphToAssetFromTabClick();
+        resetChartViewportForTabClick();
         requestDraw({immediate:true});
         persistState();
         return;
       }
-      switchGraphToAssetFromTabClick();
+      resetChartViewportForTabClick();
       switchTab(idx);
     });
     btn.addEventListener("contextmenu", (e)=>{
@@ -15462,14 +15458,13 @@ function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix=""
 function pluginLines(cfg, sim, monteInfo=null){
   return {
     id:"customLines",
-    afterDraw(chart){
-      const graphType = document.getElementById("graphType").value;
+    beforeDatasetsDraw(chart){
       const {ctx,scales} = chart;
       const x = scales.x;
       const y = scales.y;
+      if(!x || !y) return;
       ctx.save();
-
-      if(x && Array.isArray(x.ticks) && x.ticks.length){
+      if(Array.isArray(x.ticks) && x.ticks.length){
         ctx.save();
         ctx.strokeStyle = "rgba(148,163,184,0.28)";
         ctx.lineWidth = 1;
@@ -15486,13 +15481,20 @@ function pluginLines(cfg, sim, monteInfo=null){
         }
         ctx.restore();
       }
-
-      if(y && y.min <= 0 && y.max >= 0){
+      if(y.min <= 0 && y.max >= 0){
         const y0 = y.getPixelForValue(0);
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = "#111827";
         ctx.beginPath(); ctx.moveTo(x.left,y0); ctx.lineTo(x.right,y0); ctx.stroke();
       }
+      ctx.restore();
+    },
+    afterDraw(chart){
+      const graphType = document.getElementById("graphType").value;
+      const {ctx,scales} = chart;
+      const x = scales.x;
+      const y = scales.y;
+      ctx.save();
 
       if(graphType === "asset"){
         const pxLife = x.getPixelForValue(cfg.lifeExpect);
@@ -18109,7 +18111,6 @@ rebuildWithdrawalParameterCases(true);
 updateWithdrawalCompareModeUI();
 document.getElementById("runMonteBtn").addEventListener("click", ()=>{
   clearScheduledDraw();
-  document.getElementById("graphType").value = "asset";
   runMonte(); persistState();
 });
 document.getElementById("openMonteSettingsBtn")?.addEventListener("click", (e)=>{
