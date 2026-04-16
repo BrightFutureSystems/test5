@@ -8897,6 +8897,8 @@ function reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter){
   const targetIndex = getScenarioIndexById(targetScenarioId);
   if(fromIndex < 0 || targetIndex < 0) return false;
   const activeScenarioId = scenarios[currentTab]?.id || "";
+  const tabScroller = document.getElementById('tabScroller');
+  const preservedScrollLeft = tabScroller ? tabScroller.scrollLeft : 0;
   const [movedScenario] = scenarios.splice(fromIndex, 1);
   let insertIndex = targetIndex;
   if(fromIndex < targetIndex) insertIndex -= 1;
@@ -8905,12 +8907,37 @@ function reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter){
   scenarios.splice(insertIndex, 0, movedScenario);
   currentTab = Math.max(0, scenarios.findIndex(s => s?.id === activeScenarioId));
   renderTabs();
+  if(tabScroller){
+    const maxScrollLeft = Math.max(0, tabScroller.scrollWidth - tabScroller.clientWidth);
+    tabScroller.scrollLeft = Math.max(0, Math.min(preservedScrollLeft, maxScrollLeft));
+  }
   if(document.getElementById('overlaySettingsModal')?.classList.contains('show')){
     rebuildOverlaySettingsTable();
   }
   requestDraw({immediate:true});
   persistState();
   return true;
+}
+function getTranslateXFromElement(el){
+  if(!el) return 0;
+  const transform = getComputedStyle(el).transform;
+  if(!transform || transform === 'none') return 0;
+  try{
+    const matrix = new DOMMatrixReadOnly(transform);
+    return matrix.m41 || 0;
+  }catch(_e){
+    const match = transform.match(/matrix\(([^)]+)\)/);
+    if(match){
+      const parts = match[1].split(',').map(v=>parseFloat(v.trim()));
+      return Number.isFinite(parts[4]) ? parts[4] : 0;
+    }
+    const match3d = transform.match(/matrix3d\(([^)]+)\)/);
+    if(match3d){
+      const parts = match3d[1].split(',').map(v=>parseFloat(v.trim()));
+      return Number.isFinite(parts[12]) ? parts[12] : 0;
+    }
+    return 0;
+  }
 }
 function buildTabDragLayout(sourceBtn){
   const tabButtonsEl = document.getElementById("tabButtons");
@@ -8923,14 +8950,14 @@ function buildTabDragLayout(sourceBtn){
   const siblings = btns.map(btn=>{
     const rect = btn.getBoundingClientRect();
     const width = rect.width;
-    const baseOffsetLeft = btn.offsetLeft;
-    const baseLeft = scrollerRect.left + baseOffsetLeft - scrollerEl.scrollLeft;
+    const translateX = getTranslateXFromElement(btn);
+    const baseLeft = rect.left - translateX;
     return {
       btn,
       id: String(btn.dataset.scenarioId || ""),
       rect,
       width,
-      baseOffsetLeft,
+      translateX,
       baseLeft,
       center: baseLeft + width / 2
     };
@@ -8940,6 +8967,9 @@ function buildTabDragLayout(sourceBtn){
   if(!firstItem || !lastItem) return null;
   const containerStyle = getComputedStyle(tabButtonsEl);
   const gapPx = parseFloat(containerStyle.columnGap || containerStyle.gap || "0") || 0;
+  const totalTrackWidth = siblings.reduce((sum, item, index)=>{
+    return sum + item.width + (index < siblings.length - 1 ? gapPx : 0);
+  }, 0);
   return {
     containerEl: tabButtonsEl,
     scrollerEl,
@@ -8947,7 +8977,7 @@ function buildTabDragLayout(sourceBtn){
     buttons: siblings,
     sourceRect,
     minLeft: firstItem.baseLeft,
-    maxLeft: Math.max(firstItem.baseLeft, scrollerRect.left + (tabButtonsEl.scrollWidth - scrollerEl.scrollLeft) - sourceRect.width),
+    maxLeft: Math.max(firstItem.baseLeft, firstItem.baseLeft + totalTrackWidth - sourceRect.width),
     fixedTop: sourceRect.top,
     width: sourceRect.width,
     height: sourceRect.height,
@@ -8976,7 +9006,7 @@ function getProjectedTabOrder(layout, dragScenarioId, insertIndex){
   nextIds.splice(safeIndex, 0, dragScenarioId);
   return nextIds;
 }
-function getProjectedTabLeftMap(layout, dragScenarioId, insertIndex){
+function getTabProjectedLeftById(layout, dragScenarioId, insertIndex){
   if(!layout) return new Map();
   const projectedIds = getProjectedTabOrder(layout, dragScenarioId, insertIndex);
   const baseById = new Map(layout.buttons.map(item=>[item.id, item]));
@@ -8992,7 +9022,7 @@ function getProjectedTabLeftMap(layout, dragScenarioId, insertIndex){
 }
 function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
   if(!layout) return;
-  const projectedLeftById = getProjectedTabLeftMap(layout, dragScenarioId, insertIndex);
+  const projectedLeftById = getTabProjectedLeftById(layout, dragScenarioId, insertIndex);
   clearTabDropIndicators();
   layout.buttons.forEach(item=>{
     item.btn.classList.add('tab-drag-animating');
@@ -9005,7 +9035,6 @@ function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
     item.btn.style.transform = deltaX ? `translateX(${deltaX}px)` : '';
   });
 }
-
 function updateTabMouseDrag(clientX, clientY, fromAutoScroll = false){
   const state = tabMouseDragState;
   if(!state || !state.layout) return;
@@ -9032,16 +9061,18 @@ function updateTabMouseDrag(clientX, clientY, fromAutoScroll = false){
     state.ghostEl.style.top = `${layout.fixedTop}px`;
   }
   const others = layout.buttons.filter(item=>item.id !== state.dragScenarioId);
+  const candidateLefts = [];
+  for(let i=0;i<=others.length;i+=1){
+    const projectedLeftById = getTabProjectedLeftById(layout, state.dragScenarioId, i);
+    candidateLefts.push(projectedLeftById.get(state.dragScenarioId) ?? ghostLeft);
+  }
   let insertIndex = 0;
   let bestDistance = Infinity;
-  for(let insertCandidate=0; insertCandidate<=others.length; insertCandidate+=1){
-    const projectedLeftById = getProjectedTabLeftMap(layout, state.dragScenarioId, insertCandidate);
-    const candidateLeft = projectedLeftById.get(state.dragScenarioId);
-    if(typeof candidateLeft !== 'number') continue;
-    const distance = Math.abs(ghostLeft - candidateLeft);
+  for(let i=0;i<candidateLefts.length;i+=1){
+    const distance = Math.abs(ghostLeft - candidateLefts[i]);
     if(distance < bestDistance){
       bestDistance = distance;
-      insertIndex = insertCandidate;
+      insertIndex = i;
     }
   }
   if(insertIndex <= 0){
