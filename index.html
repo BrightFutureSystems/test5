@@ -3096,6 +3096,7 @@ function cleanupOverlayStylesForAllScenarios(){
   (scenarios || []).forEach((s, idx)=>{
     if(!s) return;
     s.data = migrateLegacyData(s.data || {});
+    if(s.data && Object.prototype.hasOwnProperty.call(s.data, 'graphType')) delete s.data.graphType;
     const raw = s.overlayStyles || s.data.overlayStyles;
     if(raw){ const normalized = normalizeOverlayStylesMap(raw, idx); s.data.overlayStyles = normalized; s.overlayStyles = JSON.parse(JSON.stringify(normalized)); }
   });
