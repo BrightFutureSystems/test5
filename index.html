@@ -2852,6 +2852,8 @@ let tabDragScenarioId = "";
 let tabDropScenarioId = "";
 let tabDropInsertAfter = false;
 let tabMouseDragState = null;
+const TAB_TOUCH_DRAG_ARM_MS = 180;
+const TAB_TOUCH_CONTEXT_MENU_MS = 550;
 let nextScenarioIdSeq = 1;
 let nextScenarioSerial = 1;
 const DEFAULT_OVERLAY_LINE_WIDTH = 2;
@@ -8982,6 +8984,94 @@ function updateTabMouseDrag(clientX, clientY){
   tabDropInsertAfter = state.insertAfter;
   applyTabDragVisualOrder(layout, state.dragScenarioId, insertIndex);
 }
+function createTabDragStateFromButton(btn, scenarioId, clientX, clientY){
+  if(!btn || !scenarioId || scenarios.length <= 1) return null;
+  const layout = buildTabDragLayout(btn);
+  if(!layout) return null;
+  return {
+    dragScenarioId: scenarioId,
+    sourceBtn: btn,
+    layout,
+    started: false,
+    startClientX: clientX,
+    startClientY: clientY,
+    pointerOffsetX: clientX - layout.sourceRect.left,
+    targetScenarioId: "",
+    insertAfter: false,
+    currentLeft: layout.sourceRect.left,
+    ghostEl: null,
+    touchMode: false,
+    touchDragArmed: false,
+    longPressed: false,
+    suppressClickOnce: false,
+    pressTimer: null,
+    contextMenuTimer: null,
+    touchIdentifier: null
+  };
+}
+function clearTabTouchTimers(state){
+  if(!state) return;
+  if(state.pressTimer){
+    clearTimeout(state.pressTimer);
+    state.pressTimer = null;
+  }
+  if(state.contextMenuTimer){
+    clearTimeout(state.contextMenuTimer);
+    state.contextMenuTimer = null;
+  }
+}
+function findTouchByIdentifier(touchList, identifier){
+  if(!touchList) return null;
+  for(const touch of touchList){
+    if(touch.identifier === identifier) return touch;
+  }
+  return null;
+}
+function handleTabTouchMove(e){
+  const state = tabMouseDragState;
+  if(!state || !state.touchMode) return;
+  const touch = findTouchByIdentifier(e.touches, state.touchIdentifier);
+  if(!touch){
+    finishTabMouseDrag(false);
+    return;
+  }
+  if(!state.started){
+    const dx = touch.clientX - state.startClientX;
+    const dy = touch.clientY - state.startClientY;
+    const movedEnough = Math.abs(dx) >= 6 || Math.abs(dy) >= 6;
+    if(movedEnough && state.touchDragArmed){
+      clearTabTouchTimers(state);
+      state.started = true;
+      tabDragScenarioId = state.dragScenarioId;
+      state.sourceBtn.classList.add('tab-dragging');
+      state.ghostEl = createTabDragGhost(state.sourceBtn, state.layout.sourceRect);
+      closeTabContextMenu();
+      closeOverflowMenu();
+      state.suppressClickOnce = true;
+    }else if(movedEnough){
+      clearTabTouchTimers(state);
+      finishTabMouseDrag(false);
+      return;
+    }
+  }
+  if(state.started){
+    e.preventDefault();
+    updateTabMouseDrag(touch.clientX, touch.clientY);
+  }
+}
+function handleTabTouchEnd(e){
+  const state = tabMouseDragState;
+  if(!state || !state.touchMode) return;
+  const touch = findTouchByIdentifier(e.changedTouches, state.touchIdentifier);
+  if(!touch) return;
+  const shouldCommit = !!state.started;
+  finishTabMouseDrag(shouldCommit);
+}
+function handleTabTouchCancel(){
+  if(tabMouseDragState?.touchMode){
+    finishTabMouseDrag(false);
+  }
+}
 function handleTabMouseMove(e){
   if(!tabMouseDragState) return;
   if(e.buttons === 0){
@@ -8993,8 +9083,12 @@ function handleTabMouseMove(e){
 }
 function finishTabMouseDrag(commit){
   document.removeEventListener('mousemove', handleTabMouseMove);
+  document.removeEventListener('touchmove', handleTabTouchMove);
+  document.removeEventListener('touchend', handleTabTouchEnd);
+  document.removeEventListener('touchcancel', handleTabTouchCancel);
   const state = tabMouseDragState;
   if(!state) return;
+  clearTabTouchTimers(state);
   const shouldCommit = !!(commit && state.started && state.targetScenarioId);
   if(state.started && state.sourceBtn) state.sourceBtn.__suppressClickAfterDrag = true;
   const dragScenarioId = state.dragScenarioId;
@@ -9037,21 +9131,8 @@ function renderTabs(){
       if(!scenarioId || scenarios.length <= 1) return;
       if(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return;
       if(e.target.closest('input,select,textarea') && e.target !== btn) return;
-      const layout = buildTabDragLayout(btn);
-      if(!layout) return;
-      tabMouseDragState = {
-        dragScenarioId: scenarioId,
-        sourceBtn: btn,
-        layout,
-        started: false,
-        startClientX: e.clientX,
-        startClientY: e.clientY,
-        pointerOffsetX: e.clientX - layout.sourceRect.left,
-        targetScenarioId: "",
-        insertAfter: false,
-        currentLeft: layout.sourceRect.left,
-        ghostEl: null
-      };
+      tabMouseDragState = createTabDragStateFromButton(btn, scenarioId, e.clientX, e.clientY);
+      if(!tabMouseDragState) return;
       document.addEventListener('mousemove', handleTabMouseMove);
       document.addEventListener('mouseup', handleTabMouseUp, {once:true});
     });
@@ -9105,12 +9186,28 @@ function renderTabs(){
       longPressed = false;
       const touch = e.touches[0];
       if(!touch) return;
-      pressTimer = setTimeout(()=>{
+      const dragState = createTabDragStateFromButton(btn, scenarioId, touch.clientX, touch.clientY);
+      if(!dragState) return;
+      dragState.touchMode = true;
+      dragState.touchIdentifier = touch.identifier;
+      dragState.pressTimer = setTimeout(()=>{
+        if(tabMouseDragState === dragState) dragState.touchDragArmed = true;
+      }, TAB_TOUCH_DRAG_ARM_MS);
+      dragState.contextMenuTimer = setTimeout(()=>{
+        if(tabMouseDragState !== dragState || dragState.started) return;
+        dragState.longPressed = true;
         longPressed = true;
+        clearTabTouchTimers(dragState);
+        finishTabMouseDrag(false);
         openTabContextMenu(idx, touch.clientX, touch.clientY);
-      }, 550);
+      }, TAB_TOUCH_CONTEXT_MENU_MS);
+      tabMouseDragState = dragState;
+      document.addEventListener('touchmove', handleTabTouchMove, {passive:false});
+      document.addEventListener('touchend', handleTabTouchEnd);
+      document.addEventListener('touchcancel', handleTabTouchCancel);
     }, {passive:true});
-    ["touchend","touchmove","touchcancel"].forEach(ev=>btn.addEventListener(ev, clearPressTimer, {passive:true}));
+    btn.addEventListener("touchend", ()=>{ clearPressTimer(); }, {passive:true});
+    btn.addEventListener("touchcancel", ()=>{ clearPressTimer(); }, {passive:true});
   });
   const activeBtn = el.querySelector(`.tab-btn[data-tab-index="${currentTab}"]`);
   if(activeBtn && typeof activeBtn.scrollIntoView === "function"){
