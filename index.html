@@ -656,7 +656,12 @@
   .overlay-style-palette.show{display:block;}
   .overlay-style-palette-grid{display:grid;grid-template-columns:repeat(6, 1fr);gap:6px;margin-bottom:8px;}
   .overlay-style-palette-swatch{width:20px;height:20px;border:1px solid #cbd5e1;border-radius:6px;padding:0;cursor:pointer;display:inline-block;}
-  .overlay-style-palette-detail{width:100%;padding:6px 8px;font-size:12px;}
+  .overlay-style-palette-detail,.overlay-style-palette-detail-input{width:100%;padding:6px 8px;font-size:12px;}
+  .overlay-style-palette-detail-input{display:none;height:36px;border:1px solid var(--border);border-radius:8px;background:#fff;}
+  @media (pointer:coarse), (max-width:900px){
+    .overlay-style-palette-detail{display:none;}
+    .overlay-style-palette-detail-input{display:block;}
+  }
   .overlay-style-width{width:72px !important;min-width:72px !important;}
   .overlay-style-line{width:88px !important;min-width:88px !important;}
   .overlay-settings-modal{width:min(638px, calc(100vw - 20px)) !important;max-width:calc(100vw - 20px) !important;max-height:min(92vh, 860px);overflow:auto;}
@@ -3313,11 +3318,13 @@ function syncOverlayColorControls(row){
   if(!row) return;
   const colorEl = row.querySelector('[data-overlay-field="color"]');
   const colorBtn = row.querySelector('[data-overlay-field="colorButton"]');
+  const detailInput = row.querySelector('[data-overlay-field="colorDetailInput"]');
   if(!colorEl || !colorBtn) return;
   const normalized = normalizeColorHex(colorEl.value) || '#2563eb';
   colorEl.value = normalized;
   colorBtn.style.background = normalized;
   colorBtn.setAttribute('aria-label', `色を選択 (${normalized})`);
+  if(detailInput instanceof HTMLInputElement) detailInput.value = normalized;
 }
 let overlayColorPaletteSuppressCloseUntil = 0;
 function suppressOverlayColorPaletteAutoClose(durationMs = 500){
@@ -3336,7 +3343,7 @@ function closeOverlayColorPalettes(exceptRow = null){
 function buildOverlayColorPaletteHtml(color){
   const normalized = normalizeColorHex(color) || '#2563eb';
   const swatches = OVERLAY_COLOR_PRESETS.map(hex=>`<button type="button" class="overlay-style-palette-swatch" data-overlay-color-swatch="${hex}" title="${hex}" style="background:${hex};${hex===normalized?'box-shadow:0 0 0 2px #111827 inset;':''}"></button>`).join('');
-  return `<div class="overlay-style-color-wrap"><button type="button" class="overlay-style-color-btn" data-overlay-field="colorButton" style="background:${normalized};" aria-label="色を選択 (${normalized})"></button><input type="color" class="overlay-style-color" data-overlay-field="color" aria-label="色を選択" value="${escapeHtml(normalized)}"><div class="overlay-style-palette" data-overlay-field="colorPalette"><div class="overlay-style-palette-grid">${swatches}</div><button type="button" class="overlay-style-palette-detail" data-overlay-field="colorDetail">詳細な色を選ぶ</button></div></div>`;
+  return `<div class="overlay-style-color-wrap"><button type="button" class="overlay-style-color-btn" data-overlay-field="colorButton" style="background:${normalized};" aria-label="色を選択 (${normalized})"></button><input type="color" class="overlay-style-color" data-overlay-field="color" aria-label="色を選択" value="${escapeHtml(normalized)}"><div class="overlay-style-palette" data-overlay-field="colorPalette"><div class="overlay-style-palette-grid">${swatches}</div><button type="button" class="overlay-style-palette-detail" data-overlay-field="colorDetail">詳細な色を選ぶ</button><input type="color" class="overlay-style-palette-detail-input" data-overlay-field="colorDetailInput" aria-label="詳細な色を選ぶ" value="${escapeHtml(normalized)}"></div></div>`;
 }
 function rebuildOverlaySettingsTable(){
   const body = document.getElementById('overlaySettingsBody');
@@ -3415,7 +3422,7 @@ function saveOverlaySettingsModal(){
   const overlayStyles = collectOverlaySettingsFromModal();
   workspaceOverlaySettings = JSON.parse(JSON.stringify(overlayStyles));
   if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
-  setOverlayModeEnabled(workspaceOverlayModeOn || isOverlayStylesEffectivelyVisible(overlayStyles, currentTab));
+  setOverlayModeEnabled(workspaceOverlayModeOn);
   closeOverlaySettingsModal();
   renderTabs();
   monteMode ? runMonte() : requestDraw({immediate:true});
@@ -18399,7 +18406,11 @@ document.getElementById("overlaySettingsBody")?.addEventListener("touchend", (e)
 document.getElementById("overlaySettingsBody")?.addEventListener("input", (e)=>{
   const row = e.target?.closest?.('tr[data-scenario-id]');
   if(!row) return;
-  if(e.target?.matches?.('[data-overlay-field="color"]')) syncOverlayColorControls(row);
+  if(e.target?.matches?.('[data-overlay-field="colorDetailInput"]')){
+    const colorEl = row.querySelector('[data-overlay-field="color"]');
+    if(colorEl) colorEl.value = e.target.value || colorEl.value;
+  }
+  if(e.target?.matches?.('[data-overlay-field="color"], [data-overlay-field="colorDetailInput"]')) syncOverlayColorControls(row);
   refreshOverlayPreviewForRow(row);
 });
 document.getElementById("overlaySettingsBody")?.addEventListener("change", (e)=>{
@@ -18412,7 +18423,11 @@ document.getElementById("overlaySettingsBody")?.addEventListener("change", (e)=>
     updateOverlayVisibilityCheckboxStates();
     return;
   }
-  if(e.target?.matches?.('[data-overlay-field="color"]')) syncOverlayColorControls(row);
+  if(e.target?.matches?.('[data-overlay-field="colorDetailInput"]')){
+    const colorEl = row.querySelector('[data-overlay-field="color"]');
+    if(colorEl) colorEl.value = e.target.value || colorEl.value;
+  }
+  if(e.target?.matches?.('[data-overlay-field="color"], [data-overlay-field="colorDetailInput"]')) syncOverlayColorControls(row);
   refreshOverlayPreviewForRow(row);
 });
 document.addEventListener('click', (e)=>{
