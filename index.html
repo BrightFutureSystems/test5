@@ -3319,7 +3319,15 @@ function syncOverlayColorControls(row){
   colorBtn.style.background = normalized;
   colorBtn.setAttribute('aria-label', `色を選択 (${normalized})`);
 }
+let overlayColorPaletteSuppressCloseUntil = 0;
+function suppressOverlayColorPaletteAutoClose(durationMs = 500){
+  overlayColorPaletteSuppressCloseUntil = Date.now() + Math.max(0, Number(durationMs) || 0);
+}
+function shouldSuppressOverlayColorPaletteAutoClose(){
+  return Date.now() < overlayColorPaletteSuppressCloseUntil;
+}
 function closeOverlayColorPalettes(exceptRow = null){
+  if(!exceptRow && shouldSuppressOverlayColorPaletteAutoClose()) return;
   document.querySelectorAll('#overlaySettingsBody .overlay-style-palette.show').forEach(el=>{
     if(exceptRow && exceptRow.contains(el)) return;
     el.classList.remove('show');
@@ -18374,6 +18382,7 @@ function handleOverlaySettingsColorInteraction(e){
   if(e.target?.matches?.('[data-overlay-field="colorDetail"]')){
     e.preventDefault();
     e.stopPropagation();
+    suppressOverlayColorPaletteAutoClose(900);
     openDetailedOverlayColorPicker(row.querySelector('[data-overlay-field="color"]'));
     return;
   }
@@ -18409,6 +18418,7 @@ document.getElementById("overlaySettingsBody")?.addEventListener("change", (e)=>
 document.addEventListener('click', (e)=>{
   const modal = document.getElementById('overlaySettingsModal');
   if(!modal?.classList.contains('show')) return;
+  if(shouldSuppressOverlayColorPaletteAutoClose()) return;
   if(e.target?.closest?.('#overlaySettingsBody .overlay-style-color-wrap')) return;
   closeOverlayColorPalettes();
 });
