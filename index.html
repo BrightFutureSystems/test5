@@ -1621,7 +1621,7 @@
         <input id="fixedScaleMax" type="text" inputmode="decimal" class="moneybox" value="50000" spellcheck="false" autocomplete="off" hidden>
         <input id="xAxisMin" type="number" class="agebox" value="40" min="1" max="120" step="1" hidden>
         <input id="xAxisMax" type="number" class="agebox" value="100" min="1" max="120" step="1" hidden>
-        <input id="xAxisLabelMode" type="hidden" value="both">
+        <input id="xAxisLabelMode" type="hidden" value="age">
       </div>
       <div id="rightTopControls">
         <div class="legacy-top-actions" hidden aria-hidden="true">
@@ -2320,9 +2320,9 @@
         <div class="chart-axis-section">
           <div class="chart-axis-section-title">X軸表示</div>
           <div class="chart-axis-radio-row">
-            <label><input type="radio" name="chartAxisLabelMode" value="age"> 年齢（歳）</label>
+            <label><input type="radio" name="chartAxisLabelMode" value="age" checked> 年齢（歳）</label>
             <label><input type="radio" name="chartAxisLabelMode" value="calendar"> 西暦（省略年）</label>
-            <label><input type="radio" name="chartAxisLabelMode" value="both" checked> 年齢（歳）／西暦（省略年）</label>
+            <label><input type="radio" name="chartAxisLabelMode" value="both"> 年齢（歳）／西暦（省略年）</label>
           </div>
         </div>
       </div>
@@ -15732,8 +15732,8 @@ function getCalendarWindowForXAxisValue(sim, xValue){
   return sim.calendarYearWindows[idx] || sim.yearlyRows?.[idx]?.meta?.calendarWindow || null;
 }
 function getXAxisLabelMode(){
-  const value = String(document.getElementById("xAxisLabelMode")?.value || "both").toLowerCase();
-  return ["age","calendar","both"].includes(value) ? value : "both";
+  const value = String(document.getElementById("xAxisLabelMode")?.value || "age").toLowerCase();
+  return ["age","calendar","both"].includes(value) ? value : "age";
 }
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
@@ -19498,7 +19498,7 @@ getSimpleModeRoot()?.addEventListener("focusout", (e)=>{
 
 
 function setChartAxisModalLabelMode(mode){
-  const normalized = ["age","calendar","both"].includes(String(mode)) ? String(mode) : "both";
+  const normalized = ["age","calendar","both"].includes(String(mode)) ? String(mode) : "age";
   document.querySelectorAll('input[name="chartAxisLabelMode"]').forEach(r=>{ r.checked = (r.value === normalized); });
 }
 function collectVisibleMainChartYValues(xMin, xMax, graphType){
@@ -19623,7 +19623,7 @@ function saveChartAxisModal(){
   const xMax = Math.max(xMin, Math.min(120, numValue(document.getElementById("chartAxisXMax")?.value, autoDefaults.xMax)));
   const yMin = numValue(document.getElementById("chartAxisYMin")?.value, autoDefaults.yMin);
   const yMax = Math.max(yMin, numValue(document.getElementById("chartAxisYMax")?.value, autoDefaults.yMax));
-  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || "both";
+  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || "age";
   const fixedScaleEl = document.getElementById("fixedScale");
   const fixedScaleMinEl = document.getElementById("fixedScaleMin");
   const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
