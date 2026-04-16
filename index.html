@@ -648,7 +648,7 @@
   .split-btn-toggle{padding:7px 8px;min-width:36px;font-weight:700;}
   .split-btn-group:hover{background:#f4f4f4;}
   .split-btn-group > button:hover{background:#f4f4f4;}
-.overlay-style-preview{display:inline-block;width:44px;height:0;border-top:3px solid #2563eb;border-radius:999px;vertical-align:middle;}
+.overlay-style-preview{display:inline-block;width:44px;height:12px;vertical-align:middle;background-repeat:no-repeat;background-position:center;background-size:44px 12px;}
   .overlay-style-color{position:absolute !important;opacity:0;pointer-events:none;width:1px !important;height:1px !important;padding:0;border:0;}
   .overlay-style-color-wrap{position:relative;display:flex;align-items:center;justify-content:center;}
   .overlay-style-color-btn{width:30px;height:30px;border:1px solid #cbd5e1;border-radius:8px;padding:0;display:inline-block;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
@@ -666,8 +666,8 @@
   .overlay-settings-table th,.overlay-settings-table td{border:1px solid var(--border);padding:6px;text-align:center;vertical-align:middle;}
   .overlay-settings-table th{background:#fafafa;line-height:1.35;}
   .overlay-settings-table th:nth-child(1),.overlay-settings-table td:nth-child(1){width:68px;min-width:68px;}
-  .overlay-settings-table th:nth-child(2){width:auto;min-width:180px;text-align:center;white-space:nowrap;}
-  .overlay-settings-table td:nth-child(2){width:auto;min-width:180px;text-align:left;white-space:nowrap;}
+  .overlay-settings-table th:nth-child(2){width:var(--overlay-name-col-width, 180px);min-width:var(--overlay-name-col-width, 180px);text-align:center;white-space:nowrap;}
+  .overlay-settings-table td:nth-child(2){width:var(--overlay-name-col-width, 180px);min-width:var(--overlay-name-col-width, 180px);text-align:left;white-space:nowrap;}
   .overlay-settings-table th:nth-child(3),.overlay-settings-table td:nth-child(3){width:56px;min-width:56px;}
   .overlay-settings-table th:nth-child(4),.overlay-settings-table td:nth-child(4){width:112px;min-width:112px;}
   .overlay-settings-table th:nth-child(5),.overlay-settings-table td:nth-child(5){width:88px;min-width:88px;}
@@ -3156,6 +3156,86 @@ function updateOverlayFeatureUI(){
   if(menuBtn) menuBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length;
 }
 function getLineDashByOverlayStyle(lineStyle){ if(lineStyle === 'dashed') return [6,4]; if(lineStyle === 'dotted') return [2,3]; return []; }
+function buildOverlayPreviewSvgDataUrl(color, lineStyle, lineWidth){
+  const width = 44;
+  const height = 12;
+  const stroke = normalizeColorHex(color) || '#2563eb';
+  const normalizedStyle = normalizeOverlayLineStyle(lineStyle);
+  const normalizedWidth = normalizeOverlayLineWidth(lineWidth);
+  const y = height / 2;
+  const dash = normalizedStyle === 'dashed' ? '6 4' : (normalizedStyle === 'dotted' ? '1 4' : '');
+  const linecap = normalizedStyle === 'dotted' ? 'round' : 'butt';
+  const dashAttr = dash ? ` stroke-dasharray="${dash}"` : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="${stroke}" stroke-width="${normalizedWidth}" stroke-linecap="${linecap}"${dashAttr}/></svg>`;
+  return `url("data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}")`;
+}
+function applyOverlayPreviewStyle(previewEl, color, lineStyle, lineWidth){
+  if(!previewEl) return;
+  previewEl.style.backgroundImage = buildOverlayPreviewSvgDataUrl(color, lineStyle, lineWidth);
+}
+function updateOverlaySettingsNameColumnWidth(){
+  const table = document.querySelector('#overlaySettingsModal .overlay-settings-table');
+  if(!table) return;
+  const nameEls = [...table.querySelectorAll('.overlay-condition-name')];
+  if(!nameEls.length){
+    table.style.removeProperty('--overlay-name-col-width');
+    return;
+  }
+  const sampleEl = nameEls[0];
+  const computed = window.getComputedStyle(sampleEl);
+  const canvas = updateOverlaySettingsNameColumnWidth.__canvas || (updateOverlaySettingsNameColumnWidth.__canvas = document.createElement('canvas'));
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return;
+  ctx.font = computed.font || `${computed.fontWeight || '400'} ${computed.fontSize || '14px'} ${computed.fontFamily || 'sans-serif'}`;
+  let maxWidth = 0;
+  nameEls.forEach(el=>{
+    const text = String(el.getAttribute('title') || el.textContent || '').trim();
+    maxWidth = Math.max(maxWidth, Math.ceil(ctx.measureText(text).width));
+  });
+  const paddedWidth = Math.max(96, Math.min(240, maxWidth + 26));
+  table.style.setProperty('--overlay-name-col-width', `${paddedWidth}px`);
+}
+function openDetailedOverlayColorPicker(colorEl){
+  if(!(colorEl instanceof HTMLInputElement)) return;
+  const tryClick = ()=>{
+    try{ colorEl.click(); }catch(_err){}
+  };
+  if(typeof colorEl.showPicker === 'function'){
+    try{
+      colorEl.showPicker();
+      return;
+    }catch(_err){}
+  }
+  const prev = {
+    position: colorEl.style.position,
+    left: colorEl.style.left,
+    top: colorEl.style.top,
+    width: colorEl.style.width,
+    height: colorEl.style.height,
+    opacity: colorEl.style.opacity,
+    pointerEvents: colorEl.style.pointerEvents,
+    zIndex: colorEl.style.zIndex
+  };
+  colorEl.style.position = 'fixed';
+  colorEl.style.left = '50%';
+  colorEl.style.top = '50%';
+  colorEl.style.width = '48px';
+  colorEl.style.height = '48px';
+  colorEl.style.opacity = '0.01';
+  colorEl.style.pointerEvents = 'auto';
+  colorEl.style.zIndex = '9999';
+  tryClick();
+  window.setTimeout(()=>{
+    colorEl.style.position = prev.position;
+    colorEl.style.left = prev.left;
+    colorEl.style.top = prev.top;
+    colorEl.style.width = prev.width;
+    colorEl.style.height = prev.height;
+    colorEl.style.opacity = prev.opacity;
+    colorEl.style.pointerEvents = prev.pointerEvents;
+    colorEl.style.zIndex = prev.zIndex;
+  }, 800);
+}
 function applyOverlayStyleToDatasets(datasets, style, graphType){
   const color = style?.color || '#2563eb';
   const lineWidth = normalizeOverlayLineWidth(style?.lineWidth);
@@ -3225,11 +3305,14 @@ function rebuildOverlaySettingsTable(){
   body.innerHTML = entries.map(entry=>{
     const s = entry.scenario;
     const style = entry.style || {};
-    const previewStyle = style.lineStyle === 'dashed' ? 'border-top-style:dashed;' : (style.lineStyle === 'dotted' ? 'border-top-style:dotted;' : 'border-top-style:solid;');
     const resolvedColor = style.color || getDefaultOverlayColorByIndex(entry.index);
+    const resolvedLineStyle = normalizeOverlayLineStyle(style.lineStyle);
+    const resolvedLineWidth = normalizeOverlayLineWidth(style.lineWidth);
     const disableVisibleToggle = style.visible && visibleCount <= 1;
-    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''} ${disableVisibleToggle ? 'disabled title="最後の1本は解除できません"' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${style.lineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${style.lineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${style.lineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(style.lineWidth)===1?'selected':''}>1</option><option value="2" ${Number(style.lineWidth)===2?'selected':''}>2</option><option value="3" ${Number(style.lineWidth)===3?'selected':''}>3</option><option value="4" ${Number(style.lineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview" style="border-top-color:${escapeHtml(resolvedColor)};border-top-width:${normalizeOverlayLineWidth(style.lineWidth)}px;${previewStyle}"></span></td></tr>`;
+    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''} ${disableVisibleToggle ? 'disabled title="最後の1本は解除できません"' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${resolvedLineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${resolvedLineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${resolvedLineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(resolvedLineWidth)===1?'selected':''}>1</option><option value="2" ${Number(resolvedLineWidth)===2?'selected':''}>2</option><option value="3" ${Number(resolvedLineWidth)===3?'selected':''}>3</option><option value="4" ${Number(resolvedLineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview"></span></td></tr>`;
   }).join('');
+  body.querySelectorAll('tr[data-scenario-id]').forEach(row=>refreshOverlayPreviewForRow(row));
+  updateOverlaySettingsNameColumnWidth();
 }
 function updateOverlayVisibilityCheckboxStates(){
   const checkboxes = [...document.querySelectorAll('#overlaySettingsBody [data-overlay-field="visible"]')];
@@ -3284,9 +3367,7 @@ function refreshOverlayPreviewForRow(row){
   const color = row.querySelector('[data-overlay-field="color"]')?.value || '#2563eb';
   const lineStyle = normalizeOverlayLineStyle(row.querySelector('[data-overlay-field="lineStyle"]')?.value);
   const lineWidth = normalizeOverlayLineWidth(row.querySelector('[data-overlay-field="lineWidth"]')?.value);
-  preview.style.borderTopColor = color;
-  preview.style.borderTopWidth = `${lineWidth}px`;
-  preview.style.borderTopStyle = lineStyle === 'dashed' ? 'dashed' : (lineStyle === 'dotted' ? 'dotted' : 'solid');
+  applyOverlayPreviewStyle(preview, color, lineStyle, lineWidth);
 }
 function saveOverlaySettingsModal(){
   if(!scenarios[currentTab]) return;
@@ -8911,12 +8992,10 @@ function closeOverflowMenu(){
   if(trigger) trigger.setAttribute("aria-expanded", "false");
 }
 function switchGraphToAssetFromTabClick(){
-  const graphTypeEl = document.getElementById("graphType");
   const currentAge = numInput("age", 0);
   const xAxisMinEl = document.getElementById("xAxisMin");
   const xAxisMaxEl = document.getElementById("xAxisMax");
   const fixedScaleEl = document.getElementById("fixedScale");
-  if(graphTypeEl) graphTypeEl.value = "asset";
   if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
   if(fixedScaleEl) fixedScaleEl.checked = false;
@@ -15718,8 +15797,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
-      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback(value, index, ticks){ return formatMainChartXAxisTick(extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
   if(graphType === "education"){
@@ -15731,7 +15810,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       position:"right",
       min:rightAxis.min,
       max:rightAxis.max,
-      grid:{drawOnChartArea:false},
+      grid:{drawOnChartArea:false, z:-1}, border:{z:-1},
       title:{display:true,text:`教育費累計（${rightAxisUnitSpec.label}）`},
       ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
     };
@@ -18256,7 +18335,7 @@ document.getElementById("overlaySettingsBody")?.addEventListener("click", (e)=>{
   }
   if(e.target?.matches?.('[data-overlay-field="colorDetail"]')){
     e.preventDefault();
-    row.querySelector('[data-overlay-field="color"]')?.click();
+    openDetailedOverlayColorPicker(row.querySelector('[data-overlay-field="color"]'));
     return;
   }
 });
