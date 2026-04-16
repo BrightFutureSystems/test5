@@ -8914,31 +8914,40 @@ function reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter){
 }
 function buildTabDragLayout(sourceBtn){
   const tabButtonsEl = document.getElementById("tabButtons");
-  if(!tabButtonsEl || !sourceBtn) return null;
+  const scrollerEl = document.getElementById("tabScroller");
+  if(!tabButtonsEl || !scrollerEl || !sourceBtn) return null;
   const btns = [...tabButtonsEl.querySelectorAll('.tab-btn')];
   if(btns.length <= 1) return null;
+  const scrollerRect = scrollerEl.getBoundingClientRect();
   const sourceRect = sourceBtn.getBoundingClientRect();
   const siblings = btns.map(btn=>{
     const rect = btn.getBoundingClientRect();
+    const width = rect.width;
+    const baseOffsetLeft = btn.offsetLeft;
+    const baseLeft = scrollerRect.left + baseOffsetLeft - scrollerEl.scrollLeft;
     return {
       btn,
       id: String(btn.dataset.scenarioId || ""),
       rect,
-      width: rect.width,
-      center: rect.left + rect.width / 2
+      width,
+      baseOffsetLeft,
+      baseLeft,
+      center: baseLeft + width / 2
     };
   });
-  const firstRect = siblings[0]?.rect;
-  const lastRect = siblings[siblings.length - 1]?.rect;
-  if(!firstRect || !lastRect) return null;
+  const firstItem = siblings[0];
+  const lastItem = siblings[siblings.length - 1];
+  if(!firstItem || !lastItem) return null;
   const containerStyle = getComputedStyle(tabButtonsEl);
   const gapPx = parseFloat(containerStyle.columnGap || containerStyle.gap || "0") || 0;
   return {
     containerEl: tabButtonsEl,
+    scrollerEl,
+    scrollerRect,
     buttons: siblings,
     sourceRect,
-    minLeft: firstRect.left,
-    maxLeft: Math.max(firstRect.left, lastRect.right - sourceRect.width),
+    minLeft: firstItem.baseLeft,
+    maxLeft: Math.max(firstItem.baseLeft, scrollerRect.left + (tabButtonsEl.scrollWidth - scrollerEl.scrollLeft) - sourceRect.width),
     fixedTop: sourceRect.top,
     width: sourceRect.width,
     height: sourceRect.height,
@@ -8972,11 +8981,11 @@ function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
   const projectedIds = getProjectedTabOrder(layout, dragScenarioId, insertIndex);
   const baseById = new Map(layout.buttons.map(item=>[item.id, item]));
   const orderedRects = projectedIds.map(id=>baseById.get(id)).filter(Boolean);
-  let nextLeft = layout.buttons[0]?.rect.left || 0;
+  let nextLeft = layout.buttons[0]?.baseLeft || 0;
   const projectedLeftById = new Map();
   orderedRects.forEach((item, index)=>{
     projectedLeftById.set(item.id, nextLeft);
-    nextLeft += item.rect.width;
+    nextLeft += item.width;
     if(index < orderedRects.length - 1) nextLeft += (layout.gapPx || 0);
   });
   clearTabDropIndicators();
@@ -8987,7 +8996,7 @@ function applyTabDragVisualOrder(layout, dragScenarioId, insertIndex){
       return;
     }
     const targetLeft = projectedLeftById.get(item.id);
-    const deltaX = typeof targetLeft === 'number' ? (targetLeft - item.rect.left) : 0;
+    const deltaX = typeof targetLeft === 'number' ? (targetLeft - item.baseLeft) : 0;
     item.btn.style.transform = deltaX ? `translateX(${deltaX}px)` : '';
   });
 }
@@ -9018,11 +9027,11 @@ function updateTabMouseDrag(clientX, clientY, fromAutoScroll = false){
   }
   const others = layout.buttons.filter(item=>item.id !== state.dragScenarioId);
   const candidateLefts = [];
-  let nextSlotLeft = layout.buttons[0]?.rect.left || ghostLeft;
+  let nextSlotLeft = layout.buttons[0]?.baseLeft || ghostLeft;
   for(let i=0;i<=others.length;i+=1){
     candidateLefts.push(nextSlotLeft);
     if(i < others.length){
-      nextSlotLeft += others[i].rect.width;
+      nextSlotLeft += others[i].width;
       if(i < others.length - 1 || i === others.length - 1) nextSlotLeft += (layout.gapPx || 0);
     }
   }
