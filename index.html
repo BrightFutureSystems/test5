@@ -567,6 +567,37 @@
     border-bottom-color:#fff;
     box-shadow:0 1px 2px rgba(15,23,42,.10);
   }
+  .tab-btn.overlay-included::after{
+    content:"";
+    position:absolute;
+    left:10px;
+    right:10px;
+    bottom:4px;
+    border-top:3px var(--overlay-line-style, solid) var(--overlay-line-color, #2563eb);
+    pointer-events:none;
+    opacity:.95;
+  }
+  .tab-btn.overlay-locked{
+    opacity:.58;
+    cursor:not-allowed;
+  }
+  .tab-btn.overlay-locked:hover{
+    background:#e7ecf4;
+    color:#51627e;
+  }
+  .split-btn-group.overlay-mode-active{
+    background:#e8eef6;
+    border-color:#b8c6d9;
+    box-shadow:inset 0 2px 4px rgba(15,23,42,.08);
+    transform:translateY(1px);
+  }
+  .split-btn-group.overlay-mode-active > button{
+    background:#e8eef6;
+    color:#334155;
+  }
+  .split-btn-group.overlay-mode-active > button:hover{
+    background:#dde6f1;
+  }
   .tab-btn.tab-dragging{
     visibility:hidden;
   }
@@ -2300,7 +2331,7 @@
   <div id="overlaySettingsModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal-card overlay-settings-modal" role="dialog" aria-modal="true" aria-labelledby="overlaySettingsTitle">
       <div id="overlaySettingsTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">重ね描き設定</div>
-      <div class="overlay-settings-note">現在の条件を基準に、表示対象・色・線種・線幅を条件ごとに設定します。初回は現在条件のみ表示ONで作成されます。</div>
+      <div class="overlay-settings-note">このワークスペースで重ね描き表示する条件を設定します</div>
       <div class="overlay-settings-table-wrap">
         <table class="overlay-settings-table">
           <thead><tr><th>表示</th><th>条件名</th><th>色</th><th>線種</th><th>線幅</th><th>プレビュー</th></tr></thead>
@@ -2854,8 +2885,11 @@ const TAB_TOUCH_DRAG_ARM_MS = 180;
 const TAB_TOUCH_CONTEXT_MENU_MS = 550;
 let nextScenarioIdSeq = 1;
 let nextScenarioSerial = 1;
+const ENABLE_OVERLAY_FEATURE = true;
 const DEFAULT_OVERLAY_LINE_WIDTH = 2;
 const DEFAULT_OVERLAY_LINE_STYLE = "solid";
+let workspaceOverlayModeOn = false;
+let workspaceOverlaySettings = {};
 let currentInputMode = "detail";
 let inputModeScrollPositions = {simple:0, detail:0};
 let monteMode = false;
@@ -2956,6 +2990,15 @@ function createScenarioRecord(data = {}, serial = nextScenarioSerial){
     overlayStyles: undefined
   };
 }
+function buildDefaultWorkspaceOverlaySettings(){
+  ensureScenarioIds();
+  const map = {};
+  (scenarios || []).forEach((s, idx)=>{
+    if(!s?.id) return;
+    map[s.id] = { visible: idx === 0, color: getDefaultOverlayColorByIndex(idx), lineStyle: DEFAULT_OVERLAY_LINE_STYLE, lineWidth: DEFAULT_OVERLAY_LINE_WIDTH };
+  });
+  return map;
+}
 function ensureScenarioIds(){
   let maxSeen = 0;
   (scenarios || []).forEach(s=>{
@@ -3009,31 +3052,44 @@ function normalizeOverlayStylesMap(rawMap, ownerTabIndex){
   const ownerIdx = Number.isFinite(ownerTabIndex) ? ownerTabIndex : currentTab;
   const src = rawMap && typeof rawMap === 'object' ? rawMap : {};
   const normalized = {};
-  let anyVisible = false;
   (scenarios || []).forEach((s, idx)=>{
     if(!s?.id) return;
     const raw = src[s.id] || {};
-    const item = { visible: raw.visible === true, color: typeof raw.color === 'string' && raw.color ? raw.color : getDefaultOverlayColorByIndex(idx), lineStyle: normalizeOverlayLineStyle(raw.lineStyle), lineWidth: normalizeOverlayLineWidth(raw.lineWidth) };
-    if(item.visible) anyVisible = true;
-    normalized[s.id] = item;
+    normalized[s.id] = {
+      visible: raw.visible === true,
+      color: typeof raw.color === 'string' && raw.color ? raw.color : getDefaultOverlayColorByIndex(idx),
+      lineStyle: normalizeOverlayLineStyle(raw.lineStyle),
+      lineWidth: normalizeOverlayLineWidth(raw.lineWidth)
+    };
   });
+  const visibleIds = Object.entries(normalized).filter(([, item])=>item && item.visible === true).map(([id])=>id);
+  if(!visibleIds.length){
+    const fallbackScenario = scenarios[Math.max(0, Math.min(ownerIdx, scenarios.length - 1))] || scenarios[0];
+    if(fallbackScenario?.id && normalized[fallbackScenario.id]) normalized[fallbackScenario.id].visible = true;
+  }
   return normalized;
 }
 function isOverlayStylesEffectivelyVisible(rawMap, ownerTabIndex = currentTab){
   const normalized = normalizeOverlayStylesMap(rawMap, ownerTabIndex);
   return Object.values(normalized).some(item => item && item.visible === true);
 }
-function getOverlayStylesForTab(tabIndex, opts = {}){
+function ensureWorkspaceOverlayState(opts = {}){
   ensureScenarioIds();
-  const scenario = scenarios?.[tabIndex];
-  if(!scenario) return {};
-  scenario.data = migrateLegacyData(scenario.data || {});
-  if(!scenario.overlayStyles && scenario.data.overlayStyles) scenario.overlayStyles = JSON.parse(JSON.stringify(scenario.data.overlayStyles));
-  if((!scenario.overlayStyles || opts.forceRebuild === true) && !scenario.data.overlayStyles) scenario.overlayStyles = buildDefaultOverlayStylesForScenario(tabIndex);
-  const normalized = normalizeOverlayStylesMap(scenario.overlayStyles || scenario.data.overlayStyles || {}, tabIndex);
-  scenario.overlayStyles = JSON.parse(JSON.stringify(normalized));
-  scenario.data.overlayStyles = JSON.parse(JSON.stringify(normalized));
-  return normalized;
+  if(!ENABLE_OVERLAY_FEATURE){
+    workspaceOverlayModeOn = false;
+    workspaceOverlaySettings = {};
+    return workspaceOverlaySettings;
+  }
+  const forceRebuild = opts && opts.forceRebuild === true;
+  let seed = !forceRebuild && workspaceOverlaySettings && typeof workspaceOverlaySettings === 'object' ? workspaceOverlaySettings : null;
+  if(!seed || !Object.keys(seed).length){
+    const legacyOwner = scenarios?.[currentTab] || scenarios?.[0];
+    const legacy = legacyOwner?.overlayStyles || legacyOwner?.data?.overlayStyles || scenarios.find(s=>s?.overlayStyles || s?.data?.overlayStyles)?.overlayStyles || scenarios.find(s=>s?.overlayStyles || s?.data?.overlayStyles)?.data?.overlayStyles;
+    seed = legacy && typeof legacy === 'object' ? legacy : buildDefaultWorkspaceOverlaySettings();
+  }
+  workspaceOverlaySettings = normalizeOverlayStylesMap(seed, currentTab);
+  workspaceOverlayModeOn = !!workspaceOverlayModeOn && isOverlayStylesEffectivelyVisible(workspaceOverlaySettings, currentTab);
+  return workspaceOverlaySettings;
 }
 function cleanupOverlayStylesForAllScenarios(){
   ensureScenarioIds();
@@ -3043,14 +3099,44 @@ function cleanupOverlayStylesForAllScenarios(){
     const raw = s.overlayStyles || s.data.overlayStyles;
     if(raw){ const normalized = normalizeOverlayStylesMap(raw, idx); s.data.overlayStyles = normalized; s.overlayStyles = JSON.parse(JSON.stringify(normalized)); }
   });
+  ensureWorkspaceOverlayState();
 }
-function getOverlayEntriesForTab(tabIndex){
-  const styles = getOverlayStylesForTab(tabIndex);
+function getOverlayStylesForTab(_tabIndex, opts = {}){
+  return ensureWorkspaceOverlayState(opts);
+}
+function getOverlayEntriesForTab(_tabIndex){
+  const styles = ensureWorkspaceOverlayState();
   return (scenarios || []).map((s, idx)=>({ scenario: s, index: idx, style: styles[s.id] || {visible:false, color:getDefaultOverlayColorByIndex(idx), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH} }));
 }
-function hasVisibleOverlaySelection(tabIndex){
-  const styles = scenarios?.[tabIndex]?.overlayStyles || scenarios?.[tabIndex]?.data?.overlayStyles;
-  return isOverlayStylesEffectivelyVisible(styles, tabIndex);
+function hasVisibleOverlaySelection(_tabIndex){
+  return isOverlayStylesEffectivelyVisible(ensureWorkspaceOverlayState(), currentTab);
+}
+function getLeftmostVisibleOverlayIndex(){
+  const styles = ensureWorkspaceOverlayState();
+  const idx = (scenarios || []).findIndex(s => s?.id && styles[s.id]?.visible === true);
+  return idx >= 0 ? idx : 0;
+}
+function isScenarioIncludedInOverlayByIndex(tabIndex){
+  const scenario = scenarios?.[tabIndex];
+  if(!scenario?.id) return false;
+  return ensureWorkspaceOverlayState()[scenario.id]?.visible === true;
+}
+function syncWorkspaceOverlayAfterScenarioMutation(removedScenarioId = ''){
+  const previous = workspaceOverlaySettings && typeof workspaceOverlaySettings === 'object' ? workspaceOverlaySettings : {};
+  workspaceOverlaySettings = normalizeOverlayStylesMap(previous, currentTab);
+  if(removedScenarioId && workspaceOverlaySettings[removedScenarioId]) delete workspaceOverlaySettings[removedScenarioId];
+  workspaceOverlaySettings = normalizeOverlayStylesMap(workspaceOverlaySettings, currentTab);
+  if(workspaceOverlayModeOn && scenarios.length && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
+}
+function updateOverlayFeatureUI(){
+  const toggleEl = document.getElementById('overlayToggle');
+  if(toggleEl) toggleEl.checked = !!workspaceOverlayModeOn;
+  const groupEl = document.querySelector('#chartTopBar .split-btn-group');
+  groupEl?.classList.toggle('overlay-mode-active', !!workspaceOverlayModeOn);
+  const applyBtn = document.getElementById('overlayApplyBtn');
+  const menuBtn = document.getElementById('overlayMenuBtn');
+  if(applyBtn) applyBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length;
+  if(menuBtn) menuBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length;
 }
 function getLineDashByOverlayStyle(lineStyle){ if(lineStyle === 'dashed') return [6,4]; if(lineStyle === 'dotted') return [2,3]; return []; }
 function applyOverlayStyleToDatasets(datasets, style, graphType){
@@ -3073,7 +3159,18 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
     return next;
   });
 }
-function setOverlayModeEnabled(enabled){ const overlayToggleEl = document.getElementById('overlayToggle'); if(overlayToggleEl) overlayToggleEl.checked = !!enabled; }
+function setOverlayModeEnabled(enabled){
+  workspaceOverlayModeOn = !!enabled && ENABLE_OVERLAY_FEATURE && scenarios.length > 0 && hasVisibleOverlaySelection(currentTab);
+  if(workspaceOverlayModeOn && scenarios.length && !isScenarioIncludedInOverlayByIndex(currentTab)){
+    currentTab = getLeftmostVisibleOverlayIndex();
+    if(scenarios[currentTab]){
+      setAllInputs(scenarios[currentTab].data);
+      updatePeriodDisplays();
+      updateInputsVisibility();
+    }
+  }
+  updateOverlayFeatureUI();
+}
 const OVERLAY_COLOR_PRESETS = [
   '#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#111827',
   '#0f766e','#db2777','#0891b2','#65a30d','#f59e0b','#6b7280'
@@ -3107,17 +3204,30 @@ function rebuildOverlaySettingsTable(){
   const body = document.getElementById('overlaySettingsBody');
   if(!body) return;
   const entries = getOverlayEntriesForTab(currentTab);
+  const visibleCount = entries.filter(entry => entry?.style?.visible).length;
   body.innerHTML = entries.map(entry=>{
     const s = entry.scenario;
     const style = entry.style || {};
     const previewStyle = style.lineStyle === 'dashed' ? 'border-top-style:dashed;' : (style.lineStyle === 'dotted' ? 'border-top-style:dotted;' : 'border-top-style:solid;');
     const resolvedColor = style.color || getDefaultOverlayColorByIndex(entry.index);
-    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${style.lineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${style.lineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${style.lineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(style.lineWidth)===1?'selected':''}>1</option><option value="2" ${Number(style.lineWidth)===2?'selected':''}>2</option><option value="3" ${Number(style.lineWidth)===3?'selected':''}>3</option><option value="4" ${Number(style.lineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview" style="border-top-color:${escapeHtml(resolvedColor)};border-top-width:${normalizeOverlayLineWidth(style.lineWidth)}px;${previewStyle}"></span></td></tr>`;
+    const disableVisibleToggle = style.visible && visibleCount <= 1;
+    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''} ${disableVisibleToggle ? 'disabled title="最後の1本は解除できません"' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${style.lineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${style.lineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${style.lineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(style.lineWidth)===1?'selected':''}>1</option><option value="2" ${Number(style.lineWidth)===2?'selected':''}>2</option><option value="3" ${Number(style.lineWidth)===3?'selected':''}>3</option><option value="4" ${Number(style.lineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview" style="border-top-color:${escapeHtml(resolvedColor)};border-top-width:${normalizeOverlayLineWidth(style.lineWidth)}px;${previewStyle}"></span></td></tr>`;
   }).join('');
+}
+function updateOverlayVisibilityCheckboxStates(){
+  const checkboxes = [...document.querySelectorAll('#overlaySettingsBody [data-overlay-field="visible"]')];
+  const checked = checkboxes.filter(el=>el.checked);
+  checkboxes.forEach(el=>{
+    const disable = el.checked && checked.length <= 1;
+    el.disabled = disable;
+    if(disable) el.title = '最後の1本は解除できません';
+    else el.removeAttribute('title');
+  });
 }
 function openOverlaySettingsModal(){
   if(!scenarios.length) return;
   rebuildOverlaySettingsTable();
+  updateOverlayVisibilityCheckboxStates();
   closeOverlayColorPalettes();
   const modal = document.getElementById('overlaySettingsModal');
   if(!modal) return;
@@ -3163,13 +3273,12 @@ function refreshOverlayPreviewForRow(row){
 }
 function saveOverlaySettingsModal(){
   if(!scenarios[currentTab]) return;
-  scenarios[currentTab].data = migrateLegacyData(scenarios[currentTab].data || {});
   const overlayStyles = collectOverlaySettingsFromModal();
-  scenarios[currentTab].overlayStyles = JSON.parse(JSON.stringify(overlayStyles));
-  scenarios[currentTab].data.overlayStyles = JSON.parse(JSON.stringify(overlayStyles));
-  const visible = isOverlayStylesEffectivelyVisible(overlayStyles, currentTab);
-  setOverlayModeEnabled(visible);
+  workspaceOverlaySettings = JSON.parse(JSON.stringify(overlayStyles));
+  if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
+  setOverlayModeEnabled(workspaceOverlayModeOn || isOverlayStylesEffectivelyVisible(overlayStyles, currentTab));
   closeOverlaySettingsModal();
+  renderTabs();
   monteMode ? runMonte() : requestDraw({immediate:true});
   persistState();
 }
@@ -8639,10 +8748,13 @@ function addTab(){
   const nextScenario = createScenarioRecord(baseData, nextScenarioSerial);
   nextScenarioSerial += 1;
   scenarios.splice(insertIndex, 0, nextScenario);
-  currentTab = insertIndex;
+  syncWorkspaceOverlayAfterScenarioMutation();
   if(hadNoScenarios){
+    currentTab = insertIndex;
     currentInputMode = "simple";
     inputModeScrollPositions = {simple:0, detail:0};
+  }else if(!workspaceOverlayModeOn){
+    currentTab = insertIndex;
   }
   setAllInputs(scenarios[currentTab].data);
   updateInputsVisibility();
@@ -8656,7 +8768,8 @@ function duplicateTab(tabIndex = currentTab){
   const nextScenario = createScenarioRecord(src.data || {}, nextScenarioSerial);
   nextScenarioSerial += 1;
   scenarios.splice(tabIndex + 1, 0, nextScenario);
-  currentTab = tabIndex + 1;
+  syncWorkspaceOverlayAfterScenarioMutation();
+  if(!workspaceOverlayModeOn) currentTab = tabIndex + 1;
   setAllInputs(scenarios[currentTab].data);
   updateInputsVisibility();
   renderTabs();
@@ -8695,8 +8808,10 @@ function confirmDeleteCurrentTab(){
   }
   ensureScenarioSaved();
   const deleteIndex = pendingDeleteTabIndex;
+  const deletedScenarioId = scenarios[deleteIndex]?.id || "";
   scenarios.splice(deleteIndex, 1);
   cleanupOverlayStylesForAllScenarios();
+  syncWorkspaceOverlayAfterScenarioMutation(deletedScenarioId);
   normalizeScenarioNames();
   if(!scenarios.length){
     nextScenarioSerial = 1;
@@ -8720,6 +8835,7 @@ function confirmDeleteCurrentTab(){
 }
 function switchTab(i){
   if(!scenarios[i]) return;
+  if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(i)) return;
   ensureScenarioSaved();
   currentTab = i;
   setAllInputs(scenarios[i].data);
@@ -8789,7 +8905,6 @@ function switchGraphToAssetFromTabClick(){
   if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
   if(fixedScaleEl) fixedScaleEl.checked = false;
-  setOverlayModeEnabled(false);
   monteMode = false;
 }
 function clearTabDropIndicators(){
@@ -8893,6 +9008,7 @@ function reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter){
   const targetIndex = getScenarioIndexById(targetScenarioId);
   if(fromIndex < 0 || targetIndex < 0) return false;
   const activeScenarioId = scenarios[currentTab]?.id || "";
+  const previousOverlaySettings = JSON.parse(JSON.stringify(workspaceOverlaySettings || {}));
   const tabScroller = document.getElementById('tabScroller');
   const preservedScrollLeft = tabScroller ? tabScroller.scrollLeft : 0;
   const [movedScenario] = scenarios.splice(fromIndex, 1);
@@ -8901,7 +9017,10 @@ function reorderScenarioTabsById(dragScenarioId, targetScenarioId, insertAfter){
   if(insertAfter) insertIndex += 1;
   insertIndex = Math.max(0, Math.min(insertIndex, scenarios.length));
   scenarios.splice(insertIndex, 0, movedScenario);
+  workspaceOverlaySettings = previousOverlaySettings;
+  syncWorkspaceOverlayAfterScenarioMutation();
   currentTab = Math.max(0, scenarios.findIndex(s => s?.id === activeScenarioId));
+  if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
   renderTabs();
   if(tabScroller){
     const maxScrollLeft = Math.max(0, tabScroller.scrollWidth - tabScroller.clientWidth);
@@ -9213,11 +9332,19 @@ function handleTabMouseUp(){
 }
 function renderTabs(){
   ensureScenarioMetadata();
+  ensureWorkspaceOverlayState();
+  updateOverlayFeatureUI();
   const el = document.getElementById("tabButtons");
   el.innerHTML = scenarios.map((s,i)=>{
-    const cls = i===currentTab ? "tab-btn active" : "tab-btn";
+    const overlayIncluded = !!(workspaceOverlayModeOn && s?.id && workspaceOverlaySettings[s.id]?.visible);
+    const overlayLocked = !!(workspaceOverlayModeOn && !overlayIncluded);
+    const cls = ["tab-btn", i===currentTab ? "active" : "", overlayIncluded ? "overlay-included" : "", overlayLocked ? "overlay-locked" : ""].filter(Boolean).join(" ");
     const draggingClass = s?.id && s.id === tabDragScenarioId ? " tab-dragging" : "";
-    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}">${escapeHtml(s.name)}</button>`;
+    const style = overlayIncluded ? (workspaceOverlaySettings[s.id] || {}) : {};
+    const lineColor = style.color || getDefaultOverlayColorByIndex(i);
+    const lineStyle = normalizeOverlayLineStyle(style.lineStyle);
+    const title = overlayLocked ? "重ね描き対象外です。設定で追加してください" : "";
+    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}" ${title ? `title="${escapeHtml(title)}" aria-disabled="true"` : ""} style="${overlayIncluded ? `--overlay-line-color:${escapeHtml(lineColor)};--overlay-line-style:${escapeHtml(lineStyle)};` : ""}">${escapeHtml(s.name)}</button>`;
   }).join("");
   el.querySelectorAll(".tab-btn").forEach(btn=>{
     const idx = +btn.dataset.tabIndex;
@@ -9267,6 +9394,10 @@ function renderTabs(){
         return;
       }
       closeTabContextMenu();
+      if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(idx)){
+        e.preventDefault();
+        return;
+      }
       if(idx === currentTab){
         const inputsEl = document.getElementById("inputs");
         if(inputsEl){
@@ -15637,7 +15768,7 @@ function draw(){
   monteMode = false;
   ensureScenarioSaved();
   const graphType = document.getElementById("graphType").value;
-  const overlay = !!document.getElementById("overlayToggle").checked;
+  const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
   const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible) : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:TAB_COLORS[currentTab % TAB_COLORS.length], lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
@@ -15687,7 +15818,7 @@ function runMonte(){
   clearScheduledDraw();
   monteMode = true;
   ensureScenarioSaved();
-  const overlay = !!document.getElementById("overlayToggle").checked;
+  const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
   const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible) : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:TAB_COLORS[currentTab % TAB_COLORS.length], lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
@@ -15819,6 +15950,8 @@ function getSaveData(){
     scenarios,
     currentTab,
     nextScenarioSerial,
+    overlayModeOn: workspaceOverlayModeOn,
+    overlaySettings: ensureWorkspaceOverlayState(),
     currentInputMode: normalizeInputMode(currentInputMode),
     inputModeScrollPositions: {...getInputModeScrollStore()}
   };
@@ -15867,7 +16000,10 @@ function loadFromURL(){
     currentTab = Number.isInteger(data.currentTab) ? Math.max(-1, Math.min(data.currentTab, scenarios.length - 1)) : (scenarios.length ? 0 : -1);
     currentInputMode = normalizeInputMode(data.currentInputMode);
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
+    workspaceOverlayModeOn = !!data.overlayModeOn;
+    workspaceOverlaySettings = data.overlaySettings && typeof data.overlaySettings === "object" ? JSON.parse(JSON.stringify(data.overlaySettings)) : {};
     cleanupOverlayStylesForAllScenarios();
+    updateOverlayFeatureUI();
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
     updatePeriodDisplays();
     renderTabs();
@@ -15889,7 +16025,10 @@ function loadFromLocal(){
     currentTab = Number.isInteger(data.currentTab) ? Math.max(-1, Math.min(data.currentTab, scenarios.length - 1)) : (scenarios.length ? 0 : -1);
     currentInputMode = normalizeInputMode(data.currentInputMode);
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
+    workspaceOverlayModeOn = !!data.overlayModeOn;
+    workspaceOverlaySettings = data.overlaySettings && typeof data.overlaySettings === "object" ? JSON.parse(JSON.stringify(data.overlaySettings)) : {};
     cleanupOverlayStylesForAllScenarios();
+    updateOverlayFeatureUI();
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
     updatePeriodDisplays();
     renderTabs();
@@ -18045,6 +18184,7 @@ document.addEventListener("focusin", (e)=>{
   setTimeout(()=>{ enforceFocusWithinOpenModal(); }, 0);
 }, true);
 document.getElementById("copyUrlBtn").addEventListener("click", copyURL);
+updateOverlayFeatureUI();
 document.getElementById("graphType").addEventListener("change", ()=>{
   const currentAge = numInput("age", 0);
   const xAxisMinEl = document.getElementById("xAxisMin");
@@ -18057,15 +18197,19 @@ document.getElementById("graphType").addEventListener("change", ()=>{
   requestDraw();
   persistState();
 });
-document.getElementById("overlayToggle").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
+document.getElementById("overlayToggle").addEventListener("change", ()=>{ setOverlayModeEnabled(document.getElementById("overlayToggle").checked); monteMode ? runMonte() : requestDraw(); persistState(); });
 document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
-  if(!scenarios.length) return;
-  getOverlayStylesForTab(currentTab);
-  setOverlayModeEnabled(hasVisibleOverlaySelection(currentTab));
+  if(!ENABLE_OVERLAY_FEATURE || !scenarios.length) return;
+  ensureWorkspaceOverlayState();
+  const nextEnabled = !workspaceOverlayModeOn;
+  if(nextEnabled && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
+  setOverlayModeEnabled(nextEnabled);
+  renderTabs();
   monteMode ? runMonte() : requestDraw({immediate:true});
   persistState();
 });
 document.getElementById("overlayMenuBtn")?.addEventListener("click", (e)=>{
+  if(!ENABLE_OVERLAY_FEATURE) return;
   e.preventDefault();
   e.stopPropagation();
   openOverlaySettingsModal();
@@ -18109,6 +18253,13 @@ document.getElementById("overlaySettingsBody")?.addEventListener("input", (e)=>{
 document.getElementById("overlaySettingsBody")?.addEventListener("change", (e)=>{
   const row = e.target?.closest?.('tr[data-scenario-id]');
   if(!row) return;
+  if(e.target?.matches?.('[data-overlay-field="visible"]')){
+    const checkboxes = [...document.querySelectorAll('#overlaySettingsBody [data-overlay-field="visible"]')];
+    const checked = checkboxes.filter(el=>el.checked);
+    if(!checked.length) e.target.checked = true;
+    updateOverlayVisibilityCheckboxStates();
+    return;
+  }
   if(e.target?.matches?.('[data-overlay-field="color"]')) syncOverlayColorControls(row);
   refreshOverlayPreviewForRow(row);
 });
