@@ -16973,8 +16973,15 @@ function isWithdrawalPreviewSheetOpen(){
   return !!modal && modal.classList.contains('show');
 }
 function updateWithdrawalPreviewTopVar(){
+  const chartWrap = document.getElementById('chartWrap');
   const tabsBar = document.getElementById('tabsBar');
-  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY)) : 0;
+  let top = 0;
+  if(chartWrap){
+    const rect = chartWrap.getBoundingClientRect();
+    top = Math.max(0, Math.round(rect.bottom + window.scrollY - 1));
+  }else if(tabsBar){
+    top = Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY));
+  }
   const docHeight = Math.max(
     document.documentElement.scrollHeight || 0,
     document.body?.scrollHeight || 0,
