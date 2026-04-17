@@ -1441,9 +1441,9 @@
   .withdrawal-preview-backdrop{position:absolute;left:0;right:0;top:0;height:var(--withdrawal-preview-doc-height, 100vh);align-items:flex-end;justify-content:center;padding:0;background:transparent;pointer-events:none;z-index:1000;}
   .withdrawal-preview-dim{position:absolute;left:0;right:0;top:var(--withdrawal-preview-top, 0px);bottom:0;background:rgba(0,0,0,.22);pointer-events:none;opacity:0;transition:opacity .24s ease-out;z-index:0;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-dim{opacity:1;}
-  .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:auto;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;}
+  .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:auto;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;padding-top:10px;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-sheet{transform:translate(-50%, 0);opacity:1;}
-  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;margin:-4px 0 8px;position:sticky;top:-8px;z-index:2;background:linear-gradient(to bottom, #fff 65%, rgba(255,255,255,0));padding-top:2px;}
+  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;margin:0 0 8px;position:static;top:auto;z-index:auto;background:transparent;padding-top:0;}
   .withdrawal-preview-handle span{display:block;width:52px;height:5px;border-radius:999px;background:#cbd5e1;}
   body.withdrawal-preview-open #inputs{pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.58;}
   body.withdrawal-preview-open #tabsBar{pointer-events:none;}
@@ -16959,7 +16959,7 @@ function isWithdrawalPreviewSheetOpen(){
 }
 function updateWithdrawalPreviewTopVar(){
   const tabsBar = document.getElementById('tabsBar');
-  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY - 10)) : 0;
+  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY - 4)) : 0;
   const docHeight = Math.max(
     document.documentElement.scrollHeight || 0,
     document.body?.scrollHeight || 0,
@@ -18561,9 +18561,17 @@ document.addEventListener("focusin", (e)=>{
   const modal = getOpenModal();
   if(!modal) return;
   const target = e.target;
+  const previewControlsSelector = '#chartTopBar, #chartCanvasStickyWrap, #chartAxisModal';
   if(modal.contains(target)){
     rememberFocusInsideOpenModal(target);
     return;
+  }
+  if(document.body.classList.contains('withdrawal-preview-open')){
+    const targetEl = target instanceof Element ? target : null;
+    const activeEl = document.activeElement instanceof Element ? document.activeElement : null;
+    if((targetEl && targetEl.closest(previewControlsSelector)) || (activeEl && activeEl.closest(previewControlsSelector))){
+      return;
+    }
   }
   setTimeout(()=>{ enforceFocusWithinOpenModal(); }, 0);
 }, true);
