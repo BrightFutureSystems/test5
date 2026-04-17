@@ -6612,6 +6612,10 @@ function applyTabOrder(){
   });
   allCandidates.forEach(el => {
     if(el.dataset.keepNaturalTab === '1') return;
+    if(document.body.classList.contains('withdrawal-preview-open') && el.closest('#chartTopBar, #chartCanvasStickyWrap, #chartAxisModal')){
+      el.tabIndex = 0;
+      return;
+    }
     if(!inScope.has(el) || !isTabNavigableElement(el)){
       el.tabIndex = -1;
     }
@@ -16955,7 +16959,7 @@ function isWithdrawalPreviewSheetOpen(){
 }
 function updateWithdrawalPreviewTopVar(){
   const tabsBar = document.getElementById('tabsBar');
-  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY)) : 0;
+  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY - 10)) : 0;
   const docHeight = Math.max(
     document.documentElement.scrollHeight || 0,
     document.body?.scrollHeight || 0,
@@ -16971,6 +16975,7 @@ function setWithdrawalPreviewFrozen(enabled){
     closeOverflowMenu();
     closeTabContextMenu();
     closeRowContextMenu();
+    document.querySelectorAll('#chartTopBar select, #chartTopBar button, #chartCanvasStickyWrap button').forEach(el=>{ try{ el.dataset.keepNaturalTab = '1'; }catch(_e){} });
     withdrawalRulePreviewFrozenElements = elements;
     withdrawalRulePreviewFrozenElements.forEach(el=>{
       try{ el.dataset.prevDisabled = el.disabled ? '1' : '0'; el.disabled = true; el.setAttribute('aria-disabled','true'); }catch(_e){}
@@ -16979,6 +16984,7 @@ function setWithdrawalPreviewFrozen(enabled){
     withdrawalRulePreviewFrozenElements.forEach(el=>{
       try{ el.disabled = (el.dataset.prevDisabled === '1'); if(el.disabled) el.setAttribute('aria-disabled','true'); else el.removeAttribute('aria-disabled'); delete el.dataset.prevDisabled; }catch(_e){}
     });
+    document.querySelectorAll('#chartTopBar select, #chartTopBar button, #chartCanvasStickyWrap button').forEach(el=>{ try{ delete el.dataset.keepNaturalTab; }catch(_e){} });
     withdrawalRulePreviewFrozenElements = [];
   }
 }
