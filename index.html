@@ -3419,15 +3419,20 @@ function refreshOverlayPreviewForRow(row){
 }
 function saveOverlaySettingsModal(){
   if(!scenarios[currentTab]) return;
+  const sourceTabIndex = currentTab;
   ensureScenarioSaved();
-  const savedTabIndex = currentTab;
   const overlayStyles = collectOverlaySettingsFromModal();
   workspaceOverlaySettings = JSON.parse(JSON.stringify(overlayStyles));
-  if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(savedTabIndex)){
-    currentTab = getLeftmostVisibleOverlayIndex();
+  let nextActiveIndex = sourceTabIndex;
+  if(workspaceOverlayModeOn){
+    nextActiveIndex = getSafeActiveScenarioIndex(sourceTabIndex);
   }
-  setOverlayModeEnabled(workspaceOverlayModeOn);
   closeOverlaySettingsModal();
+  updateOverlayFeatureUI();
+  if(workspaceOverlayModeOn){
+    enforceOverlaySafeActiveScenario(nextActiveIndex, {syncInputs:true});
+    updateInputsVisibility();
+  }
   renderTabs();
   monteMode ? runMonte() : requestDraw({immediate:true});
   persistState();
