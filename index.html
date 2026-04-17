@@ -1443,17 +1443,26 @@
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-dim{opacity:1;}
   .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;padding-top:0;display:flex;flex-direction:column;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-sheet{transform:translate(-50%, 0);opacity:1;}
-  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin:0;position:sticky;top:0;z-index:3;background:#fff;padding:10px 0 8px;}
+  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin:0;background:#fff;padding:10px 0 8px;position:relative;z-index:3;}
   .withdrawal-preview-handle span{display:block;width:52px;height:5px;border-radius:999px;background:#cbd5e1;}
-  body.withdrawal-preview-open #inputs{pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.58;}
+  .withdrawal-preview-sheet .modal-text{flex:0 0 auto;}
+  .withdrawal-preview-sheet .withdrawal-rule-grid{flex:1 1 auto;min-height:0;overflow:auto;}
+  .withdrawal-preview-sheet .modal-actions{flex:0 0 auto;}
+  body.withdrawal-preview-open #inputs{pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.58;overflow:hidden !important;}
   body.withdrawal-preview-open #tabsBar{pointer-events:none;}
   body.withdrawal-preview-open #overflowMenu{display:none !important;}
   body.withdrawal-preview-open #overlayApplyBtn,
   body.withdrawal-preview-open #overlayMenuBtn,
-  body.withdrawal-preview-open #overflowMenuBtn{cursor:not-allowed !important;}
+  body.withdrawal-preview-open #overflowMenuBtn,
+  body.withdrawal-preview-open .split-btn-group > #overlayApplyBtn,
+  body.withdrawal-preview-open .split-btn-group > #overlayMenuBtn{cursor:not-allowed !important;color:#94a3b8 !important;background:#fff !important;box-shadow:none !important;}
+  body.withdrawal-preview-open .split-btn-group,
+  body.withdrawal-preview-open #overflowMenuBtn{border-color:#d1d5db !important;box-shadow:none !important;}
   body.withdrawal-preview-open #overlayApplyBtn:hover,
   body.withdrawal-preview-open #overlayMenuBtn:hover,
-  body.withdrawal-preview-open #overflowMenuBtn:hover{background:#fff !important;color:inherit !important;box-shadow:none !important;}
+  body.withdrawal-preview-open #overflowMenuBtn:hover,
+  body.withdrawal-preview-open .split-btn-group:hover,
+  body.withdrawal-preview-open .split-btn-group > button:hover{background:#fff !important;color:#94a3b8 !important;box-shadow:none !important;}
   .withdrawal-rule-grid{display:flex;flex-direction:column;gap:12px;flex:1 1 auto;min-height:0;overflow:auto;padding:0 16px 14px;}
   .withdrawal-rule-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
   .withdrawal-rule-section{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
@@ -16965,7 +16974,7 @@ function isWithdrawalPreviewSheetOpen(){
 }
 function updateWithdrawalPreviewTopVar(){
   const tabsBar = document.getElementById('tabsBar');
-  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY - 2)) : 0;
+  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY)) : 0;
   const docHeight = Math.max(
     document.documentElement.scrollHeight || 0,
     document.body?.scrollHeight || 0,
@@ -16982,6 +16991,13 @@ function setWithdrawalPreviewFrozen(enabled){
     closeTabContextMenu();
     closeRowContextMenu();
     document.querySelectorAll('#chartTopBar select, #chartTopBar button, #chartCanvasStickyWrap button').forEach(el=>{ try{ el.dataset.keepNaturalTab = '1'; }catch(_e){} });
+    const inputsEl = document.getElementById('inputs');
+    if(inputsEl){
+      try{
+        inputsEl.dataset.prevOverflow = inputsEl.style.overflow || '';
+        inputsEl.style.overflow = 'hidden';
+      }catch(_e){}
+    }
     withdrawalRulePreviewFrozenElements = elements;
     withdrawalRulePreviewFrozenElements.forEach(el=>{
       try{ el.dataset.prevDisabled = el.disabled ? '1' : '0'; el.disabled = true; el.setAttribute('aria-disabled','true'); }catch(_e){}
@@ -16990,6 +17006,13 @@ function setWithdrawalPreviewFrozen(enabled){
     withdrawalRulePreviewFrozenElements.forEach(el=>{
       try{ el.disabled = (el.dataset.prevDisabled === '1'); if(el.disabled) el.setAttribute('aria-disabled','true'); else el.removeAttribute('aria-disabled'); delete el.dataset.prevDisabled; }catch(_e){}
     });
+    const inputsEl = document.getElementById('inputs');
+    if(inputsEl){
+      try{
+        inputsEl.style.overflow = inputsEl.dataset.prevOverflow || '';
+        delete inputsEl.dataset.prevOverflow;
+      }catch(_e){}
+    }
     document.querySelectorAll('#chartTopBar select, #chartTopBar button, #chartCanvasStickyWrap button').forEach(el=>{ try{ delete el.dataset.keepNaturalTab; }catch(_e){} });
     withdrawalRulePreviewFrozenElements = [];
   }
