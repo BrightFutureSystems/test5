@@ -1358,6 +1358,7 @@
     .curve-btn{padding:5px 8px;font-size:12px;}
     .insurance-assist-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
     .withdrawal-rule-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
+    .withdrawal-preview-sheet{width:min(100vw - 8px, 980px);max-width:calc(100vw - 8px);height:min(52vh, 620px);min-height:300px;margin-bottom:4px;padding:14px 10px 12px;}
     .monte-settings-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
     .withdrawal-rule-fields{grid-template-columns:1fr;}
     .withdrawal-compare-table{min-width:640px;}
@@ -1437,6 +1438,16 @@
   .social-detail-table th:nth-child(3),.social-detail-table td:nth-child(3){width:20%;}
   .social-detail-table th:nth-child(4),.social-detail-table td:nth-child(4){width:36%;}
   .withdrawal-rule-modal{width:min(760px, calc(100vw - 20px));max-height:min(92vh, 860px);overflow:auto;}
+  .withdrawal-preview-backdrop{align-items:flex-end;justify-content:center;padding:0;background:transparent;}
+  .withdrawal-preview-dim{position:fixed;left:0;right:0;top:var(--withdrawal-preview-top, 0px);bottom:0;background:rgba(0,0,0,.22);pointer-events:none;opacity:0;transition:opacity .22s ease;z-index:0;}
+  .withdrawal-preview-backdrop.show .withdrawal-preview-dim{opacity:1;}
+  .withdrawal-preview-sheet{position:relative;width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto 8px;border-radius:18px 18px 0 0;overflow:auto;box-shadow:0 -12px 32px rgba(0,0,0,.18);transform:translateY(100%);opacity:.98;transition:transform .22s ease-out, opacity .22s ease-out;z-index:1;}
+  .withdrawal-preview-backdrop.show .withdrawal-preview-sheet{transform:translateY(0);opacity:1;}
+  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;margin:-4px 0 8px;position:sticky;top:-8px;z-index:2;background:linear-gradient(to bottom, #fff 65%, rgba(255,255,255,0));padding-top:2px;}
+  .withdrawal-preview-handle span{display:block;width:52px;height:5px;border-radius:999px;background:#cbd5e1;}
+  body.withdrawal-preview-open #inputs{pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.58;}
+  body.withdrawal-preview-open #tabsBar{pointer-events:none;}
+  body.withdrawal-preview-open #overflowMenu{display:none !important;}
   .withdrawal-rule-grid{display:flex;flex-direction:column;gap:12px;}
   .withdrawal-rule-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
   .withdrawal-rule-section{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
@@ -2007,8 +2018,10 @@
     </div>
   </div>
 
-  <div id="withdrawalRuleModal" class="modal-backdrop" aria-hidden="true">
-    <div class="modal-card withdrawal-rule-modal" role="dialog" aria-modal="true" aria-labelledby="withdrawalRuleTitle">
+  <div id="withdrawalRuleModal" class="modal-backdrop withdrawal-preview-backdrop" aria-hidden="true">
+    <div class="withdrawal-preview-dim" aria-hidden="true"></div>
+    <div class="modal-card withdrawal-rule-modal withdrawal-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="withdrawalRuleTitle">
+      <div class="withdrawal-preview-handle" aria-hidden="true"><span></span></div>
       <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
         <div class="withdrawal-rule-note">※ 通常計算・モンテカルロの両方で使う取り崩しルールを設定します。年間収支計算 → 補填必要額算出 → 売却・補充ロジックの順に処理し、最後の取り崩し関数だけを切り替える設計です。</div>
@@ -2025,7 +2038,7 @@
                 <option value="basic_hybrid">一部一括＋残り分割</option>
                 <option value="current">固定年数バッファ型</option>
                 <option value="rebalance">目標配分リバランス型</option>
-                <option value="bucket">バケツ戦略型</option>
+                <option value="bucket">2バケツ戦略型</option>
               </select>
             </div>
             <div id="withdrawalStartConditionSection" class="withdrawal-rule-field withdrawal-rule-field-wide">
@@ -2073,10 +2086,11 @@
               <label for="withdrawalRebalanceCashPct" style="margin-top:8px;">目標現金比率</label><div class="input-unit"><input id="withdrawalRebalanceCashPct" type="number" class="ratebox" value="20" step="0.1" min="0"><span class="suffix">%</span></div>
             </div>
             <div id="withdrawalRuleBucketSection" class="withdrawal-rule-field withdrawal-rule-hidden">
-              <label for="withdrawalBucketTargetYears">短期バケツ目標</label><div class="input-unit"><input id="withdrawalBucketTargetYears" type="number" class="agebox" value="2" step="0.5" min="0"><span class="suffix">年分</span></div>
-              <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低維持ライン</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
-              <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 下落時の防御ルールを使う</label>
-              <label for="withdrawalBucketDefenseThresholdPct" style="margin-top:8px;">防御ルール発動ライン</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-15" step="0.1"><span class="suffix">%</span></div>
+              <label for="withdrawalBucketTargetYears">短期バケツ目標年数</label><div class="input-unit"><input id="withdrawalBucketTargetYears" type="number" class="agebox" value="4" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低現金バッファ</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 防衛ルールを使う</label>
+              <label for="withdrawalBucketDefenseMode" style="margin-top:8px;">防衛ルール方式</label><select id="withdrawalBucketDefenseMode"><option value="drawdown" selected>ドローダウン型</option><option value="annual_return">年間リターン閾値型</option></select>
+              <label id="withdrawalBucketDefenseThresholdLabel" for="withdrawalBucketDefenseThresholdPct" style="margin-top:8px;">発動ライン（高値比）</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-20" step="0.1"><span class="suffix">%</span></div>
               <label for="withdrawalBucketDefenseRecoveryPct" style="margin-top:8px;">解除回復率</label><div class="input-unit"><input id="withdrawalBucketDefenseRecoveryPct" type="number" class="ratebox" value="95" step="0.1" min="0" max="200"><span class="suffix">%</span></div>
             </div>
             <div class="withdrawal-rule-field withdrawal-rule-field-wide">
@@ -2090,7 +2104,7 @@
               <div class="withdrawal-rule-summary">以下の順で売却します。<br>1. 課税<br>2. その他<br>3. NISA<br>4. DC系<br><span class="small muted">同一区分内では、含み益率が低いものを優先し、さらに残高が大きいものを優先します。</span></div>
             </div>
             <div id="withdrawalOrderManualSection" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden">
-              <div class="withdrawal-rule-note">現在の運用資産のみ対象です。上下ボタンで売却優先順を変更します。</div>
+              <div class="withdrawal-rule-note">現在の運用資産・今後の投資・積立投資を対象に、売却優先順を設定します。現在の運用資産で現在額 0 のものは表示せず、今後の投資は「開始前は売却不可」、積立投資は「形成済み残高のみ売却対象」として表示します。実際の売却時は、その年に売却可能なものの中から上位順で使います。</div>
               <div class="withdrawal-compare-table-wrap">
                 <table class="withdrawal-param-case-table">
                   <thead><tr><th style="width:56px;min-width:56px;">順</th><th>資産</th><th style="width:96px;min-width:96px;">操作</th></tr></thead>
@@ -9806,10 +9820,11 @@ function getScenarioFromDOM(){
       currentBufferYears:Math.max(0, numInput("withdrawalCurrentBufferYears", 2) || 0),
       rebalanceBufferYears:Math.max(0, numInput("withdrawalRebalanceBufferYears", 1) || 0),
       rebalanceCashPct:Math.max(0, numInput("withdrawalRebalanceCashPct", 20) || 0) / 100,
-      bucketTargetYears:Math.max(0, numInput("withdrawalBucketTargetYears", 2) || 0),
+      bucketTargetYears:Math.max(0, numInput("withdrawalBucketTargetYears", 4) || 0),
       bucketFloorYears:Math.max(0, numInput("withdrawalBucketFloorYears", 1) || 0),
       bucketDefenseOn:!!document.getElementById("withdrawalBucketDefenseOn")?.checked,
-      bucketDefenseThreshold:((numInput("withdrawalBucketDefenseThresholdPct", -15) || 0) / 100),
+      bucketDefenseMode:(document.getElementById("withdrawalBucketDefenseMode")?.value === "annual_return") ? "annual_return" : "drawdown",
+      bucketDefenseThreshold:((numInput("withdrawalBucketDefenseThresholdPct", -20) || 0) / 100),
       bucketDefenseRecoveryPct:Math.max(0, numInput("withdrawalBucketDefenseRecoveryPct", 95) || 0) / 100,
       orderMode:document.getElementById("withdrawalOrderMode")?.value || "auto",
       orderManualJson:document.getElementById("withdrawalOrderManualJson")?.value || "[]"
@@ -9826,6 +9841,8 @@ function getScenarioFromDOM(){
       for(let i=1;i<=dynamicCounts.futureInv;i++){
         const accountType = document.getElementById(`futureInv${i}_accountType`)?.value || "課税";
         arr.push({
+          rowId:`futureInv_row_${i}`,
+          sourceType:'future',
           name:document.getElementById(`futureInv${i}_name`)?.value || `投資${i}`,
           age:numInput(`futureInv${i}_age`, 0),
           amount:toManYen(document.getElementById(`futureInv${i}_amount`).value, document.getElementById(`futureInv${i}_cur`).value, usdRate),
@@ -9844,6 +9861,8 @@ function getScenarioFromDOM(){
       for(let i=1;i<=dynamicCounts.sumInv;i++){
         const accountType = document.getElementById(`sumInv${i}_accountType`)?.value || "課税";
         arr.push({
+          rowId:`sumInv_row_${i}`,
+          sourceType:'sum',
           name:document.getElementById(`sumInv${i}_name`)?.value || `積立${i}`,
           fromAge:numInput(`sumInv${i}_fromAge`, 0),
           toAge:numInput(`sumInv${i}_toAge`, 0),
@@ -14296,6 +14315,8 @@ function getOwnerAgeAtSimulationAge(cfg, owner, age){
 function makeInvestmentEntryFromPlan(plan, amount = 0){
   const accountType = normalizeAccountType(plan.accountType || "課税");
   return {
+    rowId:String(plan.rowId || ''),
+    sourceType:String(plan.sourceType || ''),
     name:plan.name,
     amount,
     cost:amount,
@@ -14718,10 +14739,14 @@ function getWithdrawalPolicyConfig(cfg){
     currentBufferYears:Math.max(0, Number(src.currentBufferYears ?? 2) || 0),
     rebalanceBufferYears:Math.max(0, Number(src.rebalanceBufferYears ?? 1) || 0),
     rebalanceCashPct:Math.max(0, Number(src.rebalanceCashPct ?? 0.20) || 0),
-    bucketTargetYears:Math.max(0, Number(src.bucketTargetYears ?? 2) || 0),
-    bucketFloorYears:Math.max(0, Number(src.bucketFloorYears ?? 1) || 0),
+    bucketTargetYears:Math.max(0, Number(src.bucketTargetYears ?? 4) || 0),
+    bucketFloorYears:Math.max(0, Math.min(
+      Number(src.bucketTargetYears ?? 4) || 0,
+      Number(src.bucketFloorYears ?? src.bucketMinimumCashBufferYears ?? 1) || 0
+    )),
     bucketDefenseOn:src.bucketDefenseOn !== false,
-    bucketDefenseThreshold:Number(src.bucketDefenseThreshold ?? -0.15) || 0,
+    bucketDefenseMode:src.bucketDefenseMode === 'annual_return' ? 'annual_return' : 'drawdown',
+    bucketDefenseThreshold:Number(src.bucketDefenseThreshold ?? (src.bucketDefenseMode === 'annual_return' ? -0.15 : -0.20)) || 0,
     bucketDefenseRecoveryPct:Math.max(0, Number(src.bucketDefenseRecoveryPct ?? 0.95) || 0),
     orderMode: src.orderMode === 'manual' ? 'manual' : 'auto',
     orderManualIds
@@ -14733,7 +14758,7 @@ function getWithdrawalRuleLabel(mode){
   if(mode === 'basic_lump') return '一括全額取り崩し';
   if(mode === 'basic_hybrid') return '一部一括＋残り分割';
   if(mode === 'rebalance') return '目標配分リバランス型';
-  if(mode === 'bucket') return 'バケツ戦略型';
+  if(mode === 'bucket') return '2バケツ戦略型';
   if(mode === 'current') return '固定年数バッファ型';
   return '毎年分割取り崩し';
 }
@@ -14858,6 +14883,8 @@ function getInvestmentReturnForYear(annualState, investments){
 function createBucketDefenseState(){
   return {
     active:false,
+    mode:'drawdown',
+    peakValue:0,
     anchorValue:0,
     triggerYearAge:null,
     triggerReturn:0,
@@ -14871,43 +14898,69 @@ function calculateWithdrawalNeeds(cfg, rule, annualNeed, depTotal, invTotal, lia
   const debt = Math.max(0, Number(liability) || 0);
   const totalNet = Math.max(0, dep + inv - debt);
   if(isBasicWithdrawalMode(rule.mode)){
-    return {floorBuffer:0, targetBuffer:0, allowProactive:false, defensive:false, defenseActive:false, defenseAnchorValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
+    return {floorBuffer:0, targetBuffer:0, allowProactive:false, defensive:false, defenseActive:false, defenseMode:'', defenseAnchorValue:0, defensePeakValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
   }
   if(rule.mode === 'rebalance'){
     const pctTarget = totalNet * Math.max(0, Number(rule.rebalanceCashPct || 0));
     const floor = need * Math.max(0, Number(rule.rebalanceBufferYears || 0));
     const target = Math.max(floor, pctTarget);
-    return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false, defenseActive:false, defenseAnchorValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
+    return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false, defenseActive:false, defenseMode:'', defenseAnchorValue:0, defensePeakValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
   }
   if(rule.mode === 'bucket'){
-    const floor = need * Math.max(0, Number(rule.bucketFloorYears || 0));
-    const target = need * Math.max(0, Number(rule.bucketTargetYears || 0));
+    const targetYears = Math.max(0, Number(rule.bucketTargetYears || 0));
+    const floorYearsRaw = Math.max(0, Number(rule.bucketFloorYears || 0));
+    const floorYears = Math.min(targetYears, floorYearsRaw);
+    const floor = need * floorYears;
+    const target = need * targetYears;
     const state = bucketDefenseState || createBucketDefenseState();
+    const defenseMode = rule.bucketDefenseMode === 'annual_return' ? 'annual_return' : 'drawdown';
     const threshold = Number(rule.bucketDefenseThreshold || 0);
     const recoveryPct = Math.max(0, Number(rule.bucketDefenseRecoveryPct ?? 0.95) || 0);
     let defensive = false;
+    state.mode = defenseMode;
     if(!!rule.bucketDefenseOn){
-      const anchor = Math.max(0, Number(state.anchorValue || 0));
-      const recoveryTarget = anchor * recoveryPct;
-      if(state.active){
-        const canCheckRecovery = age == null || state.triggerYearAge == null || Number(age) !== Number(state.triggerYearAge);
-        if(anchor <= 0.0001){
-          state.active = false;
-        }else if(canCheckRecovery && inv >= recoveryTarget - 0.0001){
-          state.active = false;
+      if(defenseMode === 'drawdown'){
+        state.peakValue = Math.max(Math.max(0, Number(state.peakValue || 0)), inv);
+        const peak = Math.max(0, Number(state.peakValue || 0));
+        const recoveryTarget = peak * recoveryPct;
+        if(state.active){
+          if(peak <= 0.0001){
+            state.active = false;
+          }else if(inv >= recoveryTarget - 0.0001){
+            state.active = false;
+          }
         }
+        if(!state.active && peak > 0.0001 && inv <= peak * (1 + threshold) + 0.0001){
+          state.active = true;
+          state.anchorValue = peak;
+          state.triggerYearAge = Number.isFinite(Number(age)) ? Number(age) : null;
+          state.triggerReturn = Number(annualInvestmentReturn || 0) || 0;
+        }
+        state.recoveryTarget = recoveryTarget;
+      }else{
+        const anchor = Math.max(0, Number(state.anchorValue || 0));
+        const recoveryTarget = anchor * recoveryPct;
+        if(state.active){
+          const canCheckRecovery = age == null || state.triggerYearAge == null || Number(age) !== Number(state.triggerYearAge);
+          if(anchor <= 0.0001){
+            state.active = false;
+          }else if(canCheckRecovery && inv >= recoveryTarget - 0.0001){
+            state.active = false;
+          }
+        }
+        if(!state.active && Number(annualInvestmentReturn || 0) <= threshold){
+          state.active = true;
+          state.anchorValue = Math.max(0, Number(annualState?.beginningInvestmentTotal || 0));
+          state.triggerYearAge = Number.isFinite(Number(age)) ? Number(age) : null;
+          state.triggerReturn = Number(annualInvestmentReturn || 0) || 0;
+        }
+        state.recoveryTarget = Math.max(0, Number(state.anchorValue || 0)) * recoveryPct;
       }
-      if(!state.active && Number(annualInvestmentReturn || 0) <= threshold){
-        state.active = true;
-        state.anchorValue = Math.max(0, Number(annualState?.beginningInvestmentTotal || 0));
-        state.triggerYearAge = Number.isFinite(Number(age)) ? Number(age) : null;
-        state.triggerReturn = Number(annualInvestmentReturn || 0) || 0;
-      }
-      state.recoveryTarget = Math.max(0, Number(state.anchorValue || 0)) * recoveryPct;
       defensive = !!state.active;
     }else{
       state.active = false;
       state.anchorValue = 0;
+      state.peakValue = Math.max(0, Number(state.peakValue || 0), inv);
       state.triggerYearAge = null;
       state.triggerReturn = 0;
       state.recoveryTarget = 0;
@@ -14918,7 +14971,9 @@ function calculateWithdrawalNeeds(cfg, rule, annualNeed, depTotal, invTotal, lia
       allowProactive:!defensive,
       defensive,
       defenseActive:!!state.active,
+      defenseMode,
       defenseAnchorValue:Math.max(0, Number(state.anchorValue || 0)),
+      defensePeakValue:Math.max(0, Number(state.peakValue || 0)),
       defenseRecoveryTarget:Math.max(0, Number(state.recoveryTarget || 0)),
       defenseTriggerReturn:Number(state.triggerReturn || 0) || 0,
       defenseTriggerAge:Number.isFinite(Number(state.triggerYearAge)) ? Number(state.triggerYearAge) : null
@@ -14963,7 +15018,9 @@ function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualN
       defensive: !!ruleNeeds.defensive,
       annualNeed: annualNeed || 0,
       bucketDefenseActive: !!ruleNeeds.defenseActive,
+      bucketDefenseMode: String(ruleNeeds.defenseMode || ''),
       bucketDefenseAnchorValue: Number(ruleNeeds.defenseAnchorValue || 0) || 0,
+      bucketDefensePeakValue: Number(ruleNeeds.defensePeakValue || 0) || 0,
       bucketDefenseRecoveryTarget: Number(ruleNeeds.defenseRecoveryTarget || 0) || 0,
       bucketDefenseTriggerReturn: Number(ruleNeeds.defenseTriggerReturn || 0) || 0,
       bucketDefenseTriggerAge: Number.isFinite(Number(ruleNeeds.defenseTriggerAge)) ? Number(ruleNeeds.defenseTriggerAge) : null
@@ -15173,7 +15230,7 @@ function simulate(cfg, random=false, opts={}){
       liability = liabilityRef.value;
     }
 
-    if(!annualState.withdrawalRuleInfo){ annualState.withdrawalRuleInfo = {mode:withdrawalPolicy.mode, floorBuffer:0, targetBuffer:0, defensive:false, annualNeed:0, bucketDefenseActive:false, bucketDefenseAnchorValue:0, bucketDefenseRecoveryTarget:0, bucketDefenseTriggerReturn:0, bucketDefenseTriggerAge:null}; }
+    if(!annualState.withdrawalRuleInfo){ annualState.withdrawalRuleInfo = {mode:withdrawalPolicy.mode, floorBuffer:0, targetBuffer:0, defensive:false, annualNeed:0, bucketDefenseActive:false, bucketDefenseMode:'', bucketDefenseAnchorValue:0, bucketDefensePeakValue:0, bucketDefenseRecoveryTarget:0, bucketDefenseTriggerReturn:0, bucketDefenseTriggerAge:null}; }
     const depTotal = deposits.reduce((s,d)=>s+d.amount,0);
     const invTotal = investments.reduce((s,i)=>s+i.amount,0);
     const safeTotal = safeAssetObj.totalSafeAssets || 0;
@@ -16849,6 +16906,7 @@ const WITHDRAWAL_RULE_MODAL_IDS = [
   "withdrawalBucketTargetYears",
   "withdrawalBucketFloorYears",
   "withdrawalBucketDefenseOn",
+  "withdrawalBucketDefenseMode",
   "withdrawalBucketDefenseThresholdPct",
   "withdrawalBucketDefenseRecoveryPct",
   "withdrawalCompareMode",
@@ -16881,13 +16939,58 @@ const WITHDRAWAL_PARAMETER_COMPARE_RULES = {
   bucket:{
     label:'2バケツ戦略型',
     params:[
-      {key:'bucketTargetYears', label:'短期バケツ目標', unit:'年分', step:0.5, min:0, max:20, fallback:2, format:(v)=>`${formatNumberJP(v, 1)}年分`},
-      {key:'bucketFloorYears', label:'最低維持ライン', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`}
+      {key:'bucketTargetYears', label:'短期バケツ目標年数', unit:'年分', step:0.5, min:0, max:20, fallback:4, format:(v)=>`${formatNumberJP(v, 1)}年分`},
+      {key:'bucketFloorYears', label:'最低現金バッファ', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`}
     ]
   }
 };
 let withdrawalCompareChart = null;
 let withdrawalCompareCache = null;
+let withdrawalRulePreviewSourceTab = -1;
+let withdrawalRulePreviewApplyTimer = null;
+let withdrawalRulePreviewFrozenElements = [];
+function isWithdrawalPreviewSheetOpen(){
+  const modal = document.getElementById('withdrawalRuleModal');
+  return !!modal && modal.classList.contains('show');
+}
+function updateWithdrawalPreviewTopVar(){
+  const tabsBar = document.getElementById('tabsBar');
+  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().bottom + window.scrollY)) : 0;
+  document.documentElement.style.setProperty('--withdrawal-preview-top', `${top}px`);
+}
+function setWithdrawalPreviewFrozen(enabled){
+  document.body.classList.toggle('withdrawal-preview-open', !!enabled);
+  const elements = Array.from(document.querySelectorAll('#tabButtons .tab-btn, #addTabBtn, #inputModeToggleBtn, #overflowMenuBtn, #overlayApplyBtn, #overlayMenuBtn'));
+  if(enabled){
+    closeOverflowMenu();
+    closeTabContextMenu();
+    closeRowContextMenu();
+    withdrawalRulePreviewFrozenElements = elements;
+    withdrawalRulePreviewFrozenElements.forEach(el=>{
+      try{ el.dataset.prevDisabled = el.disabled ? '1' : '0'; el.disabled = true; el.setAttribute('aria-disabled','true'); }catch(_e){}
+    });
+  }else{
+    withdrawalRulePreviewFrozenElements.forEach(el=>{
+      try{ el.disabled = (el.dataset.prevDisabled === '1'); if(el.disabled) el.setAttribute('aria-disabled','true'); else el.removeAttribute('aria-disabled'); delete el.dataset.prevDisabled; }catch(_e){}
+    });
+    withdrawalRulePreviewFrozenElements = [];
+  }
+}
+function applyWithdrawalRulePreview(){
+  if(!isWithdrawalPreviewSheetOpen()) return;
+  if(currentTab !== withdrawalRulePreviewSourceTab) return;
+  if(withdrawalRulePreviewApplyTimer){ clearTimeout(withdrawalRulePreviewApplyTimer); withdrawalRulePreviewApplyTimer = null; }
+  syncCurrentScenarioFromDOM(false);
+  monteMode ? runMonte() : requestDraw({immediate:true});
+}
+function scheduleWithdrawalRulePreview(){
+  if(!isWithdrawalPreviewSheetOpen()) return;
+  if(withdrawalRulePreviewApplyTimer) clearTimeout(withdrawalRulePreviewApplyTimer);
+  withdrawalRulePreviewApplyTimer = setTimeout(()=>{
+    withdrawalRulePreviewApplyTimer = null;
+    applyWithdrawalRulePreview();
+  }, 20);
+}
 function getWithdrawalPolicyOverride(mode){
   const cfg = getScenarioFromDOM();
   const base = deepClone(cfg.withdrawalPolicy || {});
@@ -17542,16 +17645,47 @@ function restoreWithdrawalRuleState(state){
 function buildWithdrawalOrderItemsFromDOM(){
   const items = [];
   for(let i=1;i<=dynamicCounts.inv;i++){
+    const amount = numInput(`inv${i}_amount`, 0) || 0;
+    if(amount <= 0) continue;
     const rowId = document.getElementById(`inv${i}_rowId`)?.value || `inv_row_${i}`;
     const name = document.getElementById(`inv${i}_name`)?.value || `運用${i}`;
     const owner = document.getElementById(`inv${i}_owner`)?.value || '本人';
     const accountType = document.getElementById(`inv${i}_accountType`)?.value || '課税';
     const principal = numInput(`inv${i}_cost`, 0) || 0;
-    const amount = numInput(`inv${i}_amount`, 0) || 0;
     const currency = document.getElementById(`inv${i}_cur`)?.value || '万円';
     const rate = numInput(`inv${i}_rate`, 0) || 0;
     const dividendRate = numInput(`inv${i}_dividendRate`, 0) || 0;
-    items.push({rowId, name, owner, accountType, currency, principal, amount, rate, dividendRate});
+    items.push({rowId, sourceType:'current', statusNote:'', name, owner, accountType, currency, principal, amount, rate, dividendRate});
+  }
+  for(let i=1;i<=dynamicCounts.futureInv;i++){
+    const rowId = `futureInv_row_${i}`;
+    const name = document.getElementById(`futureInv${i}_name`)?.value || `投資${i}`;
+    const owner = document.getElementById(`futureInv${i}_owner`)?.value || '本人';
+    const accountType = document.getElementById(`futureInv${i}_accountType`)?.value || '課税';
+    const principal = numInput(`futureInv${i}_amount`, 0) || 0;
+    const amount = 0;
+    const currency = document.getElementById(`futureInv${i}_cur`)?.value || '万円';
+    const rate = numInput(`futureInv${i}_rate`, 0) || 0;
+    const dividendRate = numInput(`futureInv${i}_dividendRate`, 0) || 0;
+    const startAge = numInput(`futureInv${i}_age`, 0) || 0;
+    if(principal <= 0) continue;
+    items.push({rowId, sourceType:'future', statusNote:'開始前は売却不可', startAge, name, owner, accountType, currency, principal, amount, rate, dividendRate});
+  }
+  for(let i=1;i<=dynamicCounts.sumInv;i++){
+    const rowId = `sumInv_row_${i}`;
+    const name = document.getElementById(`sumInv${i}_name`)?.value || `積立${i}`;
+    const owner = document.getElementById(`sumInv${i}_owner`)?.value || '本人';
+    const accountType = document.getElementById(`sumInv${i}_accountType`)?.value || '課税';
+    const principal = 0;
+    const amount = 0;
+    const currency = document.getElementById(`sumInv${i}_cur`)?.value || '万円';
+    const rate = numInput(`sumInv${i}_rate`, 0) || 0;
+    const dividendRate = numInput(`sumInv${i}_dividendRate`, 0) || 0;
+    const fromAge = numInput(`sumInv${i}_fromAge`, 0) || 0;
+    const toAge = numInput(`sumInv${i}_toAge`, 0) || 0;
+    const amountMonth = numInput(`sumInv${i}_amount`, 0) || 0;
+    if(amountMonth <= 0) continue;
+    items.push({rowId, sourceType:'sum', statusNote:'形成済み残高のみ売却対象', fromAge, toAge, amountMonth, name, owner, accountType, currency, principal, amount, rate, dividendRate});
   }
   return items;
 }
@@ -17588,7 +17722,9 @@ function renderWithdrawalOrderManualEditor(){
     renderItems.forEach((item, idx)=>{
       const id = String(item?.rowId ?? '');
       const currencyLabel = (String(item?.currency || '円') === 'ドル') ? 'ドル' : '万円';
+      const sourceLabel = item?.sourceType === 'future' ? '今後の投資' : (item?.sourceType === 'sum' ? '積立投資' : '現在の運用資産');
       const details = [
+        `区分 ${escapeHtml(sourceLabel)}`,
         `名義 ${escapeHtml(item?.owner ?? '')}`,
         `口座 ${escapeHtml(item?.accountType ?? '')}`,
         `元本 ${escapeHtml(formatNumberJP(item?.principal ?? 0, 1))}${currencyLabel}`,
@@ -17596,7 +17732,12 @@ function renderWithdrawalOrderManualEditor(){
         `利回り ${escapeHtml(formatNumberJP(item?.rate ?? 0, 1))}%`,
         `配当率 ${escapeHtml(formatNumberJP(item?.dividendRate ?? 0, 1))}%`
       ].join(' / ');
-      html += `<tr><td>${idx + 1}</td><td style="text-align:left;">${escapeHtml(item?.name ?? `運用${idx+1}`)}<div class="small muted">${details}</div></td><td><div style="display:flex;gap:4px;justify-content:center;"><button type="button" data-withdrawal-order-move="up" data-row-id="${escapeAttr(id)}" ${idx===0?'disabled':''}>↑</button><button type="button" data-withdrawal-order-move="down" data-row-id="${escapeAttr(id)}" ${idx===renderItems.length-1?'disabled':''}>↓</button></div></td></tr>`;
+      const note = item?.sourceType === 'future'
+        ? `開始年齢 ${escapeHtml(formatNumberJP(item?.startAge ?? 0, 0))}歳 / ${escapeHtml(item?.statusNote ?? '')}`
+        : (item?.sourceType === 'sum'
+          ? `積立期間 ${escapeHtml(formatNumberJP(item?.fromAge ?? 0, 0))}〜${escapeHtml(formatNumberJP(item?.toAge ?? 0, 0))}歳 / ${escapeHtml(item?.statusNote ?? '')}`
+          : '');
+      html += `<tr><td>${idx + 1}</td><td style="text-align:left;">${escapeHtml(item?.name ?? `運用${idx+1}`)}<div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td><td><div style="display:flex;gap:4px;justify-content:center;"><button type="button" data-withdrawal-order-move="up" data-row-id="${escapeAttr(id)}" ${idx===0?'disabled':''}>↑</button><button type="button" data-withdrawal-order-move="down" data-row-id="${escapeAttr(id)}" ${idx===renderItems.length-1?'disabled':''}>↓</button></div></td></tr>`;
     });
     body.innerHTML = html || `<tr><td colspan="3">現在の運用資産がありません。</td></tr>`;
   }catch(_e){
@@ -17614,6 +17755,7 @@ function moveWithdrawalOrderManualItem(delta, rowId){
   renderWithdrawalOrderManualEditor();
   renderWithdrawalRuleSummary();
   withdrawalCompareCache = null;
+  scheduleWithdrawalRulePreview();
 }
 function getWithdrawalRuleUsesStartCondition(mode){
   return mode === 'fixed_rate' || mode === 'fixed_amount' || mode === 'basic_annual' || mode === 'basic_lump' || mode === 'basic_hybrid';
@@ -17680,6 +17822,23 @@ function syncBasicWithdrawalStartAgesToRetire(){
   });
   syncWithdrawalStartConditionValueControl();
 }
+function updateWithdrawalBucketDefenseModeUI(){
+  const modeEl = document.getElementById('withdrawalBucketDefenseMode');
+  const mode = modeEl?.value === 'annual_return' ? 'annual_return' : 'drawdown';
+  const labelEl = document.getElementById('withdrawalBucketDefenseThresholdLabel');
+  const inputEl = document.getElementById('withdrawalBucketDefenseThresholdPct');
+  const nextDefault = mode === 'annual_return' ? -15 : -20;
+  const prevMode = modeEl?.dataset.previousMode === 'annual_return' ? 'annual_return' : 'drawdown';
+  const prevDefault = prevMode === 'annual_return' ? -15 : -20;
+  if(labelEl) labelEl.textContent = mode === 'annual_return' ? '発動ライン（年次リターン）' : '発動ライン（高値比）';
+  if(inputEl){
+    const currentValue = Number(inputEl.value);
+    if(!Number.isFinite(currentValue) || Math.abs(currentValue) < 0.0000001 || Math.abs(currentValue - prevDefault) < 0.0000001){
+      inputEl.value = String(nextDefault);
+    }
+  }
+  if(modeEl) modeEl.dataset.previousMode = mode;
+}
 function renderWithdrawalRuleSummary(){
   const box = document.getElementById('withdrawalRuleSummary');
   if(!box) return;
@@ -17690,10 +17849,12 @@ function renderWithdrawalRuleSummary(){
   const currentYears = numInput('withdrawalCurrentBufferYears', 2) || 0;
   const rebalanceYears = numInput('withdrawalRebalanceBufferYears', 1) || 0;
   const cashPct = numInput('withdrawalRebalanceCashPct', 20) || 0;
-  const bucketTarget = numInput('withdrawalBucketTargetYears', 2) || 0;
-  const bucketFloor = numInput('withdrawalBucketFloorYears', 1) || 0;
+  const bucketTarget = numInput('withdrawalBucketTargetYears', 4) || 0;
+  const bucketFloorRaw = numInput('withdrawalBucketFloorYears', 1) || 0;
+  const bucketFloor = Math.min(bucketTarget, bucketFloorRaw);
   const defenseOn = !!document.getElementById('withdrawalBucketDefenseOn')?.checked;
-  const defensePct = numInput('withdrawalBucketDefenseThresholdPct', -15) || 0;
+  const defenseMode = document.getElementById('withdrawalBucketDefenseMode')?.value === 'annual_return' ? 'annual_return' : 'drawdown';
+  const defensePct = numInput('withdrawalBucketDefenseThresholdPct', defenseMode === 'annual_return' ? -15 : -20) || 0;
   const defenseRecoveryPct = numInput('withdrawalBucketDefenseRecoveryPct', 95) || 0;
   const fixedRatePct = numInput('withdrawalFixedRatePct', 4) || 0;
   const fixedAmountYearly = numInput('withdrawalFixedAmountYearly', 300) || 0;
@@ -17705,7 +17866,7 @@ function renderWithdrawalRuleSummary(){
   else if(mode === 'basic_lump') html = `<strong>一括全額取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点で、その時点の運用資産を全額取り崩します。`;
   else if(mode === 'basic_hybrid') html = `<strong>一部一括＋残り分割</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点に ${formatNumberJP(basicHybridLumpAmount, 1)} 万円を一括で取り崩し、残額はその時点の運用資産残高をもとに自動計算して、翌年から ${basicHybridPeriodYears} 年間で均等に分割して取り崩します。`;
   else if(mode === 'rebalance') html = `<strong>目標配分リバランス型</strong><br>生活費 ${rebalanceYears} 年分を最低現金として持ちつつ、年末に現金比率 ${cashPct}% を目標に不足分を投資資産から補充します。`;
-  else if(mode === 'bucket') html = `<strong>バケツ戦略型</strong><br>短期バケツ目標 ${bucketTarget} 年分、最低維持ライン ${bucketFloor} 年分です。` + (defenseOn ? ` 年間の投資資産リターンが発動ライン ${defensePct}% 以下になった年は防衛モードへ入り、目標までの補充を止め、最低ラインまでに抑えます。防衛モードは、発動年の前年末運用資産残高を基準に、その ${defenseRecoveryPct}% まで回復するまで継続します。<br><span class="small muted">防御ルール発動ライン: 年間の投資資産リターンがこの値以下になった年に、防衛モードへ入る基準です。 解除回復率: 防衛発動年の前年末運用資産残高を基準に、その何%まで回復したら防衛モードを解除するかを示します。</span>` : ' 防御ルールは使いません。');
+  else if(mode === 'bucket') html = `<strong>2バケツ戦略型</strong><br>短期 = 預貯金・安全資産、中長期 = 売却候補となる投資資産全体です。平常時は短期を ${formatNumberJP(bucketTarget, 1)} 年分まで補充し、防衛時は最低現金バッファ ${formatNumberJP(bucketFloor, 1)} 年分までに抑えます。防衛中でも支払いに必要な現金が足りない場合は売却します。` + (defenseOn ? ` 防衛ルール方式は ${defenseMode === 'annual_return' ? '年間リターン閾値型' : 'ドローダウン型'}、発動ラインは ${formatNumberJP(defensePct, 1)}%、解除回復率は ${formatNumberJP(defenseRecoveryPct, 1)}% です。<br><span class="small muted">${defenseMode === 'annual_return' ? '年間リターン閾値型: 年間の投資資産リターンがこの値以下になった年に防衛へ入ります。' : 'ドローダウン型: 中長期投資資産全体が過去ピーク比でこの値以上下落したら防衛へ入ります。'} 解除回復率は、防衛解除の基準となる回復率です。</span>` : ' 防衛ルールは使いません。');
   else if(mode === 'current') html = `<strong>固定年数バッファ型</strong><br>生活費 ${currentYears} 年分の現金バッファを固定的に維持し、不足したら投資資産から補充します。主要生活支出には、生活費・住居費・保険料・定期支出・教育費の継続部分などを含み、臨時支出や入学一時金などの単発費用は含みません。`;
   else html = `<strong>毎年分割取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点の運用資産残高をもとに、${basicAnnualPeriodYears} 年で均等に分割した金額を自動計算し、各年の開始時点に取り崩します。`;
   html += `<br><span class="small muted">売却順序: ${orderMode === 'manual' ? '手動' : '自動（課税 → その他 → NISA → DC系。同一区分内では含み益率が低いもの優先、さらに残高が大きいもの優先）'}</span>`;
@@ -17727,6 +17888,7 @@ function updateWithdrawalRuleModalUI(){
   document.getElementById('withdrawalRuleRebalanceSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'rebalance');
   document.getElementById('withdrawalRuleBucketSection')?.classList.toggle('withdrawal-rule-hidden', mode !== 'bucket');
   document.getElementById('withdrawalStartConditionSection')?.classList.toggle('withdrawal-rule-hidden', !usesStartCondition);
+  updateWithdrawalBucketDefenseModeUI();
   document.getElementById('withdrawalOrderManualSection')?.classList.toggle('withdrawal-rule-hidden', orderMode !== 'manual');
   document.getElementById('withdrawalOrderAutoSection')?.classList.toggle('withdrawal-rule-hidden', orderMode !== 'auto');
   syncWithdrawalStartConditionValueControl();
@@ -17900,6 +18062,14 @@ function saveMonteSettingsModal(){
 
 function openWithdrawalRuleModal(){
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
+  withdrawalRulePreviewSourceTab = currentTab;
+  if(workspaceOverlayModeOn){
+    workspaceOverlayModeOn = false;
+    updateOverlayFeatureUI();
+    renderTabs();
+  }
+  updateWithdrawalPreviewTopVar();
+  setWithdrawalPreviewFrozen(true);
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
   withdrawalRuleModal?.classList.add('show');
   withdrawalRuleModal?.setAttribute('aria-hidden', 'false');
@@ -17919,18 +18089,24 @@ function openWithdrawalRuleModal(){
 }
 function closeWithdrawalRuleModal(){
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
+  if(withdrawalRulePreviewApplyTimer){ clearTimeout(withdrawalRulePreviewApplyTimer); withdrawalRulePreviewApplyTimer = null; }
   withdrawalRuleModal?.classList.remove('show');
   withdrawalRuleModal?.setAttribute('aria-hidden', 'true');
+  setWithdrawalPreviewFrozen(false);
+  withdrawalRulePreviewSourceTab = -1;
   applyTabOrder();
 }
 function cancelWithdrawalRuleModal(){
   if(withdrawalRuleSnapshot) restoreWithdrawalRuleState(withdrawalRuleSnapshot);
+  syncCurrentScenarioFromDOM(false);
+  monteMode ? runMonte() : requestDraw({immediate:true});
   closeWithdrawalRuleModal();
 }
 function saveWithdrawalRuleModal(){
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
   updateWithdrawalRuleModalUI();
-  requestDraw();
+  syncCurrentScenarioFromDOM(true);
+  monteMode ? runMonte() : requestDraw({immediate:true});
   persistState();
   closeWithdrawalRuleModal();
 }
@@ -17964,7 +18140,9 @@ window.addEventListener("resize", ()=>{
   }else{
     updateDetailStickyNavVisibility();
   }
+  if(isWithdrawalPreviewSheetOpen()) updateWithdrawalPreviewTopVar();
 });
+window.addEventListener('scroll', ()=>{ if(isWithdrawalPreviewSheetOpen()) updateWithdrawalPreviewTopVar(); }, true);
 document.getElementById("addTabBtn").addEventListener("click", ()=>{
   addTab(); draw(); persistState();
 });
@@ -18146,13 +18324,33 @@ document.getElementById("withdrawalRuleBtn")?.addEventListener("click", openWith
 document.getElementById("runWithdrawalCompareBtn")?.addEventListener("click", runWithdrawalComparison);
 document.getElementById("cancelWithdrawalRuleBtn")?.addEventListener("click", cancelWithdrawalRuleModal);
 document.getElementById("saveWithdrawalRuleBtn")?.addEventListener("click", saveWithdrawalRuleModal);
+document.addEventListener("keydown", (e)=>{
+  const modal = document.getElementById("withdrawalRuleModal");
+  if(!modal || !modal.classList.contains("show")) return;
+  if(getOpenModal() !== modal) return;
+  if(e.key !== "Escape") return;
+  e.preventDefault();
+  e.stopPropagation();
+  cancelWithdrawalRuleModal();
+}, true);
 
-document.getElementById("withdrawalBucketDefenseOn")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); });
-["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalBucketDefenseRecoveryPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); }));
-document.getElementById("withdrawalStartConditionValue")?.addEventListener("input", ()=>{ persistWithdrawalStartConditionValueControl(); withdrawalCompareCache=null; renderWithdrawalRuleSummary(); });
-document.getElementById("withdrawalRuleMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); });
+document.getElementById("withdrawalBucketDefenseOn")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); scheduleWithdrawalRulePreview(); });
+["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalBucketDefenseRecoveryPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); scheduleWithdrawalRulePreview(); }));
+document.getElementById("withdrawalStartConditionValue")?.addEventListener("input", ()=>{ persistWithdrawalStartConditionValueControl(); withdrawalCompareCache=null; renderWithdrawalRuleSummary(); scheduleWithdrawalRulePreview(); });
+document.getElementById("withdrawalRuleMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); scheduleWithdrawalRulePreview(); });
+document.getElementById("withdrawalBucketDefenseMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalBucketDefenseModeUI(); renderWithdrawalRuleSummary(); scheduleWithdrawalRulePreview(); });
 document.getElementById("withdrawalStartConditionMode")?.addEventListener("change", handleWithdrawalStartConditionModeChange);
-document.getElementById("withdrawalOrderMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); });
+document.getElementById("withdrawalOrderMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); scheduleWithdrawalRulePreview(); });
+document.getElementById("withdrawalRuleModal")?.addEventListener("input", (e)=>{
+  if(!isWithdrawalPreviewSheetOpen()) return;
+  if(e.target.closest('#withdrawalCompareSection')) return;
+  scheduleWithdrawalRulePreview();
+});
+document.getElementById("withdrawalRuleModal")?.addEventListener("change", (e)=>{
+  if(!isWithdrawalPreviewSheetOpen()) return;
+  if(e.target.closest('#withdrawalCompareSection')) return;
+  scheduleWithdrawalRulePreview();
+});
 document.getElementById("withdrawalOrderManualBody")?.addEventListener("click", (e)=>{ const btn = e.target.closest('[data-withdrawal-order-move]'); if(!btn) return; moveWithdrawalOrderManualItem(btn.dataset.withdrawalOrderMove === 'up' ? -1 : 1, btn.dataset.rowId || ''); });
 document.getElementById("withdrawalCompareMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalCompareModeUI(); });
 document.getElementById("withdrawalCompareParamRule")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; rebuildWithdrawalParameterCases(true); updateWithdrawalCompareModeUI(); });
@@ -19442,7 +19640,7 @@ withdrawalRuleModalCard?.addEventListener("click", (e)=>e.stopPropagation());
 });
 let withdrawalRuleBackdropPointerDown = false;
 document.getElementById("withdrawalRuleModal")?.addEventListener("mousedown", (e)=>{ withdrawalRuleBackdropPointerDown = e.target === e.currentTarget; });
-document.getElementById("withdrawalRuleModal")?.addEventListener("mouseup", (e)=>{ if(withdrawalRuleBackdropPointerDown && e.target === e.currentTarget) cancelWithdrawalRuleModal(); withdrawalRuleBackdropPointerDown = false; });
+document.getElementById("withdrawalRuleModal")?.addEventListener("mouseup", (e)=>{ if(withdrawalRuleBackdropPointerDown && e.target === e.currentTarget && !isWithdrawalPreviewSheetOpen()) cancelWithdrawalRuleModal(); withdrawalRuleBackdropPointerDown = false; });
 const crashTestModalCard = document.querySelector("#crashTestModal .withdrawal-rule-modal");
 crashTestModalCard?.addEventListener("click", (e)=>e.stopPropagation());
 ["mousedown","mouseup","pointerdown","pointerup","touchstart","touchend","dblclick","selectstart"].forEach(evt=>{
