@@ -1358,7 +1358,7 @@
     .curve-btn{padding:5px 8px;font-size:12px;}
     .insurance-assist-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
     .withdrawal-rule-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
-    .withdrawal-preview-sheet{width:min(100vw - 8px, 980px);max-width:calc(100vw - 8px);height:min(52vh, 620px);min-height:300px;padding:0;}
+    .withdrawal-preview-sheet{width:min(100vw - 8px, 980px);max-width:calc(100vw - 8px);height:var(--withdrawal-preview-height, min(52vh, 620px));min-height:300px;padding:0;}
     .monte-settings-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
     .withdrawal-rule-fields{grid-template-columns:1fr;}
     .withdrawal-compare-table{min-width:640px;}
@@ -1441,13 +1441,15 @@
   .withdrawal-preview-backdrop{position:absolute;left:0;right:0;top:0;height:var(--withdrawal-preview-doc-height, 100vh);align-items:flex-end;justify-content:center;padding:0;background:transparent;pointer-events:none;z-index:1000;}
   .withdrawal-preview-dim{position:absolute;left:0;right:0;top:var(--withdrawal-preview-top, 0px);bottom:0;background:rgba(0,0,0,.22);pointer-events:none;opacity:0;transition:opacity .24s ease-out;z-index:0;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-dim{opacity:1;}
-  .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;padding-top:0;display:flex;flex-direction:column;}
+  .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:var(--withdrawal-preview-height, min(50vh, 620px));max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;padding-top:0;display:flex;flex-direction:column;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-sheet{transform:translate(-50%, 0);opacity:1;}
-  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin:0;background:#fff;padding:10px 0 8px;position:relative;z-index:3;}
+  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin:0;background:#fff;padding:10px 0 8px;position:relative;z-index:3;cursor:ns-resize;touch-action:none;}
   .withdrawal-preview-handle span{display:block;width:52px;height:5px;border-radius:999px;background:#cbd5e1;}
+  .withdrawal-preview-scroll{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;}
   .withdrawal-preview-sheet .modal-text{flex:0 0 auto;}
-  .withdrawal-preview-sheet .withdrawal-rule-grid{flex:1 1 auto;min-height:0;overflow:auto;}
-  .withdrawal-preview-sheet .modal-actions{flex:0 0 auto;}
+  .withdrawal-preview-sheet .withdrawal-rule-grid{flex:0 0 auto;min-height:auto;overflow:visible;padding:0 16px 0;}
+  .withdrawal-preview-sheet .modal-actions{flex:0 0 auto;padding:14px 16px 16px;margin-top:0;background:#fff;}
+  .withdrawal-preview-sheet .withdrawal-rule-note:first-child{margin-top:0;}
   body.withdrawal-preview-open #inputs{pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.58;overflow:hidden !important;}
   body.withdrawal-preview-open #tabsBar{pointer-events:none;}
   body.withdrawal-preview-open #overflowMenu{display:none !important;}
@@ -1463,6 +1465,8 @@
   body.withdrawal-preview-open #overflowMenuBtn:hover,
   body.withdrawal-preview-open .split-btn-group:hover,
   body.withdrawal-preview-open .split-btn-group > button:hover{background:#fff !important;color:#94a3b8 !important;box-shadow:none !important;}
+  body.withdrawal-preview-dragging{user-select:none;-webkit-user-select:none;}
+
   .withdrawal-rule-grid{display:flex;flex-direction:column;gap:12px;flex:1 1 auto;min-height:0;overflow:auto;padding:0 16px 14px;}
   .withdrawal-rule-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
   .withdrawal-rule-section{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
@@ -2037,6 +2041,7 @@
     <div class="withdrawal-preview-dim" aria-hidden="true"></div>
     <div class="modal-card withdrawal-rule-modal withdrawal-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="withdrawalRuleTitle">
       <div class="withdrawal-preview-handle" aria-hidden="true"><span></span></div>
+      <div class="withdrawal-preview-scroll">
       <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
         <div class="withdrawal-rule-note">※ 通常計算・モンテカルロの両方で使う取り崩しルールを設定します。年間収支計算 → 補填必要額算出 → 売却・補充ロジックの順に処理し、最後の取り崩し関数だけを切り替える設計です。</div>
@@ -2190,12 +2195,13 @@
           <div class="withdrawal-compare-chart-wrap"><canvas id="withdrawalCompareChart"></canvas></div>
         </div>
       </div>
-      <div class="modal-actions" style="margin-top:14px;justify-content:space-between;">
+      <div class="modal-actions" style="justify-content:space-between;">
         <button type="button" id="runWithdrawalCompareBtn">取り崩し比較</button>
         <div style="display:flex;gap:8px;">
           <button type="button" id="cancelWithdrawalRuleBtn">キャンセル</button>
           <button type="button" id="saveWithdrawalRuleBtn">保存</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -16968,17 +16974,66 @@ let withdrawalCompareCache = null;
 let withdrawalRulePreviewSourceTab = -1;
 let withdrawalRulePreviewApplyTimer = null;
 let withdrawalRulePreviewFrozenElements = [];
+let withdrawalPreviewCurrentHeightPx = 0;
+let withdrawalPreviewDragState = null;
 function isWithdrawalPreviewSheetOpen(){
   const modal = document.getElementById('withdrawalRuleModal');
   return !!modal && modal.classList.contains('show');
 }
+function getWithdrawalPreviewHeightBounds(){
+  const vh = Math.max(window.innerHeight || 0, 320);
+  return {
+    min: Math.max(300, Math.round(vh * 0.35)),
+    max: Math.min(920, Math.round(vh * 0.8)),
+    defaultHeight: Math.min(620, Math.round(vh * 0.5))
+  };
+}
+function applyWithdrawalPreviewHeight(heightPx){
+  const bounds = getWithdrawalPreviewHeightBounds();
+  const next = Math.max(bounds.min, Math.min(bounds.max, Math.round(Number(heightPx) || bounds.defaultHeight)));
+  withdrawalPreviewCurrentHeightPx = next;
+  document.documentElement.style.setProperty('--withdrawal-preview-height', `${next}px`);
+}
+function ensureWithdrawalPreviewHeight(){
+  const bounds = getWithdrawalPreviewHeightBounds();
+  applyWithdrawalPreviewHeight(withdrawalPreviewCurrentHeightPx || bounds.defaultHeight);
+}
+function stopWithdrawalPreviewDrag(){
+  if(!withdrawalPreviewDragState) return;
+  withdrawalPreviewDragState = null;
+  document.body.classList.remove('withdrawal-preview-dragging');
+  document.removeEventListener('pointermove', handleWithdrawalPreviewHandleDragMove, true);
+  document.removeEventListener('pointerup', stopWithdrawalPreviewDrag, true);
+  document.removeEventListener('pointercancel', stopWithdrawalPreviewDrag, true);
+}
+function handleWithdrawalPreviewHandleDragMove(e){
+  if(!withdrawalPreviewDragState) return;
+  if(typeof e.preventDefault === 'function') e.preventDefault();
+  const pointerY = Number(e.clientY);
+  if(!Number.isFinite(pointerY)) return;
+  applyWithdrawalPreviewHeight((window.innerHeight || 0) - pointerY + withdrawalPreviewDragState.offsetY);
+}
+function startWithdrawalPreviewHandleDrag(e){
+  if(!isWithdrawalPreviewSheetOpen()) return;
+  const sheet = document.querySelector('#withdrawalRuleModal .withdrawal-preview-sheet');
+  if(!sheet) return;
+  if(typeof e.preventDefault === 'function') e.preventDefault();
+  const rect = sheet.getBoundingClientRect();
+  withdrawalPreviewDragState = { offsetY: Math.max(0, Number(e.clientY) - rect.top || 0) };
+  document.body.classList.add('withdrawal-preview-dragging');
+  document.addEventListener('pointermove', handleWithdrawalPreviewHandleDragMove, true);
+  document.addEventListener('pointerup', stopWithdrawalPreviewDrag, true);
+  document.addEventListener('pointercancel', stopWithdrawalPreviewDrag, true);
+}
 function updateWithdrawalPreviewTopVar(){
   const chartWrap = document.getElementById('chartWrap');
   const tabsBar = document.getElementById('tabsBar');
+  const mobileLikeViewport = window.matchMedia('(max-width: 900px)').matches;
   let top = 0;
   if(chartWrap){
     const rect = chartWrap.getBoundingClientRect();
-    top = Math.max(0, Math.round(rect.bottom + window.scrollY - 1));
+    const topAdjust = mobileLikeViewport ? 4 : 1;
+    top = Math.max(0, Math.round(rect.bottom + window.scrollY - topAdjust));
   }else if(tabsBar){
     top = Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY));
   }
@@ -18119,6 +18174,7 @@ function openWithdrawalRuleModal(){
     monteMode ? runMonte() : requestDraw({immediate:true});
   }
   updateWithdrawalPreviewTopVar();
+  ensureWithdrawalPreviewHeight();
   setWithdrawalPreviewFrozen(true);
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
   withdrawalRuleModal?.classList.add('show');
@@ -19707,6 +19763,10 @@ document.getElementById("incomeCurveModal")?.addEventListener("input", (e)=>{
 document.getElementById("cancelPensionHelperBtn")?.addEventListener("click", closePensionHelperModal);
 document.getElementById("savePensionHelperBtn")?.addEventListener("click", savePensionHelperModal);
 document.querySelector("#pensionHelperModal .pension-helper-modal")?.addEventListener("click", (e)=>e.stopPropagation());
+
+document.querySelector('#withdrawalRuleModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
+window.addEventListener('resize', ()=>{ if(isWithdrawalPreviewSheetOpen()) ensureWithdrawalPreviewHeight(); updateWithdrawalPreviewTopVar(); });
+window.addEventListener('scroll', ()=>{ if(isWithdrawalPreviewSheetOpen()) updateWithdrawalPreviewTopVar(); }, {passive:true});
 const withdrawalRuleModalCard = document.querySelector("#withdrawalRuleModal .withdrawal-rule-modal");
 withdrawalRuleModalCard?.addEventListener("click", (e)=>e.stopPropagation());
 ["mousedown","mouseup","pointerdown","pointerup","touchstart","touchend","dblclick","selectstart"].forEach(evt=>{
