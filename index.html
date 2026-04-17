@@ -3419,9 +3419,13 @@ function refreshOverlayPreviewForRow(row){
 }
 function saveOverlaySettingsModal(){
   if(!scenarios[currentTab]) return;
+  ensureScenarioSaved();
+  const savedTabIndex = currentTab;
   const overlayStyles = collectOverlaySettingsFromModal();
   workspaceOverlaySettings = JSON.parse(JSON.stringify(overlayStyles));
-  if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
+  if(workspaceOverlayModeOn && !isScenarioIncludedInOverlayByIndex(savedTabIndex)){
+    currentTab = getLeftmostVisibleOverlayIndex();
+  }
   setOverlayModeEnabled(workspaceOverlayModeOn);
   closeOverlaySettingsModal();
   renderTabs();
