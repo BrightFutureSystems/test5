@@ -9571,7 +9571,13 @@ function renderTabs(){
       const touch = e.touches[0];
       if(!touch) return;
       const dragState = createTabDragStateFromButton(btn, scenarioId, touch.clientX, touch.clientY);
-      if(!dragState) return;
+      if(!dragState){
+        pressTimer = setTimeout(()=>{
+          longPressed = true;
+          openTabContextMenu(idx, touch.clientX, touch.clientY);
+        }, TAB_TOUCH_CONTEXT_MENU_MS);
+        return;
+      }
       dragState.touchMode = true;
       dragState.touchIdentifier = touch.identifier;
       tabTouchDragPending = true;
@@ -18345,12 +18351,17 @@ document.getElementById("graphType").addEventListener("change", ()=>{
   requestDraw();
   persistState();
 });
-document.getElementById("overlayToggle").addEventListener("change", ()=>{ setOverlayModeEnabled(document.getElementById("overlayToggle").checked); monteMode ? runMonte() : requestDraw(); persistState(); });
+document.getElementById("overlayToggle").addEventListener("change", ()=>{
+  ensureScenarioSaved();
+  setOverlayModeEnabled(document.getElementById("overlayToggle").checked);
+  monteMode ? runMonte() : requestDraw();
+  persistState();
+});
 document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
   if(!ENABLE_OVERLAY_FEATURE || !scenarios.length) return;
+  ensureScenarioSaved();
   ensureWorkspaceOverlayState();
   const nextEnabled = !workspaceOverlayModeOn;
-  if(nextEnabled && !isScenarioIncludedInOverlayByIndex(currentTab)) currentTab = getLeftmostVisibleOverlayIndex();
   setOverlayModeEnabled(nextEnabled);
   renderTabs();
   monteMode ? runMonte() : requestDraw({immediate:true});
