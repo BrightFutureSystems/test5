@@ -1358,7 +1358,7 @@
     .curve-btn{padding:5px 8px;font-size:12px;}
     .insurance-assist-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
     .withdrawal-rule-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
-    .withdrawal-preview-sheet{width:min(100vw - 8px, 980px);max-width:calc(100vw - 8px);height:min(52vh, 620px);min-height:300px;padding:14px 10px 12px;}
+    .withdrawal-preview-sheet{width:min(100vw - 8px, 980px);max-width:calc(100vw - 8px);height:min(52vh, 620px);min-height:300px;padding:0;}
     .monte-settings-modal{width:min(100vw - 12px, 760px);padding:14px 10px 12px;}
     .withdrawal-rule-fields{grid-template-columns:1fr;}
     .withdrawal-compare-table{min-width:640px;}
@@ -1441,14 +1441,20 @@
   .withdrawal-preview-backdrop{position:absolute;left:0;right:0;top:0;height:var(--withdrawal-preview-doc-height, 100vh);align-items:flex-end;justify-content:center;padding:0;background:transparent;pointer-events:none;z-index:1000;}
   .withdrawal-preview-dim{position:absolute;left:0;right:0;top:var(--withdrawal-preview-top, 0px);bottom:0;background:rgba(0,0,0,.22);pointer-events:none;opacity:0;transition:opacity .24s ease-out;z-index:0;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-dim{opacity:1;}
-  .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:auto;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;padding-top:10px;}
+  .withdrawal-preview-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%, 100%);width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:min(50vh, 620px);max-height:min(80vh, 920px);min-height:320px;margin:0 auto;border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 -12px 32px rgba(0,0,0,.18);opacity:.98;transition:transform .24s ease-out, opacity .24s ease-out;z-index:1;pointer-events:auto;padding-top:0;display:flex;flex-direction:column;}
   .withdrawal-preview-backdrop.preview-visible .withdrawal-preview-sheet{transform:translate(-50%, 0);opacity:1;}
-  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;margin:0 0 8px;position:static;top:auto;z-index:auto;background:transparent;padding-top:0;}
+  .withdrawal-preview-handle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin:0;position:sticky;top:0;z-index:3;background:#fff;padding:10px 0 8px;}
   .withdrawal-preview-handle span{display:block;width:52px;height:5px;border-radius:999px;background:#cbd5e1;}
   body.withdrawal-preview-open #inputs{pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.58;}
   body.withdrawal-preview-open #tabsBar{pointer-events:none;}
   body.withdrawal-preview-open #overflowMenu{display:none !important;}
-  .withdrawal-rule-grid{display:flex;flex-direction:column;gap:12px;}
+  body.withdrawal-preview-open #overlayApplyBtn,
+  body.withdrawal-preview-open #overlayMenuBtn,
+  body.withdrawal-preview-open #overflowMenuBtn{cursor:not-allowed !important;}
+  body.withdrawal-preview-open #overlayApplyBtn:hover,
+  body.withdrawal-preview-open #overlayMenuBtn:hover,
+  body.withdrawal-preview-open #overflowMenuBtn:hover{background:#fff !important;color:inherit !important;box-shadow:none !important;}
+  .withdrawal-rule-grid{display:flex;flex-direction:column;gap:12px;flex:1 1 auto;min-height:0;overflow:auto;padding:0 16px 14px;}
   .withdrawal-rule-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
   .withdrawal-rule-section{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
   .withdrawal-rule-section-title{font-weight:700;margin-bottom:8px;color:#0f172a;}
@@ -2022,7 +2028,7 @@
     <div class="withdrawal-preview-dim" aria-hidden="true"></div>
     <div class="modal-card withdrawal-rule-modal withdrawal-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="withdrawalRuleTitle">
       <div class="withdrawal-preview-handle" aria-hidden="true"><span></span></div>
-      <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">取り崩し設定</div>
+      <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
         <div class="withdrawal-rule-note">※ 通常計算・モンテカルロの両方で使う取り崩しルールを設定します。年間収支計算 → 補填必要額算出 → 売却・補充ロジックの順に処理し、最後の取り崩し関数だけを切り替える設計です。</div>
         <div class="withdrawal-rule-section">
@@ -16959,7 +16965,7 @@ function isWithdrawalPreviewSheetOpen(){
 }
 function updateWithdrawalPreviewTopVar(){
   const tabsBar = document.getElementById('tabsBar');
-  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY - 4)) : 0;
+  const top = tabsBar ? Math.max(0, Math.round(tabsBar.getBoundingClientRect().top + window.scrollY - 2)) : 0;
   const docHeight = Math.max(
     document.documentElement.scrollHeight || 0,
     document.body?.scrollHeight || 0,
@@ -18575,6 +18581,14 @@ document.addEventListener("focusin", (e)=>{
   }
   setTimeout(()=>{ enforceFocusWithinOpenModal(); }, 0);
 }, true);
+document.addEventListener("wheel", (e)=>{
+  if(!document.body.classList.contains("withdrawal-preview-open")) return;
+  const target = e.target instanceof Element ? e.target : null;
+  if(!target) return;
+  const allowed = target.closest("#withdrawalRuleModal .withdrawal-preview-sheet, #chartTopBar, #chartCanvasStickyWrap, #chartAxisModal");
+  if(allowed) return;
+  e.preventDefault();
+}, {capture:true, passive:false});
 document.getElementById("copyUrlBtn").addEventListener("click", copyURL);
 updateOverlayFeatureUI();
 document.getElementById("graphType").addEventListener("change", ()=>{
