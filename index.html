@@ -1498,6 +1498,20 @@
   .withdrawal-param-case-table td .input-unit{padding-left:0;justify-content:center;}
   .withdrawal-param-case-table td input[type=number]{width:100%;max-width:120px;margin:0 auto;}
   .withdrawal-param-case-help{margin-bottom:8px;color:var(--muted);font-size:.88rem;line-height:1.5;}
+  .withdrawal-order-row{position:relative;background:#fff;}
+  .withdrawal-order-row.drag-animating{transition:transform .18s ease;}
+  .withdrawal-order-row.drag-animating > td{background:#fff;box-shadow:none !important;}
+  .withdrawal-order-row.drag-shifted > td{box-shadow:inset 0 -1px 0 var(--border) !important;}
+  .withdrawal-order-row.dragging{visibility:hidden;}
+  .withdrawal-order-row .withdrawal-order-rank{display:flex;align-items:center;justify-content:center;gap:8px;}
+  .withdrawal-order-drag-handle{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;background:transparent;color:#94a3b8;border-radius:8px;cursor:grab;padding:0;font-size:16px;line-height:1;touch-action:none;}
+  .withdrawal-order-drag-handle:hover{background:#f3f4f6;color:#64748b;}
+  .withdrawal-order-drag-handle:active{cursor:grabbing;}
+  .withdrawal-order-row-drag-ghost{position:fixed;z-index:1400;pointer-events:none;margin:0;opacity:.92;box-shadow:0 10px 24px rgba(15,23,42,.18);background:#fff;table-layout:fixed;border-collapse:collapse;}
+  .withdrawal-order-drop-line{display:none !important;}
+  .withdrawal-order-drop-line.show{display:none !important;}
+  .withdrawal-order-manual-wrap{position:relative;}
+
   .withdrawal-inline-control{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;max-width:100%;overflow:hidden;}
   .withdrawal-half-select{width:min(320px,100%);max-width:100%;flex:0 0 auto;}
   .withdrawal-start-select{flex:0 0 40% !important;width:40% !important;max-width:420px !important;min-width:240px !important;}
@@ -2125,7 +2139,8 @@
             </div>
             <div id="withdrawalOrderManualSection" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden">
               <div class="withdrawal-rule-note">現在の運用資産・今後の投資・積立投資を対象に、売却優先順を設定します。現在の運用資産で現在額 0 のものは表示せず、今後の投資は「開始前は売却不可」、積立投資は「形成済み残高のみ売却対象」として表示します。実際の売却時は、その年に売却可能なものの中から上位順で使います。</div>
-              <div class="withdrawal-compare-table-wrap">
+              <div class="withdrawal-compare-table-wrap withdrawal-order-manual-wrap">
+                <div id="withdrawalOrderDropLine" class="withdrawal-order-drop-line" aria-hidden="true"></div>
                 <table class="withdrawal-param-case-table">
                   <thead><tr><th style="width:56px;min-width:56px;">順</th><th>資産</th><th style="width:96px;min-width:96px;">操作</th></tr></thead>
                   <tbody id="withdrawalOrderManualBody"></tbody>
@@ -14434,8 +14449,15 @@ function getSellPriority(inv, cfg, age){
   return 4;
 }
 function parseWithdrawalManualOrderIds(cfg){
-  const arr = cfg?.withdrawalPolicy?.orderManualIds;
-  return Array.isArray(arr) ? arr.map(v=>String(v)) : [];
+  const direct = cfg?.withdrawalPolicy?.orderManualIds;
+  if(Array.isArray(direct)) return direct.map(v=>String(v));
+  try{
+    const raw = cfg?.withdrawalPolicy?.orderManualJson;
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed.map(v=>String(v)) : [];
+  }catch(_e){
+    return [];
+  }
 }
 function getOrderedSellableInvestments(investments, cfg, age){
   const base = (investments || []).filter(inv=>inv.amount > 0.000001 && isInvestmentSellable(inv, cfg, age));
@@ -14444,13 +14466,13 @@ function getOrderedSellableInvestments(investments, cfg, age){
     const manualOrderIds = parseWithdrawalManualOrderIds(cfg);
     const orderMap = new Map(manualOrderIds.map((id, idx)=>[String(id), idx]));
     return base.sort((a,b)=>{
-      const ao = orderMap.has(String(a.rowId || '')) ? orderMap.get(String(a.rowId || '')) : 999999;
-      const bo = orderMap.has(String(b.rowId || '')) ? orderMap.get(String(b.rowId || '')) : 999999;
+      const ao = orderMap.has(String(a.rowId || '')) ? orderMap.get(String(a.rowId || '')) : Number.MAX_SAFE_INTEGER;
+      const bo = orderMap.has(String(b.rowId || '')) ? orderMap.get(String(b.rowId || '')) : Number.MAX_SAFE_INTEGER;
       if(ao !== bo) return ao - bo;
-      const pa = getSellPriority(a, cfg, age);
-      const pb = getSellPriority(b, cfg, age);
-      if(pa !== pb) return pa - pb;
-      return (b.amount || 0) - (a.amount || 0);
+      const ai = Number.isFinite(Number(a._manualBaseIndex)) ? Number(a._manualBaseIndex) : Number.MAX_SAFE_INTEGER;
+      const bi = Number.isFinite(Number(b._manualBaseIndex)) ? Number(b._manualBaseIndex) : Number.MAX_SAFE_INTEGER;
+      if(ai !== bi) return ai - bi;
+      return 0;
     });
   }
   return base.sort((a,b)=>{
@@ -15101,9 +15123,10 @@ function simulate(cfg, random=false, opts={}){
   const deposits = deepClone(cfg.deposits);
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   const investments = deepClone(cfg.investments);
+  investments.forEach((inv, idx)=>{ inv._manualBaseIndex = idx; });
   const safeAssets = initializeSafeAssetState(cfg);
-  (cfg.futureInvestments || []).forEach(plan=>investments.push(makeInvestmentEntryFromPlan(plan, 0)));
-  (cfg.sumInvestments || []).forEach(plan=>investments.push(makeInvestmentEntryFromPlan(plan, 0)));
+  (cfg.futureInvestments || []).forEach(plan=>{ const entry = makeInvestmentEntryFromPlan(plan, 0); entry._manualBaseIndex = investments.length; investments.push(entry); });
+  (cfg.sumInvestments || []).forEach(plan=>{ const entry = makeInvestmentEntryFromPlan(plan, 0); entry._manualBaseIndex = investments.length; investments.push(entry); });
   let liability = 0;
   const receiptState = ensureReceiptState();
   const withdrawalPolicy = getWithdrawalPolicyConfig(cfg);
@@ -17319,8 +17342,8 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   const investments = deepClone(cfg.investments);
   const safeAssets = initializeSafeAssetState(cfg);
-  (cfg.futureInvestments || []).forEach(plan=>investments.push(makeInvestmentEntryFromPlan(plan, 0)));
-  (cfg.sumInvestments || []).forEach(plan=>investments.push(makeInvestmentEntryFromPlan(plan, 0)));
+  (cfg.futureInvestments || []).forEach(plan=>{ const entry = makeInvestmentEntryFromPlan(plan, 0); entry._manualBaseIndex = investments.length; investments.push(entry); });
+  (cfg.sumInvestments || []).forEach(plan=>{ const entry = makeInvestmentEntryFromPlan(plan, 0); entry._manualBaseIndex = investments.length; investments.push(entry); });
   let liability = 0;
   const receiptState = ensureReceiptState();
   const withdrawalPolicy = getWithdrawalPolicyConfig(cfg);
@@ -17812,8 +17835,11 @@ function normalizeWithdrawalOrderManualIds(){
   writeWithdrawalOrderManualJson(filtered);
   return filtered;
 }
+let withdrawalOrderDragState = null;
 function renderWithdrawalOrderManualEditor(){
   const body = document.getElementById('withdrawalOrderManualBody');
+  const dropLine = document.getElementById('withdrawalOrderDropLine');
+  if(dropLine) dropLine.classList.remove('show');
   if(!body) return;
   try{
     const items = buildWithdrawalOrderItemsFromDOM();
@@ -17840,11 +17866,185 @@ function renderWithdrawalOrderManualEditor(){
         : (item?.sourceType === 'sum'
           ? `積立期間 ${escapeHtml(formatNumberJP(item?.fromAge ?? 0, 0))}〜${escapeHtml(formatNumberJP(item?.toAge ?? 0, 0))}歳 / ${escapeHtml(item?.statusNote ?? '')}`
           : '');
-      html += `<tr><td>${idx + 1}</td><td style="text-align:left;">${escapeHtml(item?.name ?? `運用${idx+1}`)}<div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td><td><div style="display:flex;gap:4px;justify-content:center;"><button type="button" data-withdrawal-order-move="up" data-row-id="${escapeAttr(id)}" ${idx===0?'disabled':''}>↑</button><button type="button" data-withdrawal-order-move="down" data-row-id="${escapeAttr(id)}" ${idx===renderItems.length-1?'disabled':''}>↓</button></div></td></tr>`;
+      html += `<tr class="withdrawal-order-row" data-withdrawal-order-row="${escapeAttr(id)}"><td><div class="withdrawal-order-rank"><button type="button" class="withdrawal-order-drag-handle" data-withdrawal-order-drag-handle="1" data-row-id="${escapeAttr(id)}" aria-label="売却順をドラッグして並べ替え">⋮⋮</button><span>${idx + 1}</span></div></td><td style="text-align:left;">${escapeHtml(item?.name ?? `運用${idx+1}`)}<div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td><td><div style="display:flex;gap:4px;justify-content:center;"><button type="button" data-withdrawal-order-move="up" data-row-id="${escapeAttr(id)}" ${idx===0?'disabled':''}>↑</button><button type="button" data-withdrawal-order-move="down" data-row-id="${escapeAttr(id)}" ${idx===renderItems.length-1?'disabled':''}>↓</button></div></td></tr>`;
     });
     body.innerHTML = html || `<tr><td colspan="3">現在の運用資産がありません。</td></tr>`;
   }catch(_e){
     body.innerHTML = `<tr><td colspan="3">現在の運用資産を表示できませんでした。</td></tr>`;
+  }
+}
+function getWithdrawalOrderDragRows(){
+  return Array.from(document.querySelectorAll('#withdrawalOrderManualBody tr[data-withdrawal-order-row]'));
+}
+function getWithdrawalOrderDragLayout(){
+  return getWithdrawalOrderDragRows().map(row=>{
+    const rect = row.getBoundingClientRect();
+    return { id:String(row.dataset.withdrawalOrderRow || ''), row, top:rect.top, height:rect.height, center:rect.top + rect.height / 2 };
+  });
+}
+function getProjectedWithdrawalOrderIds(layout, dragRowId, insertIndex){
+  const ids = layout.map(item=>item.id);
+  const fromIndex = ids.indexOf(String(dragRowId));
+  if(fromIndex < 0) return ids;
+  const nextIds = ids.slice();
+  nextIds.splice(fromIndex, 1);
+  const safeIndex = Math.max(0, Math.min(insertIndex, nextIds.length));
+  nextIds.splice(safeIndex, 0, String(dragRowId));
+  return nextIds;
+}
+function getWithdrawalProjectedTopById(layout, dragRowId, insertIndex){
+  const projectedIds = getProjectedWithdrawalOrderIds(layout, dragRowId, insertIndex);
+  const itemMap = new Map(layout.map(item=>[item.id, item]));
+  const startTop = Math.min(...layout.map(item=>item.top));
+  const map = new Map();
+  let cursorTop = startTop;
+  projectedIds.forEach(id=>{
+    const item = itemMap.get(id);
+    map.set(id, cursorTop);
+    cursorTop += Number(item?.height || 0);
+  });
+  return map;
+}
+function applyWithdrawalOrderDragVisualOrder(layout, dragRowId, insertIndex){
+  const projectedTopById = getWithdrawalProjectedTopById(layout, dragRowId, insertIndex);
+  layout.forEach(item=>{
+    item.row.classList.add('drag-animating');
+    item.row.classList.remove('drag-shifted');
+    if(item.id === String(dragRowId)) return;
+    const nextTop = projectedTopById.get(item.id);
+    const deltaY = Number.isFinite(nextTop) ? (nextTop - item.top) : 0;
+    item.row.style.transform = `translateY(${Math.round(deltaY)}px)`;
+    if(Math.abs(deltaY) > 0.5) item.row.classList.add('drag-shifted');
+  });
+}
+function clearWithdrawalOrderDragVisualOrder(){
+  getWithdrawalOrderDragRows().forEach(row=>{
+    row.style.transform = '';
+    row.classList.remove('dragging','drag-animating','drag-shifted');
+  });
+  const dropLine = document.getElementById('withdrawalOrderDropLine');
+  if(dropLine){
+    dropLine.classList.remove('show');
+    dropLine.style.top = '';
+  }
+}
+function positionWithdrawalOrderDropLine(layout, dragRowId, insertIndex){
+  const wrap = document.querySelector('.withdrawal-order-manual-wrap');
+  const dropLine = document.getElementById('withdrawalOrderDropLine');
+  if(!wrap || !dropLine || !layout.length) return;
+  const wrapRect = wrap.getBoundingClientRect();
+  const projectedIds = getProjectedWithdrawalOrderIds(layout, dragRowId, insertIndex);
+  let lineTop = layout[0].top - wrapRect.top;
+  if(insertIndex <= 0){
+    lineTop = layout[0].top - wrapRect.top;
+  }else if(insertIndex >= projectedIds.length - 0){
+    const lastId = projectedIds[projectedIds.length - 1];
+    const lastItem = layout.find(item=>item.id === lastId) || layout[layout.length - 1];
+    lineTop = (lastItem.top + lastItem.height) - wrapRect.top;
+  }else{
+    const beforeId = projectedIds[insertIndex - 1];
+    const beforeItem = layout.find(item=>item.id === beforeId) || layout[Math.max(0, insertIndex - 1)];
+    lineTop = (beforeItem.top + beforeItem.height) - wrapRect.top;
+  }
+  dropLine.style.top = `${Math.round(lineTop - 2)}px`;
+  dropLine.classList.add('show');
+}
+function computeWithdrawalOrderInsertIndex(layout, dragRowId, pointerY){
+  const others = layout.filter(item=>item.id !== String(dragRowId));
+  let index = 0;
+  for(const item of others){
+    if(pointerY > item.center) index += 1;
+  }
+  return Math.max(0, Math.min(index, layout.length - 1));
+}
+function startWithdrawalOrderDrag(handle, pointerEvent){
+  if(withdrawalOrderDragState) return;
+  const sourceRow = handle?.closest?.('tr[data-withdrawal-order-row]');
+  const rowId = String(handle?.dataset.rowId || sourceRow?.dataset.withdrawalOrderRow || '');
+  if(!sourceRow || !rowId) return;
+  const layout = getWithdrawalOrderDragLayout();
+  if(layout.length <= 1) return;
+  const sourceItem = layout.find(item=>item.id === rowId);
+  if(!sourceItem) return;
+  const rect = sourceRow.getBoundingClientRect();
+  const ghost = sourceRow.cloneNode(true);
+  ghost.classList.add('withdrawal-order-row-drag-ghost');
+  const sourceCells = Array.from(sourceRow.children || []);
+  const ghostCells = Array.from(ghost.children || []);
+  ghostCells.forEach((cell, idx)=>{
+    const srcCell = sourceCells[idx];
+    if(!srcCell) return;
+    const cellRect = srcCell.getBoundingClientRect();
+    cell.style.width = `${Math.round(cellRect.width)}px`;
+    cell.style.minWidth = `${Math.round(cellRect.width)}px`;
+    cell.style.maxWidth = `${Math.round(cellRect.width)}px`;
+    cell.style.boxSizing = 'border-box';
+  });
+  ghost.style.width = `${Math.round(rect.width)}px`;
+  ghost.style.minWidth = `${Math.round(rect.width)}px`;
+  ghost.style.maxWidth = `${Math.round(rect.width)}px`;
+  ghost.style.left = `${Math.round(rect.left)}px`;
+  ghost.style.top = `${Math.round(rect.top)}px`;
+  ghost.style.transform = 'translateY(0)';
+  document.body.appendChild(ghost);
+  sourceRow.classList.add('dragging');
+  document.body.classList.add('withdrawal-preview-dragging');
+  withdrawalOrderDragState = {
+    rowId,
+    sourceRow,
+    ghost,
+    layout,
+    dragHandle: handle,
+    pointerId: pointerEvent.pointerId,
+    startPointerY:pointerEvent.clientY,
+    pointerOffsetY:pointerEvent.clientY - rect.top,
+    minTop:Math.min(...layout.map(item=>item.top)),
+    maxTop:Math.max(Math.min(...layout.map(item=>item.top)), Math.max(...layout.map(item=>item.top + item.height)) - (sourceItem?.height || rect.height)),
+    insertIndex:layout.findIndex(item=>item.id === rowId)
+  };
+  applyWithdrawalOrderDragVisualOrder(layout, rowId, withdrawalOrderDragState.insertIndex);
+  positionWithdrawalOrderDropLine(layout, rowId, withdrawalOrderDragState.insertIndex);
+}
+function updateWithdrawalOrderDrag(pointerEvent){
+  const state = withdrawalOrderDragState;
+  if(!state) return;
+  const nextTop = Math.max(state.minTop, Math.min((pointerEvent.clientY - state.pointerOffsetY), state.maxTop));
+  state.ghost.style.top = `${Math.round(nextTop)}px`;
+  const pointerY = Math.max(state.minTop + 1, Math.min(pointerEvent.clientY, state.maxTop + state.sourceRow.getBoundingClientRect().height - 1));
+  const insertIndex = computeWithdrawalOrderInsertIndex(state.layout, state.rowId, pointerY);
+  if(insertIndex !== state.insertIndex){
+    state.insertIndex = insertIndex;
+    applyWithdrawalOrderDragVisualOrder(state.layout, state.rowId, insertIndex);
+    positionWithdrawalOrderDropLine(state.layout, state.rowId, insertIndex);
+  }
+}
+function finishWithdrawalOrderDrag(commit){
+  const state = withdrawalOrderDragState;
+  if(!state) return;
+  const { rowId, insertIndex, ghost, sourceRow, layout, dragHandle, pointerId } = state;
+  withdrawalOrderDragState = null;
+  if(dragHandle && typeof dragHandle.releasePointerCapture === "function" && pointerId != null){
+    try{ if(dragHandle.hasPointerCapture(pointerId)) dragHandle.releasePointerCapture(pointerId); }catch(_e){}
+  }
+  if(ghost?.parentNode) ghost.parentNode.removeChild(ghost);
+  document.body.classList.remove('withdrawal-preview-dragging');
+  clearWithdrawalOrderDragVisualOrder();
+  if(commit){
+    const ids = normalizeWithdrawalOrderManualIds();
+    const fromIndex = ids.indexOf(String(rowId));
+    if(fromIndex >= 0){
+      const nextIds = ids.slice();
+      nextIds.splice(fromIndex, 1);
+      const safeIndex = Math.max(0, Math.min(insertIndex, nextIds.length));
+      nextIds.splice(safeIndex, 0, String(rowId));
+      writeWithdrawalOrderManualJson(nextIds);
+      renderWithdrawalOrderManualEditor();
+      renderWithdrawalRuleSummary();
+      withdrawalCompareCache = null;
+      scheduleWithdrawalRulePreview();
+    }
+  }else if(sourceRow){
+    sourceRow.classList.remove('dragging');
   }
 }
 function moveWithdrawalOrderManualItem(delta, rowId){
@@ -17859,6 +18059,36 @@ function moveWithdrawalOrderManualItem(delta, rowId){
   renderWithdrawalRuleSummary();
   withdrawalCompareCache = null;
   scheduleWithdrawalRulePreview();
+}
+function initWithdrawalOrderManualDragUI(){
+  const body = document.getElementById('withdrawalOrderManualBody');
+  if(!body || body.dataset.dragInit === '1') return;
+  body.dataset.dragInit = '1';
+  body.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-withdrawal-order-move]');
+    if(!btn) return;
+    const dir = btn.dataset.withdrawalOrderMove === 'up' ? -1 : 1;
+    moveWithdrawalOrderManualItem(dir, btn.dataset.rowId || '');
+  });
+  body.addEventListener('pointerdown', (e)=>{
+    const handle = e.target.closest('[data-withdrawal-order-drag-handle]');
+    if(!handle) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    if(typeof handle.setPointerCapture === "function" && e.pointerId != null){
+      try{ handle.setPointerCapture(e.pointerId); }catch(_e){}
+    }
+    startWithdrawalOrderDrag(handle, e);
+  });
+  document.addEventListener('pointermove', (e)=>{
+    if(!withdrawalOrderDragState) return;
+    e.preventDefault();
+    updateWithdrawalOrderDrag(e);
+  }, { passive:false });
+  document.addEventListener('pointerup', ()=>finishWithdrawalOrderDrag(true));
+  document.addEventListener('pointercancel', ()=>finishWithdrawalOrderDrag(false));
+  body.addEventListener('lostpointercapture', ()=>finishWithdrawalOrderDrag(true));
+  window.addEventListener('blur', ()=>finishWithdrawalOrderDrag(true));
 }
 function getWithdrawalRuleUsesStartCondition(mode){
   return mode === 'fixed_rate' || mode === 'fixed_amount' || mode === 'basic_annual' || mode === 'basic_lump' || mode === 'basic_hybrid';
@@ -18125,6 +18355,7 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
   }
   renderCrashTestSummary(crashTestDraft);
 });
+initWithdrawalOrderManualDragUI();
 document.getElementById("cancelFireDiagnosisBtn")?.addEventListener("click", closeFireDiagnosisModal);
 document.getElementById("runFireDiagnosisBtn")?.addEventListener("click", runFireDiagnosis);
 document.getElementById("fireDiagnosisTypeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
@@ -18194,10 +18425,16 @@ function openWithdrawalRuleModal(){
   }
   resetModalScrollPosition('withdrawalRuleModal');
   resetModalInnerScrollPositions('withdrawalRuleModal');
+  const withdrawalPreviewScroll = document.querySelector('#withdrawalRuleModal .withdrawal-preview-scroll');
+  if(withdrawalPreviewScroll){
+    withdrawalPreviewScroll.scrollTop = 0;
+    withdrawalPreviewScroll.scrollLeft = 0;
+  }
   applyTabOrder();
   focusModalPrimaryActionButton('withdrawalRuleModal');
 }
 function closeWithdrawalRuleModal(){
+  finishWithdrawalOrderDrag(false);
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
   if(withdrawalRulePreviewApplyTimer){ clearTimeout(withdrawalRulePreviewApplyTimer); withdrawalRulePreviewApplyTimer = null; }
   withdrawalRuleModal?.classList.remove('preview-visible');
@@ -19403,6 +19640,28 @@ document.addEventListener("focusin", (e)=>{
 }, true);
 document.addEventListener("change", commitMainInputChange);
 document.addEventListener("focusout", commitMainInputChange, true);
+
+function previewBirthDateDerivedFieldsOnInput(el){
+  if(!(el instanceof HTMLInputElement) || el.type !== "date") return;
+  const id = el.id || "";
+  if(id === "baseDate"){
+    syncBaseDateDerivedFields();
+    syncPersonBirthDateFields();
+    for(let i=1;i<=MAX_CHILDREN;i++) syncChildDerivedFields(i, {forceSchoolAuto:false});
+    return;
+  }
+  if(id === "selfBirthDate" || id === "spouseBirthDate"){
+    syncPersonBirthDateFields();
+    return;
+  }
+  const m = id.match(/^child(\d+)_birthDate$/);
+  if(m) syncChildDerivedFields(Number(m[1]), {forceSchoolAuto:false});
+}
+
+document.addEventListener("input", (e)=>{
+  const el = e.target;
+  previewBirthDateDerivedFieldsOnInput(el);
+}, true);
 
 ["self_retire_year","self_retire_month"].forEach(id=>{
   document.getElementById(id)?.addEventListener("input", ()=>syncRetireFieldsForPrefix("self"));
