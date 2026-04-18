@@ -1503,13 +1503,15 @@
   .withdrawal-order-row.drag-animating > td{background:#fff;box-shadow:none !important;}
   .withdrawal-order-row.drag-shifted > td{box-shadow:inset 0 -1px 0 var(--border) !important;}
   .withdrawal-order-row.dragging{visibility:hidden;}
+  .withdrawal-order-row.drag-source-touch{opacity:.18;}
+  .withdrawal-order-row.drag-source-touch > td{background:#f8fafc;}
   .withdrawal-order-row .withdrawal-order-rank{display:flex;align-items:center;justify-content:center;gap:8px;}
   .withdrawal-order-drag-handle{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;background:transparent;color:#94a3b8;border-radius:8px;cursor:grab;padding:0;font-size:16px;line-height:1;touch-action:none;}
   .withdrawal-order-drag-handle:hover{background:#f3f4f6;color:#64748b;}
   .withdrawal-order-drag-handle:active{cursor:grabbing;}
   .withdrawal-order-row-drag-ghost{position:fixed;z-index:1400;pointer-events:none;margin:0;opacity:.92;box-shadow:0 10px 24px rgba(15,23,42,.18);background:#fff;table-layout:fixed;border-collapse:collapse;}
-  .withdrawal-order-drop-line{display:none !important;}
-  .withdrawal-order-drop-line.show{display:none !important;}
+  .withdrawal-order-drop-line{position:absolute;left:0;right:0;height:2px;border-radius:999px;background:#2563eb;box-shadow:0 0 0 1px rgba(255,255,255,.92);pointer-events:none;display:none;z-index:3;}
+  .withdrawal-order-drop-line.show{display:block;}
   .withdrawal-order-manual-wrap{position:relative;}
 
   .withdrawal-inline-control{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;max-width:100%;overflow:hidden;}
@@ -17836,6 +17838,9 @@ function normalizeWithdrawalOrderManualIds(){
   return filtered;
 }
 let withdrawalOrderDragState = null;
+function isWithdrawalOrderSimpleTouchDrag(pointerEvent){
+  return !!(pointerEvent && pointerEvent.pointerType && pointerEvent.pointerType !== 'mouse');
+}
 function renderWithdrawalOrderManualEditor(){
   const body = document.getElementById('withdrawalOrderManualBody');
   const dropLine = document.getElementById('withdrawalOrderDropLine');
@@ -17920,7 +17925,7 @@ function applyWithdrawalOrderDragVisualOrder(layout, dragRowId, insertIndex){
 function clearWithdrawalOrderDragVisualOrder(){
   getWithdrawalOrderDragRows().forEach(row=>{
     row.style.transform = '';
-    row.classList.remove('dragging','drag-animating','drag-shifted');
+    row.classList.remove('dragging','drag-animating','drag-shifted','drag-source-touch');
   });
   const dropLine = document.getElementById('withdrawalOrderDropLine');
   if(dropLine){
@@ -17967,6 +17972,7 @@ function startWithdrawalOrderDrag(handle, pointerEvent){
   const sourceItem = layout.find(item=>item.id === rowId);
   if(!sourceItem) return;
   const rect = sourceRow.getBoundingClientRect();
+  const useSimpleTouchDrag = isWithdrawalOrderSimpleTouchDrag(pointerEvent);
   const ghost = sourceRow.cloneNode(true);
   ghost.classList.add('withdrawal-order-row-drag-ghost');
   const sourceCells = Array.from(sourceRow.children || []);
@@ -17987,7 +17993,7 @@ function startWithdrawalOrderDrag(handle, pointerEvent){
   ghost.style.top = `${Math.round(rect.top)}px`;
   ghost.style.transform = 'translateY(0)';
   document.body.appendChild(ghost);
-  sourceRow.classList.add('dragging');
+  sourceRow.classList.add(useSimpleTouchDrag ? 'drag-source-touch' : 'dragging');
   document.body.classList.add('withdrawal-preview-dragging');
   withdrawalOrderDragState = {
     rowId,
@@ -18000,9 +18006,12 @@ function startWithdrawalOrderDrag(handle, pointerEvent){
     pointerOffsetY:pointerEvent.clientY - rect.top,
     minTop:Math.min(...layout.map(item=>item.top)),
     maxTop:Math.max(Math.min(...layout.map(item=>item.top)), Math.max(...layout.map(item=>item.top + item.height)) - (sourceItem?.height || rect.height)),
-    insertIndex:layout.findIndex(item=>item.id === rowId)
+    insertIndex:layout.findIndex(item=>item.id === rowId),
+    useSimpleTouchDrag
   };
-  applyWithdrawalOrderDragVisualOrder(layout, rowId, withdrawalOrderDragState.insertIndex);
+  if(!useSimpleTouchDrag){
+    applyWithdrawalOrderDragVisualOrder(layout, rowId, withdrawalOrderDragState.insertIndex);
+  }
   positionWithdrawalOrderDropLine(layout, rowId, withdrawalOrderDragState.insertIndex);
 }
 function updateWithdrawalOrderDrag(pointerEvent){
@@ -18014,7 +18023,9 @@ function updateWithdrawalOrderDrag(pointerEvent){
   const insertIndex = computeWithdrawalOrderInsertIndex(state.layout, state.rowId, pointerY);
   if(insertIndex !== state.insertIndex){
     state.insertIndex = insertIndex;
-    applyWithdrawalOrderDragVisualOrder(state.layout, state.rowId, insertIndex);
+    if(!state.useSimpleTouchDrag){
+      applyWithdrawalOrderDragVisualOrder(state.layout, state.rowId, insertIndex);
+    }
     positionWithdrawalOrderDropLine(state.layout, state.rowId, insertIndex);
   }
 }
