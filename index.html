@@ -1498,21 +1498,85 @@
   .withdrawal-param-case-table td .input-unit{padding-left:0;justify-content:center;}
   .withdrawal-param-case-table td input[type=number]{width:100%;max-width:120px;margin:0 auto;}
   .withdrawal-param-case-help{margin-bottom:8px;color:var(--muted);font-size:.88rem;line-height:1.5;}
-  .withdrawal-order-row{position:relative;background:#fff;}
+  .withdrawal-order-manual-wrap{position:relative;}
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table{
+    border-collapse:separate;
+    border-spacing:0;
+    background:#fff;
+    border:1px solid var(--border);
+  }
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table th,
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table td{
+    border:0;
+    border-right:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    background:#fff;
+    background-clip:padding-box;
+  }
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table tr > *:last-child{border-right:0;}
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody tr:last-child > td{border-bottom:0;}
+  .withdrawal-order-row{
+    position:relative;
+    background:#fff;
+    will-change:transform;
+    -webkit-backface-visibility:hidden;
+    backface-visibility:hidden;
+  }
   .withdrawal-order-row.drag-animating{transition:transform .18s ease;}
-  .withdrawal-order-row.drag-animating > td{background:#fff;box-shadow:none !important;}
-  .withdrawal-order-row.drag-shifted > td{box-shadow:inset 0 -1px 0 var(--border) !important;}
-  .withdrawal-order-row.dragging{visibility:hidden;}
-  .withdrawal-order-row.drag-source-touch{opacity:.18;}
-  .withdrawal-order-row.drag-source-touch > td{background:#f8fafc;}
+  .withdrawal-order-row.drag-animating > td{
+    background:#fff;
+    box-shadow:none !important;
+    -webkit-backface-visibility:hidden;
+    backface-visibility:hidden;
+  }
+  .withdrawal-order-row.drag-shifted > td{box-shadow:none !important;}
+  .withdrawal-order-row.dragging{
+    visibility:visible;
+  }
+  .withdrawal-order-row.dragging > td{
+    color:transparent !important;
+  }
+  .withdrawal-order-row.dragging > td > *{
+    opacity:0 !important;
+  }
+  .withdrawal-order-row.dragging > td,
+  .withdrawal-order-row.drag-source-touch > td{
+    background:#fff;
+  }
+  .withdrawal-order-row.drag-source-touch{
+    opacity:1;
+  }
+  .withdrawal-order-row.drag-source-touch > td{
+    color:transparent !important;
+  }
+  .withdrawal-order-row.drag-source-touch > td > *{
+    opacity:0 !important;
+  }
   .withdrawal-order-row .withdrawal-order-rank{display:flex;align-items:center;justify-content:center;gap:8px;}
   .withdrawal-order-drag-handle{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;background:transparent;color:#94a3b8;border-radius:8px;cursor:grab;padding:0;font-size:16px;line-height:1;touch-action:none;}
   .withdrawal-order-drag-handle:hover{background:#f3f4f6;color:#64748b;}
   .withdrawal-order-drag-handle:active{cursor:grabbing;}
-  .withdrawal-order-row-drag-ghost{position:fixed;z-index:1400;pointer-events:none;margin:0;opacity:.92;box-shadow:0 10px 24px rgba(15,23,42,.18);background:#fff;table-layout:fixed;border-collapse:collapse;}
+  .withdrawal-order-row-drag-ghost{
+    position:fixed;
+    z-index:1400;
+    pointer-events:none;
+    margin:0;
+    opacity:.92;
+    box-shadow:0 10px 24px rgba(15,23,42,.18);
+    background:#fff;
+    table-layout:fixed;
+    border-collapse:separate;
+    border-spacing:0;
+  }
+  .withdrawal-order-row-drag-ghost td{
+    border-right:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    background:#fff;
+    background-clip:padding-box;
+  }
+  .withdrawal-order-row-drag-ghost td:last-child{border-right:0;}
   .withdrawal-order-drop-line{position:absolute;left:0;right:0;height:2px;border-radius:999px;background:#2563eb;box-shadow:0 0 0 1px rgba(255,255,255,.92);pointer-events:none;display:none;z-index:3;}
   .withdrawal-order-drop-line.show{display:block;}
-  .withdrawal-order-manual-wrap{position:relative;}
 
   .withdrawal-inline-control{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;max-width:100%;overflow:hidden;}
   .withdrawal-half-select{width:min(320px,100%);max-width:100%;flex:0 0 auto;}
@@ -17839,7 +17903,7 @@ function normalizeWithdrawalOrderManualIds(){
 }
 let withdrawalOrderDragState = null;
 function isWithdrawalOrderSimpleTouchDrag(pointerEvent){
-  return !!(pointerEvent && pointerEvent.pointerType && pointerEvent.pointerType !== 'mouse');
+  return false;
 }
 function renderWithdrawalOrderManualEditor(){
   const body = document.getElementById('withdrawalOrderManualBody');
