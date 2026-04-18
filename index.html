@@ -1499,6 +1499,14 @@
   .withdrawal-param-case-table td input[type=number]{width:100%;max-width:120px;margin:0 auto;}
   .withdrawal-param-case-help{margin-bottom:8px;color:var(--muted);font-size:.88rem;line-height:1.5;}
   .withdrawal-order-manual-wrap{position:relative;}
+.withdrawal-order-name{font-weight:600;}
+  .withdrawal-order-amount{font-weight:600;}
+  .withdrawal-order-name.source-current,
+  .withdrawal-order-amount.source-current{color:#2563eb;}
+  .withdrawal-order-name.source-future,
+  .withdrawal-order-amount.source-future{color:#7c3aed;}
+  .withdrawal-order-name.source-sum,
+  .withdrawal-order-amount.source-sum{color:#059669;}
   .withdrawal-order-manual-wrap .withdrawal-param-case-table{
     border-collapse:separate;
     border-spacing:0;
@@ -2216,11 +2224,11 @@
               <div class="withdrawal-rule-summary">以下の順で売却します。<br>1. 課税<br>2. その他<br>3. NISA<br>4. DC系<br><span class="small muted">同一区分内では、含み益率が低いものを優先し、さらに残高が大きいものを優先します。</span></div>
             </div>
             <div id="withdrawalOrderManualSection" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden">
-              <div class="withdrawal-rule-note">現在の運用資産・今後の投資・積立投資を対象に、売却優先順を設定します。現在の運用資産で現在額 0 のものは表示せず、今後の投資は「開始前は売却不可」、積立投資は「形成済み残高のみ売却対象」として表示します。実際の売却時は、その年に売却可能なものの中から上位順で使います。</div>
+              <div class="withdrawal-rule-note">現在の運用資産・今後の投資・積立投資を対象に、売却優先順を設定します。現在の運用資産で現在額 0 のものは表示せず、今後の投資は「開始前は売却不可」、積立投資は「形成済み残高のみ売却対象」として表示します。実際の売却時は、その年に売却可能なものの中から上位順で使います。 / 行左端のハンドルをドラッグして順番を変更できます。</div>
               <div class="withdrawal-compare-table-wrap withdrawal-order-manual-wrap">
                 <div id="withdrawalOrderDropLine" class="withdrawal-order-drop-line" aria-hidden="true"></div>
                 <table class="withdrawal-param-case-table">
-                  <thead><tr><th style="width:56px;min-width:56px;">順</th><th>資産</th><th style="width:96px;min-width:96px;">操作</th></tr></thead>
+                  <thead><tr><th style="width:56px;min-width:56px;">順</th><th>資産</th></tr></thead>
                   <tbody id="withdrawalOrderManualBody"></tbody>
                 </table>
               </div>
@@ -17933,12 +17941,13 @@ function renderWithdrawalOrderManualEditor(){
       const id = String(item?.rowId ?? '');
       const currencyLabel = (String(item?.currency || '円') === 'ドル') ? 'ドル' : '万円';
       const sourceLabel = item?.sourceType === 'future' ? '今後の投資' : (item?.sourceType === 'sum' ? '積立投資' : '現在の運用資産');
+      const sourceClass = item?.sourceType === 'future' ? 'source-future' : (item?.sourceType === 'sum' ? 'source-sum' : 'source-current');
       const details = [
         `区分 ${escapeHtml(sourceLabel)}`,
         `名義 ${escapeHtml(item?.owner ?? '')}`,
         `口座 ${escapeHtml(item?.accountType ?? '')}`,
         `元本 ${escapeHtml(formatNumberJP(item?.principal ?? 0, 1))}${currencyLabel}`,
-        `現在額 ${escapeHtml(formatNumberJP(item?.amount ?? 0, 1))}${currencyLabel}`,
+        `現在額 <span class="withdrawal-order-amount ${sourceClass}">${escapeHtml(formatNumberJP(item?.amount ?? 0, 1))}${currencyLabel}</span>`,
         `利回り ${escapeHtml(formatNumberJP(item?.rate ?? 0, 1))}%`,
         `配当率 ${escapeHtml(formatNumberJP(item?.dividendRate ?? 0, 1))}%`
       ].join(' / ');
@@ -17947,11 +17956,11 @@ function renderWithdrawalOrderManualEditor(){
         : (item?.sourceType === 'sum'
           ? `積立期間 ${escapeHtml(formatNumberJP(item?.fromAge ?? 0, 0))}〜${escapeHtml(formatNumberJP(item?.toAge ?? 0, 0))}歳 / ${escapeHtml(item?.statusNote ?? '')}`
           : '');
-      html += `<tr class="withdrawal-order-row" data-withdrawal-order-row="${escapeAttr(id)}"><td><div class="withdrawal-order-rank"><button type="button" class="withdrawal-order-drag-handle" data-withdrawal-order-drag-handle="1" data-row-id="${escapeAttr(id)}" aria-label="売却順をドラッグして並べ替え">⋮⋮</button><span>${idx + 1}</span></div></td><td style="text-align:left;">${escapeHtml(item?.name ?? `運用${idx+1}`)}<div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td><td><div style="display:flex;gap:4px;justify-content:center;"><button type="button" data-withdrawal-order-move="up" data-row-id="${escapeAttr(id)}" ${idx===0?'disabled':''}>↑</button><button type="button" data-withdrawal-order-move="down" data-row-id="${escapeAttr(id)}" ${idx===renderItems.length-1?'disabled':''}>↓</button></div></td></tr>`;
+      html += `<tr class="withdrawal-order-row" data-withdrawal-order-row="${escapeAttr(id)}"><td><div class="withdrawal-order-rank"><button type="button" class="withdrawal-order-drag-handle" data-withdrawal-order-drag-handle="1" data-row-id="${escapeAttr(id)}" aria-label="売却順をドラッグして並べ替え">⋮⋮</button><span>${idx + 1}</span></div></td><td style="text-align:left;"><span class="withdrawal-order-name ${sourceClass}">${escapeHtml(item?.name ?? `運用${idx+1}`)}</span><div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td></tr>`;
     });
-    body.innerHTML = html || `<tr><td colspan="3">現在の運用資産がありません。</td></tr>`;
+    body.innerHTML = html || `<tr><td colspan="2">現在の運用資産がありません。</td></tr>`;
   }catch(_e){
-    body.innerHTML = `<tr><td colspan="3">現在の運用資産を表示できませんでした。</td></tr>`;
+    body.innerHTML = `<tr><td colspan="2">現在の運用資産を表示できませんでした。</td></tr>`;
   }
 }
 function getWithdrawalOrderDragRows(){
