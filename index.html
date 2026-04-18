@@ -1529,26 +1529,23 @@
     -webkit-backface-visibility:hidden;
     backface-visibility:hidden;
   }
-  .withdrawal-order-row.drag-shifted > td{box-shadow:none !important;}
-  .withdrawal-order-row.dragging{
-    visibility:visible;
+  .withdrawal-order-row.drag-shifted{
+    z-index:3;
   }
-  .withdrawal-order-row.dragging > td{
-    color:transparent !important;
-  }
-  .withdrawal-order-row.dragging > td > *{
-    opacity:0 !important;
+  .withdrawal-order-row.drag-shifted > td{box-shadow:none !important;background:#fff;}
+  .withdrawal-order-row.dragging,
+  .withdrawal-order-row.drag-source-touch{
+    z-index:0;
   }
   .withdrawal-order-row.dragging > td,
   .withdrawal-order-row.drag-source-touch > td{
-    background:#fff;
-  }
-  .withdrawal-order-row.drag-source-touch{
-    opacity:1;
-  }
-  .withdrawal-order-row.drag-source-touch > td{
     color:transparent !important;
+    background:transparent !important;
+    border-right-color:transparent !important;
+    border-bottom-color:transparent !important;
+    box-shadow:none !important;
   }
+  .withdrawal-order-row.dragging > td > *,
   .withdrawal-order-row.drag-source-touch > td > *{
     opacity:0 !important;
   }
@@ -1567,6 +1564,8 @@
     table-layout:fixed;
     border-collapse:separate;
     border-spacing:0;
+    border:0;
+    outline:0;
   }
   .withdrawal-order-row-drag-ghost td{
     border-right:1px solid var(--border);
@@ -1575,8 +1574,8 @@
     background-clip:padding-box;
   }
   .withdrawal-order-row-drag-ghost td:last-child{border-right:0;}
-  .withdrawal-order-drop-line{position:absolute;left:0;right:0;height:2px;border-radius:999px;background:#2563eb;box-shadow:0 0 0 1px rgba(255,255,255,.92);pointer-events:none;display:none;z-index:3;}
-  .withdrawal-order-drop-line.show{display:block;}
+  .withdrawal-order-drop-line{display:none !important;}
+  .withdrawal-order-drop-line.show{display:none !important;}
 
   .withdrawal-inline-control{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;max-width:100%;overflow:hidden;}
   .withdrawal-half-select{width:min(320px,100%);max-width:100%;flex:0 0 auto;}
