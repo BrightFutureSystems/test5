@@ -17984,16 +17984,21 @@ function getWithdrawalProjectedTopById(layout, dragRowId, insertIndex){
     map.set(id, cursorTop);
     cursorTop += Number(item?.height || 0);
   });
-  return map;
+  return { projectedIds, projectedTopById: map };
 }
 function applyWithdrawalOrderDragVisualOrder(layout, dragRowId, insertIndex){
-  const projectedTopById = getWithdrawalProjectedTopById(layout, dragRowId, insertIndex);
+  const { projectedTopById } = getWithdrawalProjectedTopById(layout, dragRowId, insertIndex);
+  const sourceOriginalIndex = layout.findIndex(item=>item.id === String(dragRowId));
+  const sourceWasLast = sourceOriginalIndex === (layout.length - 1);
   layout.forEach(item=>{
     item.row.classList.add('drag-animating');
     item.row.classList.remove('drag-shifted');
     if(item.id === String(dragRowId)) return;
     const nextTop = projectedTopById.get(item.id);
-    const deltaY = Number.isFinite(nextTop) ? (nextTop - item.top) : 0;
+    let deltaY = Number.isFinite(nextTop) ? (nextTop - item.top) : 0;
+    if(sourceWasLast && deltaY > 0.5){
+      deltaY += 1;
+    }
     item.row.style.transform = `translate3d(0, ${deltaY.toFixed(3)}px, 0)`;
     if(Math.abs(deltaY) > 0.5) item.row.classList.add('drag-shifted');
   });
