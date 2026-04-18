@@ -1530,19 +1530,32 @@
     backface-visibility:hidden;
   }
   .withdrawal-order-row.drag-shifted{
-    z-index:3;
+    z-index:4;
   }
-  .withdrawal-order-row.drag-shifted > td{box-shadow:none !important;background:#fff;}
+  .withdrawal-order-row.drag-shifted > td,
+  .withdrawal-order-row.drag-gap-next > td{
+    position:relative;
+    background:#fff;
+    box-shadow:none !important;
+  }
+  .withdrawal-order-row.drag-shifted > td::before,
+  .withdrawal-order-row.drag-gap-next > td::before{
+    content:"";
+    position:absolute;
+    left:-1px;
+    right:-1px;
+    top:-1px;
+    height:1px;
+    background:var(--border);
+    pointer-events:none;
+  }
   .withdrawal-order-row.dragging,
   .withdrawal-order-row.drag-source-touch{
     z-index:0;
+    opacity:0;
   }
   .withdrawal-order-row.dragging > td,
   .withdrawal-order-row.drag-source-touch > td{
-    color:transparent !important;
-    background:transparent !important;
-    border-right-color:transparent !important;
-    border-bottom-color:transparent !important;
     box-shadow:none !important;
   }
   .withdrawal-order-row.dragging > td > *,
@@ -17981,14 +17994,14 @@ function applyWithdrawalOrderDragVisualOrder(layout, dragRowId, insertIndex){
     if(item.id === String(dragRowId)) return;
     const nextTop = projectedTopById.get(item.id);
     const deltaY = Number.isFinite(nextTop) ? (nextTop - item.top) : 0;
-    item.row.style.transform = `translateY(${Math.round(deltaY)}px)`;
+    item.row.style.transform = `translate3d(0, ${deltaY.toFixed(3)}px, 0)`;
     if(Math.abs(deltaY) > 0.5) item.row.classList.add('drag-shifted');
   });
 }
 function clearWithdrawalOrderDragVisualOrder(){
   getWithdrawalOrderDragRows().forEach(row=>{
     row.style.transform = '';
-    row.classList.remove('dragging','drag-animating','drag-shifted','drag-source-touch');
+    row.classList.remove('dragging','drag-animating','drag-shifted','drag-source-touch','drag-gap-next');
   });
   const dropLine = document.getElementById('withdrawalOrderDropLine');
   if(dropLine){
@@ -18057,6 +18070,10 @@ function startWithdrawalOrderDrag(handle, pointerEvent){
   ghost.style.transform = 'translateY(0)';
   document.body.appendChild(ghost);
   sourceRow.classList.add(useSimpleTouchDrag ? 'drag-source-touch' : 'dragging');
+  const gapNextRow = sourceRow.nextElementSibling && sourceRow.nextElementSibling.matches?.('tr[data-withdrawal-order-row]')
+    ? sourceRow.nextElementSibling
+    : null;
+  if(gapNextRow) gapNextRow.classList.add('drag-gap-next');
   document.body.classList.add('withdrawal-preview-dragging');
   withdrawalOrderDragState = {
     rowId,
@@ -18081,7 +18098,8 @@ function updateWithdrawalOrderDrag(pointerEvent){
   const state = withdrawalOrderDragState;
   if(!state) return;
   const nextTop = Math.max(state.minTop, Math.min((pointerEvent.clientY - state.pointerOffsetY), state.maxTop));
-  state.ghost.style.top = `${Math.round(nextTop)}px`;
+  state.ghost.style.top = `${nextTop.toFixed(3)}px`;
+  state.ghost.style.transform = 'translate3d(0,0,0)';
   const pointerY = Math.max(state.minTop + 1, Math.min(pointerEvent.clientY, state.maxTop + state.sourceRow.getBoundingClientRect().height - 1));
   const insertIndex = computeWithdrawalOrderInsertIndex(state.layout, state.rowId, pointerY);
   if(insertIndex !== state.insertIndex){
