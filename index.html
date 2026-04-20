@@ -2335,7 +2335,17 @@
                 </select>
               </div>
             </div>
-            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定と同一乱数列で、「固定年数バッファ型」「目標配分リバランス型」「2バケツ戦略型」を比較します。</div>
+            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定・同一乱数列で、選択した取り崩しルールの結果を比較します。</div>
+            <div id="withdrawalCompareRuleEditor">
+              <div class="withdrawal-param-case-help">※ 比較したい取り崩しルールだけを選択してください。重複選択はできません。1つ以上選択すると比較を実行できます。</div>
+              <div class="withdrawal-compare-table-wrap">
+                <table class="withdrawal-param-case-table">
+                  <thead><tr><th>比較</th><th>取り崩しルール</th></tr></thead>
+                  <tbody id="withdrawalCompareRuleBody"></tbody>
+                </table>
+              </div>
+              <input id="withdrawalCompareRuleSelectionJson" type="hidden" value="">
+            </div>
             <div id="withdrawalCompareParamEditor" class="withdrawal-rule-hidden">
               <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の取り崩し条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
               <div class="withdrawal-compare-table-wrap">
@@ -2441,7 +2451,7 @@
                   </select>
                 </div>
               </div>
-              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定と同一乱数列で、「暴落なし」と「現在の暴落設定」を比較します。</div>
+              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定・同一乱数列で、「暴落なし」と「現在の暴落設定」の結果を比較します。</div>
               <div id="crashCompareCaseEditor" class="withdrawal-rule-hidden">
                 <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の暴落条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
                 <div class="withdrawal-compare-table-wrap">
@@ -2552,7 +2562,7 @@
                     </select>
                   </div>
                 </div>
-                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定と同一乱数列で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」を比較します。</div>
+                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定・同一乱数列で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」の結果を比較します。</div>
                 <div id="monteCompareCaseEditor" class="withdrawal-compare-table-wrap withdrawal-rule-hidden">
                   <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他のモンテカルロ条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
                   <table class="withdrawal-param-case-table">
@@ -18161,15 +18171,26 @@ const WITHDRAWAL_RULE_MODAL_IDS = [
   "withdrawalCompareParamKey",
   "withdrawalCompareCaseCount",
   "withdrawalCompareCaseJson",
+  "withdrawalCompareRuleSelectionJson",
   "withdrawalCompareExpandedState"
 ];
 let withdrawalRuleSnapshot = null;
 // ===== Withdrawal comparison: calculation / rendering を分け、将来別ファイルへ切り出しやすくする =====
-const WITHDRAWAL_COMPARE_RULES = [
+const WITHDRAWAL_COMPARE_RULE_DEFS = [
+  {mode:'fixed_rate', label:'定率取り崩し'},
+  {mode:'fixed_amount', label:'定額取り崩し'},
+  {mode:'basic_annual', label:'毎年分割取り崩し'},
+  {mode:'basic_lump', label:'一括全額取り崩し'},
+  {mode:'basic_hybrid', label:'一部一括＋残り分割'},
   {mode:'current', label:'固定年数バッファ型'},
   {mode:'rebalance', label:'目標配分リバランス型'},
   {mode:'bucket', label:'2バケツ戦略型'}
 ];
+const WITHDRAWAL_COMPARE_RULE_DEF_MAP = WITHDRAWAL_COMPARE_RULE_DEFS.reduce((acc, item)=>{
+  acc[item.mode] = item;
+  return acc;
+}, {});
+const WITHDRAWAL_COMPARE_RULE_SLOT_COUNT = 5;
 const WITHDRAWAL_PARAMETER_COMPARE_RULES = {
   current:{
     label:'固定年数バッファ型',
@@ -18477,6 +18498,56 @@ function buildDefaultWithdrawalParamCases(ruleMode, paramKey, count, policy){
   const values = buildDefaultWithdrawalParamValues(baseValue, paramDef, count);
   return values.map((value, idx)=>({label:`ケース${idx + 1}`, value:normalizeWithdrawalParamValue(value, paramDef)}));
 }
+function buildDefaultWithdrawalRuleSelections(){
+  return new Array(WITHDRAWAL_COMPARE_RULE_SLOT_COUNT).fill('');
+}
+function normalizeWithdrawalCompareRuleSelections(values){
+  const base = buildDefaultWithdrawalRuleSelections();
+  if(Array.isArray(values)){
+    for(let i=0;i<Math.min(base.length, values.length);i++){
+      const mode = String(values[i] || '').trim();
+      base[i] = WITHDRAWAL_COMPARE_RULE_DEF_MAP[mode] ? mode : '';
+    }
+  }
+  return base;
+}
+function parseWithdrawalCompareRuleSelectionJson(){
+  const raw = document.getElementById('withdrawalCompareRuleSelectionJson')?.value || '';
+  if(!raw) return buildDefaultWithdrawalRuleSelections();
+  try{
+    return normalizeWithdrawalCompareRuleSelections(JSON.parse(raw));
+  }catch(_err){
+    return buildDefaultWithdrawalRuleSelections();
+  }
+}
+function writeWithdrawalCompareRuleSelectionJson(values){
+  const hidden = document.getElementById('withdrawalCompareRuleSelectionJson');
+  if(hidden) hidden.value = JSON.stringify(normalizeWithdrawalCompareRuleSelections(values));
+}
+function ensureWithdrawalCompareRuleSelectionState(){
+  const normalized = parseWithdrawalCompareRuleSelectionJson();
+  writeWithdrawalCompareRuleSelectionJson(normalized);
+  return normalized;
+}
+function getSelectedWithdrawalCompareRuleDefs(){
+  return ensureWithdrawalCompareRuleSelectionState().map((mode, idx)=> mode ? {mode, label:WITHDRAWAL_COMPARE_RULE_DEF_MAP[mode]?.label || mode, slotIndex:idx} : null).filter(Boolean);
+}
+function buildWithdrawalCompareRuleOptionsHtml(currentValue, selectedModes){
+  const used = new Set((selectedModes || []).filter(mode=>mode && mode !== currentValue));
+  const options = [`<option value=""${currentValue ? '' : ' selected'}>ー</option>`];
+  WITHDRAWAL_COMPARE_RULE_DEFS.forEach(def=>{
+    const disabled = used.has(def.mode);
+    const selected = def.mode === currentValue;
+    options.push(`<option value="${escapeAttr(def.mode)}"${selected ? ' selected' : ''}${disabled ? ' disabled' : ''}>${escapeHtml(def.label)}</option>`);
+  });
+  return options.join('');
+}
+function renderWithdrawalCompareRuleEditor(){
+  const body = document.getElementById('withdrawalCompareRuleBody');
+  if(!body) return;
+  const selectedModes = ensureWithdrawalCompareRuleSelectionState();
+  body.innerHTML = selectedModes.map((mode, idx)=>`<tr><th>比較${idx + 1}</th><td><select data-withdrawal-compare-rule-select="1" data-rule-slot-index="${idx}">${buildWithdrawalCompareRuleOptionsHtml(mode, selectedModes)}</select></td></tr>`).join('');
+}
 function parseWithdrawalCompareCaseJson(){
   const raw = document.getElementById('withdrawalCompareCaseJson')?.value || '';
   if(!raw) return [];
@@ -18558,11 +18629,12 @@ function getWithdrawalComparisonCases(cfgBase){
       };
     });
   }
-  return WITHDRAWAL_COMPARE_RULES.map(rule=>({
-    mode:rule.mode,
-    label:rule.label,
-    fullLabel:rule.label,
-    policyOverride:getWithdrawalPolicyOverride(rule.mode)
+  return getSelectedWithdrawalCompareRuleDefs().map(item=>({
+    mode:item.mode,
+    label:item.label,
+    fullLabel:item.label,
+    slotIndex:item.slotIndex,
+    policyOverride:getWithdrawalPolicyOverride(item.mode)
   }));
 }
 
@@ -18607,14 +18679,19 @@ function renderWithdrawalCompareHeader(results){
 function updateWithdrawalCompareModeUI(){
   const compareMode = getWithdrawalCompareMode();
   const isParameter = compareMode === 'parameter';
+  const isRule = compareMode === 'rule';
   document.getElementById('withdrawalCompareParamRuleField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('withdrawalCompareParamKeyField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('withdrawalCompareCaseCountField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('withdrawalCompareParamEditor')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
-  document.getElementById('withdrawalCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', isParameter);
+  document.getElementById('withdrawalCompareRuleEditor')?.classList.toggle('withdrawal-rule-hidden', !isRule);
+  document.getElementById('withdrawalCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', !isRule);
   if(isParameter){
     rebuildWithdrawalParameterCases(false);
     renderWithdrawalParameterCaseEditor();
+  }
+  if(isRule){
+    renderWithdrawalCompareRuleEditor();
   }
   const status = document.getElementById('withdrawalCompareStatus');
   if(status && !withdrawalCompareCache){
@@ -19147,8 +19224,10 @@ function renderWithdrawalComparisonResults(results){
         const paramKey = document.getElementById('withdrawalCompareParamKey')?.value || '';
         const paramDef = getWithdrawalParameterDefinition(ruleMode, paramKey);
         status.textContent = `同一のモンテカルロ乱数列で、${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} の ${paramDef?.label || 'パラメータ'} を変えた ${results.length} ケースを比較しました。`;
+      }else if(results.length <= 1){
+        status.textContent = '同一のモンテカルロ乱数列で、選択した 1 つの取り崩しルールの結果を表示しました。';
       }else{
-        status.textContent = '同一のモンテカルロ乱数列で 3 ルールを比較しました。95%点 / 5%点で上振れ・下振れも確認できます。';
+        status.textContent = `同一のモンテカルロ乱数列で、選択した ${results.length} 個の取り崩しルールを比較しました。95%点 / 5%点で上振れ・下振れも確認できます。`;
       }
     }
   }catch(chartErr){
@@ -19163,6 +19242,17 @@ function runWithdrawalComparison(){
   const body = document.getElementById('withdrawalCompareBody');
   section?.classList.add('show');
   if(getWithdrawalCompareMode() === 'parameter') rebuildWithdrawalParameterCases(false);
+  if(getWithdrawalCompareMode() === 'rule'){
+    const selectedRules = getSelectedWithdrawalCompareRuleDefs();
+    if(!selectedRules.length){
+      if(status) status.textContent = '比較する取り崩しルールを1つ以上選択してください。';
+      if(body) body.innerHTML = '';
+      setWithdrawalCompareResultsVisible(false);
+      renderWithdrawalCompareHeader([]);
+      if(withdrawalCompareChart){ withdrawalCompareChart.destroy(); withdrawalCompareChart = null; }
+      return;
+    }
+  }
   if(status) status.textContent = '比較計算中です…';
   if(body) body.innerHTML = '';
   setWithdrawalCompareResultsVisible(false);
@@ -19178,7 +19268,7 @@ function runWithdrawalComparison(){
       console.error(err);
       const msg = err && err.message ? err.message : String(err || '不明なエラー');
       const compareCases = getWithdrawalComparisonCases(getScenarioFromDOM());
-      const colspan = Math.max(1, compareCases.length || 3);
+      const colspan = Math.max(1, compareCases.length || (getWithdrawalCompareMode() === 'parameter' ? 3 : 1));
       if(status) status.textContent = `比較計算に失敗しました: ${msg}`;
       setWithdrawalCompareResultsVisible(true);
       renderWithdrawalCompareHeader(compareCases.map(item=>({label:item.label || ''})));
@@ -19207,6 +19297,7 @@ function restoreWithdrawalRuleState(state){
   if(modeEl) modeEl.dataset.previousMode = modeEl.value || 'retirement_age';
   syncWithdrawalStartConditionValueControl();
   updateWithdrawalRuleModalUI();
+  ensureWithdrawalCompareRuleSelectionState();
   updateWithdrawalCompareModeUI();
 }
 function buildWithdrawalOrderItemsFromDOM(){
@@ -20743,6 +20834,17 @@ document.getElementById("withdrawalCompareMode")?.addEventListener("change", ()=
 document.getElementById("withdrawalCompareParamRule")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; rebuildWithdrawalParameterCases(true); updateWithdrawalCompareModeUI(); });
 document.getElementById("withdrawalCompareParamKey")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; rebuildWithdrawalParameterCases(true); updateWithdrawalCompareModeUI(); });
 document.getElementById("withdrawalCompareCaseCount")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; rebuildWithdrawalParameterCases(true); updateWithdrawalCompareModeUI(); });
+document.getElementById("withdrawalCompareRuleBody")?.addEventListener("change", (e)=>{
+  const select = e.target.closest('[data-withdrawal-compare-rule-select]');
+  if(!select) return;
+  const idx = Math.max(0, Number(select.dataset.ruleSlotIndex) || 0);
+  const values = parseWithdrawalCompareRuleSelectionJson();
+  while(values.length < WITHDRAWAL_COMPARE_RULE_SLOT_COUNT) values.push('');
+  values[idx] = WITHDRAWAL_COMPARE_RULE_DEF_MAP[select.value] ? select.value : '';
+  writeWithdrawalCompareRuleSelectionJson(values);
+  withdrawalCompareCache = null;
+  renderWithdrawalCompareRuleEditor();
+});
 document.getElementById("withdrawalCompareParamCaseBody")?.addEventListener("input", (e)=>{
   const input = e.target.closest('[data-withdrawal-param-case-input]');
   if(!input) return;
@@ -20760,6 +20862,7 @@ document.getElementById("withdrawalCompareParamCaseBody")?.addEventListener("inp
 });
 ensureWithdrawalParameterOptions();
 rebuildWithdrawalParameterCases(true);
+ensureWithdrawalCompareRuleSelectionState();
 updateWithdrawalCompareModeUI();
 document.getElementById("runMonteBtn").addEventListener("click", ()=>{
   clearScheduledDraw();
