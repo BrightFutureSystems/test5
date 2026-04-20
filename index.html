@@ -2194,7 +2194,8 @@
       <div class="withdrawal-preview-scroll">
       <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
-        <div class="withdrawal-rule-note">※ 通常計算・モンテカルロの両方で使う取り崩しルールを設定します。年間収支計算 → 補填必要額算出 → 売却・補充ロジックの順に処理し、最後の取り崩し関数だけを切り替える設計です。</div>
+        <div class="withdrawal-rule-note">※ 資産をどの考え方・順番で取り崩すかを設定します。</div>
+        <div class="withdrawal-rule-note">※ 設定した取り崩しルールは、通常計算・モンテカルロ計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
         <div class="withdrawal-rule-section">
           <div class="withdrawal-rule-section-title">設定内容</div>
           <div class="withdrawal-rule-fields">
@@ -2252,12 +2253,12 @@
               <label for="withdrawalCurrentBufferYears">現金バッファ年数</label><div class="input-unit"><input id="withdrawalCurrentBufferYears" type="number" class="agebox" value="2" step="0.5" min="0"><span class="suffix">年分</span></div>
             </div>
             <div id="withdrawalRuleRebalanceSection" class="withdrawal-rule-field withdrawal-rule-hidden">
-              <label for="withdrawalRebalanceBufferYears">最低現金バッファ</label><div class="input-unit"><input id="withdrawalRebalanceBufferYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label for="withdrawalRebalanceBufferYears">最低現金バッファ年数</label><div class="input-unit"><input id="withdrawalRebalanceBufferYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
               <label for="withdrawalRebalanceCashPct" style="margin-top:8px;">目標現金比率</label><div class="input-unit"><input id="withdrawalRebalanceCashPct" type="number" class="ratebox" value="20" step="0.1" min="0"><span class="suffix">%</span></div>
             </div>
             <div id="withdrawalRuleBucketSection" class="withdrawal-rule-field withdrawal-rule-hidden">
               <label for="withdrawalBucketTargetYears">短期バケツ目標年数</label><div class="input-unit"><input id="withdrawalBucketTargetYears" type="number" class="agebox" value="4" step="0.5" min="0"><span class="suffix">年分</span></div>
-              <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低現金バッファ</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
+              <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低現金バッファ年数</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
               <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 防衛ルールを使う</label>
               <label for="withdrawalBucketDefenseMode" style="margin-top:8px;">防衛ルール方式</label><select id="withdrawalBucketDefenseMode"><option value="drawdown" selected>ドローダウン型</option><option value="annual_return">年間リターン閾値型</option></select>
               <label id="withdrawalBucketDefenseThresholdLabel" for="withdrawalBucketDefenseThresholdPct" style="margin-top:8px;">発動ライン（高値比）</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-20" step="0.1"><span class="suffix">%</span></div>
@@ -2300,12 +2301,13 @@
             </div>
           </div>
           <div id="withdrawalCompareContent" class="withdrawal-compare-content" hidden>
+            <div id="withdrawalCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「取り崩し比較」を押すと、同一乱数列で比較します。</div>
             <div class="withdrawal-compare-subcontrols">
               <div class="withdrawal-rule-field">
                 <label for="withdrawalCompareMode">比較モード</label>
                 <select id="withdrawalCompareMode">
                   <option value="rule">ルール比較</option>
-                  <option value="parameter">同一ルール内パラメータ比較</option>
+                  <option value="parameter">ルール内パラメータ比較</option>
                 </select>
               </div>
               <div id="withdrawalCompareParamRuleField" class="withdrawal-rule-field withdrawal-rule-hidden">
@@ -2317,7 +2319,7 @@
                 </select>
               </div>
               <div id="withdrawalCompareParamKeyField" class="withdrawal-rule-field withdrawal-rule-hidden">
-                <label for="withdrawalCompareParamKey">比較するパラメータ</label>
+                <label for="withdrawalCompareParamKey">比較パラメータ</label>
                 <select id="withdrawalCompareParamKey"></select>
               </div>
               <div id="withdrawalCompareCaseCountField" class="withdrawal-rule-field withdrawal-rule-hidden">
@@ -2330,8 +2332,9 @@
                 </select>
               </div>
             </div>
+            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定と同一乱数列で、「固定年数バッファ型」「目標配分リバランス型」「2バケツ戦略型」を比較します。</div>
             <div id="withdrawalCompareParamEditor" class="withdrawal-rule-hidden">
-              <div class="withdrawal-param-case-help">※ まずは1変数比較のみです。選んだ1つのパラメータだけを変え、他の条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
+              <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の取り崩し条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
               <div class="withdrawal-compare-table-wrap">
                 <table class="withdrawal-param-case-table">
                   <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
@@ -2340,8 +2343,7 @@
               </div>
               <input id="withdrawalCompareCaseJson" type="hidden" value="">
             </div>
-            <div id="withdrawalCompareStatus" class="withdrawal-compare-status">比較を実行すると、3つのルールを同一のモンテカルロ乱数列で比較します。</div>
-            <div class="withdrawal-compare-table-wrap">
+            <div id="withdrawalCompareResultTableWrap" class="withdrawal-compare-table-wrap" hidden>
               <table class="withdrawal-compare-table">
                 <thead id="withdrawalCompareHead">
                   <tr><th>指標</th><th>固定年数バッファ型</th><th>目標配分リバランス型</th><th>2バケツ戦略型</th></tr>
@@ -2349,7 +2351,7 @@
                 <tbody id="withdrawalCompareBody"></tbody>
               </table>
             </div>
-            <div class="withdrawal-compare-chart-wrap"><canvas id="withdrawalCompareChart"></canvas></div>
+            <div id="withdrawalCompareChartWrap" class="withdrawal-compare-chart-wrap" hidden><canvas id="withdrawalCompareChart"></canvas></div>
           </div>
         </div>
       </div>
@@ -2370,7 +2372,8 @@
       <div class="withdrawal-preview-scroll">
         <div id="crashTestTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">暴落設定</div>
         <div class="withdrawal-rule-grid">
-          <div class="withdrawal-rule-note">※ 暴落設定では、運用資産に対する下落・回復シナリオを設定します。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。預貯金・安全資産には直接ショックを与えません。</div>
+          <div class="withdrawal-rule-note">※ 運用資産に対する下落・回復シナリオを設定します。預貯金・安全資産には直接ショックを与えません。</div>
+          <div class="withdrawal-rule-note">※ 設定した暴落シナリオは、通常計算・モンテカルロ計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
           <div class="withdrawal-rule-section">
             <div class="withdrawal-rule-section-title">暴落シナリオ</div>
             <div class="withdrawal-compare-table-wrap">
@@ -2408,6 +2411,7 @@
               </div>
             </div>
             <div id="crashCompareContent" class="crash-compare-content" hidden>
+              <div id="crashCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。</div>
               <div class="withdrawal-compare-subcontrols">
                 <div class="withdrawal-rule-field">
                   <label for="crashCompareMode">比較モード</label>
@@ -2421,7 +2425,7 @@
                   <select id="crashCompareTargetIndex"></select>
                 </div>
                 <div id="crashCompareParamField" class="withdrawal-rule-field withdrawal-rule-hidden">
-                  <label for="crashCompareParamKey">比較するパラメータ</label>
+                  <label for="crashCompareParamKey">比較パラメータ</label>
                   <select id="crashCompareParamKey"></select>
                 </div>
                 <div id="crashCompareCaseCountField" class="withdrawal-rule-field withdrawal-rule-hidden">
@@ -2434,8 +2438,9 @@
                   </select>
                 </div>
               </div>
+              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定と同一乱数列で、「暴落なし」と「現在の暴落設定」を比較します。</div>
               <div id="crashCompareCaseEditor" class="withdrawal-rule-hidden">
-                <div class="withdrawal-param-case-help">※ 選んだ暴落1件の1パラメータだけを変え、他の暴落条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
+                <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の暴落条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
                 <div class="withdrawal-compare-table-wrap">
                   <table class="withdrawal-param-case-table">
                     <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
@@ -2444,14 +2449,13 @@
                 </div>
                 <input id="crashCompareCaseJson" type="hidden" value="">
               </div>
-              <div id="crashCompareStatus" class="withdrawal-compare-status">条件を変更したら「暴落比較」を押してください。同一乱数列で比較を実行します。</div>
-              <div id="crashCompareResultTableWrap" class="withdrawal-compare-table-wrap">
+              <div id="crashCompareResultTableWrap" class="withdrawal-compare-table-wrap" hidden>
                 <table id="crashCompareResultTable" class="withdrawal-compare-table">
                   <thead id="crashCompareHead"><tr><th>指標</th><th>暴落なし</th><th>現在の暴落設定</th></tr></thead>
                   <tbody id="crashCompareBody"></tbody>
                 </table>
               </div>
-              <div id="crashCompareChartWrap" class="withdrawal-compare-chart-wrap"><canvas id="crashCompareChart"></canvas></div>
+              <div id="crashCompareChartWrap" class="withdrawal-compare-chart-wrap" hidden><canvas id="crashCompareChart"></canvas></div>
             </div>
           </div>
         </div>
@@ -2472,7 +2476,8 @@
       <div class="withdrawal-preview-scroll">
         <div id="monteCarloSettingsTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">モンテカルロ設定</div>
         <div class="monte-settings-grid">
-          <div class="monte-settings-note">※ モンテカルロ設定中は総資産グラフを表示します。設定変更だけでは計算せず、「モンテカルロ計算」押下時のみ実行します。同じシードなら同じ結果を再現しやすく、比較では固定ON推奨です。12345 は既定のサンプル値です。</div>
+          <div class="monte-settings-note">※ モンテカルロ計算に用いるパラメータを設定します。</div>
+          <div class="monte-settings-note">※ 設定中は総資産グラフを表示します。設定を変えただけでは再計算されません。確認したい条件で「モンテカルロ計算」を押して再計算してください。同じシードなら同じ結果を再現しやすいです。12345 は既定のサンプル値です。</div>
           <div class="monte-settings-section">
             <div class="monte-settings-section-title">基本設定</div>
             <div class="monte-settings-fields">
@@ -2495,9 +2500,6 @@
               <div class="monte-settings-note-row">
                 <div class="monte-settings-note" id="monteSettingsModelNote">※ 実効ボラを基準に、一様分布の半幅を内部で自動計算します。実効ボラ 10% のとき、内部変動幅は ±17.3%です。</div>
               </div>
-              <div class="monte-settings-note-row">
-                <div class="monte-settings-note" style="margin:0;text-align:left;">※ 設定変更だけでは再計算されません。確認したい条件で明示実行してください。</div>
-              </div>
               <div class="monte-settings-action-row">
                 <button type="button" id="monteRunInSheetBtn">モンテカルロ計算</button>
               </div>
@@ -2516,7 +2518,7 @@
             </div>
             <div id="monteCompareContent" class="withdrawal-compare-content" hidden>
               <div id="monteCompareSection">
-                <div id="monteCompareStatus" class="withdrawal-compare-status">比較条件を設定して左の「モンテカルロ比較」を押すと、同一乱数列で比較します。</div>
+                <div id="monteCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「モンテカルロ比較」を押すと、同一乱数列で比較します。</div>
                 <div class="withdrawal-compare-subcontrols">
                   <div class="withdrawal-rule-field">
                     <label for="monteCompareMode">比較モード</label>
@@ -2547,20 +2549,21 @@
                     </select>
                   </div>
                 </div>
+                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定と同一乱数列で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」を比較します。</div>
                 <div id="monteCompareCaseEditor" class="withdrawal-compare-table-wrap withdrawal-rule-hidden">
-                  <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">比較するケース値を入力します。</div>
+                  <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他のモンテカルロ条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
                   <table class="withdrawal-param-case-table">
                     <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
                     <tbody id="monteCompareCaseBody"></tbody>
                   </table>
                 </div>
-                <div class="withdrawal-compare-table-wrap" id="monteCompareResultTableWrap">
+                <div class="withdrawal-compare-table-wrap" id="monteCompareResultTableWrap" hidden>
                   <table class="withdrawal-compare-table">
                     <thead id="monteCompareHead"></thead>
                     <tbody id="monteCompareBody"></tbody>
                   </table>
                 </div>
-                <div class="withdrawal-compare-chart-wrap"><canvas id="monteCompareChart"></canvas></div>
+                <div class="withdrawal-compare-chart-wrap" id="monteCompareChartWrap" hidden><canvas id="monteCompareChart"></canvas></div>
               </div>
             </div>
           </div>
@@ -4760,35 +4763,197 @@ function clearPreferredDeleteModalFocus(){
   activeDeleteModalButton = 'confirm';
 }
 const STANDARD_ACTION_MODAL_CONFIG = {
-  withdrawalRuleModal: {primarySelector:'#saveWithdrawalRuleBtn', cancelSelector:'#cancelWithdrawalRuleBtn'},
-  crashTestModal: {primarySelector:'#saveCrashTestBtn', cancelSelector:'#cancelCrashTestBtn'},
-  fireDiagnosisModal: {primarySelector:'#runFireDiagnosisBtn', cancelSelector:'#cancelFireDiagnosisBtn'},
-  monteCarloSettingsModal: {primarySelector:'#saveMonteSettingsBtn', cancelSelector:'#cancelMonteSettingsBtn'},
-  incomeCurveModal: {primarySelector:'#saveIncomeCurveBtn', cancelSelector:'#cancelIncomeCurveBtn'},
-  pensionHelperModal: {primarySelector:'#savePensionHelperBtn', cancelSelector:'#cancelPensionHelperBtn'},
-  insuranceAssistModal: {primarySelector:'#saveInsuranceAssistBtn', cancelSelector:'#cancelInsuranceAssistBtn'},
-  loanDetailModal: {primarySelector:'#saveLoanDetailBtn', cancelSelector:'#cancelLoanDetailBtn'},
-  loanDetailConflictModal: {primarySelector:'#useStoredLoanDetailBtn', cancelSelector:'#cancelLoanDetailConflictBtn'},
-  educationDetailModal: {primarySelector:'#saveEducationDetailBtn', cancelSelector:'#cancelEducationDetailBtn'},
-  educationCopyModal: {primarySelector:'#confirmEducationCopyBtn', cancelSelector:'#cancelEducationCopyBtn'},
-  overlaySettingsModal: {primarySelector:'#saveOverlaySettingsBtn', cancelSelector:'#cancelOverlaySettingsBtn'},
-  resetDefaultsConfirmModal: {primarySelector:'#confirmResetDefaultsConfirmBtn', cancelSelector:'#cancelResetDefaultsConfirmBtn'},
-  chartAxisModal: {primarySelector:'#saveChartAxisBtn', cancelSelector:'#cancelChartAxisBtn'},
-  cashflowModal: {primarySelector:'#closeCashflowModalBtn', cancelSelector:'#closeCashflowModalBtn'}
+  withdrawalRuleModal: {
+    primarySelector:'#saveWithdrawalRuleBtn',
+    cancelSelector:'#cancelWithdrawalRuleBtn',
+    modalKind:'previewSheet',
+    allowBackdropClose:false,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  crashTestModal: {
+    primarySelector:'#saveCrashTestBtn',
+    cancelSelector:'#cancelCrashTestBtn',
+    modalKind:'previewSheet',
+    allowBackdropClose:false,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  fireDiagnosisModal: {
+    primarySelector:'#runFireDiagnosisBtn',
+    cancelSelector:'#cancelFireDiagnosisBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  monteCarloSettingsModal: {
+    primarySelector:'#saveMonteSettingsBtn',
+    cancelSelector:'#cancelMonteSettingsBtn',
+    modalKind:'previewSheet',
+    allowBackdropClose:false,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  incomeCurveModal: {
+    primarySelector:'#saveIncomeCurveBtn',
+    cancelSelector:'#cancelIncomeCurveBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  pensionHelperModal: {
+    primarySelector:'#savePensionHelperBtn',
+    cancelSelector:'#cancelPensionHelperBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  insuranceAssistModal: {
+    primarySelector:'#saveInsuranceAssistBtn',
+    cancelSelector:'#cancelInsuranceAssistBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  loanDetailModal: {
+    primarySelector:'#saveLoanDetailBtn',
+    cancelSelector:'#cancelLoanDetailBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  loanDetailConflictModal: {
+    primarySelector:'#useStoredLoanDetailBtn',
+    cancelSelector:'#cancelLoanDetailConflictBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  educationDetailModal: {
+    primarySelector:'#saveEducationDetailBtn',
+    cancelSelector:'#cancelEducationDetailBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  educationCopyModal: {
+    primarySelector:'#confirmEducationCopyBtn',
+    cancelSelector:'#cancelEducationCopyBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  overlaySettingsModal: {
+    primarySelector:'#saveOverlaySettingsBtn',
+    cancelSelector:'#cancelOverlaySettingsBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  resetDefaultsConfirmModal: {
+    primarySelector:'#confirmResetDefaultsConfirmBtn',
+    cancelSelector:'#cancelResetDefaultsConfirmBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  chartAxisModal: {
+    primarySelector:'#saveChartAxisBtn',
+    cancelSelector:'#cancelChartAxisBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  cashflowModal: {
+    primarySelector:'#closeCashflowModalBtn',
+    cancelSelector:'#closeCashflowModalBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  }
 };
-function focusModalPrimaryActionButton(modalId){
+const UNIFIED_MODAL_ACTION_CONFIG = {
+  ...STANDARD_ACTION_MODAL_CONFIG,
+  deleteRowModal: {
+    primarySelector:'#confirmDeleteRowBtn',
+    cancelSelector:'#cancelDeleteRowBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  },
+  deleteTabModal: {
+    primarySelector:'#confirmDeleteTabBtn',
+    cancelSelector:'#cancelDeleteTabBtn',
+    modalKind:'standard',
+    allowBackdropClose:true,
+    enterWithoutFocus:false,
+    escapeWithoutFocus:true,
+    initialFocusTarget:'primary'
+  }
+};
+const PREVIEW_SHEET_MODAL_IDS = Object.keys(UNIFIED_MODAL_ACTION_CONFIG).filter(modalId=>UNIFIED_MODAL_ACTION_CONFIG[modalId]?.modalKind === 'previewSheet');
+function getUnifiedModalActionConfig(modalId){
+  return modalId ? (UNIFIED_MODAL_ACTION_CONFIG[modalId] || null) : null;
+}
+function isPreviewSheetModalId(modalId){
+  return !!getUnifiedModalActionConfig(modalId) && getUnifiedModalActionConfig(modalId).modalKind === 'previewSheet';
+}
+function getUnifiedModalActionButton(modal, role){
+  if(!modal) return null;
+  const config = getUnifiedModalActionConfig(modal.id);
+  const selector = role === 'cancel' ? config?.cancelSelector : config?.primarySelector;
+  return selector ? modal.querySelector(selector) : null;
+}
+function focusUnifiedModalInitialAction(modalId){
   const modal = document.getElementById(modalId);
-  const config = STANDARD_ACTION_MODAL_CONFIG[modalId];
+  const config = getUnifiedModalActionConfig(modalId);
   if(!modal || !config || !modal.classList.contains('show')) return;
-  const btn = modal.querySelector(config.primarySelector);
+  const role = config.initialFocusTarget === 'cancel' ? 'cancel' : 'primary';
+  const btn = getUnifiedModalActionButton(modal, role);
   if(!btn || btn.disabled) return;
   requestAnimationFrame(()=>{
     if(modal.classList.contains('show')) btn.focus({preventScroll:true});
   });
 }
+function focusPreviewSheetInitialAction(modalId){
+  if(!isPreviewSheetModalId(modalId)) return;
+  focusUnifiedModalInitialAction(modalId);
+}
+function focusModalPrimaryActionButton(modalId){
+  focusUnifiedModalInitialAction(modalId);
+}
 function getStandardActionModalButtons(modal){
   if(!modal) return {buttons:[], cancelBtn:null, primaryBtn:null};
-  const config = STANDARD_ACTION_MODAL_CONFIG[modal.id] || {};
+  const config = getUnifiedModalActionConfig(modal.id) || {};
   const primaryBtn = config.primarySelector ? modal.querySelector(config.primarySelector) : null;
   const cancelBtn = config.cancelSelector ? modal.querySelector(config.cancelSelector) : null;
   const buttons = Array.from(modal.querySelectorAll('.modal-actions button')).filter(btn=>!btn.disabled && isTabNavigableElement(btn));
@@ -4797,6 +4962,7 @@ function getStandardActionModalButtons(modal){
 function handleStandardActionModalKeydown(e){
   const modal = e.currentTarget;
   if(!modal || !modal.classList.contains('show')) return;
+  const config = getUnifiedModalActionConfig(modal.id) || {};
   const {buttons, cancelBtn, primaryBtn} = getStandardActionModalButtons(modal);
   if(e.key === 'Escape'){
     if(!cancelBtn) return;
@@ -4818,8 +4984,9 @@ function handleStandardActionModalKeydown(e){
   if(e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.isComposing){
     const active = document.activeElement;
     if(active && active.tagName === 'TEXTAREA') return;
-    if(!(active instanceof Element) || !modal.contains(active)) return;
-    const activeButton = buttons.includes(active) ? active : null;
+    const focusInsideModal = active instanceof Element && modal.contains(active);
+    if(!focusInsideModal && !config.enterWithoutFocus) return;
+    const activeButton = focusInsideModal && buttons.includes(active) ? active : null;
     const targetBtn = activeButton || primaryBtn;
     if(!targetBtn || targetBtn.disabled) return;
     e.preventDefault();
@@ -4833,72 +5000,39 @@ function handleGlobalModalEscapeWithoutFocus(e){
   if(!modal || !modal.classList.contains('show')) return;
   const active = document.activeElement;
   if(active instanceof Element && modal.contains(active)) return;
-  if(modal.id === 'withdrawalRuleModal' || modal.id === 'crashTestModal' || modal.id === 'monteCarloSettingsModal') return;
-  if(STANDARD_ACTION_MODAL_CONFIG[modal.id]){
-    const {cancelBtn} = getStandardActionModalButtons(modal);
-    if(!cancelBtn || cancelBtn.disabled) return;
-    e.preventDefault();
-    e.stopPropagation();
-    cancelBtn.click();
-    return;
-  }
-  if(modal.id === 'deleteRowModal' || modal.id === 'deleteTabModal'){
-    const {cancelBtn} = getDeleteModalButtons(modal);
-    if(!cancelBtn || cancelBtn.disabled) return;
-    e.preventDefault();
-    e.stopPropagation();
-    cancelBtn.click();
-  }
+  const config = getUnifiedModalActionConfig(modal.id);
+  if(!config || !config.escapeWithoutFocus) return;
+  const {cancelBtn} = getStandardActionModalButtons(modal);
+  if(!cancelBtn || cancelBtn.disabled) return;
+  e.preventDefault();
+  e.stopPropagation();
+  cancelBtn.click();
 }
 document.addEventListener('keydown', handleGlobalModalEscapeWithoutFocus, true);
+function handleUnifiedOpenModalKeydown(e){
+  if(e.defaultPrevented) return;
+  if(!['Enter','Escape','ArrowLeft','ArrowRight'].includes(e.key)) return;
+  if(e.isComposing) return;
+  if((e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) && e.key !== 'Escape') return;
+  const modal = getOpenModal();
+  if(!modal || !modal.classList.contains('show')) return;
+  if(!getUnifiedModalActionConfig(modal.id)) return;
+  handleStandardActionModalKeydown({
+    currentTarget: modal,
+    key: e.key,
+    altKey: !!e.altKey,
+    ctrlKey: !!e.ctrlKey,
+    metaKey: !!e.metaKey,
+    shiftKey: !!e.shiftKey,
+    isComposing: !!e.isComposing,
+    preventDefault: ()=>e.preventDefault(),
+    stopPropagation: ()=>e.stopPropagation()
+  });
+}
+document.addEventListener('keydown', handleUnifiedOpenModalKeydown, true);
 
 function handleDeleteModalKeydown(e){
-  const modal = e.currentTarget;
-  if(!modal || !modal.classList.contains('show')) return;
-  const {cancelBtn, confirmBtn} = getDeleteModalButtons(modal);
-  if(e.key === 'Escape'){
-    e.preventDefault();
-    e.stopPropagation();
-    if(modal.id === 'deleteRowModal') closeDeleteRowModal();
-    else if(modal.id === 'deleteTabModal') closeDeleteTabModal();
-    else if(modal.id === 'cashflowModal') closeCashflowModal();
-    return;
-  }
-  if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
-    e.preventDefault();
-    e.stopPropagation();
-    const nextWhich = activeDeleteModalButton === 'confirm' ? 'cancel' : 'confirm';
-    focusDeleteModalButton(modal.id, nextWhich);
-    return;
-  }
-  if(e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.isComposing){
-    const active = document.activeElement;
-    if(active && active.tagName === 'TEXTAREA') return;
-    if(!(active instanceof Element) || !modal.contains(active)) return;
-    if(active === cancelBtn){
-      e.preventDefault();
-      e.stopPropagation();
-      cancelBtn?.click();
-      return;
-    }
-    if(active === confirmBtn){
-      e.preventDefault();
-      e.stopPropagation();
-      if(confirmBtn && !confirmBtn.disabled) confirmBtn.click();
-      return;
-    }
-    if(active.tagName === 'BUTTON' && !active.disabled){
-      e.preventDefault();
-      e.stopPropagation();
-      active.click();
-      return;
-    }
-    if(confirmBtn && !confirmBtn.disabled){
-      e.preventDefault();
-      e.stopPropagation();
-      confirmBtn.click();
-    }
-  }
+  return handleStandardActionModalKeydown(e);
 }
 function handleDeleteModalFocusOut(_e){
 }
@@ -12692,7 +12826,7 @@ function openCrashPreviewSheet(){
   openPreviewSheet(modal);
   
   applyTabOrder();
-  focusModalPrimaryActionButton('crashTestModal');
+  focusPreviewSheetInitialAction('crashTestModal');
 }
 function closeCrashTestModal(){
   const modal = document.getElementById('crashTestModal');
@@ -13128,6 +13262,7 @@ function renderCrashComparisonChart(results){
 }
 function renderCrashComparisonResults(results){
   const status = document.getElementById('crashCompareStatus');
+  setCrashCompareResultsVisible(true);
   renderCrashComparisonTable(results);
   try{
     renderCrashComparisonChart(results);
@@ -13135,9 +13270,9 @@ function renderCrashComparisonResults(results){
       if(getCrashCompareMode() === 'parameter'){
         const {row} = getCrashCompareTargetRow(document.getElementById('crashCompareTargetIndex')?.value || 0);
         const paramDef = getCrashCompareParamDefinition(row?.timingType, document.getElementById('crashCompareParamKey')?.value || '');
-        status.textContent = `選択した暴落の1パラメータだけを変え、他条件は固定したまま同一乱数列で ${results.length} ケースを比較しています。`;
+        status.textContent = `同一乱数列で 1つの比較パラメータだけを変えた ${results.length} ケースを比較しています。`;
       }else{
-        status.textContent = '現在のモンテカルロ設定と同一乱数列で、「暴落なし」と「現在の暴落設定」を比較しています。';
+        status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
       }
     }
   }catch(chartErr){
@@ -13152,6 +13287,7 @@ function runCrashComparison(){
   if(getCrashCompareMode() === 'parameter') rebuildCrashCompareCases(false);
   if(status) status.textContent = '比較計算中です…';
   if(body) body.innerHTML = '';
+  setCrashCompareResultsVisible(false);
   renderCrashCompareHeader([]);
   if(crashCompareChart){ crashCompareChart.destroy(); crashCompareChart = null; }
   setTimeout(()=>{
@@ -13166,6 +13302,7 @@ function runCrashComparison(){
       const compareCases = getCrashComparisonCases(getScenarioFromDOM());
       const colspan = Math.max(1, compareCases.length || 2);
       if(status) status.textContent = `比較計算に失敗しました: ${msg}`;
+      setCrashCompareResultsVisible(true);
       renderCrashCompareHeader(compareCases.map(item=>({label:item.label || ''})));
       if(body) body.innerHTML = `<tr><th>結果</th><td colspan="${colspan}">比較結果を表示できませんでした。エラー内容: ${escapeHtml(msg)}</td></tr>`;
       if(crashCompareChart){ crashCompareChart.destroy(); crashCompareChart = null; }
@@ -13176,9 +13313,9 @@ function updateCrashComparePendingStatus(){
   const status = document.getElementById('crashCompareStatus');
   if(!status) return;
   if(getCrashCompareMode() === 'parameter'){
-    status.textContent = '条件を変更しました。「暴落比較」を押すと、選択した暴落の1パラメータだけを変えて同一乱数列で比較します。';
+    status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
   }else{
-    status.textContent = '条件を変更しました。「暴落比較」を押すと、「暴落なし」と「現在の暴落設定」を同一乱数列で比較します。';
+    status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
   }
 }
 function updateCrashCompareModeUI(options={}){
@@ -13188,6 +13325,7 @@ function updateCrashCompareModeUI(options={}){
   document.getElementById('crashCompareTargetField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('crashCompareParamField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('crashCompareCaseCountField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
+  document.getElementById('crashCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', isParameter);
   document.getElementById('crashCompareCaseEditor')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   const status = document.getElementById('crashCompareStatus');
   ensureCrashCompareTargetOptions();
@@ -13195,9 +13333,9 @@ function updateCrashCompareModeUI(options={}){
   if(isParameter){
     rebuildCrashCompareCases(false);
     renderCrashCompareCaseEditor();
-    if(status && !crashCompareCache) status.textContent = '選択した暴落の1パラメータだけを変え、他条件は固定したまま同一乱数列で比較します。';
+    if(status && !crashCompareCache) status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
   }else{
-    if(status && !crashCompareCache) status.textContent = '現在のモンテカルロ設定と同一乱数列で、「暴落なし」と「現在の暴落設定」を比較します。';
+    if(status && !crashCompareCache) status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
   }
 }
 function isCrashCompareExpanded(){
@@ -18026,7 +18164,7 @@ const WITHDRAWAL_PARAMETER_COMPARE_RULES = {
   rebalance:{
     label:'目標配分リバランス型',
     params:[
-      {key:'rebalanceBufferYears', label:'最低現金バッファ', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`},
+      {key:'rebalanceBufferYears', label:'最低現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`},
       {key:'rebalanceCashPct', label:'目標現金比率', unit:'%', step:1, min:0, max:100, fallback:20, displayScale:100, format:(v)=>`${formatNumberJP(v, 0)}%`}
     ]
   },
@@ -18034,7 +18172,7 @@ const WITHDRAWAL_PARAMETER_COMPARE_RULES = {
     label:'2バケツ戦略型',
     params:[
       {key:'bucketTargetYears', label:'短期バケツ目標年数', unit:'年分', step:0.5, min:0, max:20, fallback:4, format:(v)=>`${formatNumberJP(v, 1)}年分`},
-      {key:'bucketFloorYears', label:'最低現金バッファ', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`}
+      {key:'bucketFloorYears', label:'最低現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`}
     ]
   }
 };
@@ -18411,6 +18549,20 @@ function getWithdrawalComparisonCases(cfgBase){
     policyOverride:getWithdrawalPolicyOverride(rule.mode)
   }));
 }
+
+function setWithdrawalCompareResultsVisible(visible){
+  const tableWrap = document.getElementById('withdrawalCompareResultTableWrap');
+  const chartWrap = document.getElementById('withdrawalCompareChartWrap');
+  if(tableWrap) tableWrap.hidden = !visible;
+  if(chartWrap) chartWrap.hidden = !visible;
+}
+function setCrashCompareResultsVisible(visible){
+  const tableWrap = document.getElementById('crashCompareResultTableWrap');
+  const chartWrap = document.getElementById('crashCompareChartWrap');
+  if(tableWrap) tableWrap.hidden = !visible;
+  if(chartWrap) chartWrap.hidden = !visible;
+}
+
 function renderWithdrawalCompareHeader(results){
   const head = document.getElementById('withdrawalCompareHead');
   if(!head) return;
@@ -18424,15 +18576,14 @@ function updateWithdrawalCompareModeUI(){
   document.getElementById('withdrawalCompareParamKeyField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('withdrawalCompareCaseCountField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
   document.getElementById('withdrawalCompareParamEditor')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
+  document.getElementById('withdrawalCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', isParameter);
   if(isParameter){
     rebuildWithdrawalParameterCases(false);
     renderWithdrawalParameterCaseEditor();
   }
   const status = document.getElementById('withdrawalCompareStatus');
   if(status && !withdrawalCompareCache){
-    status.textContent = isParameter
-      ? '比較を実行すると、同一ルール内で選択した 1 パラメータだけを変えた 2〜5 ケースを、同一のモンテカルロ乱数列で比較します。'
-      : '比較を実行すると、3つのルールを同一のモンテカルロ乱数列で比較します。';
+    status.textContent = '比較条件を設定して「取り崩し比較」を押すと、同一乱数列で比較します。';
   }
 }
 function percentileFromSorted(sorted, p){
@@ -18975,6 +19126,7 @@ function toggleWithdrawalCompareExpanded(){
 }
 function renderWithdrawalComparisonResults(results){
   document.getElementById('withdrawalCompareSection')?.classList.add('show');
+  setWithdrawalCompareResultsVisible(true);
   if(isWithdrawalCompareExpanded()) resizeWithdrawalCompareChartSoon(20);
   const status = document.getElementById('withdrawalCompareStatus');
   renderWithdrawalComparisonTable(results);
@@ -19004,6 +19156,7 @@ function runWithdrawalComparison(){
   if(getWithdrawalCompareMode() === 'parameter') rebuildWithdrawalParameterCases(false);
   if(status) status.textContent = '比較計算中です…';
   if(body) body.innerHTML = '';
+  setWithdrawalCompareResultsVisible(false);
   renderWithdrawalCompareHeader([]);
   if(withdrawalCompareChart){ withdrawalCompareChart.destroy(); withdrawalCompareChart = null; }
   setTimeout(()=>{
@@ -19018,6 +19171,7 @@ function runWithdrawalComparison(){
       const compareCases = getWithdrawalComparisonCases(getScenarioFromDOM());
       const colspan = Math.max(1, compareCases.length || 3);
       if(status) status.textContent = `比較計算に失敗しました: ${msg}`;
+      setWithdrawalCompareResultsVisible(true);
       renderWithdrawalCompareHeader(compareCases.map(item=>({label:item.label || ''})));
       if(body) body.innerHTML = `<tr><th>結果</th><td colspan="${colspan}">比較結果を表示できませんでした。エラー内容: ${escapeHtml(msg)}</td></tr>`;
       if(withdrawalCompareChart){ withdrawalCompareChart.destroy(); withdrawalCompareChart = null; }
@@ -19497,7 +19651,7 @@ function renderWithdrawalRuleSummary(){
   else if(mode === 'basic_lump') html = `<strong>一括全額取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点で、その時点の運用資産を全額取り崩します。`;
   else if(mode === 'basic_hybrid') html = `<strong>一部一括＋残り分割</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点に ${formatNumberJP(basicHybridLumpAmount, 1)} 万円を一括で取り崩し、残額はその時点の運用資産残高をもとに自動計算して、翌年から ${basicHybridPeriodYears} 年間で均等に分割して取り崩します。`;
   else if(mode === 'rebalance') html = `<strong>目標配分リバランス型</strong><br>生活費 ${rebalanceYears} 年分を最低現金として持ちつつ、年末に現金比率 ${cashPct}% を目標に不足分を投資資産から補充します。`;
-  else if(mode === 'bucket') html = `<strong>2バケツ戦略型</strong><br>短期 = 預貯金・安全資産、中長期 = 売却候補となる投資資産全体です。平常時は短期を ${formatNumberJP(bucketTarget, 1)} 年分まで補充し、防衛時は最低現金バッファ ${formatNumberJP(bucketFloor, 1)} 年分までに抑えます。防衛中でも支払いに必要な現金が足りない場合は売却します。` + (defenseOn ? ` 防衛ルール方式は ${defenseMode === 'annual_return' ? '年間リターン閾値型' : 'ドローダウン型'}、発動ラインは ${formatNumberJP(defensePct, 1)}%、解除回復率は ${formatNumberJP(defenseRecoveryPct, 1)}% です。<br><span class="small muted">${defenseMode === 'annual_return' ? '年間リターン閾値型: 年間の投資資産リターンがこの値以下になった年に防衛へ入ります。' : 'ドローダウン型: 中長期投資資産全体が過去ピーク比でこの値以上下落したら防衛へ入ります。'} 解除回復率は、防衛解除の基準となる回復率です。</span>` : ' 防衛ルールは使いません。');
+  else if(mode === 'bucket') html = `<strong>2バケツ戦略型</strong><br>短期 = 預貯金・安全資産、中長期 = 売却候補となる投資資産全体です。平常時は短期を ${formatNumberJP(bucketTarget, 1)} 年分まで補充し、防衛時は最低現金バッファ年数 ${formatNumberJP(bucketFloor, 1)} 年分までに抑えます。防衛中でも支払いに必要な現金が足りない場合は売却します。` + (defenseOn ? ` 防衛ルール方式は ${defenseMode === 'annual_return' ? '年間リターン閾値型' : 'ドローダウン型'}、発動ラインは ${formatNumberJP(defensePct, 1)}%、解除回復率は ${formatNumberJP(defenseRecoveryPct, 1)}% です。<br><span class="small muted">${defenseMode === 'annual_return' ? '年間リターン閾値型: 年間の投資資産リターンがこの値以下になった年に防衛へ入ります。' : 'ドローダウン型: 中長期投資資産全体が過去ピーク比でこの値以上下落したら防衛へ入ります。'} 解除回復率は、防衛解除の基準となる回復率です。</span>` : ' 防衛ルールは使いません。');
   else if(mode === 'current') html = `<strong>固定年数バッファ型</strong><br>生活費 ${currentYears} 年分の現金バッファを固定的に維持し、不足したら投資資産から補充します。主要生活支出には、生活費・住居費・保険料・定期支出・教育費の継続部分などを含み、臨時支出や入学一時金などの単発費用は含みません。`;
   else html = `<strong>毎年分割取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点の運用資産残高をもとに、${basicAnnualPeriodYears} 年で均等に分割した金額を自動計算し、各年の開始時点に取り崩します。`;
   html += `<br><span class="small muted">売却順序: ${orderMode === 'manual' ? '手動' : '自動（課税 → その他 → NISA → DC系。同一区分内では含み益率が低いもの優先、さらに残高が大きいもの優先）'}</span>`;
@@ -19823,7 +19977,7 @@ function renderMonteCompareCaseEditor(){
   const def = getMonteCompareParamDefinition(model, paramKey);
   const cases = parseMonteCompareCaseJson();
   wrap.classList.remove('withdrawal-rule-hidden');
-  if(help) help.textContent = `同一モデル内で ${def?.label || 'パラメータ'} だけを変えます。試行回数比較は固定シードON推奨です。`;
+  if(help) help.textContent = '※ 1つの比較パラメータだけを変え、他のモンテカルロ条件は固定したまま 2〜5 ケースを同一乱数列で比較します。';
   body.innerHTML = cases.map((item, idx)=>`<tr><td>${escapeHtml(item.label || `ケース${idx + 1}`)}</td><td><div class="input-unit"><input type="number" data-monte-compare-case-input="1" data-case-index="${idx}" value="${escapeHtml(String(item.value ?? ''))}" step="${escapeHtml(String(def?.step ?? 1))}" min="${escapeHtml(String(def?.min ?? ''))}" max="${escapeHtml(String(def?.max ?? ''))}"></div></td><td>${escapeHtml(def?.unit || '')}</td></tr>`).join('');
 }
 function rebuildMonteCompareCases(useDefaults=false){
@@ -19852,6 +20006,13 @@ function rebuildMonteCompareCases(useDefaults=false){
   writeMonteCompareCaseJson(cases);
   renderMonteCompareCaseEditor();
 }
+function setMonteCompareResultsVisible(visible){
+  const tableWrap = document.getElementById('monteCompareResultTableWrap');
+  const chartWrap = document.getElementById('monteCompareChartWrap');
+  if(tableWrap) tableWrap.hidden = !visible;
+  if(chartWrap) chartWrap.hidden = !visible;
+}
+
 function renderMonteCompareHeader(results){
   const head = document.getElementById('monteCompareHead');
   if(!head) return;
@@ -20097,29 +20258,36 @@ function setMonteCompareExpanded(expanded, options={}){
 }
 function updateMonteCompareModeUI(){
   const mode = document.getElementById('monteCompareMode')?.value || 'model';
-  document.getElementById('monteCompareTargetModelField')?.classList.toggle('withdrawal-rule-hidden', mode !== 'parameter');
-  document.getElementById('monteCompareParamField')?.classList.toggle('withdrawal-rule-hidden', mode !== 'parameter');
-  document.getElementById('monteCompareCaseCountField')?.classList.toggle('withdrawal-rule-hidden', mode !== 'parameter');
-  document.getElementById('monteCompareCaseEditor')?.classList.toggle('withdrawal-rule-hidden', mode !== 'parameter');
+  const isParameter = mode === 'parameter';
+  document.getElementById('monteCompareTargetModelField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
+  document.getElementById('monteCompareParamField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
+  document.getElementById('monteCompareCaseCountField')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
+  document.getElementById('monteCompareCaseEditor')?.classList.toggle('withdrawal-rule-hidden', !isParameter);
+  document.getElementById('monteCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', isParameter);
+  if(!monteCompareCache) setMonteCompareResultsVisible(false);
+  const status = document.getElementById('monteCompareStatus');
+  if(status && !monteCompareCache) status.textContent = '比較条件を設定して「モンテカルロ比較」を押すと、同一乱数列で比較します。';
 }
 function renderMonteCompareResults(results){
   renderMonteCompareTable(results);
   renderMonteCompareChart(results);
+  setMonteCompareResultsVisible(true);
   const status = document.getElementById('monteCompareStatus');
   if(status){
     if((document.getElementById('monteCompareMode')?.value || 'model') === 'parameter'){
       const model = document.getElementById('monteCompareTargetModel')?.value || 'normal';
       const paramKey = document.getElementById('monteCompareParam')?.value || 'trials';
       const def = getMonteCompareParamDefinition(model, paramKey);
-      status.textContent = `同一乱数列で ${def?.label || 'パラメータ'} だけを変えた ${results.length} ケースを比較しました。`;
+      status.textContent = `同一乱数列で 1つの比較パラメータだけを変えた ${results.length} ケースを比較しました。`;
     }else{
-      status.textContent = '同一乱数列で、一様分布・正規分布・平均回帰を比較しました。';
+      status.textContent = '同一乱数列で、利回りモデルを比較しました。';
     }
   }
 }
 function runMonteCompare(){
   const status = document.getElementById('monteCompareStatus');
   if(status) status.textContent = '比較計算中です…';
+  setMonteCompareResultsVisible(false);
   renderMonteCompareHeader([]);
   if(document.getElementById('monteCompareBody')) document.getElementById('monteCompareBody').innerHTML = '';
   if(monteCompareChart){ monteCompareChart.destroy(); monteCompareChart = null; }
@@ -20133,6 +20301,7 @@ function runMonteCompare(){
       renderMonteCompareResults(results);
     }catch(err){
       console.error(err);
+      setMonteCompareResultsVisible(true);
       if(status) status.textContent = `比較計算に失敗しました: ${err && err.message ? err.message : err}`;
     }
   }, 10);
@@ -20188,7 +20357,7 @@ function openMonteSettingsModal(){
   const previewScroll = document.querySelector('#monteCarloSettingsModal .withdrawal-preview-scroll');
   if(previewScroll){ previewScroll.scrollTop = 0; previewScroll.scrollLeft = 0; }
   applyTabOrder();
-  focusModalPrimaryActionButton('monteCarloSettingsModal');
+  focusPreviewSheetInitialAction('monteCarloSettingsModal');
 }
 function closeMonteSettingsModal(){
   const monteSettingsModal = document.getElementById('monteCarloSettingsModal');
@@ -20271,7 +20440,7 @@ function openWithdrawalRuleModal(){
     withdrawalPreviewScroll.scrollLeft = 0;
   }
   applyTabOrder();
-  focusModalPrimaryActionButton('withdrawalRuleModal');
+  focusPreviewSheetInitialAction('withdrawalRuleModal');
 }
 function closeWithdrawalRuleModal(){
   finishWithdrawalOrderDrag(false);
@@ -20426,17 +20595,7 @@ document.getElementById("cancelDeleteTabBtn").addEventListener("click", ()=>{
 document.getElementById("confirmDeleteTabBtn").addEventListener("click", ()=>{
   confirmDeleteCurrentTab();
 });
-document.getElementById("deleteTabModal").addEventListener("click", (e)=>{
-  if(e.target.id === "deleteTabModal") closeDeleteTabModal();
-});
-document.getElementById("deleteTabModal")?.addEventListener("keydown", handleDeleteModalKeydown, true);
 document.getElementById("deleteTabModal")?.addEventListener("focusout", handleDeleteModalFocusOut, true);
-document.getElementById("crashTestModal")?.addEventListener("keydown", handleStandardActionModalKeydown, true);
-document.getElementById("fireDiagnosisModal")?.addEventListener("keydown", handleStandardActionModalKeydown, true);
-document.getElementById("deleteRowModal")?.addEventListener("click", (e)=>{
-  if(e.target.id === "deleteRowModal") closeDeleteRowModal();
-});
-document.getElementById("deleteRowModal")?.addEventListener("keydown", handleDeleteModalKeydown, true);
 document.getElementById("deleteRowModal")?.addEventListener("focusout", handleDeleteModalFocusOut, true);
 {
   const chartAxisModalEl = document.getElementById("chartAxisModal");
@@ -20469,9 +20628,6 @@ if(overlaySettingsModalEl && overlaySettingsModalCard){
   overlaySettingsModalCard.addEventListener('mousedown', (e)=>{ if(!e.target?.closest?.('.overlay-style-color-wrap')) closeOverlayColorPalettes(); e.stopPropagation(); overlaySettingsBackdropPointerDown = false; });
   overlaySettingsModalCard.addEventListener('touchstart', (e)=>{ e.stopPropagation(); overlaySettingsBackdropPointerDown = false; }, {passive:true});
 }
-Object.keys(STANDARD_ACTION_MODAL_CONFIG).forEach((modalId)=>{
-  document.getElementById(modalId)?.addEventListener('keydown', handleStandardActionModalKeydown, true);
-});
 const STANDARD_MODAL_BACKDROP_CLOSE_HANDLERS = {
   incomeCurveModal: closeIncomeCurveModal,
   pensionHelperModal: closePensionHelperModal,
@@ -20542,72 +20698,8 @@ document.getElementById("toggleCrashHistoryBtn")?.addEventListener("click", (e)=
 });
 document.getElementById("cancelWithdrawalRuleBtn")?.addEventListener("click", cancelWithdrawalRuleModal);
 document.getElementById("saveWithdrawalRuleBtn")?.addEventListener("click", saveWithdrawalRuleModal);
-document.addEventListener("keydown", (e)=>{
-  const modal = document.getElementById("withdrawalRuleModal");
-  if(!modal || !modal.classList.contains("show")) return;
-  if(getOpenModal() !== modal) return;
-  if(e.key !== "Escape" && e.key !== "Enter") return;
-  if(e.key === "Enter" && (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing)) return;
-  const target = e.target;
-  if(target && target.tagName === "TEXTAREA") return;
-  if(e.key === "Escape"){
-    e.preventDefault();
-    e.stopPropagation();
-    cancelWithdrawalRuleModal();
-    return;
-  }
-  const activeEl = document.activeElement;
-  if(activeEl === document.getElementById("saveWithdrawalRuleBtn")){
-    e.preventDefault();
-    e.stopPropagation();
-    saveWithdrawalRuleModal();
-    return;
-  }
-  if(activeEl === document.getElementById("cancelWithdrawalRuleBtn")){
-    e.preventDefault();
-    e.stopPropagation();
-    cancelWithdrawalRuleModal();
-    return;
-  }
-  if(activeEl instanceof Element && modal.contains(activeEl)){
-    e.preventDefault();
-    e.stopPropagation();
-    saveWithdrawalRuleModal();
-  }
-}, true);
-document.addEventListener("keydown", (e)=>{
-  const modal = document.getElementById("crashTestModal");
-  if(!modal || !modal.classList.contains("show")) return;
-  if(getOpenModal() !== modal) return;
-  if(e.key !== "Escape" && e.key !== "Enter") return;
-  if(e.key === "Enter" && (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing)) return;
-  const target = e.target;
-  if(target && target.tagName === "TEXTAREA") return;
-  if(e.key === "Escape"){
-    e.preventDefault();
-    e.stopPropagation();
-    cancelCrashPreviewSheet();
-    return;
-  }
-  const activeEl = document.activeElement;
-  if(activeEl === document.getElementById("saveCrashPreviewBtn")){
-    e.preventDefault();
-    e.stopPropagation();
-    saveCrashPreviewSheet();
-    return;
-  }
-  if(activeEl === document.getElementById("cancelCrashPreviewBtn")){
-    e.preventDefault();
-    e.stopPropagation();
-    cancelCrashPreviewSheet();
-    return;
-  }
-  if(activeEl instanceof Element && modal.contains(activeEl)){
-    e.preventDefault();
-    e.stopPropagation();
-    saveCrashPreviewSheet();
-  }
-}, true);
+/* unified modal keyboard handler: withdrawalRuleModal */
+/* unified modal keyboard handler: crashTestModal */
 
 document.getElementById("withdrawalBucketDefenseOn")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); scheduleWithdrawalRulePreview(); });
 ["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalBucketDefenseRecoveryPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); scheduleWithdrawalRulePreview(); }));
@@ -20663,18 +20755,7 @@ document.getElementById("openMonteSettingsBtn")?.addEventListener("click", (e)=>
   openMonteSettingsModal();
 });
 document.getElementById("closeCashflowModalBtn")?.addEventListener("click", closeCashflowModal);
-document.addEventListener("keydown", (e)=>{
-  const modal = document.getElementById("cashflowModal");
-  if(!modal || !modal.classList.contains("show")) return;
-  if(getOpenModal() !== modal) return;
-  if(e.key !== "Escape" && e.key !== "Enter") return;
-  if(e.key === "Enter" && (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing)) return;
-  const target = e.target;
-  if(target && target.tagName === "TEXTAREA") return;
-  e.preventDefault();
-  e.stopPropagation();
-  closeCashflowModal();
-}, true);
+/* unified modal keyboard handler: cashflowModal */
 document.getElementById("cancelMonteSettingsBtn")?.addEventListener("click", cancelMonteSettingsModal);
 document.getElementById("saveMonteSettingsBtn")?.addEventListener("click", saveMonteSettingsModal);
 document.getElementById("monteRunInSheetBtn")?.addEventListener("click", runMonteFromPreviewSheet);
@@ -20692,40 +20773,7 @@ document.getElementById("monteSettingsEffectiveVolPct")?.addEventListener("input
 document.getElementById("monteSettingsMeanRevPhi")?.addEventListener("input", updateMonteSettingsModalUI);
 document.getElementById("monteSettingsSeedOn")?.addEventListener("change", updateMonteSettingsModalUI);
 document.getElementById("monteSettingsSeedValue")?.addEventListener("input", updateMonteSettingsModalUI);
-document.getElementById("monteCarloSettingsModal")?.addEventListener("keydown", handleStandardActionModalKeydown, true);
-document.addEventListener("keydown", (e)=>{
-  const modal = document.getElementById("monteCarloSettingsModal");
-  if(!modal || !modal.classList.contains("show")) return;
-  if(getOpenModal() !== modal) return;
-  if(e.key !== "Escape" && e.key !== "Enter") return;
-  if(e.key === "Enter" && (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing)) return;
-  const target = e.target;
-  if(target && target.tagName === "TEXTAREA") return;
-  if(e.key === "Escape"){
-    e.preventDefault();
-    e.stopPropagation();
-    cancelMonteSettingsModal();
-    return;
-  }
-  const activeEl = document.activeElement;
-  if(activeEl === document.getElementById("saveMonteSettingsBtn")){
-    e.preventDefault();
-    e.stopPropagation();
-    saveMonteSettingsModal();
-    return;
-  }
-  if(activeEl === document.getElementById("cancelMonteSettingsBtn")){
-    e.preventDefault();
-    e.stopPropagation();
-    cancelMonteSettingsModal();
-    return;
-  }
-  if(activeEl instanceof Element && modal.contains(activeEl)){
-    e.preventDefault();
-    e.stopPropagation();
-    saveMonteSettingsModal();
-  }
-}, true);
+/* unified modal keyboard handler: monteCarloSettingsModal */
 
 document.getElementById("withdrawalRuleMode")?.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -20839,18 +20887,6 @@ document.getElementById("childRows")?.addEventListener("change", (e)=>{
   };
   el.addEventListener("change", handler);
 });
-document.addEventListener('keydown', (e)=>{
-  if(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing) return;
-  const modal = document.querySelector('#deleteRowModal.show, #deleteTabModal.show');
-  if(!modal) return;
-  if(!['ArrowLeft','ArrowRight','Enter','Escape'].includes(e.key)) return;
-  handleDeleteModalKeydown({
-    currentTarget: modal,
-    key: e.key,
-    preventDefault: ()=>e.preventDefault(),
-    stopPropagation: ()=>e.stopPropagation()
-  });
-}, true);
 document.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab") return;
   if(e.altKey || e.ctrlKey || e.metaKey) return;
@@ -21772,20 +21808,6 @@ document.getElementById("saveLoanDetailBtn")?.addEventListener("click", (e)=>{
   e.stopPropagation();
   saveLoanDetailModal();
 });
-let loanDetailBackdropPointerDown = false;
-document.getElementById("loanDetailModal")?.addEventListener("mousedown", (e)=>{
-  loanDetailBackdropPointerDown = e.target === e.currentTarget;
-});
-document.getElementById("loanDetailModal")?.addEventListener("mouseup", (e)=>{
-  if(loanDetailBackdropPointerDown && e.target === e.currentTarget) closeLoanDetailModal();
-  loanDetailBackdropPointerDown = false;
-});
-document.getElementById("loanDetailModal")?.addEventListener("click", (e)=>{
-  if(e.target === e.currentTarget) e.stopPropagation();
-});
-document.getElementById("loanDetailConflictModal")?.addEventListener("click", (e)=>{
-  if(e.target === e.currentTarget) closeLoanDetailConflictModal();
-});
 document.querySelector("#loanDetailModal .loan-detail-modal")?.addEventListener("click", (e)=>e.stopPropagation());
 document.querySelector("#loanDetailConflictModal .modal-card")?.addEventListener("click", (e)=>e.stopPropagation());
 ["mousedown","mouseup","dblclick","selectstart"].forEach(evt=>{
@@ -21818,9 +21840,6 @@ document.querySelector('#insuranceAssistModal .insurance-assist-modal')?.addEven
   document.querySelector('#insuranceAssistModal .insurance-assist-modal')?.addEventListener(evt, (e)=>e.stopPropagation());
   document.querySelectorAll('#insuranceAssistModal input, #insuranceAssistModal textarea, #insuranceAssistModal select').forEach(el=>el.addEventListener(evt, (e)=>e.stopPropagation()));
 });
-let insuranceAssistBackdropPointerDown = false;
-document.getElementById('insuranceAssistModal')?.addEventListener('mousedown', (e)=>{ insuranceAssistBackdropPointerDown = e.target === e.currentTarget; });
-document.getElementById('insuranceAssistModal')?.addEventListener('mouseup', (e)=>{ if(insuranceAssistBackdropPointerDown && e.target === e.currentTarget) closeInsuranceAssistModal(); insuranceAssistBackdropPointerDown = false; });
 
 document.getElementById('eduBody')?.addEventListener('click', (e)=>{
   const resetBtn = e.target.closest('[data-edu-reset]');
@@ -21866,9 +21885,6 @@ document.getElementById('resetPensionTaxSimpleBtn')?.addEventListener('click', (
 });
 document.getElementById('cancelResetDefaultsConfirmBtn')?.addEventListener('click', closeResetDefaultsConfirmDialog);
 document.getElementById('confirmResetDefaultsConfirmBtn')?.addEventListener('click', confirmResetDefaultsConfirmDialog);
-document.getElementById('resetDefaultsConfirmModal')?.addEventListener('click', (e)=>{
-  if(e.target === e.currentTarget) closeResetDefaultsConfirmDialog();
-});
 document.querySelector('#resetDefaultsConfirmModal .modal-card')?.addEventListener('click', (e)=>e.stopPropagation());
 ['mousedown','mouseup','dblclick','selectstart'].forEach(evt=>{
   document.querySelector('#resetDefaultsConfirmModal .modal-card')?.addEventListener(evt, (e)=>e.stopPropagation());
@@ -21884,9 +21900,6 @@ document.getElementById('eduCopyFrom')?.addEventListener('change', ()=>{
     const alt = candidates.find(item=>String(item.index) !== String(fromSel.value));
     if(alt) toSel.value = String(alt.index);
   }
-});
-document.getElementById('educationCopyModal')?.addEventListener('click', (e)=>{
-  if(e.target === e.currentTarget) closeEducationCopyModal();
 });
 document.querySelector('#educationCopyModal .edu-copy-modal')?.addEventListener('click', (e)=>e.stopPropagation());
 ['mousedown','mouseup','dblclick','selectstart'].forEach(evt=>{
@@ -21959,9 +21972,6 @@ document.querySelector('#educationDetailModal .edu-detail-modal')?.addEventListe
 ['mousedown','mouseup','dblclick','selectstart'].forEach(evt=>{
   document.querySelector('#educationDetailModal .edu-detail-modal')?.addEventListener(evt, (e)=>e.stopPropagation());
 });
-let educationDetailBackdropPointerDown = false;
-document.getElementById('educationDetailModal')?.addEventListener('mousedown', (e)=>{ educationDetailBackdropPointerDown = e.target === e.currentTarget; });
-document.getElementById('educationDetailModal')?.addEventListener('mouseup', (e)=>{ if(educationDetailBackdropPointerDown && e.target === e.currentTarget) closeEducationDetailModal(); educationDetailBackdropPointerDown = false; });
 document.getElementById("incomeCurveAddPointBtn")?.addEventListener("click", addIncomeCurvePoint);
 document.getElementById("cancelIncomeCurveBtn")?.addEventListener("click", closeIncomeCurveModal);
 document.getElementById("saveIncomeCurveBtn")?.addEventListener("click", saveIncomeCurveModal);
@@ -21980,9 +21990,6 @@ document.getElementById("incomeCurveRows")?.addEventListener("click", (e)=>{
     renderIncomeCurveModal();
   }
 });
-let incomeCurveBackdropPointerDown = false;
-document.getElementById("incomeCurveModal")?.addEventListener("mousedown", (e)=>{ incomeCurveBackdropPointerDown = e.target === e.currentTarget; });
-document.getElementById("incomeCurveModal")?.addEventListener("mouseup", (e)=>{ if(incomeCurveBackdropPointerDown && e.target === e.currentTarget) closeIncomeCurveModal(); incomeCurveBackdropPointerDown = false; });
 document.getElementById("incomeCurveModal")?.addEventListener("input", (e)=>{
   if(!e.target.closest("#incomeCurveModal")) return;
   if(e.target.id === "incomeCurveSalaryGrowthOn" || e.target.id === "incomeCurveBonusLinkedOn") updateIncomeCurveAutoControlStates();
@@ -22014,9 +22021,6 @@ crashTestModalCard?.addEventListener("click", (e)=>e.stopPropagation());
   document.querySelectorAll("#crashTestModal input, #crashTestModal textarea, #crashTestModal select").forEach(el=>el.addEventListener(evt, (e)=>e.stopPropagation()));
 });
 document.getElementById("crashTestModal")?.addEventListener("mousedown", (e)=>{ crashTestBackdropPointerDown = e.target === e.currentTarget; });
-let cashflowBackdropPointerDown = false;
-document.getElementById("cashflowModal")?.addEventListener("mousedown", (e)=>{ cashflowBackdropPointerDown = (e.target === e.currentTarget); });
-document.getElementById("cashflowModal")?.addEventListener("mouseup", (e)=>{ if(cashflowBackdropPointerDown && e.target === e.currentTarget) closeCashflowModal(); cashflowBackdropPointerDown = false; });
 document.getElementById("crashTestModal")?.addEventListener("mouseup", (_e)=>{ crashTestBackdropPointerDown = false; });
 const monteCarloSettingsModalCard = document.querySelector("#monteCarloSettingsModal .monte-settings-modal");
 monteCarloSettingsModalCard?.addEventListener("click", (e)=>e.stopPropagation());
@@ -22029,9 +22033,6 @@ document.getElementById("monteCarloSettingsModal")?.addEventListener("mouseup", 
 ["mousedown","mouseup","dblclick","selectstart"].forEach(evt=>{
   document.querySelector("#pensionHelperModal .pension-helper-modal")?.addEventListener(evt, (e)=>e.stopPropagation());
 });
-let pensionHelperBackdropPointerDown = false;
-document.getElementById("pensionHelperModal")?.addEventListener("mousedown", (e)=>{ pensionHelperBackdropPointerDown = e.target === e.currentTarget; });
-document.getElementById("pensionHelperModal")?.addEventListener("mouseup", (e)=>{ if(pensionHelperBackdropPointerDown && e.target === e.currentTarget) closePensionHelperModal(); pensionHelperBackdropPointerDown = false; });
 document.getElementById("pensionHelperModal")?.addEventListener("input", (e)=>{
   if(!e.target.closest("#pensionHelperModal")) return;
   if(e.target.name === "pensionHelperMode") updatePensionHelperModeUI();
