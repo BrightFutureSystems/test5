@@ -17164,9 +17164,13 @@ function shouldHideMainChartXAxisTick(scale, value, index, ticks){
   const left = Number(scale.left);
   const right = Number(scale.right);
   if(!Number.isFinite(pixel) || !Number.isFinite(left) || !Number.isFinite(right)) return false;
-  const leftEdgePadding = 6;
-  const rightHideAllowance = 28;
-  return pixel <= left + leftEdgePadding || pixel > right + rightHideAllowance;
+  const isFirst = index === 0;
+  const isLast = index === ticks.length - 1;
+  if(!isFirst && !isLast) return false;
+  const lateHideAllowance = 42;
+  if(isFirst && pixel < left - lateHideAllowance) return true;
+  if(isLast && pixel > right + lateHideAllowance) return true;
+  return false;
 }
 function formatMainChartXAxisTick(scale, sim, value, index, ticks){
   if(shouldHideMainChartXAxisTick(scale, value, index, ticks)) return '';
@@ -20012,8 +20016,10 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   if(!Number.isFinite(left) || !Number.isFinite(right)) return false;
   const isFirst = index === 0;
   const isLast = index === ticks.length - 1;
-  if(isFirst && px < left + 6) return true;
-  if(isLast && px > right + 8) return true;
+  if(!isFirst && !isLast) return false;
+  const lateHideAllowance = 42;
+  if(isFirst && px < left - lateHideAllowance) return true;
+  if(isLast && px > right + lateHideAllowance) return true;
   return false;
 }
 function setupMonteCompareChartInteractions(){
@@ -20485,8 +20491,10 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   if(!Number.isFinite(left) || !Number.isFinite(right)) return false;
   const isFirst = index === 0;
   const isLast = index === ticks.length - 1;
-  if(isFirst && px < left + 6) return true;
-  if(isLast && px > right + 8) return true;
+  if(!isFirst && !isLast) return false;
+  const lateHideAllowance = 42;
+  if(isFirst && px < left - lateHideAllowance) return true;
+  if(isLast && px > right + lateHideAllowance) return true;
   return false;
 }
 
