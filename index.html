@@ -17158,6 +17158,19 @@ function getCalendarWindowTickLabel(sim, xValue){
 function shouldHideEdgeTick(index, ticks){
   return Array.isArray(ticks) && ticks.length >= 2 && (index === 0 || index === ticks.length - 1);
 }
+function getXAxisRightHideAllowancePx(scale, ticks){
+  if(!scale || !Array.isArray(ticks) || ticks.length < 2) return 0;
+  const last = Number(ticks[ticks.length - 1]?.value);
+  const prev = Number(ticks[ticks.length - 2]?.value);
+  const pxLast = Number(scale.getPixelForValue?.(last));
+  const pxPrev = Number(scale.getPixelForValue?.(prev));
+  const spacing = Math.abs(pxLast - pxPrev);
+  if(!Number.isFinite(spacing) || spacing <= 0) return 0;
+  const isCoarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer: coarse)').matches
+    : false;
+  return spacing * (isCoarse ? 0.8 : 0.2);
+}
 function shouldHideMainChartXAxisTick(scale, value, index, ticks){
   if(!scale || !Array.isArray(ticks) || !ticks.length) return false;
   const pixel = Number(scale.getPixelForValue?.(value));
@@ -17165,7 +17178,7 @@ function shouldHideMainChartXAxisTick(scale, value, index, ticks){
   const right = Number(scale.right);
   if(!Number.isFinite(pixel) || !Number.isFinite(left) || !Number.isFinite(right)) return false;
   const leftEdgePadding = 6;
-  const rightHideAllowance = 28;
+  const rightHideAllowance = getXAxisRightHideAllowancePx(scale, ticks);
   return pixel <= left + leftEdgePadding || pixel > right + rightHideAllowance;
 }
 function formatMainChartXAxisTick(scale, sim, value, index, ticks){
@@ -20013,7 +20026,7 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   const isFirst = index === 0;
   const isLast = index === ticks.length - 1;
   if(isFirst && px < left + 6) return true;
-  if(isLast && px > right + 8) return true;
+  if(isLast && px > right + getXAxisRightHideAllowancePx(scale, ticks)) return true;
   return false;
 }
 function setupMonteCompareChartInteractions(){
@@ -20486,7 +20499,7 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   const isFirst = index === 0;
   const isLast = index === ticks.length - 1;
   if(isFirst && px < left + 6) return true;
-  if(isLast && px > right + 8) return true;
+  if(isLast && px > right + getXAxisRightHideAllowancePx(scale, ticks)) return true;
   return false;
 }
 
