@@ -20193,7 +20193,7 @@ function setupMonteCompareChartInteractions(){
   document.addEventListener('pointercancel', handleGlobalPointerUp, true);
   window.addEventListener('blur', handleGlobalPointerUp);
   document.addEventListener('visibilitychange', ()=>{ if(document.hidden) handleGlobalPointerUp(); });
-  canvas.addEventListener('dblclick', (e)=>{
+canvas.addEventListener('dblclick', (e)=>{
     if(!isCompareChartZoomed(kind)) return;
     resetCompareChartScale(kind);
     const chart = getChart();
@@ -20204,6 +20204,198 @@ function setupMonteCompareChartInteractions(){
     e.preventDefault();
     e.stopPropagation();
   });
+  let touchState = null;
+  let lastTapTime = 0;
+  let lastTapPoint = null;
+  const MIN_TOUCH_MOVE = 6;
+  const getTouchPoint = (touch)=>{
+    const rect = canvas.getBoundingClientRect();
+    return {x:touch.clientX - rect.left, y:touch.clientY - rect.top};
+  };
+  const getTouchDistance = (a, b)=>Math.hypot((b.x - a.x), (b.y - a.y));
+  const finishTouchInteraction = ()=>{
+    if(!touchState) return null;
+    const endedState = touchState;
+    touchState = null;
+    if(endedState.moved) getState().suppressClickUntil = Date.now() + 300;
+    return endedState;
+  };
+  canvas.addEventListener('touchstart', (e)=>{
+    const chart = getChart();
+    if(!chart?.scales?.x || !chart?.scales?.y) return;
+    if(e.touches.length >= 2){
+      const a = getTouchPoint(e.touches[0]);
+      const b = getTouchPoint(e.touches[1]);
+      const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
+      if(!isInsideChartArea(center)) return;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      touchState = {
+        type:'pinch',
+        startA:a,
+        startB:b,
+        startDist:Math.max(1, getTouchDistance(a, b)),
+        startCenter:center,
+        startMinX:Number(xScale.min),
+        startMaxX:Number(xScale.max),
+        startMinY:Number(yScale.min),
+        startMaxY:Number(yScale.max),
+        startValueAX:xScale.getValueForPixel(a.x),
+        startValueBX:xScale.getValueForPixel(b.x),
+        startValueAY:yScale.getValueForPixel(a.y),
+        startValueBY:yScale.getValueForPixel(b.y),
+        moved:false
+      };
+      e.preventDefault();
+      return;
+    }
+    if(e.touches.length === 1 && isCompareChartZoomed(kind)){
+      const pt = getTouchPoint(e.touches[0]);
+      if(!isInsideChartArea(pt)) return;
+      const chart = getChart();
+      if(!chart?.scales?.x || !chart?.scales?.y) return;
+      touchState = {
+        type:'pan',
+        startX:pt.x,
+        startY:pt.y,
+        startMinX:Number(chart.scales.x.min),
+        startMaxX:Number(chart.scales.x.max),
+        startMinY:Number(chart.scales.y.min),
+        startMaxY:Number(chart.scales.y.max),
+        moved:false
+      };
+      e.preventDefault();
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchmove', (e)=>{
+    const chart = getChart();
+    if(!touchState || !chart?.scales?.x || !chart?.scales?.y) return;
+    const auto = cloneCompareChartBounds(getState().autoBounds);
+    if(!auto) return;
+    if(touchState.type === 'pinch'){
+      if(e.touches.length < 2) return;
+      const a = getTouchPoint(e.touches[0]);
+      const b = getTouchPoint(e.touches[1]);
+      const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
+      const dist = Math.max(1, getTouchDistance(a, b));
+      const delta = Math.abs(dist - touchState.startDist) + Math.abs(center.x - touchState.startCenter.x) + Math.abs(center.y - touchState.startCenter.y);
+      if(!touchState.moved && delta < MIN_TOUCH_MOVE) return;
+      touchState.moved = true;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const xLeft = xScale.left;
+      const xRight = xScale.right;
+      const xWidth = Math.max(1, xRight - xLeft);
+      const yTop = yScale.top;
+      const yBottom = yScale.bottom;
+      const yHeight = Math.max(1, yBottom - yTop);
+      const outerRangeX = Math.max(1e-9, auto.xMax - auto.xMin);
+      const outerRangeY = Math.max(1e-12, auto.yMax - auto.yMin);
+      let newMinX = touchState.startMinX;
+      let newMaxX = touchState.startMaxX;
+      const t1x = (a.x - xLeft) / xWidth;
+      const t2x = (b.x - xLeft) / xWidth;
+      const dtX = t2x - t1x;
+      if(Math.abs(dtX) > 0.001){
+        let newRangeX = (touchState.startValueBX - touchState.startValueAX) / dtX;
+        if(Number.isFinite(newRangeX)){
+          newRangeX = Math.max(1e-9, Math.min(outerRangeX, Math.abs(newRangeX)));
+          newMinX = touchState.startValueAX - t1x * newRangeX;
+          newMaxX = newMinX + newRangeX;
+          if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
+          if(newMaxX > auto.xMax){ newMinX -= (newMaxX - auto.xMax); newMaxX = auto.xMax; }
+          newMinX = Math.max(auto.xMin, newMinX);
+          newMaxX = Math.min(auto.xMax, newMaxX);
+        }
+      }
+      let newMinY = touchState.startMinY;
+      let newMaxY = touchState.startMaxY;
+      const t1y = (yBottom - a.y) / yHeight;
+      const t2y = (yBottom - b.y) / yHeight;
+      const dtY = t2y - t1y;
+      if(Math.abs(dtY) > 0.001){
+        let newRangeY = (touchState.startValueBY - touchState.startValueAY) / dtY;
+        if(Number.isFinite(newRangeY)){
+          newRangeY = Math.max(1e-12, Math.min(outerRangeY, Math.abs(newRangeY)));
+          newMinY = touchState.startValueAY - t1y * newRangeY;
+          newMaxY = newMinY + newRangeY;
+          if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
+          if(newMaxY > auto.yMax){ newMinY -= (newMaxY - auto.yMax); newMaxY = auto.yMax; }
+          newMinY = Math.max(auto.yMin, newMinY);
+          newMaxY = Math.min(auto.yMax, newMaxY);
+        }
+      }
+      getState().overrideBounds = {xMin:newMinX, xMax:newMaxX, yMin:newMinY, yMax:newMaxY};
+      applyCompareChartScaleOverrides(chart, kind);
+      chart.update('none');
+      e.preventDefault();
+      return;
+    }
+    if(touchState.type === 'pan'){
+      if(e.touches.length !== 1) return;
+      const pt = getTouchPoint(e.touches[0]);
+      const dx = pt.x - touchState.startX;
+      const dy = pt.y - touchState.startY;
+      if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
+      touchState.moved = true;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const isXZoomed = Math.abs(touchState.startMinX - auto.xMin) > 1e-9 || Math.abs(touchState.startMaxX - auto.xMax) > 1e-9;
+      const isYZoomed = Math.abs(touchState.startMinY - auto.yMin) > 1e-9 || Math.abs(touchState.startMaxY - auto.yMax) > 1e-9;
+      let newMinX = touchState.startMinX, newMaxX = touchState.startMaxX;
+      if(isXZoomed){
+        const startMinPx = xScale.getPixelForValue(touchState.startMinX);
+        const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
+        newMinX = xScale.getValueForPixel(startMinPx - dx);
+        newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+        const rangeX = newMaxX - newMinX;
+        if(rangeX <= (auto.xMax - auto.xMin)){
+          if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
+          if(newMaxX > auto.xMax){ newMinX -= (newMaxX - auto.xMax); newMaxX = auto.xMax; }
+        }
+      }
+      let newMinY = touchState.startMinY, newMaxY = touchState.startMaxY;
+      if(isYZoomed){
+        const startMinYPx = yScale.getPixelForValue(touchState.startMinY);
+        const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
+        newMinY = yScale.getValueForPixel(startMinYPx - dy);
+        newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+        const rangeY = newMaxY - newMinY;
+        if(rangeY <= (auto.yMax - auto.yMin)){
+          if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
+          if(newMaxY > auto.yMax){ newMinY -= (newMaxY - auto.yMax); newMaxY = auto.yMax; }
+        }
+      }
+      getState().overrideBounds = {xMin:newMinX, xMax:newMaxX, yMin:newMinY, yMax:newMaxY};
+      applyCompareChartScaleOverrides(chart, kind);
+      chart.update('none');
+      e.preventDefault();
+    }
+  }, {passive:false});
+  const handleTouchEnd = ()=>{
+    const endedState = finishTouchInteraction();
+    if(endedState && !endedState.moved){
+      const now = Date.now();
+      const pt = endedState.startCenter ? endedState.startCenter : {x:endedState.startX, y:endedState.startY};
+      const closeEnough = !lastTapPoint || Math.hypot((pt?.x || 0) - (lastTapPoint.x || 0), (pt?.y || 0) - (lastTapPoint.y || 0)) <= 28;
+      if(lastTapTime && (now - lastTapTime) <= 350 && closeEnough){
+        lastTapTime = 0;
+        lastTapPoint = null;
+        getState().suppressClickUntil = Date.now() + 400;
+        resetCompareChartScale(kind);
+        const chart = getChart();
+        if(chart){
+          applyCompareChartScaleOverrides(chart, kind);
+          chart.update('none');
+        }
+        return;
+      }
+      lastTapTime = now;
+      lastTapPoint = pt;
+    }
+  };
+  canvas.addEventListener('touchend', handleTouchEnd, {passive:true});
+  canvas.addEventListener('touchcancel', handleTouchEnd, {passive:true});
   canvas.addEventListener('click', (e)=>{
     if(Date.now() < getState().suppressClickUntil){
       e.preventDefault();
