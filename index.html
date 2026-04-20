@@ -20107,8 +20107,10 @@ function renderMonteCompareChart(results){
   const canvas = document.getElementById('monteCompareChart');
   if(!canvas) return;
   const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
-  const histograms = results.map(r=>buildHistogramSeries(r.finals, 28));
-  const allFinals = results.flatMap(r=>(r.finals || []).map(v=>Number(v) || 0));
+  const allFinals = results.flatMap(r=>(r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
+  const sharedHistogramMin = allFinals.length ? Math.min(...allFinals) : 0;
+  const sharedHistogramMax = allFinals.length ? Math.max(...allFinals) : 0;
+  const histograms = results.map(r=>buildHistogramSeries(r.finals, 28, sharedHistogramMin, sharedHistogramMax));
   const mins = histograms.map(h=>Number(h.min)).filter(v=>Number.isFinite(v));
   const maxs = histograms.map(h=>Number(h.max)).filter(v=>Number.isFinite(v));
   const globalMin = mins.length ? Math.min(...mins) : 0;
