@@ -13161,9 +13161,13 @@ function renderCrashComparisonChart(results){
   const canvas = document.getElementById('crashCompareChart');
   if(!canvas) return;
   const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
-  const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v) || 0));
-  const histograms = results.map(r=>buildHistogramSeries(r.finals, 28));
-  const datasetsForDraw = histograms.map((hist, idx)=>({
+  const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
+  const sharedHistogramMin = allFinals.length ? Math.min(...allFinals) : 0;
+  const sharedHistogramMax = allFinals.length ? Math.max(...allFinals) : 0;
+  const histograms = results.map(r=>buildHistogramSeries(r.finals, getAdaptiveHistogramBinCount(r.finals.length)));
+  const densityAxisMeta = formatDensityAxisMeta(chooseDensityDisplayWindow(histograms));
+  const displayHistograms = histograms;
+  const datasetsForDraw = displayHistograms.map((hist, idx)=>({
     label:results[idx].label,
     data:hist.points,
     borderColor:palettes[idx % palettes.length],
@@ -13256,8 +13260,8 @@ function renderCrashComparisonChart(results){
         },
         y:{
           beginAtZero:true,
-          title:{display:true, text:'出現確率'},
-          ticks:{callback:(v)=>`${Math.round((Number(v)||0)*100)}%`}
+          title:{display:true, text:densityAxisMeta.title},
+          ticks:{callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)}
         }
       }
     }
@@ -15044,10 +15048,19 @@ function getMonteDistributionAxisMax(cfg){
   const baseMax = Number.isFinite(currentMax) ? currentMax : life;
   return Math.max(baseMax, life + 8);
 }
+const MONTE_HISTOGRAM_BIN_COUNT = 100;
+
+function getAdaptiveHistogramBinCount(sampleCount){
+  const n = Math.max(0, Number(sampleCount) || 0);
+  if(n <= 1) return 1;
+  const rough = Math.round(Math.sqrt(n) * 1.5);
+  return Math.max(12, Math.min(60, rough));
+}
+
 function buildMonteDistributionDataset(cfg, finalsAtLife, opts={}){
   const finals = Array.isArray(finalsAtLife) ? finalsAtLife.map(v=>Number(v)).filter(v=>Number.isFinite(v)) : [];
   if(finals.length < 2) return null;
-  const histogram = buildHistogramSeries(finals, 28);
+  const histogram = buildHistogramSeries(finals, getAdaptiveHistogramBinCount(finals.length));
   const rawPoints = Array.isArray(histogram?.points) ? histogram.points : [];
   if(!rawPoints.length) return null;
   const minAsset = Number.isFinite(histogram.min) ? histogram.min : Math.min(...finals);
@@ -18626,140 +18639,13 @@ function buildSharedReturnShocks(cfg, trials, scenarioDataOverride, monteSetting
   return shocks;
 }
 function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
-  const finalLifeIndex = Math.max(0, Number(lifeIndex) || 0);
-  const annualNeedSeries = Array.isArray(staticSeries) ? staticSeries : buildMonteStaticSeries(cfg);
-  const deposits = deepClone(cfg.deposits);
-  if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
-  const investments = deepClone(cfg.investments);
-  const safeAssets = initializeSafeAssetState(cfg);
-  (cfg.futureInvestments || []).forEach(plan=>{ const entry = makeInvestmentEntryFromPlan(plan, 0); entry._manualBaseIndex = investments.length; investments.push(entry); });
-  (cfg.sumInvestments || []).forEach(plan=>{ const entry = makeInvestmentEntryFromPlan(plan, 0); entry._manualBaseIndex = investments.length; investments.push(entry); });
-  let liability = 0;
-  const receiptState = ensureReceiptState();
-  const withdrawalPolicy = getWithdrawalPolicyConfig(cfg);
-  const bucketDefenseState = createBucketDefenseState();
-  let finalAtLife = null;
-  let depletionAge = null;
-  let retireAsset = null;
-  let totalIncomeSum = 0;
-  let totalExpenseSum = 0;
-
-  for(let age=cfg.age; age<=120; age++){
-    const annualState = initializeAnnualContributionState(investments);
-    const yearIndex = age - cfg.age;
-    annualState.annualNeedBase = annualNeedSeries?.[yearIndex]?.annualNeedBase || 0;
-    const liabilityRefAtStart = {value:liability};
-    if(isBasicWithdrawalMode(withdrawalPolicy.mode)){
-      applyPlannedWithdrawalAtYearStart(cfg, age, deposits, investments, liabilityRefAtStart, annualState, withdrawalPolicy);
-      liability = Math.max(0, Number(liabilityRefAtStart.value) || 0);
-    }
-    annualState.beginningInvestmentTotal = investments.reduce((s, inv)=>s + (Number(inv.amount) || 0), 0);
-
-    const simulationYearFraction = getSimulationYearFraction(cfg, yearIndex);
-    deposits.forEach(d=>{
-      const rawRate = (Number(d.rate || 0) || 0);
-      const netRate = d.taxOn ? rawRate * (1 - DEPOSIT_INTEREST_TAX_RATE) : rawRate;
-      const beginningAmount = Number(d.amount || 0) || 0;
-      const grossEnding = beginningAmount * getYearFractionCompoundedRateFactor(rawRate, simulationYearFraction);
-      const netEnding = beginningAmount * getYearFractionCompoundedRateFactor(netRate, simulationYearFraction);
-      const interestTax = d.taxOn ? Math.max(0, grossEnding - netEnding) : 0;
-      d.amount = netEnding;
-      if(annualState && interestTax > 0) annualState.interestTax = (annualState.interestTax || 0) + interestTax;
-    });
-    investments.forEach(inv=>{
-      const baseRate = Number(inv.rate || 0) || 0;
-      let effectiveRate = randomizeReturn(baseRate, returnShocks?.[yearIndex]);
-      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests, cfg?.incomeSelf?.retireAge);
-      inv._effectiveRate = effectiveRate;
-      inv.amount *= getYearFractionCompoundedRateFactor(effectiveRate, simulationYearFraction);
-    });
-
-    let incomeObj;
-    let expenseObj;
-    let socialObj;
-    let taxObj;
-    let annualNeed;
-    if(staticSeries && staticSeries[yearIndex]){
-      const cached = staticSeries[yearIndex];
-      expenseObj = cached.expenseObj;
-      socialObj = cached.socialObj;
-      taxObj = cached.taxObj;
-      annualNeed = cached.annualNeedBase || 0;
-      const retirePay = processReceiptIncomeForYear(cfg, age, investments, receiptState);
-      incomeObj = {
-        parts:{...cached.incomeParts, retirePay, interest:0, dividend:0},
-        total:(cached.baseIncomeTotal || 0) + retirePay
-      };
-    }else{
-      incomeObj = getIncomeForYear(cfg, age, yearIndex, investments, receiptState);
-      expenseObj = getExpenseForYear(cfg, age, yearIndex);
-      const socialTaxObj = estimateSocialAndTaxForYear(cfg, age, yearIndex, incomeObj);
-      socialObj = socialTaxObj.social;
-      taxObj = socialTaxObj.tax;
-      annualNeed = annualCashBufferNeed(expenseObj.parts) + (socialObj.total || 0) + (taxObj.total || 0);
-    }
-
-    const safeAssetObj = processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex, annualState);
-    incomeObj.parts.interest = safeAssetObj.interestIncome || 0;
-    const income = incomeObj.total + (safeAssetObj.interestIncome || 0);
-    const expense = expenseObj.total + (socialObj.total || 0) + (taxObj.total || 0);
-    const operating = calculateAnnualOperatingCashflow(income, expenseObj.total, socialObj.total || 0, taxObj.total || 0);
-    let net = operating.net;
-
-    totalIncomeSum += income;
-    totalExpenseSum += expense;
-
-    if(net >= 0){
-      if(liability > 0){
-        const repay = Math.min(net, liability);
-        liability -= repay;
-        net -= repay;
-      }
-      if(net > 0){
-        const depositCount = Math.max(1, deposits.length);
-        const per = net / depositCount;
-        deposits.forEach(d=>{ d.amount += per; });
-      }
-    }else{
-      const shortageNeed = consumeDepositsForNeed(-net, deposits);
-      if(shortageNeed > 0.0001){
-        const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-        const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
-        ruleNeeds.mode = withdrawalPolicy.mode;
-        const liabilityRef = {value:liability};
-        applyWithdrawalRule(cfg, age, deposits, investments, liabilityRef, annualNeed, shortageNeed, annualState, ruleNeeds);
-        liability = Math.max(0, Number(liabilityRef.value) || 0);
-      }
-    }
-
-    processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState);
-
-    const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
-    ruleNeeds.mode = withdrawalPolicy.mode;
-    if(ruleNeeds.targetBuffer > 0 || ruleNeeds.floorBuffer > 0){
-      const liabilityRef = {value:liability};
-      applyWithdrawalRule(cfg, age, deposits, investments, liabilityRef, annualNeed, 0, annualState, ruleNeeds);
-      liability = liabilityRef.value;
-    }
-
-    const depTotal = deposits.reduce((s,d)=>s+d.amount,0);
-    const invTotal = investments.reduce((s,i)=>s+i.amount,0);
-    const safeTotal = safeAssetObj.totalSafeAssets || 0;
-    const total = depTotal + invTotal + safeTotal - liability;
-
-    if(retireAsset === null && age >= cfg.incomeSelf.retireAge) retireAsset = total;
-    if(total <= 0 && depletionAge === null) depletionAge = age;
-    if(yearIndex === finalLifeIndex) finalAtLife = total;
-  }
-
-  return {
-    finalAtLife: Number.isFinite(finalAtLife) ? finalAtLife : 0,
-    depletionAge,
-    retireAsset: Number.isFinite(retireAsset) ? retireAsset : 0,
-    totalIncomeSum,
-    totalExpenseSum
-  };
+  return simulate(cfg, true, {
+    finalOnly:true,
+    compact:true,
+    staticSeries,
+    returnShocks,
+    lifeIndex
+  });
 }
 function simulateMonteFinalOnly(cfg, staticSeries, returnShocks, lifeIndex){
   return simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex);
@@ -18893,16 +18779,22 @@ function renderWithdrawalComparisonTable(results){
   renderWithdrawalCompareHeader(results);
   body.innerHTML = renderCommonCompareTableRows(results);
 }
-function buildHistogramSeries(values, binCount=24, sharedMin=null, sharedMax=null){
+function buildHistogramSeries(values, binCount=24){
   const clean = (values || []).map(v=>Number(v)).filter(v=>Number.isFinite(v));
-  if(!clean.length) return {points:[], min:0, max:0, width:1, actualMin:0, actualMax:0};
+  if(!clean.length) return {points:[], min:0, max:0, width:1, actualMin:0, actualMax:0, binCount:1};
+  const resolvedBinCount = Math.max(
+    1,
+    Number.isFinite(Number(binCount)) && Number(binCount) > 0
+      ? Math.round(Number(binCount))
+      : getAdaptiveHistogramBinCount(clean.length)
+  );
   const actualMin = Math.min(...clean);
   const actualMax = Math.max(...clean);
-  const min = Number.isFinite(sharedMin) ? Number(sharedMin) : actualMin;
-  const max = Number.isFinite(sharedMax) ? Number(sharedMax) : actualMax;
+  const min = actualMin;
+  const max = actualMax;
   const span = Math.max(1, max - min);
-  const width = span / Math.max(1, binCount);
-  const bins = new Array(Math.max(1, binCount)).fill(0);
+  const width = span / Math.max(1, resolvedBinCount);
+  const bins = new Array(Math.max(1, resolvedBinCount)).fill(0);
   clean.forEach(v=>{
     let idx = Math.floor((v - min) / width);
     if(idx >= bins.length) idx = bins.length - 1;
@@ -18910,13 +18802,104 @@ function buildHistogramSeries(values, binCount=24, sharedMin=null, sharedMax=nul
     bins[idx] += 1;
   });
   const total = clean.length;
-  const corePoints = bins.map((count, idx)=>({x:min + width * (idx + 0.5), y:count / total}));
+  const densityScale = width > 0 ? width : 1;
+  const corePoints = bins.map((count, idx)=>({x:min + width * (idx + 0.5), y:(count / total) / densityScale}));
   const points = [
     {x:actualMin, y:0},
     ...corePoints,
     {x:actualMax, y:0}
   ];
-  return {points, min, max, width, actualMin, actualMax};
+  return {points, min, max, width, actualMin, actualMax, binCount:resolvedBinCount};
+}
+
+function getHistogramReferenceWidth(histograms){
+  const widths = (histograms || []).map(h=>Number(h?.width)).filter(v=>Number.isFinite(v) && v > 0).sort((a,b)=>a-b);
+  if(!widths.length) return 1;
+  const mid = Math.floor(widths.length / 2);
+  return widths.length % 2 ? widths[mid] : ((widths[mid - 1] + widths[mid]) / 2);
+}
+function chooseHistogramProbabilityWindow(finalsArrays, fallbackWidth=1){
+  const all = (finalsArrays || []).flatMap(arr => Array.isArray(arr) ? arr : []).map(v=>Number(v)).filter(v=>Number.isFinite(v));
+  const fallback = Math.max(1, Number(fallbackWidth) || 1);
+  if(all.length < 2) return fallback;
+  const min = Math.min(...all);
+  const max = Math.max(...all);
+  const span = Math.max(1, max - min);
+  const rough = Math.max(fallback, span / Math.max(1, getAdaptiveHistogramBinCount(all.length)));
+  const exponent = Math.floor(Math.log10(rough));
+  const base = Math.pow(10, exponent);
+  const fraction = rough / base;
+  let niceFraction = 1;
+  if(fraction <= 1) niceFraction = 1;
+  else if(fraction <= 2) niceFraction = 2;
+  else if(fraction <= 5) niceFraction = 5;
+  else niceFraction = 10;
+  return Math.max(1, niceFraction * base);
+}
+function convertHistogramDensityToProbability(histogram, finalsArrays=null, fallbackWidth=null){
+  const widthFromHistogram = Math.max(1, Number(histogram?.width) || 1);
+  const widthBase = Math.max(widthFromHistogram, Number(fallbackWidth) || 0);
+  const windowWidth = chooseHistogramProbabilityWindow(finalsArrays || [], widthBase);
+  return convertHistogramDensityToWindowProbability(histogram, windowWidth);
+}
+
+function convertHistogramDensityToWindowProbability(histogram, windowWidth){
+  const refWidth = Math.max(1, Number(windowWidth) || 1);
+  const rawPoints = Array.isArray(histogram?.points) ? histogram.points : [];
+  const points = rawPoints.map(point=>({
+    x:Number(point?.x) || 0,
+    y:Math.max(0, (Number(point?.y) || 0) * refWidth)
+  }));
+  return {...histogram, points, referenceWidth:refWidth};
+}
+function formatProbabilityPercent(value){
+  const pct = (Number(value) || 0) * 100;
+  const abs = Math.abs(pct);
+  let decimals = 0;
+  if(abs < 10) decimals = 1;
+  if(abs < 1) decimals = 2;
+  if(abs < 0.1) decimals = 3;
+  const text = pct.toFixed(decimals).replace(/\.0+$|(?<=\.\d*[1-9])0+$/,'').replace(/\.$/,'');
+  return `${text}%`;
+}
+function chooseDensityDisplayWindow(histograms){
+  const maxDensity = Math.max(0, ...(histograms || []).flatMap(hist => (hist?.points || []).map(point => Number(point?.y) || 0)));
+  if(!(maxDensity > 0)) return 100;
+  const targetWindow = 1 / maxDensity;
+  const exponent = Math.floor(Math.log10(Math.max(targetWindow, 1)));
+  const base = Math.pow(10, exponent);
+  const steps = [1, 2, 5, 10];
+  let best = 1;
+  for(const step of steps){
+    const candidate = step * base;
+    if(candidate <= targetWindow) best = Math.max(best, candidate);
+  }
+  if(best > targetWindow){
+    best = base;
+  }
+  while(best * maxDensity * 100 > 100.0000001 && best > 1){
+    best /= 10;
+  }
+  return Math.max(1, best);
+}
+function formatDensityAxisMeta(windowWidth){
+  const width = Math.max(1, Number(windowWidth) || 1);
+  if(width >= 10000){
+    const oku = width / 10000;
+    const label = Number.isInteger(oku) ? `${oku}` : `${oku}`.replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+    return {windowWidth:width, title:`出現確率密度（% / ${label}億円）`, unitLabel:`${label}億円`};
+  }
+  return {windowWidth:width, title:`出現確率密度（% / ${width}万円）`, unitLabel:`${width}万円`};
+}
+function formatDensityPercent(value, windowWidth){
+  const pct = (Number(value) || 0) * Math.max(1, Number(windowWidth) || 1) * 100;
+  const abs = Math.abs(pct);
+  let decimals = 0;
+  if(abs < 10) decimals = 1;
+  if(abs < 1) decimals = 2;
+  if(abs < 0.1) decimals = 3;
+  const text = pct.toFixed(decimals).replace(/\.0+$|(?<=\.\d*[1-9])0+$/,'').replace(/\.$/,'');
+  return `${text}%`;
 }
 
 function niceScaleStep(range){
@@ -18944,9 +18927,13 @@ function renderWithdrawalComparisonChart(results){
   const canvas = document.getElementById('withdrawalCompareChart');
   if(!canvas) return;
   const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
-  const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v) || 0));
-  const histograms = results.map(r=>buildHistogramSeries(r.finals, 28));
-  const datasets = histograms.map((hist, idx)=>({
+  const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
+  const sharedHistogramMin = allFinals.length ? Math.min(...allFinals) : 0;
+  const sharedHistogramMax = allFinals.length ? Math.max(...allFinals) : 0;
+  const histograms = results.map(r=>buildHistogramSeries(r.finals, getAdaptiveHistogramBinCount(r.finals.length)));
+  const densityAxisMeta = formatDensityAxisMeta(chooseDensityDisplayWindow(histograms));
+  const displayHistograms = histograms;
+  const datasets = displayHistograms.map((hist, idx)=>({
     label:results[idx].label,
     data:hist.points,
     borderColor:palettes[idx % palettes.length],
@@ -19044,8 +19031,8 @@ function renderWithdrawalComparisonChart(results){
         },
         y:{
           beginAtZero:true,
-          title:{display:true, text:'出現確率'},
-          ticks:{callback:(v)=>`${Math.round((Number(v)||0)*100)}%`}
+          title:{display:true, text:densityAxisMeta.title},
+          ticks:{callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)}
         }
       }
     }
@@ -20081,11 +20068,14 @@ function buildMonteComparisonCases(settings){
 function buildMonteCompareStatsFromCases(cfgBase, cases){
   return (cases || []).map(compareCase=>{
     const settings = compareCase.settings || getMonteCarloSettingsFromDOM();
-    const monteRun = getOrBuildMonteRunCache({data:sanitizeSimulationInputData(cfgBase, {includeMonteSettings:true})}, cfgBase, simulate(cfgBase, false), settings);
+    const scenarioData = sanitizeSimulationInputData(cfgBase, {includeMonteSettings:true});
+    const base = simulate(cfgBase, false);
+    const monteRun = getOrBuildMonteRunCache({data:scenarioData}, cfgBase, base, settings);
     const finals = Array.isArray(monteRun?.finalsAtLife) ? monteRun.finalsAtLife.slice() : [];
     const sorted = finals.slice().sort((a,b)=>a-b);
     const fail = finals.filter(v=>(Number(v) || 0) <= 0).length;
-    const fixed = Number(monteRun?.fixedFinalAtLife || monteRun?.baseFinalAtLife || 0) || 0;
+    const fixedIndex = Math.max(0, Math.min((Array.isArray(base?.totalAssets) ? base.totalAssets.length : 1) - 1, Number(monteRun?.lifeIndex) || 0));
+    const fixed = Number((base?.totalAssets?.[fixedIndex] ?? monteRun?.fixedFinalAtLife ?? 0)) || 0;
     return {
       label:compareCase.label,
       successProb: 1 - (fail / Math.max(1, finals.length)),
@@ -20110,7 +20100,9 @@ function renderMonteCompareChart(results){
   const allFinals = results.flatMap(r=>(r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
   const sharedHistogramMin = allFinals.length ? Math.min(...allFinals) : 0;
   const sharedHistogramMax = allFinals.length ? Math.max(...allFinals) : 0;
-  const histograms = results.map(r=>buildHistogramSeries(r.finals, 28, sharedHistogramMin, sharedHistogramMax));
+  const histograms = results.map(r=>buildHistogramSeries(r.finals, getAdaptiveHistogramBinCount(r.finals.length)));
+  const densityAxisMeta = formatDensityAxisMeta(chooseDensityDisplayWindow(histograms));
+  const displayHistograms = histograms;
   const mins = histograms.map(h=>Number(h.min)).filter(v=>Number.isFinite(v));
   const maxs = histograms.map(h=>Number(h.max)).filter(v=>Number.isFinite(v));
   const globalMin = mins.length ? Math.min(...mins) : 0;
@@ -20127,7 +20119,7 @@ function renderMonteCompareChart(results){
     label:`中央値：${formatCompareMoney(r.median)}`,
     labelOffsetY: idx * 20
   }));
-  const datasets = histograms.map((hist, idx)=>({
+  const datasets = displayHistograms.map((hist, idx)=>({
     label:results[idx].label,
     data:hist.points,
     borderColor:palettes[idx % palettes.length],
@@ -20193,7 +20185,7 @@ function renderMonteCompareChart(results){
           ticks:{stepSize:step, callback:(v, idx, ticks)=>formatCompareMoneyByMeta(v, moneyDisplayMeta, false, getCompareMoneyTickDecimals(moneyDisplayMeta, step, ticks))},
           grid:{color:(ctx)=>Number(ctx.tick?.value) === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)', lineWidth:(ctx)=>Number(ctx.tick?.value) === 0 ? 2 : 1}
         },
-        y:{beginAtZero:true, title:{display:true, text:'出現確率'}, ticks:{callback:(v)=>`${Math.round((Number(v)||0)*100)}%`}}
+        y:{beginAtZero:true, title:{display:true, text:densityAxisMeta.title}, ticks:{callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)}}
       }
     }
   });
