@@ -17164,13 +17164,9 @@ function shouldHideMainChartXAxisTick(scale, value, index, ticks){
   const left = Number(scale.left);
   const right = Number(scale.right);
   if(!Number.isFinite(pixel) || !Number.isFinite(left) || !Number.isFinite(right)) return false;
-  const isFirst = index === 0;
-  const isLast = index === ticks.length - 1;
-  if(!isFirst && !isLast) return false;
-  const lateHideAllowance = 42;
-  if(isFirst && pixel < left - lateHideAllowance) return true;
-  if(isLast && pixel > right + lateHideAllowance) return true;
-  return false;
+  const leftEdgePadding = 6;
+  const rightHideAllowance = 28;
+  return pixel <= left + leftEdgePadding || pixel > right + rightHideAllowance;
 }
 function formatMainChartXAxisTick(scale, sim, value, index, ticks){
   if(shouldHideMainChartXAxisTick(scale, value, index, ticks)) return '';
@@ -19262,6 +19258,8 @@ function setupWithdrawalCompareChartInteractions(){
       startMaxX:Number(chart.scales.x.max),
       startMinY:Number(chart.scales.y.min),
       startMaxY:Number(chart.scales.y.max),
+      plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+      plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
       moved:false
     };
     canvas.classList.add('chart-pan-active');
@@ -19291,18 +19289,16 @@ function setupWithdrawalCompareChartInteractions(){
     panState.moved = true;
     const auto = cloneCompareChartBounds(state.autoBounds);
     if(!auto) return;
-    const xScale = chart.scales.x;
-    const yScale = chart.scales.y;
-    const startMinPx = xScale.getPixelForValue(panState.startMinX);
-    const startMaxPx = xScale.getPixelForValue(panState.startMaxX);
-    let newMinX = xScale.getValueForPixel(startMinPx - dx);
-    let newMaxX = xScale.getValueForPixel(startMaxPx - dx);
-    const startMinYPx = yScale.getPixelForValue(panState.startMinY);
-    const startMaxYPx = yScale.getPixelForValue(panState.startMaxY);
-    let newMinY = yScale.getValueForPixel(startMinYPx - dy);
-    let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
     const isXZoomed = Math.abs(panState.startMinX - auto.xMin) > 1e-9 || Math.abs(panState.startMaxX - auto.xMax) > 1e-9;
     const isYZoomed = Math.abs(panState.startMinY - auto.yMin) > 1e-9 || Math.abs(panState.startMaxY - auto.yMax) > 1e-9;
+    const startRangeX = panState.startMaxX - panState.startMinX;
+    const startRangeY = panState.startMaxY - panState.startMinY;
+    const pxToValueX = startRangeX / Math.max(1, panState.plotWidth || 1);
+    const pxToValueY = startRangeY / Math.max(1, panState.plotHeight || 1);
+    let newMinX = panState.startMinX - dx * pxToValueX;
+    let newMaxX = panState.startMaxX - dx * pxToValueX;
+    let newMinY = panState.startMinY + dy * pxToValueY;
+    let newMaxY = panState.startMaxY + dy * pxToValueY;
     const rangeX = newMaxX - newMinX;
     const rangeY = newMaxY - newMinY;
     if(isXZoomed && rangeX <= (auto.xMax - auto.xMin)){
@@ -19404,6 +19400,8 @@ function setupWithdrawalCompareChartInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+        plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
         moved:false
       };
       e.preventDefault();
@@ -19480,16 +19478,16 @@ function setupWithdrawalCompareChartInteractions(){
       const dy = pt.y - touchState.startY;
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
       touchState.moved = true;
-      const xScale = chart.scales.x;
-      const yScale = chart.scales.y;
       const isXZoomed = Math.abs(touchState.startMinX - auto.xMin) > 1e-9 || Math.abs(touchState.startMaxX - auto.xMax) > 1e-9;
       const isYZoomed = Math.abs(touchState.startMinY - auto.yMin) > 1e-9 || Math.abs(touchState.startMaxY - auto.yMax) > 1e-9;
+      const startRangeX = touchState.startMaxX - touchState.startMinX;
+      const startRangeY = touchState.startMaxY - touchState.startMinY;
+      const pxToValueX = startRangeX / Math.max(1, touchState.plotWidth || 1);
+      const pxToValueY = startRangeY / Math.max(1, touchState.plotHeight || 1);
       let newMinX = touchState.startMinX, newMaxX = touchState.startMaxX;
       if(isXZoomed){
-        const startMinPx = xScale.getPixelForValue(touchState.startMinX);
-        const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
-        newMinX = xScale.getValueForPixel(startMinPx - dx);
-        newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+        newMinX = touchState.startMinX - dx * pxToValueX;
+        newMaxX = touchState.startMaxX - dx * pxToValueX;
         const rangeX = newMaxX - newMinX;
         if(rangeX <= (auto.xMax - auto.xMin)){
           if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
@@ -19498,10 +19496,8 @@ function setupWithdrawalCompareChartInteractions(){
       }
       let newMinY = touchState.startMinY, newMaxY = touchState.startMaxY;
       if(isYZoomed){
-        const startMinYPx = yScale.getPixelForValue(touchState.startMinY);
-        const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
-        newMinY = yScale.getValueForPixel(startMinYPx - dy);
-        newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+        newMinY = touchState.startMinY + dy * pxToValueY;
+        newMaxY = touchState.startMaxY + dy * pxToValueY;
         const rangeY = newMaxY - newMinY;
         if(rangeY <= (auto.yMax - auto.yMin)){
           if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
@@ -19651,6 +19647,8 @@ function setupCrashCompareChartInteractions(){
       startMaxX:Number(chart.scales.x.max),
       startMinY:Number(chart.scales.y.min),
       startMaxY:Number(chart.scales.y.max),
+      plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+      plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
       moved:false
     };
     canvas.classList.add('chart-pan-active');
@@ -19680,18 +19678,16 @@ function setupCrashCompareChartInteractions(){
     panState.moved = true;
     const auto = cloneCompareChartBounds(state.autoBounds);
     if(!auto) return;
-    const xScale = chart.scales.x;
-    const yScale = chart.scales.y;
-    const startMinPx = xScale.getPixelForValue(panState.startMinX);
-    const startMaxPx = xScale.getPixelForValue(panState.startMaxX);
-    let newMinX = xScale.getValueForPixel(startMinPx - dx);
-    let newMaxX = xScale.getValueForPixel(startMaxPx - dx);
-    const startMinYPx = yScale.getPixelForValue(panState.startMinY);
-    const startMaxYPx = yScale.getPixelForValue(panState.startMaxY);
-    let newMinY = yScale.getValueForPixel(startMinYPx - dy);
-    let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
     const isXZoomed = Math.abs(panState.startMinX - auto.xMin) > 1e-9 || Math.abs(panState.startMaxX - auto.xMax) > 1e-9;
     const isYZoomed = Math.abs(panState.startMinY - auto.yMin) > 1e-9 || Math.abs(panState.startMaxY - auto.yMax) > 1e-9;
+    const startRangeX = panState.startMaxX - panState.startMinX;
+    const startRangeY = panState.startMaxY - panState.startMinY;
+    const pxToValueX = startRangeX / Math.max(1, panState.plotWidth || 1);
+    const pxToValueY = startRangeY / Math.max(1, panState.plotHeight || 1);
+    let newMinX = panState.startMinX - dx * pxToValueX;
+    let newMaxX = panState.startMaxX - dx * pxToValueX;
+    let newMinY = panState.startMinY + dy * pxToValueY;
+    let newMaxY = panState.startMaxY + dy * pxToValueY;
     const rangeX = newMaxX - newMinX;
     const rangeY = newMaxY - newMinY;
     if(isXZoomed && rangeX <= (auto.xMax - auto.xMin)){
@@ -19793,6 +19789,8 @@ function setupCrashCompareChartInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+        plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
         moved:false
       };
       e.preventDefault();
@@ -19869,16 +19867,16 @@ function setupCrashCompareChartInteractions(){
       const dy = pt.y - touchState.startY;
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
       touchState.moved = true;
-      const xScale = chart.scales.x;
-      const yScale = chart.scales.y;
       const isXZoomed = Math.abs(touchState.startMinX - auto.xMin) > 1e-9 || Math.abs(touchState.startMaxX - auto.xMax) > 1e-9;
       const isYZoomed = Math.abs(touchState.startMinY - auto.yMin) > 1e-9 || Math.abs(touchState.startMaxY - auto.yMax) > 1e-9;
+      const startRangeX = touchState.startMaxX - touchState.startMinX;
+      const startRangeY = touchState.startMaxY - touchState.startMinY;
+      const pxToValueX = startRangeX / Math.max(1, touchState.plotWidth || 1);
+      const pxToValueY = startRangeY / Math.max(1, touchState.plotHeight || 1);
       let newMinX = touchState.startMinX, newMaxX = touchState.startMaxX;
       if(isXZoomed){
-        const startMinPx = xScale.getPixelForValue(touchState.startMinX);
-        const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
-        newMinX = xScale.getValueForPixel(startMinPx - dx);
-        newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+        newMinX = touchState.startMinX - dx * pxToValueX;
+        newMaxX = touchState.startMaxX - dx * pxToValueX;
         const rangeX = newMaxX - newMinX;
         if(rangeX <= (auto.xMax - auto.xMin)){
           if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
@@ -19887,10 +19885,8 @@ function setupCrashCompareChartInteractions(){
       }
       let newMinY = touchState.startMinY, newMaxY = touchState.startMaxY;
       if(isYZoomed){
-        const startMinYPx = yScale.getPixelForValue(touchState.startMinY);
-        const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
-        newMinY = yScale.getValueForPixel(startMinYPx - dy);
-        newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+        newMinY = touchState.startMinY + dy * pxToValueY;
+        newMaxY = touchState.startMaxY + dy * pxToValueY;
         const rangeY = newMaxY - newMinY;
         if(rangeY <= (auto.yMax - auto.yMin)){
           if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
@@ -20016,10 +20012,8 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   if(!Number.isFinite(left) || !Number.isFinite(right)) return false;
   const isFirst = index === 0;
   const isLast = index === ticks.length - 1;
-  if(!isFirst && !isLast) return false;
-  const lateHideAllowance = 42;
-  if(isFirst && px < left - lateHideAllowance) return true;
-  if(isLast && px > right + lateHideAllowance) return true;
+  if(isFirst && px < left + 6) return true;
+  if(isLast && px > right + 8) return true;
   return false;
 }
 function setupMonteCompareChartInteractions(){
@@ -20126,6 +20120,8 @@ function setupMonteCompareChartInteractions(){
       startMaxX:Number(chart.scales.x.max),
       startMinY:Number(chart.scales.y.min),
       startMaxY:Number(chart.scales.y.max),
+      plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+      plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
       moved:false
     };
     canvas.classList.add('chart-pan-active');
@@ -20155,18 +20151,16 @@ function setupMonteCompareChartInteractions(){
     panState.moved = true;
     const auto = cloneCompareChartBounds(state.autoBounds);
     if(!auto) return;
-    const xScale = chart.scales.x;
-    const yScale = chart.scales.y;
-    const startMinPx = xScale.getPixelForValue(panState.startMinX);
-    const startMaxPx = xScale.getPixelForValue(panState.startMaxX);
-    let newMinX = xScale.getValueForPixel(startMinPx - dx);
-    let newMaxX = xScale.getValueForPixel(startMaxPx - dx);
-    const startMinYPx = yScale.getPixelForValue(panState.startMinY);
-    const startMaxYPx = yScale.getPixelForValue(panState.startMaxY);
-    let newMinY = yScale.getValueForPixel(startMinYPx - dy);
-    let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
     const isXZoomed = Math.abs(panState.startMinX - auto.xMin) > 1e-9 || Math.abs(panState.startMaxX - auto.xMax) > 1e-9;
     const isYZoomed = Math.abs(panState.startMinY - auto.yMin) > 1e-9 || Math.abs(panState.startMaxY - auto.yMax) > 1e-9;
+    const startRangeX = panState.startMaxX - panState.startMinX;
+    const startRangeY = panState.startMaxY - panState.startMinY;
+    const pxToValueX = startRangeX / Math.max(1, panState.plotWidth || 1);
+    const pxToValueY = startRangeY / Math.max(1, panState.plotHeight || 1);
+    let newMinX = panState.startMinX - dx * pxToValueX;
+    let newMaxX = panState.startMaxX - dx * pxToValueX;
+    let newMinY = panState.startMinY + dy * pxToValueY;
+    let newMaxY = panState.startMaxY + dy * pxToValueY;
     const rangeX = newMaxX - newMinX;
     const rangeY = newMaxY - newMinY;
     if(isXZoomed && rangeX <= (auto.xMax - auto.xMin)){
@@ -20268,6 +20262,8 @@ canvas.addEventListener('dblclick', (e)=>{
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+        plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
         moved:false
       };
       e.preventDefault();
@@ -20344,16 +20340,16 @@ canvas.addEventListener('dblclick', (e)=>{
       const dy = pt.y - touchState.startY;
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
       touchState.moved = true;
-      const xScale = chart.scales.x;
-      const yScale = chart.scales.y;
       const isXZoomed = Math.abs(touchState.startMinX - auto.xMin) > 1e-9 || Math.abs(touchState.startMaxX - auto.xMax) > 1e-9;
       const isYZoomed = Math.abs(touchState.startMinY - auto.yMin) > 1e-9 || Math.abs(touchState.startMaxY - auto.yMax) > 1e-9;
+      const startRangeX = touchState.startMaxX - touchState.startMinX;
+      const startRangeY = touchState.startMaxY - touchState.startMinY;
+      const pxToValueX = startRangeX / Math.max(1, touchState.plotWidth || 1);
+      const pxToValueY = startRangeY / Math.max(1, touchState.plotHeight || 1);
       let newMinX = touchState.startMinX, newMaxX = touchState.startMaxX;
       if(isXZoomed){
-        const startMinPx = xScale.getPixelForValue(touchState.startMinX);
-        const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
-        newMinX = xScale.getValueForPixel(startMinPx - dx);
-        newMaxX = xScale.getValueForPixel(startMaxPx - dx);
+        newMinX = touchState.startMinX - dx * pxToValueX;
+        newMaxX = touchState.startMaxX - dx * pxToValueX;
         const rangeX = newMaxX - newMinX;
         if(rangeX <= (auto.xMax - auto.xMin)){
           if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
@@ -20362,10 +20358,8 @@ canvas.addEventListener('dblclick', (e)=>{
       }
       let newMinY = touchState.startMinY, newMaxY = touchState.startMaxY;
       if(isYZoomed){
-        const startMinYPx = yScale.getPixelForValue(touchState.startMinY);
-        const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
-        newMinY = yScale.getValueForPixel(startMinYPx - dy);
-        newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+        newMinY = touchState.startMinY + dy * pxToValueY;
+        newMaxY = touchState.startMaxY + dy * pxToValueY;
         const rangeY = newMaxY - newMinY;
         if(rangeY <= (auto.yMax - auto.yMin)){
           if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
@@ -20491,10 +20485,8 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   if(!Number.isFinite(left) || !Number.isFinite(right)) return false;
   const isFirst = index === 0;
   const isLast = index === ticks.length - 1;
-  if(!isFirst && !isLast) return false;
-  const lateHideAllowance = 42;
-  if(isFirst && px < left - lateHideAllowance) return true;
-  if(isLast && px > right + lateHideAllowance) return true;
+  if(isFirst && px < left + 6) return true;
+  if(isLast && px > right + 8) return true;
   return false;
 }
 
