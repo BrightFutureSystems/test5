@@ -13230,6 +13230,9 @@ function renderCrashComparisonChart(results){
         const yScale = scales?.y;
         if(!xScale || !yScale || !chartArea) return;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+        ctx.clip();
         ctx.textBaseline = 'top';
         ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
         guides.forEach((guide, idx)=>{
@@ -13237,6 +13240,7 @@ function renderCrashComparisonChart(results){
           if(!Number.isFinite(valueX)) return;
           const px = xScale.getPixelForValue(valueX);
           if(!Number.isFinite(px)) return;
+          if(px < chartArea.left || px > chartArea.right) return;
           const color = guide?.color || '#2563eb';
           ctx.strokeStyle = color;
           ctx.lineWidth = 1.5;
@@ -20109,6 +20113,9 @@ function renderWithdrawalComparisonChart(results){
         const yScale = scales?.y;
         if(!xScale || !yScale || !chartArea) return;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+        ctx.clip();
         ctx.textBaseline = 'top';
         ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
         guides.forEach((guide, idx)=>{
@@ -20116,6 +20123,7 @@ function renderWithdrawalComparisonChart(results){
           if(!Number.isFinite(valueX)) return;
           const px = xScale.getPixelForValue(valueX);
           if(!Number.isFinite(px)) return;
+          if(px < chartArea.left || px > chartArea.right) return;
           const color = guide?.color || '#2563eb';
           ctx.strokeStyle = color;
           ctx.lineWidth = 1.5;
@@ -21326,11 +21334,15 @@ function renderMonteCompareChart(results){
         const xScale = scales?.x;
         if(!xScale || !chartArea) return;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+        ctx.clip();
         ctx.textBaseline = 'top';
         ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
         guides.forEach((guide, idx)=>{
           const px = xScale.getPixelForValue(Number(guide?.x));
           if(!Number.isFinite(px)) return;
+          if(px < chartArea.left || px > chartArea.right) return;
           const color = guide?.color || '#2563eb';
           ctx.strokeStyle = color;
           ctx.lineWidth = 1.5;
