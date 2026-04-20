@@ -716,7 +716,7 @@
     cursor:not-allowed !important;
   }
   .withdrawal-compare-table th.compare-group-col,
-  .withdrawal-compare-table td.compare-group-col{width:56px;min-width:56px;max-width:56px;padding-left:2px;padding-right:2px;text-align:center !important;}
+  .withdrawal-compare-table td.compare-group-col{width:54px;min-width:54px;max-width:54px;padding-left:2px;padding-right:2px;text-align:center !important;}
   .withdrawal-compare-table th.compare-metric-col,
   .withdrawal-compare-table td.compare-metric-col{width:44px;min-width:44px;max-width:44px;padding-left:1px;padding-right:1px;text-align:center !important;}
   .withdrawal-compare-table th.compare-group-label{white-space:normal;line-height:1.35;text-align:center !important;}
@@ -1516,14 +1516,17 @@
   .withdrawal-compare-section.show{display:block;}
   .withdrawal-compare-status{color:var(--muted);font-size:.92rem;line-height:1.5;margin-bottom:8px;}
   .withdrawal-compare-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .withdrawal-compare-table{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed;font-size:13px;}
-  .withdrawal-compare-table th,.withdrawal-compare-table td{border:1px solid var(--border);padding:6px;text-align:center;vertical-align:middle;}
-  .withdrawal-compare-table .compare-group-label{background:#f8fafc;font-weight:700;}
+  #withdrawalCompareResultTableWrap,#crashCompareResultTableWrap,#monteCompareResultTableWrap{text-align:left;}
+  #withdrawalCompareResultTableWrap .withdrawal-compare-table,#crashCompareResultTableWrap .withdrawal-compare-table,#monteCompareResultTableWrap .withdrawal-compare-table{margin-left:0;margin-right:auto;}
+  .withdrawal-compare-table{width:max-content;max-width:100%;min-width:0;border-collapse:collapse;table-layout:auto;font-size:12px;}
+  .withdrawal-compare-table th,.withdrawal-compare-table td{border:1px solid var(--border);padding:4px 2px;text-align:center;vertical-align:middle;white-space:nowrap;}
+  .withdrawal-compare-table .compare-group-label{background:#f8fafc;font-weight:700;white-space:normal;}
   .withdrawal-compare-table .compare-row-fixed th,.withdrawal-compare-table .compare-row-fixed td{font-weight:700;}
   .withdrawal-compare-table .compare-row-median th,.withdrawal-compare-table .compare-row-median td{background:#fffbeb;}
-  .withdrawal-compare-table th{background:#fafafa;line-height:1.35;}
-  .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{text-align:center;width:52px;min-width:52px;padding-left:4px;padding-right:4px;}
-  .withdrawal-compare-table th:nth-child(2),.withdrawal-compare-table td:nth-child(2){width:70px;min-width:70px;padding-left:4px;padding-right:4px;text-align:center;}
+  .withdrawal-compare-table th{background:#fafafa;line-height:1.25;}
+  .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{text-align:center;width:54px;min-width:54px;padding-left:2px;padding-right:2px;}
+  .withdrawal-compare-table th:nth-child(2),.withdrawal-compare-table td:nth-child(2){width:58px;min-width:58px;padding-left:2px;padding-right:2px;text-align:center;}
+  .withdrawal-compare-table th:nth-child(n+3),.withdrawal-compare-table td:nth-child(n+3){width:1%;min-width:0;padding-left:2px;padding-right:2px;}
   .withdrawal-compare-chart-wrap{height:260px;margin-top:10px;}
   .withdrawal-compare-subcontrols{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px 12px;margin-bottom:10px;}
   .withdrawal-param-case-table{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed;font-size:13px;}
@@ -1735,9 +1738,9 @@
     .withdrawal-half-select{width:min(260px,68vw);max-width:68vw;}
     .withdrawal-start-select{flex:0 0 40% !important;width:40% !important;max-width:320px !important;min-width:180px !important;}
     .withdrawal-inline-value{width:auto;min-width:0;flex:0 0 auto;}
-    .withdrawal-compare-table{min-width:720px;font-size:12px;}
-    .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{width:52px;min-width:52px;}
-    .withdrawal-compare-table th:nth-child(2),.withdrawal-compare-table td:nth-child(2){width:70px;min-width:70px;}
+    .withdrawal-compare-table{min-width:0;font-size:11px;}
+    .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{width:54px;min-width:54px;}
+    .withdrawal-compare-table th:nth-child(2),.withdrawal-compare-table td:nth-child(2){width:58px;min-width:58px;}
     .withdrawal-param-case-table{min-width:420px;font-size:12px;}
     .crash-test-table{min-width:742px;font-size:12px;}
     .crash-history-table{min-width:560px;font-size:12px;}
@@ -13145,7 +13148,7 @@ function runCrashComparisonCalculation(){
 function renderCrashCompareHeader(results){
   const head = document.getElementById('crashCompareHead');
   if(!head) return;
-  const cols = (results || []).map(r=>`<th>${escapeHtml(r.label || '')}</th>`).join('');
+  const cols = buildCompareHeaderCols(results);
   head.innerHTML = `<tr><th class="compare-group-col">大分類</th><th class="compare-metric-col">指標</th>${cols}</tr>`;
 }
 function renderCrashComparisonTable(results){
@@ -18563,10 +18566,29 @@ function setCrashCompareResultsVisible(visible){
   if(chartWrap) chartWrap.hidden = !visible;
 }
 
+function getCompareHeaderPaletteColor(index){
+  const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
+  return palettes[index % palettes.length];
+}
+function hexToRgbaString(hex, alpha){
+  const raw = String(hex || '').replace('#','').trim();
+  if(!/^[0-9a-fA-F]{6}$/.test(raw)) return `rgba(148,163,184,${alpha})`;
+  const r = parseInt(raw.slice(0,2), 16);
+  const g = parseInt(raw.slice(2,4), 16);
+  const b = parseInt(raw.slice(4,6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function buildCompareHeaderCols(results){
+  return (results || []).map((r, idx)=>{
+    const color = getCompareHeaderPaletteColor(idx);
+    const bg = hexToRgbaString(color, 0.18);
+    return `<th style="background:${bg};">${escapeHtml(r.label || '')}</th>`;
+  }).join('');
+}
 function renderWithdrawalCompareHeader(results){
   const head = document.getElementById('withdrawalCompareHead');
   if(!head) return;
-  const cols = (results || []).map(r=>`<th>${escapeHtml(r.label || '')}</th>`).join('');
+  const cols = buildCompareHeaderCols(results);
   head.innerHTML = `<tr><th class="compare-group-col">大分類</th><th class="compare-metric-col">指標</th>${cols}</tr>`;
 }
 function updateWithdrawalCompareModeUI(){
@@ -20016,8 +20038,8 @@ function setMonteCompareResultsVisible(visible){
 function renderMonteCompareHeader(results){
   const head = document.getElementById('monteCompareHead');
   if(!head) return;
-  const cols = (results || []).map(r=>`<th>${escapeHtml(r.label || '')}</th>`).join('');
-  head.innerHTML = `<tr><th>大分類</th><th>指標</th>${cols}</tr>`;
+  const cols = buildCompareHeaderCols(results);
+  head.innerHTML = `<tr><th class="compare-group-col">大分類</th><th class="compare-metric-col">指標</th>${cols}</tr>`;
 }
 function renderMonteCompareTable(results){
   const body = document.getElementById('monteCompareBody');
