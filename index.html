@@ -6437,7 +6437,7 @@ function positionNumericAssist(_el){}
 function hideNumericAssist(){ activeNumericInput = null; }
 
 function enhanceNumericInputs(root = document){
-  const negativeKeyboardInputIds = new Set(["fixedScaleMin", "withdrawalBucketDefenseThresholdPct"]);
+  const negativeKeyboardInputIds = new Set(["fixedScaleMin", "withdrawalBucketDefenseThresholdPct", "chartAxisYMin", "chartAxisYMax"]);
   root.querySelectorAll('input[type="number"], #fixedScaleMin, #fixedScaleMax').forEach(el=>{
     if(el.dataset.numericReady === "1") return;
     el.dataset.numericReady = "1";
@@ -24851,6 +24851,25 @@ window.addEventListener("load", ()=>{
     if(el){
       el.addEventListener("input", ()=>formatNumericInputDisplay(el, true));
       el.addEventListener("blur", ()=>formatNumericInputDisplay(el, true));
+    }
+  });
+  ["chartAxisXMin","chartAxisXMax"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      const removeMinus = ()=>{
+        const before = String(el.value ?? "");
+        const cleaned = before.replace(/[−ー―‐-]/g, "");
+        if(before !== cleaned){
+          const start = typeof el.selectionStart === "number" ? el.selectionStart : cleaned.length;
+          el.value = cleaned;
+          if(document.activeElement === el && typeof el.setSelectionRange === "function"){
+            const nextPos = Math.max(0, start - (before.length - cleaned.length));
+            try{ el.setSelectionRange(nextPos, nextPos); }catch(_e){}
+          }
+        }
+      };
+      el.addEventListener("input", removeMinus);
+      el.addEventListener("blur", removeMinus);
     }
   });
   updateInputModeUI();
