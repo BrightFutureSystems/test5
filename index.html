@@ -3238,6 +3238,7 @@ let chartAxisPreviewSourceTab = -1;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
+let globalXAxisLabelMode = "age";
 let tabDragScenarioId = "";
 let tabDropScenarioId = "";
 let tabDropInsertAfter = false;
@@ -7421,6 +7422,8 @@ function refreshRowLabelTexts(){
   });
 }
 function setAllInputs(data){
+  const xAxisLabelModeEl = document.getElementById("xAxisLabelMode");
+  const preservedGlobalXAxisLabelMode = String(globalXAxisLabelMode || xAxisLabelModeEl?.value || "age").toLowerCase();
   const migrated = syncDynamicCountsFromData(data || {});
   renderDynamicSections(migrated);
   syncRetireYearSelectOptions("self", migrated);
@@ -7432,6 +7435,8 @@ function setAllInputs(data){
     if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
+  if(xAxisLabelModeEl) xAxisLabelModeEl.value = preservedGlobalXAxisLabelMode;
+  globalXAxisLabelMode = preservedGlobalXAxisLabelMode;
   refreshRowLabelTexts();
   syncAllBirthDateDerivedFields();
   syncLoanBuyFieldsFromYearMonth();
@@ -17132,8 +17137,12 @@ function getCalendarWindowForXAxisValue(sim, xValue){
   return sim.calendarYearWindows[idx] || sim.yearlyRows?.[idx]?.meta?.calendarWindow || null;
 }
 function getXAxisLabelMode(){
-  const value = String(document.getElementById("xAxisLabelMode")?.value || "age").toLowerCase();
-  return ["age","calendar","both"].includes(value) ? value : "age";
+  const el = document.getElementById("xAxisLabelMode");
+  const value = String(el?.value || globalXAxisLabelMode || "age").toLowerCase();
+  const normalized = ["age","calendar","both"].includes(value) ? value : "age";
+  globalXAxisLabelMode = normalized;
+  if(el && String(el.value || "").toLowerCase() !== normalized) el.value = normalized;
+  return normalized;
 }
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
@@ -17147,7 +17156,7 @@ function formatXAxisCalendarYearShort(year){
   return String(y - 2000);
 }
 function getCalendarWindowTooltipTitle(sim, xValue){
-  const mode = getXAxisLabelMode();
+  const mode = getChartAxisModalSelectedMode();
   const target = Number(xValue);
   if(!Number.isFinite(target)) return mode === "calendar" ? `西暦：${xValue}` : `年齢：${xValue}`;
   const win = getCalendarWindowForXAxisValue(sim, target);
@@ -17510,6 +17519,7 @@ function getSaveData(){
   return {
     scenarios,
     currentTab,
+    globalXAxisLabelMode: getXAxisLabelMode(),
     nextScenarioSerial,
     overlayModeOn: workspaceOverlayModeOn,
     overlaySettings: ensureWorkspaceOverlayState(),
@@ -17563,6 +17573,7 @@ function loadFromURL(){
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
     workspaceOverlayModeOn = !!data.overlayModeOn;
     workspaceOverlaySettings = data.overlaySettings && typeof data.overlaySettings === "object" ? JSON.parse(JSON.stringify(data.overlaySettings)) : {};
+    globalXAxisLabelMode = ["age","calendar","both"].includes(String(data.globalXAxisLabelMode || "").toLowerCase()) ? String(data.globalXAxisLabelMode).toLowerCase() : "age";
     cleanupOverlayStylesForAllScenarios();
     updateOverlayFeatureUI();
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
@@ -17588,6 +17599,7 @@ function loadFromLocal(){
     inputModeScrollPositions = {...getInputModeScrollStore(), ...(data.inputModeScrollPositions || {})};
     workspaceOverlayModeOn = !!data.overlayModeOn;
     workspaceOverlaySettings = data.overlaySettings && typeof data.overlaySettings === "object" ? JSON.parse(JSON.stringify(data.overlaySettings)) : {};
+    globalXAxisLabelMode = ["age","calendar","both"].includes(String(data.globalXAxisLabelMode || "").toLowerCase()) ? String(data.globalXAxisLabelMode).toLowerCase() : "age";
     cleanupOverlayStylesForAllScenarios();
     updateOverlayFeatureUI();
     if(scenarios.length) setAllInputs(scenarios[currentTab].data);
@@ -23901,7 +23913,7 @@ function computeChartAxisGestureOuterBounds(){
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
-function syncChartAxisModalFromState(){
+function syncChartAxisModalFromState(modeOverride = null){
   const xMinEl = document.getElementById("chartAxisXMin");
   const xMaxEl = document.getElementById("chartAxisXMax");
   const yMinEl = document.getElementById("chartAxisYMin");
@@ -23909,7 +23921,7 @@ function syncChartAxisModalFromState(){
   const chartScales = chart?.scales || {};
   const chartX = chartScales.x;
   const chartY = chartScales.y;
-  const mode = getXAxisLabelMode();
+  const mode = ["age","calendar","both"].includes(String(modeOverride || "").toLowerCase()) ? String(modeOverride).toLowerCase() : getXAxisLabelMode();
   const sim = getChartAxisDisplaySim();
   const fallbackXMin = numInput("xAxisMin", numInput("age", 0));
   const fallbackXMax = numInput("xAxisMax", Math.min(120, Math.max(100, numInput("age", 0))));
@@ -23970,6 +23982,7 @@ function restoreChartAxisPreviewState(state){
   if(xAxisMinEl) xAxisMinEl.value = String(state.xAxisMin ?? "");
   if(xAxisMaxEl) xAxisMaxEl.value = String(state.xAxisMax ?? "");
   if(xAxisLabelModeEl) xAxisLabelModeEl.value = String(state.xAxisLabelMode || "age");
+  globalXAxisLabelMode = String(state.xAxisLabelMode || "age").toLowerCase();
   educationRightAxisOverride = state.educationRightAxisOverride == null ? null : deepClone(state.educationRightAxisOverride);
   formatNumericInputDisplay(fixedScaleMinEl, true);
   formatNumericInputDisplay(fixedScaleMaxEl, true);
@@ -24002,6 +24015,7 @@ function applyChartAxisModalToState(options = {}){
   if(xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
   if(xAxisLabelModeEl) xAxisLabelModeEl.value = mode;
+  globalXAxisLabelMode = mode;
   formatNumericInputDisplay(fixedScaleMinEl, true);
   formatNumericInputDisplay(fixedScaleMaxEl, true);
   if(options.persist) persistState();
@@ -24009,7 +24023,9 @@ function applyChartAxisModalToState(options = {}){
     if(monteMode) runMonte();
     else draw();
   }
-  if(options.syncModal !== false) syncChartAxisModalFromState();
+  if(options.syncModal !== false){
+    requestAnimationFrame(()=>syncChartAxisModalFromState(mode));
+  }
 }
 function scheduleChartAxisPreviewApply(){
   if(!isPreviewSheetOpen('chartAxisModal')) return;
@@ -24218,10 +24234,10 @@ function setupChartAxisZoomInteractions(){
     }
     if(!changed) return;
     suppressClickUntil = Date.now() + 250;
+    chart.update("none");
     syncChartAxisStateFromChartInstance(chart, {
       lockYScale: state.axis === "y" ? true : !!document.getElementById("fixedScale")?.checked
     });
-    chart.update("none");
     if(shouldPersist) persistState();
   };
   canvas.addEventListener("mousedown", (e)=>{
@@ -24332,8 +24348,8 @@ function setupChartPanInteractions(){
       chart.options.scales.y.min = Math.min(newMinY, newMaxY);
       chart.options.scales.y.max = Math.max(newMinY, newMaxY);
     }
-    syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
     chart.update('none');
+    syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
     e.preventDefault();
   }, {passive:false});
   window.addEventListener('mouseup', ()=>{
@@ -24771,7 +24787,7 @@ window.addEventListener("load", ()=>{
     el.addEventListener('change', ()=>{
       const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || "age";
       setChartAxisModalLabelMode(mode);
-      syncChartAxisModalInputsFromChart();
+      syncChartAxisModalFromState(mode);
       scheduleChartAxisPreviewApply();
     });
   });
