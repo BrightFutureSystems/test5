@@ -18406,6 +18406,7 @@ function isWithdrawalPreviewSheetOpen(){
 function isCrashPreviewSheetOpen(){
   return isPreviewSheetOpen('crashTestModal');
 }
+const WITHDRAWAL_PREVIEW_HEIGHT_STORAGE_KEY = 'assetLifePreviewSheetHeightPx';
 function getWithdrawalPreviewHeightBounds(){
   const vh = Math.max(window.innerHeight || 0, 320);
   return {
@@ -18414,19 +18415,55 @@ function getWithdrawalPreviewHeightBounds(){
     defaultHeight: Math.min(620, Math.round(vh * 0.5))
   };
 }
+function getPreviewSheetAlignedTopY(){
+  const chartWrap = document.getElementById('chartWrap');
+  if(chartWrap){
+    const rect = chartWrap.getBoundingClientRect();
+    if(Number.isFinite(rect.bottom)) return Math.max(0, Math.round(rect.bottom));
+  }
+  const inputs = document.getElementById('inputs');
+  if(inputs){
+    const rect = inputs.getBoundingClientRect();
+    if(Number.isFinite(rect.top)) return Math.max(0, Math.round(rect.top));
+  }
+  return Math.round((window.innerHeight || 0) * 0.5);
+}
+function getWithdrawalPreviewAlignedHeight(){
+  const bounds = getWithdrawalPreviewHeightBounds();
+  const targetTop = getPreviewSheetAlignedTopY();
+  const raw = Math.round((window.innerHeight || 0) - targetTop);
+  return Math.max(bounds.min, Math.min(bounds.max, raw || bounds.defaultHeight));
+}
+function readStoredWithdrawalPreviewHeight(){
+  try{
+    const raw = localStorage.getItem(WITHDRAWAL_PREVIEW_HEIGHT_STORAGE_KEY);
+    const n = Math.round(Number(raw));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }catch(_e){
+    return null;
+  }
+}
+function persistWithdrawalPreviewHeight(heightPx){
+  try{ localStorage.setItem(WITHDRAWAL_PREVIEW_HEIGHT_STORAGE_KEY, String(heightPx)); }catch(_e){}
+}
 function applyWithdrawalPreviewHeight(heightPx){
   const bounds = getWithdrawalPreviewHeightBounds();
-  const next = Math.max(bounds.min, Math.min(bounds.max, Math.round(Number(heightPx) || bounds.defaultHeight)));
+  const fallback = getWithdrawalPreviewAlignedHeight();
+  const next = Math.max(bounds.min, Math.min(bounds.max, Math.round(Number(heightPx) || fallback)));
   withdrawalPreviewCurrentHeightPx = next;
   document.documentElement.style.setProperty('--withdrawal-preview-height', `${next}px`);
 }
-function ensureWithdrawalPreviewHeight(){
+function ensureWithdrawalPreviewHeight(forceAligned=false){
   const bounds = getWithdrawalPreviewHeightBounds();
-  applyWithdrawalPreviewHeight(withdrawalPreviewCurrentHeightPx || bounds.defaultHeight);
+  const stored = forceAligned ? null : (withdrawalPreviewCurrentHeightPx || readStoredWithdrawalPreviewHeight());
+  applyWithdrawalPreviewHeight(stored || getWithdrawalPreviewAlignedHeight() || bounds.defaultHeight);
 }
 function stopWithdrawalPreviewDrag(){
   if(!withdrawalPreviewDragState) return;
   withdrawalPreviewDragState = null;
+  if(Number.isFinite(withdrawalPreviewCurrentHeightPx) && withdrawalPreviewCurrentHeightPx > 0){
+    persistWithdrawalPreviewHeight(withdrawalPreviewCurrentHeightPx);
+  }
   document.body.classList.remove('withdrawal-preview-dragging');
   document.removeEventListener('pointermove', handleWithdrawalPreviewHandleDragMove, true);
   document.removeEventListener('pointerup', stopWithdrawalPreviewDrag, true);
@@ -18532,6 +18569,11 @@ function openPreviewSheet(modalEl, _options={}){
   modalEl.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(()=>{
     updateWithdrawalPreviewTopVar();
+    if(!(withdrawalPreviewCurrentHeightPx > 0) && !readStoredWithdrawalPreviewHeight()){
+      ensureWithdrawalPreviewHeight(true);
+    }else{
+      ensureWithdrawalPreviewHeight(false);
+    }
     modalEl.classList.add('preview-visible');
   });
   resetPreviewSheetScroll(modalEl);
