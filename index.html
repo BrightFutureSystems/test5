@@ -5008,7 +5008,7 @@ function handleStandardActionModalKeydown(e){
     if(active && active.tagName === 'TEXTAREA') return;
     const focusInsideModal = active instanceof Element && modal.contains(active);
     if(!focusInsideModal && !config.enterWithoutFocus) return;
-    const activeButton = focusInsideModal && buttons.includes(active) ? active : null;
+    const activeButton = focusInsideModal && active instanceof HTMLButtonElement && !active.disabled ? active : (focusInsideModal && buttons.includes(active) ? active : null);
     const targetBtn = activeButton || primaryBtn;
     if(!targetBtn || targetBtn.disabled) return;
     e.preventDefault();
@@ -7425,6 +7425,13 @@ function setAllInputs(data){
   Object.entries(migrated || {}).forEach(([id,val])=>{
     const el = document.getElementById(id);
     if(!el) return;
+    if(id === 'xAxisLabelMode'){
+      const hiddenMode = document.getElementById('xAxisLabelMode')?.value;
+      const scenarioMode = Array.isArray(scenarios) ? scenarios.find(sc=>sc && (sc.xAxisLabelMode || sc.data?.xAxisLabelMode)) : null;
+      const globalMode = String(hiddenMode || scenarioMode?.xAxisLabelMode || scenarioMode?.data?.xAxisLabelMode || val || 'age');
+      el.value = globalMode;
+      return;
+    }
     if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
@@ -17134,7 +17141,8 @@ function getXAxisLabelMode(){
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
   if(mode === "calendar") return "西暦（省略年）";
-  return "年齢（歳）／西暦（省略年）";
+  if(mode === "both") return "年齢（歳）／西暦（省略年）";
+  return "年齢（歳）";
 }
 function formatXAxisCalendarYearShort(year){
   const y = Math.round(Number(year) || 0);
@@ -17151,7 +17159,8 @@ function getCalendarWindowTooltipTitle(sim, xValue){
   const endInclusive = addDaysToParts(win.end, -1);
   if(mode === "age") return `年齢：${target}歳（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
   if(mode === "calendar") return `西暦：${win.year}年（年齢 ${target}歳）`;
-  return `年齢：${target}歳 / ${win.year}年（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
+  if(mode === "both") return `年齢：${target}歳 / ${win.year}年（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
+  return `年齢：${target}歳（${formatDatePartsYmd(win.start)}〜${formatDatePartsYmd(endInclusive)}）`;
 }
 function getCalendarWindowTickLabel(sim, xValue){
   const mode = getXAxisLabelMode();
@@ -17161,7 +17170,8 @@ function getCalendarWindowTickLabel(sim, xValue){
   const calendarShort = win ? formatXAxisCalendarYearShort(win.year) : '';
   if(mode === "age") return `${target}`;
   if(mode === "calendar") return calendarShort || `${target}`;
-  return calendarShort ? [`${target}`, calendarShort] : `${target}`;
+  if(mode === "both") return [`${target}`, calendarShort || `${target}`];
+  return `${target}`;
 }
 
 function shouldHideEdgeTick(index, ticks){
@@ -22598,7 +22608,7 @@ document.addEventListener("focusin", (e)=>{
   const modal = getOpenModal();
   if(!modal) return;
   const target = e.target;
-  const previewControlsSelector = activePreviewSheetModalId === 'chartAxisModal' ? '#chartAxisModal .withdrawal-preview-sheet' : '#chartTopBar, #chartCanvasStickyWrap';
+  const previewControlsSelector = activePreviewSheetModalId === 'chartAxisModal' ? '#chartAxisModal .withdrawal-preview-sheet, #chartTopBar, #chartCanvasStickyWrap' : '#chartTopBar, #chartCanvasStickyWrap';
   if(modal.contains(target)){
     rememberFocusInsideOpenModal(target);
     return;
@@ -22632,6 +22642,9 @@ document.getElementById("graphType").addEventListener("change", ()=>{
   if(fixedScaleEl) fixedScaleEl.checked = false;
   monteMode = false;
   requestDraw();
+  if(document.getElementById('chartAxisModal')?.classList.contains('show')){
+    requestAnimationFrame(()=>syncChartAxisModalFromState());
+  }
   persistState();
 });
 document.getElementById("overlayToggle").addEventListener("change", ()=>{
@@ -23854,8 +23867,7 @@ function computeChartAxisGestureOuterBounds(){
 }
 
 function getChartAxisModalXInputMode(){
-  const mode = getXAxisLabelMode();
-  return mode === "calendar" ? "calendar" : "age";
+  return "age";
 }
 function convertChartAxisAgeToDisplay(ageValue){
   const n = Number(ageValue);
@@ -23950,6 +23962,14 @@ function restoreChartAxisSnapshot(snapshot){
   if(xAxisMinEl) xAxisMinEl.value = String(snapshot.xAxisMin ?? '');
   if(xAxisMaxEl) xAxisMaxEl.value = String(snapshot.xAxisMax ?? '');
   if(xAxisLabelModeEl) xAxisLabelModeEl.value = String(snapshot.xAxisLabelMode || 'age');
+  if(Array.isArray(scenarios)) {
+    const mode = String(snapshot.xAxisLabelMode || 'age');
+    scenarios.forEach((sc)=>{
+      if(!sc) return;
+      sc.xAxisLabelMode = mode;
+      if(sc.data) sc.data.xAxisLabelMode = mode;
+    });
+  }
   educationRightAxisOverride = snapshot.educationRightAxisOverride ? {...snapshot.educationRightAxisOverride} : null;
 }
 function openChartAxisModal(){
@@ -24003,7 +24023,7 @@ function saveChartAxisModal(){
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
   if(xAxisLabelModeEl) xAxisLabelModeEl.value = mode;
   if(Array.isArray(scenarios)){
-    scenarios.forEach(sc=>{ if(sc) sc.xAxisLabelMode = mode; });
+    scenarios.forEach(sc=>{ if(!sc) return; sc.xAxisLabelMode = mode; if(sc.data) sc.data.xAxisLabelMode = mode; });
   }
   formatNumericInputDisplay(fixedScaleMinEl, true);
   formatNumericInputDisplay(fixedScaleMaxEl, true);
@@ -24058,6 +24078,9 @@ function resetChartAxesToAuto(options = {}){
   if(redraw){
     if(monteMode) runMonte();
     else draw();
+  }
+  if(document.getElementById('chartAxisModal')?.classList.contains('show')){
+    requestAnimationFrame(()=>syncChartAxisModalFromState());
   }
 }
 function syncChartAxisStateFromChartInstance(activeChart, options = {}){
@@ -24745,6 +24768,7 @@ window.addEventListener("load", ()=>{
       if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
       if(monteMode) runMonte(); else draw();
       syncChartAxisModalFromState();
+      requestAnimationFrame(()=>syncChartAxisModalFromState());
     });
   });
   document.querySelectorAll('input[name="chartAxisLabelMode"]').forEach(radio=>{
@@ -24752,10 +24776,11 @@ window.addEventListener("load", ()=>{
       const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || 'age';
       const xAxisLabelModeEl = document.getElementById('xAxisLabelMode');
       if(xAxisLabelModeEl) xAxisLabelModeEl.value = mode;
-      if(Array.isArray(scenarios)) scenarios.forEach(sc=>{ if(sc) sc.xAxisLabelMode = mode; });
+      if(Array.isArray(scenarios)) scenarios.forEach(sc=>{ if(!sc) return; sc.xAxisLabelMode = mode; if(sc.data) sc.data.xAxisLabelMode = mode; });
       updateChartAxisModalXAxisUnits();
       syncChartAxisModalFromState();
       if(monteMode) runMonte(); else draw();
+      requestAnimationFrame(()=>syncChartAxisModalFromState());
     });
   });
   function updateChartTooltipFromPointerEvent(e){
@@ -24816,7 +24841,6 @@ window.addEventListener("load", ()=>{
   ["chartAxisYMin","chartAxisYMax"].forEach(id=>{
     const el = document.getElementById(id);
     if(el){
-      el.addEventListener("input", ()=>formatNumericInputDisplay(el, true));
       el.addEventListener("blur", ()=>formatNumericInputDisplay(el, true));
     }
   });
