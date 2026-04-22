@@ -1713,7 +1713,8 @@
   .crash-compare-split{display:inline-flex;align-items:stretch;}
   .crash-compare-content{overflow:hidden;max-height:0;opacity:0;transition:max-height .24s ease, opacity .2s ease;margin-top:0;}
   .crash-compare-content.is-open{opacity:1;}
-  .withdrawal-compare-header{display:flex;align-items:center;justify-content:flex-start;margin-bottom:0;}
+  .withdrawal-compare-header{display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:0;}
+  .compare-header-note{color:var(--muted);font-size:.9rem;line-height:1.4;white-space:nowrap;}
   .withdrawal-compare-split{display:inline-flex;align-items:stretch;}
   .withdrawal-compare-content{overflow:hidden;max-height:0;opacity:0;transition:max-height .24s ease, opacity .2s ease;margin-top:0;}
   .withdrawal-compare-content.is-open{opacity:1;}
@@ -2307,6 +2308,7 @@
               <button type="button" id="runWithdrawalCompareBtn" class="compact-btn split-btn-main">取り崩し比較</button>
               <button type="button" id="toggleWithdrawalCompareBtn" class="compact-btn split-btn-toggle" aria-label="取り崩し比較の開閉" aria-controls="withdrawalCompareContent" aria-expanded="false">▼</button>
             </div>
+            <span class="compare-header-note">（同一乱数で確率比較）</span>
           </div>
           <div id="withdrawalCompareContent" class="withdrawal-compare-content" hidden>
             <div id="withdrawalCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「取り崩し比較」を押すと、同一乱数列で比較します。</div>
@@ -2422,11 +2424,12 @@
             </div>
           </div>
           <div id="crashCompareSection" class="withdrawal-compare-section show">
-            <div class="crash-compare-header">
+            <div class="crash-compare-header withdrawal-compare-header">
               <div class="split-btn-group crash-compare-split">
                 <button type="button" id="runCrashCompareBtn" class="compact-btn split-btn-main">暴落比較</button>
                 <button type="button" id="toggleCrashCompareBtn" class="compact-btn split-btn-toggle" aria-label="暴落比較の開閉" aria-controls="crashCompareContent" aria-expanded="false">▼</button>
               </div>
+              <span class="compare-header-note">（同一乱数で確率比較）</span>
             </div>
             <div id="crashCompareContent" class="crash-compare-content" hidden>
               <div id="crashCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。</div>
@@ -2533,6 +2536,7 @@
                 <button id="runMonteCompareBtn" type="button" class="compact-btn split-btn-main">モンテカルロ比較</button>
                 <button id="toggleMonteCompareBtn" type="button" class="compact-btn split-btn-toggle" aria-label="モンテカルロ比較の開閉" aria-expanded="false">▼</button>
               </div>
+              <span class="compare-header-note">（同一乱数で確率比較）</span>
             </div>
             <div id="monteCompareContent" class="withdrawal-compare-content" hidden>
               <div id="monteCompareSection">
@@ -12882,6 +12886,7 @@ function saveCrashPreviewSheet(){
   closeCrashTestModal();
 }
 function openCrashTestModal(){
+  updateScenarioScopedModalTitles();
   openCrashPreviewSheet();
 }
 function saveCrashTestModal(){
@@ -13741,6 +13746,7 @@ function getFireDiagnosisSettingsFromModal(){
   return {diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
 }
 function openFireDiagnosisModal(){
+  updateScenarioScopedModalTitles();
   loadFireDiagnosisDraftToModal();
   lastFireDiagnosisResult = null;
   destroyFireDiagnosisProbabilityChart();
@@ -14431,6 +14437,11 @@ function getNormalFireGraphAnchorAge(result){
   }
   return null;
 }
+function getFireDiagnosisAssetYAxisUnitSpec(values){
+  const nums = (values || []).filter(v=>Number.isFinite(v)).map(v=>Math.abs(Number(v) || 0));
+  const absMax = nums.length ? Math.max(...nums) : 0;
+  return absMax >= 10000 ? {divisor:10000, label:'億円'} : {divisor:1, label:'万円'};
+}
 function renderNormalFireTerminalChart(result){
   const wrap = document.getElementById('fireDiagnosisProbabilityChartWrap');
   const canvas = document.getElementById('fireDiagnosisProbabilityChart');
@@ -14461,6 +14472,9 @@ function renderNormalFireTerminalChart(result){
     axisNoteEl.textContent = '横軸の各年齢は、その年齢の誕生日時点で退職するケースを表します。グラフは寿命時残高の推移を示し、標準判定でも期間中最低残高は別途判定しています。';
   }
   const axisRange = getNormalFireTerminalAxisRange(availableSeries, threshold);
+  const normalFireAxisValues = availableSeries.flat().map(item=>Number(item?.terminalAsset || 0) || 0);
+  normalFireAxisValues.push(Number(axisRange?.min || 0) || 0, Number(axisRange?.max || 0) || 0, Number(threshold || 0) || 0);
+  const normalFireYAxisUnitSpec = getFireDiagnosisAssetYAxisUnitSpec(normalFireAxisValues);
   let labels = [];
   let datasets = [];
   if(isCompare){
@@ -14468,7 +14482,7 @@ function renderNormalFireTerminalChart(result){
     normalSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     withCrashSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     const ages = Array.from(ageSet).sort((a,b)=>a-b);
-    labels = ages.map(age=>`${age}歳`);
+    labels = ages.map(age=>`${age}`);
     const normalMap = new Map(normalSeries.map(item=>[Math.round(Number(item?.age) || 0), Number(item?.terminalAsset || 0) || 0]));
     const withCrashMap = new Map(withCrashSeries.map(item=>[Math.round(Number(item?.age) || 0), Number(item?.terminalAsset || 0) || 0]));
     const normalFireAge = getNormalFireGraphAnchorAge(result?.normal);
@@ -14512,7 +14526,7 @@ function renderNormalFireTerminalChart(result){
     }
   } else {
     const fireAge = getNormalFireGraphAnchorAge(result);
-    labels = singleSeries.map(item=>`${item.age}歳`);
+    labels = singleSeries.map(item=>`${item.age}`);
     datasets = [
       {
         label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし（通常）',
@@ -14586,10 +14600,10 @@ function renderNormalFireTerminalChart(result){
         y:{
           min:axisRange.min,
           max:axisRange.max,
-          title:{display:true,text:'寿命時残高（万円）'},
-          ticks:{callback(value){ return `${Math.round(Number(value) || 0).toLocaleString()}万円`; }}
+          title:{display:true,text:`寿命時残高（${normalFireYAxisUnitSpec.label}）`},
+          ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / (Number(normalFireYAxisUnitSpec?.divisor) || 1)); }}
         },
-        x:{title:{display:true,text:'退職年齢'}}
+        x:{title:{display:true,text:'退職年齢（歳）'}}
       }
     }
   });
@@ -14630,7 +14644,7 @@ function renderMonteCarloFireProbabilityChart(result){
     normalSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     withCrashSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     const ages = Array.from(ageSet).sort((a,b)=>a-b);
-    labels = ages.map(age=>`${age}歳`);
+    labels = ages.map(age=>`${age}`);
     const normalMap = new Map(normalSeries.map(item=>[Math.round(Number(item?.age) || 0), Math.round((Number(item?.successRate || 0) || 0) * 10) / 10]));
     const withCrashMap = new Map(withCrashSeries.map(item=>[Math.round(Number(item?.age) || 0), Math.round((Number(item?.successRate || 0) || 0) * 10) / 10]));
     const normalFireAge = Math.round(Number(result?.normal?.fireAgeYears) || 0);
@@ -14674,7 +14688,7 @@ function renderMonteCarloFireProbabilityChart(result){
     }
   } else {
     const fireAge = Math.round(Number(result.fireAgeYears) || 0);
-    labels = singleSeries.map(item=>`${item.age}歳`);
+    labels = singleSeries.map(item=>`${item.age}`);
     const successRates = singleSeries.map(item=>Math.round((Number(item.successRate || 0) || 0) * 10) / 10);
     datasets = [
       {
@@ -14742,9 +14756,13 @@ function renderMonteCarloFireProbabilityChart(result){
           min:axisRange.min,
           max:axisRange.max,
           title:{display:true,text:'成功率（%）'},
-          ticks:{callback(value){ return `${value}%`; }}
+          ticks:{callback(value){
+            const num = Number(value);
+            if(!Number.isFinite(num)) return '';
+            return formatScaledAxisNumber(num);
+          }}
         },
-        x:{title:{display:true,text:'退職年齢'}}
+        x:{title:{display:true,text:'退職年齢（歳）'}}
       }
     }
   });
@@ -22149,7 +22167,36 @@ function syncMonteCompareStateFromUi(){
   if(document.getElementById('monteCompareParamState')) document.getElementById('monteCompareParamState').value = document.getElementById('monteCompareParam')?.value || 'trials';
   if(document.getElementById('monteCompareCaseCountState')) document.getElementById('monteCompareCaseCountState').value = document.getElementById('monteCompareCaseCount')?.value || '3';
 }
+function getCurrentScenarioTabDisplayName(){
+  const sc = Array.isArray(scenarios) ? scenarios[currentTab] : null;
+  const raw = String(sc?.name || '').trim();
+  return raw || defaultScenarioName((Number(sc?.serial) || currentTab + 1));
+}
+function updateScenarioScopedModalTitles(){
+  const tabName = getCurrentScenarioTabDisplayName();
+  const scopedLabel = `タブ：${tabName}`;
+  const chartAxisRangeTitleEl = document.querySelector('#chartAxisModal .chart-axis-section-title');
+  if(chartAxisRangeTitleEl){
+    chartAxisRangeTitleEl.textContent = `表示範囲（${scopedLabel}）`;
+  }
+  const chartAxisTitleEl = document.getElementById('chartAxisTitle');
+  if(chartAxisTitleEl){
+    chartAxisTitleEl.textContent = 'グラフ軸設定';
+  }
+  const map = [
+    ['withdrawalRuleTitle', '取り崩し設定'],
+    ['crashTestTitle', '暴落設定'],
+    ['monteCarloSettingsTitle', 'モンテカルロ設定'],
+    ['fireDiagnosisTitle', 'FIRE診断'],
+    ['cashflowModalTitle', '年度別収支表']
+  ];
+  map.forEach(([id, base])=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = `${base}（${scopedLabel}）`;
+  });
+}
 function openMonteSettingsModal(){
+  updateScenarioScopedModalTitles();
   monteSettingsSnapshot = {
     settings: getMonteCarloSettingsFromDOM(),
     ui: captureMonteSettingsUiState()
@@ -22237,6 +22284,7 @@ function saveMonteSettingsModal(){
   else requestDraw({immediate:true});
 }
 function openWithdrawalRuleModal(){
+  updateScenarioScopedModalTitles();
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
   withdrawalRulePreviewSourceTab = currentTab;
   if(workspaceOverlayModeOn){
@@ -22337,6 +22385,7 @@ document.getElementById("overflowMenuBtn")?.addEventListener("click", (e)=>{
   }
 });
 function openCashflowModal(){
+  updateScenarioScopedModalTitles();
   const modal = document.getElementById("cashflowModal");
   const scenario = scenarios[currentTab];
   if(scenario){
@@ -24101,6 +24150,7 @@ function restoreChartAxisSnapshot(snapshot){
   educationRightAxisOverride = snapshot.educationRightAxisOverride ? {...snapshot.educationRightAxisOverride} : null;
 }
 function openChartAxisModal(){
+  updateScenarioScopedModalTitles();
   chartAxisSnapshot = captureChartAxisSnapshot();
   chartAxisPendingAutoLeft = false;
   chartAxisPendingAutoRight = false;
