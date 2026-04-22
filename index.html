@@ -71,6 +71,10 @@
   }
   #chartAxisBtn:hover{background:#fff;color:#0f172a;}
   .chart-axis-modal{width:min(560px, calc(100vw - 20px));max-height:min(92vh, 760px);overflow:auto;}
+  .chart-axis-preview-sheet{width:min(640px, calc(100vw - 16px));max-width:calc(100vw - 16px);}
+  .chart-axis-fields-3{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:10px 12px;}
+  .chart-axis-fields-3 .chart-axis-field{min-width:0;}
+  .chart-axis-spacer{visibility:hidden;pointer-events:none;}
   .chart-axis-grid{display:flex;flex-direction:column;gap:12px;}
   .chart-axis-note{color:var(--muted);font-size:.92rem;line-height:1.55;}
   .chart-axis-section{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff;}
@@ -81,15 +85,8 @@
   .chart-axis-field .input-unit{max-width:none;width:100%;justify-content:flex-start;}
   .chart-axis-field input[type=number], .chart-axis-field input[type=text]{width:100%;max-width:100%;min-width:0;}
   .chart-axis-field-wide{grid-column:1 / -1;}
-  .chart-axis-ymin-field{grid-column:1;grid-row:2;}
-  .chart-axis-ymax-field{grid-column:2;grid-row:2;}
   .chart-axis-radio-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
   .chart-axis-radio-row label{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-  .chart-axis-fields-aligned{grid-template-columns:repeat(3, minmax(0, 1fr));align-items:end;}
-  .chart-axis-auto-field{grid-column:3;grid-row:2;}
-  .chart-axis-auto-field .input-unit{justify-content:flex-start;}
-  .chart-axis-auto-field > label{visibility:hidden;}
-  .chart-axis-preview-sheet{width:min(980px, calc(100vw - 16px));max-width:calc(100vw - 16px);height:var(--withdrawal-preview-height, min(50vh, 620px));max-height:min(80vh, 920px);min-height:320px;padding:0;display:flex;flex-direction:column;}
   #chartTopBar{
     display:flex;
     flex-wrap:nowrap;
@@ -1409,8 +1406,7 @@
     .insurance-assist-fields{grid-template-columns:1fr;}
     .monte-settings-fields{grid-template-columns:1fr;}
     .chart-axis-fields{grid-template-columns:1fr;}
-    .chart-axis-fields-aligned{grid-template-columns:1fr;}
-    .chart-axis-ymin-field,.chart-axis-ymax-field,.chart-axis-auto-field{grid-column:auto;grid-row:auto;}
+    .chart-axis-fields-3{grid-template-columns:1fr;}
 
     .income-curve-modal{width:min(100vw - 12px, 980px);padding:14px 10px 12px;}
     .loan-detail-modal{width:min(100vw - 12px, 920px);padding:14px 10px 12px;}
@@ -2649,20 +2645,21 @@
 
   <div id="chartAxisModal" class="modal-backdrop withdrawal-preview-backdrop" aria-hidden="true">
     <div class="withdrawal-preview-dim" aria-hidden="true"></div>
-    <div class="modal-card chart-axis-modal withdrawal-preview-sheet chart-axis-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="chartAxisTitle">
+    <div class="modal-card chart-axis-modal chart-axis-preview-sheet withdrawal-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="chartAxisTitle">
       <div class="withdrawal-preview-handle" aria-hidden="true"><span></span></div>
       <div class="withdrawal-preview-scroll">
         <div id="chartAxisTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">グラフ軸設定</div>
-        <div class="chart-axis-grid" style="padding:0 16px 14px;">
+        <div class="withdrawal-rule-grid">
           <div class="chart-axis-note">通常の拡大・縮小・移動はグラフ上で行い、細かい表示範囲の指定はここで行います。PCは軸上ドラッグで軸別ズーム、グラフ内ドラッグで移動、ダブルクリックで初期表示に戻せます。スマホ／タブレットはピンチで拡大縮小、拡大後ドラッグで移動、ダブルタップで初期表示に戻せます。条件タブをクリックしたときも、その条件のグラフは初期表示に戻ります。</div>
           <div class="chart-axis-section">
             <div class="chart-axis-section-title">表示範囲（このタブのみ）</div>
-            <div class="chart-axis-fields chart-axis-fields-aligned">
-              <div class="chart-axis-field"><label for="chartAxisXMin">X軸 最小</label><div class="input-unit"><input id="chartAxisXMin" type="text" inputmode="numeric" class="agebox" step="1" spellcheck="false" autocomplete="off"><span id="chartAxisXMinSuffix" class="suffix">歳</span></div></div>
-              <div class="chart-axis-field"><label for="chartAxisXMax">X軸 最大</label><div class="input-unit"><input id="chartAxisXMax" type="text" inputmode="numeric" class="agebox" step="1" spellcheck="false" autocomplete="off"><span id="chartAxisXMaxSuffix" class="suffix">歳</span></div></div>
-              <div class="chart-axis-field chart-axis-ymin-field"><label for="chartAxisYMin">Y軸 最小</label><div class="input-unit"><input id="chartAxisYMin" type="text" class="moneybox" spellcheck="false" autocomplete="off"><span class="suffix">万円</span></div></div>
-              <div class="chart-axis-field chart-axis-ymax-field"><label for="chartAxisYMax">Y軸 最大</label><div class="input-unit"><input id="chartAxisYMax" type="text" class="moneybox" spellcheck="false" autocomplete="off"><span class="suffix">万円</span></div></div>
-              <div class="chart-axis-field chart-axis-auto-field"><label>&nbsp;</label><div class="input-unit"><button type="button" id="chartAxisAutoBtn">オートスケール</button></div></div>
+            <div class="chart-axis-fields-3">
+              <div class="chart-axis-field"><label for="chartAxisXMin">X軸 最小</label><div class="input-unit"><input id="chartAxisXMin" type="text" inputmode="numeric" class="agebox" spellcheck="false" autocomplete="off"><span id="chartAxisXMinSuffix" class="suffix">歳</span></div></div>
+              <div class="chart-axis-field"><label for="chartAxisXMax">X軸 最大</label><div class="input-unit"><input id="chartAxisXMax" type="text" inputmode="numeric" class="agebox" spellcheck="false" autocomplete="off"><span id="chartAxisXMaxSuffix" class="suffix">歳</span></div></div>
+              <div class="chart-axis-field chart-axis-spacer" aria-hidden="true"><label>&nbsp;</label><div class="input-unit"><span class="suffix"> </span></div></div>
+              <div class="chart-axis-field"><label for="chartAxisYMin">Y軸 最小</label><div class="input-unit"><input id="chartAxisYMin" type="text" class="moneybox" spellcheck="false" autocomplete="off"><span class="suffix">万円</span></div></div>
+              <div class="chart-axis-field"><label for="chartAxisYMax">Y軸 最大</label><div class="input-unit"><input id="chartAxisYMax" type="text" class="moneybox" spellcheck="false" autocomplete="off"><span class="suffix">万円</span></div></div>
+              <div class="chart-axis-field"><label for="chartAxisAutoBtn">&nbsp;</label><button type="button" id="chartAxisAutoBtn">オートスケール</button></div>
             </div>
           </div>
           <div class="chart-axis-section">
@@ -2674,7 +2671,7 @@
             </div>
           </div>
         </div>
-        <div class="modal-actions" style="margin-top:0;padding:14px 16px 16px;background:#fff;flex:0 0 auto;">
+        <div class="modal-actions" style="justify-content:flex-end;">
           <button type="button" id="cancelChartAxisBtn">キャンセル</button>
           <button type="button" id="saveChartAxisBtn">適用</button>
         </div>
@@ -3233,10 +3230,10 @@ let educationRightAxisOverride = null;
 let chartAxisPendingAutoLeft = false;
 let chartAxisPendingAutoRight = false;
 let chartAxisApplyingAutoDefaults = false;
+let chartAxisSnapshot = null;
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
-let workspaceXAxisLabelMode = null;
 let tabDragScenarioId = "";
 let tabDropScenarioId = "";
 let tabDropInsertAfter = false;
@@ -5011,15 +5008,6 @@ function handleStandardActionModalKeydown(e){
     if(active && active.tagName === 'TEXTAREA') return;
     const focusInsideModal = active instanceof Element && modal.contains(active);
     if(!focusInsideModal && !config.enterWithoutFocus) return;
-    if(modal.id === 'chartAxisModal' && focusInsideModal){
-      const autoBtn = modal.querySelector('#chartAxisAutoBtn');
-      if(active === autoBtn && autoBtn && !autoBtn.disabled){
-        e.preventDefault();
-        e.stopPropagation();
-        autoBtn.click();
-        return;
-      }
-    }
     const activeButton = focusInsideModal && buttons.includes(active) ? active : null;
     const targetBtn = activeButton || primaryBtn;
     if(!targetBtn || targetBtn.disabled) return;
@@ -7033,7 +7021,7 @@ function isVisibleForTab(el){
 }
 function isInsideHiddenLayer(el){
   if(!el || !el.closest) return false;
-  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #cashflowModal:not(.show), #overlaySettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]');
+  return !!el.closest('#tabContextMenu:not(.show), #rowContextMenu:not(.show), #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #chartAxisModal:not(.show), #cashflowModal:not(.show), #overlaySettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]');
 }
 function isTabNavigableElement(el){
   if(!el || !el.matches) return false;
@@ -7052,8 +7040,7 @@ function isLoanTabSelectSensitiveInput(el){
   if(!(el instanceof HTMLInputElement)) return false;
   return [
     'homeDown','homePayMonth','homeYears',
-    'loanDetailDown','loanDetailLoanAmountInput','loanDetailRateInput','loanDetailYears',
-    'chartAxisXMin','chartAxisXMax','chartAxisYMin','chartAxisYMax'
+    'loanDetailDown','loanDetailLoanAmountInput','loanDetailRateInput','loanDetailYears'
   ].includes(el.id);
 }
 function shouldDeferLiveNumericFormatting(el){
@@ -7089,7 +7076,7 @@ function collectTableFocusables(table){
 function collectFocusableFlow(node, scopeRoot, out, seen){
   if(!node || node.nodeType !== 1 || seen.has(node)) return;
   if(node !== scopeRoot && node.matches){
-    if(node.matches('#tabContextMenu, #rowContextMenu, #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #crashTestModal:not(.show), #fireDiagnosisModal:not(.show), #monteCarloSettingsModal:not(.show), #chartAxisModal:not(.show), #cashflowModal:not(.show), #overlaySettingsModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]')) return;
+    if(node.matches('#tabContextMenu, #rowContextMenu, #loanDetailModal:not(.show), #loanDetailConflictModal:not(.show), #incomeCurveModal:not(.show), #pensionHelperModal:not(.show), #educationDetailModal:not(.show), #educationCopyModal:not(.show), #insuranceAssistModal:not(.show), #withdrawalRuleModal:not(.show), #monteCarloSettingsModal:not(.show), #chartAxisModal:not(.show), #cashflowModal:not(.show), #deleteRowModal:not(.show), #deleteTabModal:not(.show), #resetDefaultsConfirmModal:not(.show), [hidden], [aria-hidden="true"]')) return;
   }
 
   if(node !== scopeRoot && isTabNavigableElement(node)){
@@ -7129,7 +7116,7 @@ function applyTabOrder(){
   });
   allCandidates.forEach(el => {
     if(el.dataset.keepNaturalTab === '1') return;
-    if(document.body.classList.contains('withdrawal-preview-open') && !isPreviewSheetOpen('chartAxisModal') && el.closest('#chartTopBar, #chartCanvasStickyWrap, #chartAxisModal')){
+    if(document.body.classList.contains('withdrawal-preview-open') && activePreviewSheetModalId !== 'chartAxisModal' && el.closest('#chartTopBar, #chartCanvasStickyWrap, #chartAxisModal')){
       el.tabIndex = 0;
       return;
     }
@@ -7280,7 +7267,7 @@ function getAllInputs(){
     if(!el.id) return;
     const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
     const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
-    if(((inSimplePanel && !inSimpleBasicInfo)) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal") || el.closest("#cashflowModal")))) return;
+    if(((inSimplePanel && !inSimpleBasicInfo)) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal") || el.closest("#chartAxisModal") || el.closest("#cashflowModal")))) return;
     if(el.type === "checkbox"){
       data[el.id] = el.checked;
       return;
@@ -7436,15 +7423,11 @@ function setAllInputs(data){
   syncRetireYearSelectOptions("sp", migrated);
   syncLoanBuyYearSelectOptions(migrated);
   Object.entries(migrated || {}).forEach(([id,val])=>{
-    if(id === "xAxisLabelMode") return;
     const el = document.getElementById(id);
     if(!el) return;
     if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
-  const incomingXAxisLabelMode = normalizeXAxisLabelModeValue(migrated?.xAxisLabelMode || document.getElementById("xAxisLabelMode")?.value || "age");
-  if(workspaceXAxisLabelMode == null) workspaceXAxisLabelMode = incomingXAxisLabelMode;
-  setWorkspaceXAxisLabelMode(workspaceXAxisLabelMode);
   refreshRowLabelTexts();
   syncAllBirthDateDerivedFields();
   syncLoanBuyFieldsFromYearMonth();
@@ -17144,27 +17127,9 @@ function getCalendarWindowForXAxisValue(sim, xValue){
   if(idx < 0) return null;
   return sim.calendarYearWindows[idx] || sim.yearlyRows?.[idx]?.meta?.calendarWindow || null;
 }
-function normalizeXAxisLabelModeValue(value){
-  const normalized = String(value || '').toLowerCase();
-  return ["age","calendar","both"].includes(normalized) ? normalized : "age";
-}
-function setWorkspaceXAxisLabelMode(mode){
-  const normalized = normalizeXAxisLabelModeValue(mode);
-  workspaceXAxisLabelMode = normalized;
-  const el = document.getElementById("xAxisLabelMode");
-  if(el) el.value = normalized;
-  (Array.isArray(scenarios) ? scenarios : []).forEach(scenario=>{
-    if(!scenario || !scenario.data) return;
-    scenario.data.xAxisLabelMode = normalized;
-  });
-  return normalized;
-}
 function getXAxisLabelMode(){
-  if(workspaceXAxisLabelMode != null) return normalizeXAxisLabelModeValue(workspaceXAxisLabelMode);
   const value = String(document.getElementById("xAxisLabelMode")?.value || "age").toLowerCase();
-  const normalized = normalizeXAxisLabelModeValue(value);
-  workspaceXAxisLabelMode = normalized;
-  return normalized;
+  return ["age","calendar","both"].includes(value) ? value : "age";
 }
 function getXAxisTitleText(mode = getXAxisLabelMode()){
   if(mode === "age") return "年齢（歳）";
@@ -17403,7 +17368,6 @@ function draw(){
     options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
     plugins:[pluginLines(firstCfg, baseSim)]
   });
-  syncChartAxisStateFromChartInstance(chart, {lockYScale: !!document.getElementById('fixedScale')?.checked});
 }
 
 function runMonte(settingsOverride=null){
@@ -17532,7 +17496,6 @@ function runMonte(settingsOverride=null){
     },
     plugins:[pluginLines(firstCfg, baseSim, monteInfo)]
   });
-  syncChartAxisStateFromChartInstance(chart, {lockYScale: !!document.getElementById('fixedScale')?.checked});
 }
 
 function getSaveData(){
@@ -18376,38 +18339,6 @@ const CRASH_COMPARE_PARAM_DEFS = {
     {key:'recoveryYears', label:'回復年数', unit:'年', step:1, min:1, max:30, fallback:3, defaultDelta:1, format:(v)=>`${formatNumberJP(v, 0)}年`}
   ]
 };
-let chartAxisPreviewSnapshot = null;
-function captureChartAxisPreviewSnapshot(){
-  chartAxisPreviewSnapshot = {
-    tabIndex: currentTab,
-    xAxisMin: String(document.getElementById('xAxisMin')?.value || ''),
-    xAxisMax: String(document.getElementById('xAxisMax')?.value || ''),
-    fixedScale: !!document.getElementById('fixedScale')?.checked,
-    fixedScaleMin: String(document.getElementById('fixedScaleMin')?.value || ''),
-    fixedScaleMax: String(document.getElementById('fixedScaleMax')?.value || ''),
-    xAxisLabelMode: String(getXAxisLabelMode()),
-    educationRightAxisOverride: educationRightAxisOverride ? {...educationRightAxisOverride} : null
-  };
-}
-function restoreChartAxisPreviewSnapshot(){
-  if(!chartAxisPreviewSnapshot) return;
-  const s = chartAxisPreviewSnapshot;
-  const xAxisMinEl = document.getElementById('xAxisMin');
-  const xAxisMaxEl = document.getElementById('xAxisMax');
-  const fixedScaleEl = document.getElementById('fixedScale');
-  const fixedScaleMinEl = document.getElementById('fixedScaleMin');
-  const fixedScaleMaxEl = document.getElementById('fixedScaleMax');
-  const xAxisLabelModeEl = document.getElementById('xAxisLabelMode');
-  if(xAxisMinEl) xAxisMinEl.value = s.xAxisMin;
-  if(xAxisMaxEl) xAxisMaxEl.value = s.xAxisMax;
-  if(fixedScaleEl) fixedScaleEl.checked = !!s.fixedScale;
-  if(fixedScaleMinEl) fixedScaleMinEl.value = s.fixedScaleMin;
-  if(fixedScaleMaxEl) fixedScaleMaxEl.value = s.fixedScaleMax;
-  setWorkspaceXAxisLabelMode(s.xAxisLabelMode);
-  educationRightAxisOverride = s.educationRightAxisOverride ? {...s.educationRightAxisOverride} : null;
-  formatNumericInputDisplay(fixedScaleMinEl, true);
-  formatNumericInputDisplay(fixedScaleMaxEl, true);
-}
 function isPreviewSheetOpen(modalId){
   const modal = document.getElementById(modalId);
   return !!modal && modal.classList.contains('show');
@@ -22357,7 +22288,7 @@ document.getElementById("deleteTabModal")?.addEventListener("focusout", handleDe
 document.getElementById("deleteRowModal")?.addEventListener("focusout", handleDeleteModalFocusOut, true);
 {
   const chartAxisModalEl = document.getElementById("chartAxisModal");
-  const chartAxisModalCard = document.querySelector("#chartAxisModal .withdrawal-preview-sheet");
+  const chartAxisModalCard = document.querySelector("#chartAxisModal .chart-axis-preview-sheet");
   let chartAxisBackdropPointerDown = false;
   chartAxisModalEl?.addEventListener("mousedown", (e)=>{
     chartAxisBackdropPointerDown = (e.target === chartAxisModalEl);
@@ -22636,6 +22567,7 @@ document.getElementById("childAllowanceOn")?.addEventListener("change", ()=>{
   updateChildAllowanceSummary();
   requestDraw();
   persistState();
+  if(document.getElementById('chartAxisModal')?.classList.contains('show')) syncChartAxisModalFromState();
 });
 document.getElementById("childRows")?.addEventListener("change", (e)=>{
   const input = e.target.closest('input[id^="child"][id$="_enabled"]');
@@ -22666,7 +22598,7 @@ document.addEventListener("focusin", (e)=>{
   const modal = getOpenModal();
   if(!modal) return;
   const target = e.target;
-  const previewControlsSelector = '#chartTopBar, #chartCanvasStickyWrap, #chartAxisModal';
+  const previewControlsSelector = activePreviewSheetModalId === 'chartAxisModal' ? '#chartAxisModal .withdrawal-preview-sheet' : '#chartTopBar, #chartCanvasStickyWrap';
   if(modal.contains(target)){
     rememberFocusInsideOpenModal(target);
     return;
@@ -22684,7 +22616,7 @@ document.addEventListener("wheel", (e)=>{
   if(!document.body.classList.contains("withdrawal-preview-open")) return;
   const target = e.target instanceof Element ? e.target : null;
   if(!target) return;
-  const allowed = target.closest("#withdrawalRuleModal .withdrawal-preview-sheet, #crashTestModal .withdrawal-preview-sheet, #monteCarloSettingsModal .withdrawal-preview-sheet, #chartTopBar, #chartCanvasStickyWrap, #chartAxisModal");
+  const allowed = target.closest(activePreviewSheetModalId === "chartAxisModal" ? "#chartAxisModal .withdrawal-preview-sheet, #chartTopBar, #chartCanvasStickyWrap" : "#withdrawalRuleModal .withdrawal-preview-sheet, #crashTestModal .withdrawal-preview-sheet, #monteCarloSettingsModal .withdrawal-preview-sheet, #chartTopBar, #chartCanvasStickyWrap");
   if(allowed) return;
   e.preventDefault();
 }, {capture:true, passive:false});
@@ -22995,11 +22927,10 @@ document.addEventListener("selectionchange", ()=>{
 document.addEventListener("keydown", (e)=>{
   const el = document.activeElement;
   if(!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+  if(!shouldKeepFullSelection(el)) return;
   if(e.key === "Tab") return;
   if(e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
-  if(shouldKeepFullSelection(el) || shouldSelectAllOnTabFocus(el)){
-    unlockSelectionForEditing(el);
-  }
+  unlockSelectionForEditing(el);
 }, true);
 document.addEventListener("input", (e)=>{
   const el = e.target;
@@ -23774,6 +23705,7 @@ document.querySelector("#pensionHelperModal .pension-helper-modal")?.addEventLis
 document.querySelector('#withdrawalRuleModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 document.querySelector('#crashTestModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 document.querySelector('#monteCarloSettingsModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
+document.querySelector('#chartAxisModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 window.addEventListener('resize', ()=>{ if(isAnyPreviewSheetOpen()) ensureWithdrawalPreviewHeight(); updateWithdrawalPreviewTopVar(); });
 window.addEventListener('scroll', ()=>{ if(isAnyPreviewSheetOpen()) updateWithdrawalPreviewTopVar(); }, {passive:true});
 const withdrawalRuleModalCard = document.querySelector("#withdrawalRuleModal .withdrawal-rule-modal");
@@ -23793,6 +23725,11 @@ crashTestModalCard?.addEventListener("click", (e)=>e.stopPropagation());
 });
 document.getElementById("crashTestModal")?.addEventListener("mousedown", (e)=>{ crashTestBackdropPointerDown = e.target === e.currentTarget; });
 document.getElementById("crashTestModal")?.addEventListener("mouseup", (_e)=>{ crashTestBackdropPointerDown = false; });
+const chartAxisModalCard = document.querySelector("#chartAxisModal .chart-axis-preview-sheet");
+chartAxisModalCard?.addEventListener("click", (e)=>e.stopPropagation());
+['mousedown','mouseup','touchstart','touchend','pointerdown','pointerup','dblclick','selectstart'].forEach(evt=>{
+  chartAxisModalCard?.addEventListener(evt, (e)=>e.stopPropagation());
+});
 const monteCarloSettingsModalCard = document.querySelector("#monteCarloSettingsModal .monte-settings-modal");
 monteCarloSettingsModalCard?.addEventListener("click", (e)=>e.stopPropagation());
 ["mousedown","mouseup","pointerdown","pointerup","touchstart","touchend"].forEach(evt=>{
@@ -23857,56 +23794,6 @@ getSimpleModeRoot()?.addEventListener("focusout", (e)=>{
 function setChartAxisModalLabelMode(mode){
   const normalized = ["age","calendar","both"].includes(String(mode)) ? String(mode) : "age";
   document.querySelectorAll('input[name="chartAxisLabelMode"]').forEach(r=>{ r.checked = (r.value === normalized); });
-  const suffix = normalized === 'calendar' ? '年' : '歳';
-  const xMinSuffix = document.getElementById('chartAxisXMinSuffix');
-  const xMaxSuffix = document.getElementById('chartAxisXMaxSuffix');
-  if(xMinSuffix) xMinSuffix.textContent = suffix;
-  if(xMaxSuffix) xMaxSuffix.textContent = suffix;
-}
-function getChartAxisModalSim(){
-  try{
-    const scenario = scenarios?.[currentTab];
-    const cfg = getScenarioFromDOM();
-    return getOrBuildNormalScenarioCache(scenario, scenario, cfg, null)?.sim || null;
-  }catch(_e){
-    return null;
-  }
-}
-function convertChartAxisAgeToDisplay(value, mode, sim){
-  const n = Number(value);
-  if(!Number.isFinite(n)) return '';
-  if(mode !== 'calendar') return String(Math.round(n));
-  const win = getCalendarWindowForXAxisValue(sim, Math.round(n));
-  if(win?.year) return String(Math.round(win.year));
-  const firstWin = Array.isArray(sim?.calendarYearWindows) ? sim.calendarYearWindows[0] : null;
-  const firstLabel = Array.isArray(sim?.labels) ? Number(sim.labels[0]) : NaN;
-  if(firstWin?.year && Number.isFinite(firstLabel)) return String(Math.round(firstWin.year + (Math.round(n) - firstLabel)));
-  return String(Math.round(n));
-}
-function convertChartAxisDisplayToAge(value, mode, sim, fallback){
-  const n = Number(value);
-  if(!Number.isFinite(n)) return Number(fallback);
-  if(mode !== 'calendar') return n;
-  const windows = Array.isArray(sim?.calendarYearWindows) ? sim.calendarYearWindows : [];
-  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
-  const idx = windows.findIndex(win=>Number(win?.year) === Math.round(n));
-  if(idx >= 0 && Number.isFinite(Number(labels[idx]))) return Number(labels[idx]);
-  const firstWin = windows[0];
-  const firstLabel = Number(labels[0]);
-  if(firstWin?.year && Number.isFinite(firstLabel)) return firstLabel + (Math.round(n) - Number(firstWin.year));
-  return Number(fallback);
-}
-function updateChartAxisModalInputDisplays(){
-  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || getXAxisLabelMode();
-  const sim = getChartAxisModalSim();
-  const xMinStored = numValue(document.getElementById('xAxisMin')?.value, numInput('age', 0));
-  const xMaxStored = numValue(document.getElementById('xAxisMax')?.value, Math.min(120, Math.max(100, numInput('age', 0))));
-  const xMinEl = document.getElementById('chartAxisXMin');
-  const xMaxEl = document.getElementById('chartAxisXMax');
-  const active = document.activeElement;
-  if(xMinEl && active !== xMinEl) xMinEl.value = convertChartAxisAgeToDisplay(xMinStored, mode, sim);
-  if(xMaxEl && active !== xMaxEl) xMaxEl.value = convertChartAxisAgeToDisplay(xMaxStored, mode, sim);
-  setChartAxisModalLabelMode(mode);
 }
 function collectVisibleMainChartYValues(xMin, xMax, graphType){
   const yData = [];
@@ -23965,101 +23852,167 @@ function computeChartAxisGestureOuterBounds(){
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
-function syncChartAxisModalFromState(){
-  const yMinEl = document.getElementById("chartAxisYMin");
-  const yMaxEl = document.getElementById("chartAxisYMax");
-  const fallbackYMin = numValue(document.getElementById("fixedScaleMin")?.value, -50000);
-  const fallbackYMax = numValue(document.getElementById("fixedScaleMax")?.value, 50000);
-  if(yMinEl) yMinEl.value = String(Math.round(fallbackYMin));
-  if(yMaxEl) yMaxEl.value = String(Math.round(fallbackYMax));
-  formatNumericInputDisplay(yMinEl, true);
-  formatNumericInputDisplay(yMaxEl, true);
-  updateChartAxisModalInputDisplays();
+
+function getChartAxisModalXInputMode(){
+  const mode = getXAxisLabelMode();
+  return mode === "calendar" ? "calendar" : "age";
 }
-function applyChartAxisAutoDefaultsToModal(){
-  const defaults = computeChartAxisAutoDefaults();
-  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || getXAxisLabelMode();
-  const sim = getChartAxisModalSim();
+function convertChartAxisAgeToDisplay(ageValue){
+  const n = Number(ageValue);
+  if(!Number.isFinite(n)) return '';
+  if(getChartAxisModalXInputMode() !== 'calendar') return String(Math.round(n));
+  const simRef = chart?.$simRef || computeCurrentScenarioSync?.() || null;
+  const win = getCalendarWindowForXAxisValue(simRef, Math.round(n));
+  return win ? String(Math.round(win.year)) : String(Math.round(n));
+}
+function convertChartAxisDisplayToAge(inputValue, fallbackAge){
+  const raw = String(inputValue ?? '').trim();
+  const fallback = Number.isFinite(Number(fallbackAge)) ? Number(fallbackAge) : numInput('age', 0);
+  if(raw === '') return fallback;
+  const num = Number(raw);
+  if(!Number.isFinite(num)) return fallback;
+  if(getChartAxisModalXInputMode() !== 'calendar') return num;
+  const simRef = chart?.$simRef || computeCurrentScenarioSync?.() || null;
+  const windows = Array.isArray(simRef?.calendarYearWindows) ? simRef.calendarYearWindows : [];
+  const labels = Array.isArray(simRef?.labels) ? simRef.labels : [];
+  const matchIdx = windows.findIndex(win => Number(win?.year) === Math.round(num));
+  if(matchIdx >= 0 && Number.isFinite(Number(labels[matchIdx]))) return Number(labels[matchIdx]);
+  return fallback;
+}
+function updateChartAxisModalXAxisUnits(){
+  const suffix = getChartAxisModalXInputMode() === 'calendar' ? '年' : '歳';
+  const a = document.getElementById('chartAxisXMinSuffix');
+  const b = document.getElementById('chartAxisXMaxSuffix');
+  if(a) a.textContent = suffix;
+  if(b) b.textContent = suffix;
+}
+function syncChartAxisModalFromState(){
   const xMinEl = document.getElementById("chartAxisXMin");
   const xMaxEl = document.getElementById("chartAxisXMax");
   const yMinEl = document.getElementById("chartAxisYMin");
   const yMaxEl = document.getElementById("chartAxisYMax");
-  if(xMinEl) xMinEl.value = convertChartAxisAgeToDisplay(defaults.xMin, mode, sim);
-  if(xMaxEl) xMaxEl.value = convertChartAxisAgeToDisplay(defaults.xMax, mode, sim);
+  const chartScales = chart?.scales || {};
+  const chartX = chartScales.x;
+  const chartY = chartScales.y;
+  const fallbackXMin = numInput("xAxisMin", numInput("age", 0));
+  const fallbackXMax = numInput("xAxisMax", Math.min(120, Math.max(100, numInput("age", 0))));
+  const fallbackYMin = numValue(document.getElementById("fixedScaleMin")?.value, -50000);
+  const fallbackYMax = numValue(document.getElementById("fixedScaleMax")?.value, 50000);
+  const currentXMin = Number.isFinite(Number(chartX?.min)) ? Number(chartX.min) : fallbackXMin;
+  const currentXMax = Number.isFinite(Number(chartX?.max)) ? Number(chartX.max) : fallbackXMax;
+  const currentYMin = Number.isFinite(Number(chartY?.min)) ? Number(chartY.min) : fallbackYMin;
+  const currentYMax = Number.isFinite(Number(chartY?.max)) ? Number(chartY.max) : fallbackYMax;
+  updateChartAxisModalXAxisUnits();
+  const active = document.activeElement;
+  if(xMinEl && active !== xMinEl) xMinEl.value = convertChartAxisAgeToDisplay(currentXMin);
+  if(xMaxEl && active !== xMaxEl) xMaxEl.value = convertChartAxisAgeToDisplay(currentXMax);
+  if(yMinEl && active !== yMinEl) yMinEl.value = String(Math.round(currentYMin));
+  if(yMaxEl && active !== yMaxEl) yMaxEl.value = String(Math.round(currentYMax));
+  formatNumericInputDisplay(yMinEl, true);
+  formatNumericInputDisplay(yMaxEl, true);
+  setChartAxisModalLabelMode(getXAxisLabelMode());
+}
+function applyChartAxisAutoDefaultsToModal(){
+  const defaults = computeChartAxisAutoDefaults();
+  const xMinEl = document.getElementById("chartAxisXMin");
+  const xMaxEl = document.getElementById("chartAxisXMax");
+  const yMinEl = document.getElementById("chartAxisYMin");
+  const yMaxEl = document.getElementById("chartAxisYMax");
+  if(xMinEl) xMinEl.value = String(Math.round(defaults.xMin));
+  if(xMaxEl) xMaxEl.value = String(Math.round(defaults.xMax));
   if(yMinEl) yMinEl.value = String(Math.round(defaults.yMin));
   if(yMaxEl) yMaxEl.value = String(Math.round(defaults.yMax));
   formatNumericInputDisplay(yMinEl, true);
   formatNumericInputDisplay(yMaxEl, true);
 }
-function previewChartAxisFromModal(options = {}){
-  const autoDefaults = computeChartAxisAutoDefaults();
-  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || 'age';
-  const sim = getChartAxisModalSim();
-  const xMin = Math.max(0, Math.min(120, convertChartAxisDisplayToAge(document.getElementById('chartAxisXMin')?.value, mode, sim, autoDefaults.xMin)));
-  const xMax = Math.max(xMin, Math.min(120, convertChartAxisDisplayToAge(document.getElementById('chartAxisXMax')?.value, mode, sim, autoDefaults.xMax)));
-  const yMin = numValue(document.getElementById('chartAxisYMin')?.value, autoDefaults.yMin);
-  const yMax = Math.max(yMin, numValue(document.getElementById('chartAxisYMax')?.value, autoDefaults.yMax));
+function captureChartAxisSnapshot(){
+  return {
+    fixedScale: !!document.getElementById('fixedScale')?.checked,
+    fixedScaleMin: String(document.getElementById('fixedScaleMin')?.value || ''),
+    fixedScaleMax: String(document.getElementById('fixedScaleMax')?.value || ''),
+    xAxisMin: String(document.getElementById('xAxisMin')?.value || ''),
+    xAxisMax: String(document.getElementById('xAxisMax')?.value || ''),
+    xAxisLabelMode: String(document.getElementById('xAxisLabelMode')?.value || 'age'),
+    educationRightAxisOverride: educationRightAxisOverride ? {...educationRightAxisOverride} : null
+  };
+}
+function restoreChartAxisSnapshot(snapshot){
+  if(!snapshot) return;
   const fixedScaleEl = document.getElementById('fixedScale');
   const fixedScaleMinEl = document.getElementById('fixedScaleMin');
   const fixedScaleMaxEl = document.getElementById('fixedScaleMax');
   const xAxisMinEl = document.getElementById('xAxisMin');
   const xAxisMaxEl = document.getElementById('xAxisMax');
   const xAxisLabelModeEl = document.getElementById('xAxisLabelMode');
-  if(fixedScaleEl) fixedScaleEl.checked = !options.autoLeft;
-  if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
-  if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
-  if(xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
-  if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
-  setWorkspaceXAxisLabelMode(mode);
-  if(options.autoRight){
-    educationRightAxisOverride = null;
-  }
-  formatNumericInputDisplay(fixedScaleMinEl, true);
-  formatNumericInputDisplay(fixedScaleMaxEl, true);
-  if(monteMode) runMonte();
-  else requestDraw({immediate:true});
-}
-function handleChartAxisLabelModeChange(){
-  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || 'age';
-  const xAxisLabelModeEl = document.getElementById('xAxisLabelMode');
-  setWorkspaceXAxisLabelMode(mode);
-  updateChartAxisModalInputDisplays();
-  if(monteMode) runMonte();
-  else requestDraw({immediate:true});
+  if(fixedScaleEl) fixedScaleEl.checked = !!snapshot.fixedScale;
+  if(fixedScaleMinEl) fixedScaleMinEl.value = String(snapshot.fixedScaleMin ?? '');
+  if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(snapshot.fixedScaleMax ?? '');
+  if(xAxisMinEl) xAxisMinEl.value = String(snapshot.xAxisMin ?? '');
+  if(xAxisMaxEl) xAxisMaxEl.value = String(snapshot.xAxisMax ?? '');
+  if(xAxisLabelModeEl) xAxisLabelModeEl.value = String(snapshot.xAxisLabelMode || 'age');
+  educationRightAxisOverride = snapshot.educationRightAxisOverride ? {...snapshot.educationRightAxisOverride} : null;
 }
 function openChartAxisModal(){
+  chartAxisSnapshot = captureChartAxisSnapshot();
   chartAxisPendingAutoLeft = false;
   chartAxisPendingAutoRight = false;
   chartAxisApplyingAutoDefaults = false;
-  captureChartAxisPreviewSnapshot();
   syncChartAxisModalFromState();
-  const modal = document.getElementById('chartAxisModal');
+  const modal = document.getElementById("chartAxisModal");
   openPreviewSheet(modal);
-  applyTabOrder();
-  focusModalPrimaryActionButton('chartAxisModal');
+  resetModalScrollPosition("chartAxisModal");
+  resetModalInnerScrollPositions("chartAxisModal");
+  const previewScroll = document.querySelector('#chartAxisModal .withdrawal-preview-scroll');
+  if(previewScroll){
+    previewScroll.scrollTop = 0;
+    previewScroll.scrollLeft = 0;
+  }
+  focusPreviewSheetInitialAction("chartAxisModal");
 }
 function closeChartAxisModal(){
   chartAxisPendingAutoLeft = false;
   chartAxisPendingAutoRight = false;
   chartAxisApplyingAutoDefaults = false;
-  restoreChartAxisPreviewSnapshot();
-  const modal = document.getElementById('chartAxisModal');
+  restoreChartAxisSnapshot(chartAxisSnapshot);
+  chartAxisSnapshot = null;
+  const modal = document.getElementById("chartAxisModal");
   closePreviewSheet(modal);
-  if(chartAxisPreviewSnapshot) {
-    if(monteMode) runMonte(); else requestDraw({immediate:true});
-  }
-  chartAxisPreviewSnapshot = null;
-  applyTabOrder();
+  if(monteMode) runMonte();
+  else draw();
 }
 function saveChartAxisModal(){
-  chartAxisPendingAutoLeft = false;
-  chartAxisPendingAutoRight = false;
-  chartAxisApplyingAutoDefaults = false;
+  const autoDefaults = computeChartAxisAutoDefaults();
+  const xMin = Math.max(0, Math.min(120, convertChartAxisDisplayToAge(document.getElementById("chartAxisXMin")?.value, autoDefaults.xMin)));
+  const xMax = Math.max(xMin, Math.min(120, convertChartAxisDisplayToAge(document.getElementById("chartAxisXMax")?.value, autoDefaults.xMax)));
+  const yMin = numValue(document.getElementById("chartAxisYMin")?.value, autoDefaults.yMin);
+  const yMax = Math.max(yMin, numValue(document.getElementById("chartAxisYMax")?.value, autoDefaults.yMax));
+  const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || "age";
+  const fixedScaleEl = document.getElementById("fixedScale");
+  const fixedScaleMinEl = document.getElementById("fixedScaleMin");
+  const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
+  const xAxisLabelModeEl = document.getElementById("xAxisLabelMode");
+  if(fixedScaleEl) fixedScaleEl.checked = !chartAxisPendingAutoLeft;
+  if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
+  if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
+  if(chartAxisPendingAutoRight){
+    educationRightAxisOverride = null;
+  }
+  if(xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
+  if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
+  if(xAxisLabelModeEl) xAxisLabelModeEl.value = mode;
+  if(Array.isArray(scenarios)){
+    scenarios.forEach(sc=>{ if(sc) sc.xAxisLabelMode = mode; });
+  }
+  formatNumericInputDisplay(fixedScaleMinEl, true);
+  formatNumericInputDisplay(fixedScaleMaxEl, true);
+  chartAxisSnapshot = null;
   persistState();
-  chartAxisPreviewSnapshot = null;
-  const modal = document.getElementById('chartAxisModal');
+  const modal = document.getElementById("chartAxisModal");
   closePreviewSheet(modal);
-  applyTabOrder();
+  if(monteMode) runMonte();
+  else draw();
 }
 function markChartAxisManualEdit(){
   if(chartAxisApplyingAutoDefaults) return;
@@ -24070,19 +24023,30 @@ function applyChartAxisAutoAndSave(){
   applyChartAxisAutoDefaultsToModal();
   chartAxisApplyingAutoDefaults = false;
   chartAxisPendingAutoLeft = true;
-  chartAxisPendingAutoRight = ((document.getElementById('graphType')?.value || 'asset') === 'education');
-  previewChartAxisFromModal({autoLeft:true, autoRight:chartAxisPendingAutoRight});
+  chartAxisPendingAutoRight = ((document.getElementById("graphType")?.value || "asset") === "education");
+  const autoDefaults = computeChartAxisAutoDefaults();
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
+  const fixedScaleMinEl = document.getElementById("fixedScaleMin");
+  const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
+  if(xAxisMinEl) xAxisMinEl.value = String(Math.round(autoDefaults.xMin));
+  if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(autoDefaults.xMax));
+  if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(autoDefaults.yMin));
+  if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(autoDefaults.yMax));
+  if(monteMode) runMonte();
+  else draw();
+  syncChartAxisModalFromState();
 }
 function resetChartAxesToAuto(options = {}){
   const persist = options.persist !== false;
   const redraw = options.redraw !== false;
   const defaults = computeChartAxisAutoDefaults();
   educationRightAxisOverride = null;
-  const fixedScaleEl = document.getElementById('fixedScale');
-  const fixedScaleMinEl = document.getElementById('fixedScaleMin');
-  const fixedScaleMaxEl = document.getElementById('fixedScaleMax');
-  const xAxisMinEl = document.getElementById('xAxisMin');
-  const xAxisMaxEl = document.getElementById('xAxisMax');
+  const fixedScaleEl = document.getElementById("fixedScale");
+  const fixedScaleMinEl = document.getElementById("fixedScaleMin");
+  const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
   if(fixedScaleEl) fixedScaleEl.checked = false;
   if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(defaults.yMin));
   if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(defaults.yMax));
@@ -24090,7 +24054,6 @@ function resetChartAxesToAuto(options = {}){
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(defaults.xMax));
   formatNumericInputDisplay(fixedScaleMinEl, true);
   formatNumericInputDisplay(fixedScaleMaxEl, true);
-  if(isPreviewSheetOpen('chartAxisModal')) syncChartAxisModalFromState();
   if(persist) persistState();
   if(redraw){
     if(monteMode) runMonte();
@@ -24101,32 +24064,24 @@ function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   if(!activeChart?.options?.scales) return;
   applyAdaptiveXAxisTicksToChart(activeChart);
   const scales = activeChart.scales || {};
-  const xScale = scales.x;
-  const yScale = scales.y;
-  const xAxisMinEl = document.getElementById('xAxisMin');
-  const xAxisMaxEl = document.getElementById('xAxisMax');
-  const fixedScaleEl = document.getElementById('fixedScale');
-  const fixedScaleMinEl = document.getElementById('fixedScaleMin');
-  const fixedScaleMaxEl = document.getElementById('fixedScaleMax');
-  const nextXMin = Number.isFinite(Number(xScale?.min)) ? Number(xScale.min) : Number(activeChart.options?.scales?.x?.min);
-  const nextXMax = Number.isFinite(Number(xScale?.max)) ? Number(xScale.max) : Number(activeChart.options?.scales?.x?.max);
-  const nextYMin = Number.isFinite(Number(yScale?.min)) ? Number(yScale.min) : Number(activeChart.options?.scales?.y?.min);
-  const nextYMax = Number.isFinite(Number(yScale?.max)) ? Number(yScale.max) : Number(activeChart.options?.scales?.y?.max);
-  if(Number.isFinite(nextXMin) && xAxisMinEl) xAxisMinEl.value = String(Math.round(nextXMin));
-  if(Number.isFinite(nextXMax) && xAxisMaxEl) xAxisMaxEl.value = String(Math.round(nextXMax));
-  if(Number.isFinite(nextYMin) && fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(nextYMin));
-  if(Number.isFinite(nextYMax) && fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(nextYMax));
+  const xAxisMinEl = document.getElementById("xAxisMin");
+  const xAxisMaxEl = document.getElementById("xAxisMax");
+  const fixedScaleEl = document.getElementById("fixedScale");
+  const fixedScaleMinEl = document.getElementById("fixedScaleMin");
+  const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
+  const xMin = Number.isFinite(Number(scales.x?.min)) ? Number(scales.x.min) : Number(activeChart.options.scales.x?.min);
+  const xMax = Number.isFinite(Number(scales.x?.max)) ? Number(scales.x.max) : Number(activeChart.options.scales.x?.max);
+  const yMin = Number.isFinite(Number(scales.y?.min)) ? Number(scales.y.min) : Number(activeChart.options.scales.y?.min);
+  const yMax = Number.isFinite(Number(scales.y?.max)) ? Number(scales.y.max) : Number(activeChart.options.scales.y?.max);
+  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
+  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
+  if(Number.isFinite(yMin) && fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
+  if(Number.isFinite(yMax) && fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
   if(fixedScaleEl) fixedScaleEl.checked = !!options.lockYScale;
   formatNumericInputDisplay(fixedScaleMinEl, true);
   formatNumericInputDisplay(fixedScaleMaxEl, true);
-  if(isPreviewSheetOpen('chartAxisModal')) syncChartAxisModalFromState();
-}
-function syncChartAxisStateAfterUpdate(activeChart, options = {}){
-  syncChartAxisStateFromChartInstance(activeChart, options);
-  if(typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'){
-    window.requestAnimationFrame(()=>{
-      syncChartAxisStateFromChartInstance(activeChart, options);
-    });
+  if(document.getElementById('chartAxisModal')?.classList.contains('show')){
+    syncChartAxisModalFromState();
   }
 }
 function isFinePointerDevice(){
@@ -24226,7 +24181,7 @@ function setupChartAxisZoomInteractions(){
     if(!changed) return;
     suppressClickUntil = Date.now() + 250;
     chart.update("none");
-    syncChartAxisStateAfterUpdate(chart, {
+    syncChartAxisStateFromChartInstance(chart, {
       lockYScale: state.axis === "y" ? true : !!document.getElementById("fixedScale")?.checked
     });
     if(shouldPersist) persistState();
@@ -24270,8 +24225,7 @@ function setupChartAxisZoomInteractions(){
     finishZoom(true);
   });
   canvas.addEventListener("click", (e)=>{
-    const clickCount = Number(e?.detail || 1);
-    if(Date.now() < suppressClickUntil && clickCount < 2){
+    if(Date.now() < suppressClickUntil){
       e.preventDefault();
       e.stopPropagation();
     }
@@ -24353,8 +24307,7 @@ function setupChartPanInteractions(){
     finishPan(true);
   });
   canvas.addEventListener('click', (e)=>{
-    const clickCount = Number(e?.detail || 1);
-    if(Date.now() < suppressClickUntil && clickCount < 2){
+    if(Date.now() < suppressClickUntil){
       e.preventDefault();
       e.stopPropagation();
     }
@@ -24449,6 +24402,7 @@ function setupChartTouchInteractions(){
         startMaxY:Number(chart.scales.y.max),
         moved:false
       };
+      e.preventDefault();
     }
   }, {passive:false});
   canvas.addEventListener('touchmove', (e)=>{
@@ -24530,8 +24484,8 @@ function setupChartTouchInteractions(){
         chart.options.scales.y.min = Math.min(newMinY, newMaxY);
         chart.options.scales.y.max = Math.max(newMinY, newMaxY);
       }
-      chart.update('none');
       syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
+      chart.update('none');
       e.preventDefault();
       return;
     }
@@ -24571,8 +24525,8 @@ function setupChartTouchInteractions(){
         chart.options.scales.y.min = Math.min(newMinY, newMaxY);
         chart.options.scales.y.max = Math.max(newMinY, newMaxY);
       }
-      chart.update('none');
       syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
+      chart.update('none');
       e.preventDefault();
     }
   }, {passive:false});
@@ -24597,8 +24551,7 @@ function setupChartTouchInteractions(){
   canvas.addEventListener('touchend', handleTouchEnd, {passive:true});
   canvas.addEventListener('touchcancel', handleTouchEnd, {passive:true});
   canvas.addEventListener('click', (e)=>{
-    const clickCount = Number(e?.detail || 1);
-    if(Date.now() < suppressClickUntil && clickCount < 2){
+    if(Date.now() < suppressClickUntil){
       e.preventDefault();
       e.stopPropagation();
     }
@@ -24773,11 +24726,37 @@ window.addEventListener("load", ()=>{
   ["chartAxisXMin","chartAxisXMax","chartAxisYMin","chartAxisYMax"].forEach(id=>{
     const el = document.getElementById(id);
     el?.addEventListener("input", markChartAxisManualEdit);
-    el?.addEventListener("change", ()=>{ markChartAxisManualEdit(); previewChartAxisFromModal(); });
-    el?.addEventListener("focusout", ()=>{ if(document.activeElement !== el){ markChartAxisManualEdit(); previewChartAxisFromModal(); } });
+    el?.addEventListener("change", ()=>{
+      markChartAxisManualEdit();
+      const autoDefaults = computeChartAxisAutoDefaults();
+      const xMin = Math.max(0, Math.min(120, convertChartAxisDisplayToAge(document.getElementById("chartAxisXMin")?.value, autoDefaults.xMin)));
+      const xMax = Math.max(xMin, Math.min(120, convertChartAxisDisplayToAge(document.getElementById("chartAxisXMax")?.value, autoDefaults.xMax)));
+      const yMin = numValue(document.getElementById("chartAxisYMin")?.value, autoDefaults.yMin);
+      const yMax = Math.max(yMin, numValue(document.getElementById("chartAxisYMax")?.value, autoDefaults.yMax));
+      const fixedScaleEl = document.getElementById("fixedScale");
+      const fixedScaleMinEl = document.getElementById("fixedScaleMin");
+      const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
+      const xAxisMinEl = document.getElementById("xAxisMin");
+      const xAxisMaxEl = document.getElementById("xAxisMax");
+      if(fixedScaleEl) fixedScaleEl.checked = true;
+      if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
+      if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
+      if(xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
+      if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
+      if(monteMode) runMonte(); else draw();
+      syncChartAxisModalFromState();
+    });
   });
-  document.querySelectorAll('input[name="chartAxisLabelMode"]').forEach(el=>{
-    el.addEventListener('change', handleChartAxisLabelModeChange);
+  document.querySelectorAll('input[name="chartAxisLabelMode"]').forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      const mode = document.querySelector('input[name="chartAxisLabelMode"]:checked')?.value || 'age';
+      const xAxisLabelModeEl = document.getElementById('xAxisLabelMode');
+      if(xAxisLabelModeEl) xAxisLabelModeEl.value = mode;
+      if(Array.isArray(scenarios)) scenarios.forEach(sc=>{ if(sc) sc.xAxisLabelMode = mode; });
+      updateChartAxisModalXAxisUnits();
+      syncChartAxisModalFromState();
+      if(monteMode) runMonte(); else draw();
+    });
   });
   function updateChartTooltipFromPointerEvent(e){
     if(!chart) return;
@@ -24822,30 +24801,11 @@ window.addEventListener("load", ()=>{
     chart.tooltip?.setActiveElements?.(activeElements, position);
     chart.update("none");
   }
-  let chartAxisModalDoubleClickTime = 0;
-  let chartAxisModalDoubleClickPos = null;
   document.getElementById("chart")?.addEventListener("click", (e)=>{
     updateChartTooltipFromPointerEvent(e);
-    if(!isPreviewSheetOpen('chartAxisModal')) return;
-    if(e.target !== e.currentTarget) return;
-    const now = Date.now();
-    const pos = { x:Number(e.offsetX || 0), y:Number(e.offsetY || 0) };
-    const closeEnough = !chartAxisModalDoubleClickPos || Math.hypot(pos.x - chartAxisModalDoubleClickPos.x, pos.y - chartAxisModalDoubleClickPos.y) <= 24;
-    if(chartAxisModalDoubleClickTime && (now - chartAxisModalDoubleClickTime) <= 280 && closeEnough){
-      chartAxisModalDoubleClickTime = 0;
-      chartAxisModalDoubleClickPos = null;
-      resetChartAxesToAuto();
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    chartAxisModalDoubleClickTime = now;
-    chartAxisModalDoubleClickPos = pos;
   });
   document.getElementById("chart")?.addEventListener("dblclick", (e)=>{
     if(e.target !== e.currentTarget) return;
-    chartAxisModalDoubleClickTime = 0;
-    chartAxisModalDoubleClickPos = null;
     e.preventDefault();
     e.stopPropagation();
     resetChartAxesToAuto();
@@ -24856,11 +24816,10 @@ window.addEventListener("load", ()=>{
   ["chartAxisYMin","chartAxisYMax"].forEach(id=>{
     const el = document.getElementById(id);
     if(el){
-      el.addEventListener("change", ()=>formatNumericInputDisplay(el, true));
+      el.addEventListener("input", ()=>formatNumericInputDisplay(el, true));
       el.addEventListener("blur", ()=>formatNumericInputDisplay(el, true));
     }
   });
-  document.querySelector('#chartAxisModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag, true);
   updateInputModeUI();
   syncAllBirthDateDerivedFields();
   syncSimpleModeSumInvAutoAgesInDOM();
