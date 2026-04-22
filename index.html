@@ -13281,6 +13281,7 @@ function renderCrashComparisonChart(results){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
+      layout:{padding:{right:28}},
       plugins:{
         legend:{
           display:true,
@@ -13298,10 +13299,11 @@ function renderCrashComparisonChart(results){
             const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 7);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
-          ticks:{
+                    ticks:{
             autoSkip:false,
+            includeBounds:false,
             callback:function(v, idx, ticks){
-              if(shouldHideCompareXAxisEdgeTick(this, v, idx, ticks)) return '';
+              if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
               const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 7);
               return formatCompareMoneyByMeta(
                 v,
@@ -13312,8 +13314,18 @@ function renderCrashComparisonChart(results){
             }
           },
           grid:{
-            color:(ctx)=>Number(ctx.tick?.value) === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)',
-            lineWidth:(ctx)=>Number(ctx.tick?.value) === 0 ? 2 : 1
+            color:(ctx)=>{
+              const scale = ctx?.scale;
+              const value = Number(ctx?.tick?.value);
+              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
+              return value === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)';
+            },
+            lineWidth:(ctx)=>{
+              const scale = ctx?.scale;
+              const value = Number(ctx?.tick?.value);
+              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
+              return value === 0 ? 2 : 1;
+            }
           }
         },
         y:{
@@ -13327,6 +13339,7 @@ function renderCrashComparisonChart(results){
           title:{display:true, text:densityAxisMeta.title},
           ticks:{
             autoSkip:false,
+            includeBounds:false,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
           }
         }
@@ -14560,6 +14573,7 @@ function renderNormalFireTerminalChart(result){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
+      layout:{padding:{right:28, top:16, bottom:16}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label(ctx){
@@ -14714,6 +14728,7 @@ function renderMonteCarloFireProbabilityChart(result){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
+      layout:{padding:{right:28}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label(ctx){
@@ -17179,16 +17194,45 @@ function shouldHideEdgeTick(index, ticks){
 }
 function shouldHideMainChartXAxisTick(scale, value, index, ticks){
   if(!scale || !Array.isArray(ticks) || !ticks.length) return false;
-  const pixel = Number(scale.getPixelForValue?.(value));
-  const left = Number(scale.left);
+  const n = Number(value);
+  if(!Number.isFinite(n)) return false;
+  const pixel = Number(scale.getPixelForValue?.(n));
   const right = Number(scale.right);
-  if(!Number.isFinite(pixel) || !Number.isFinite(left) || !Number.isFinite(right)) return false;
-  const leftEdgePadding = 6;
-  const rightHideAllowance = 28;
-  return pixel <= left + leftEdgePadding || pixel > right + rightHideAllowance;
+  if(!Number.isFinite(pixel) || !Number.isFinite(right)) return false;
+  const tickValues = ticks.map(t=>Number(t?.value ?? t)).filter(v=>Number.isFinite(v));
+  if(!tickValues.length) return false;
+  const maxTickValue = Math.max(...tickValues);
+  const isLast = Math.abs(n - maxTickValue) < 1e-9;
+  if(isLast && pixel >= right - 18) return true;
+  return false;
+}
+function hideRightEdgeTickLabelAtSource(scale){
+  if(!scale || !Array.isArray(scale.ticks) || !scale.ticks.length) return;
+  const tickEntries = scale.ticks
+    .map(t=>({tick:t, value:Number(t?.value ?? t)}))
+    .filter(entry=>Number.isFinite(entry.value))
+    .sort((a,b)=>a.value - b.value);
+  if(!tickEntries.length) return;
+  const lastEntry = tickEntries[tickEntries.length - 1];
+  const prevEntry = tickEntries.length >= 2 ? tickEntries[tickEntries.length - 2] : null;
+  const right = Number(scale.right);
+  const lastPx = Number(scale.getPixelForValue?.(lastEntry.value));
+  if(!Number.isFinite(right) || !Number.isFinite(lastPx)) return;
+  let quarterCellPx = 18;
+  if(prevEntry){
+    const prevPx = Number(scale.getPixelForValue?.(prevEntry.value));
+    const spacingPx = Math.abs(lastPx - prevPx);
+    if(Number.isFinite(spacingPx) && spacingPx > 0){
+      quarterCellPx = Math.max(4, spacingPx * 0.25);
+    }
+  }
+  if(lastPx < right - quarterCellPx) return;
+  const tick = lastEntry.tick;
+  if(typeof tick === 'object' && tick){
+    tick.label = '';
+  }
 }
 function formatMainChartXAxisTick(scale, sim, value, index, ticks){
-  if(shouldHideMainChartXAxisTick(scale, value, index, ticks)) return '';
   return getCalendarWindowTickLabel(sim, value);
 }
 function getMainChartYAxisUnitSpec(values){
@@ -17207,7 +17251,6 @@ function formatScaledAxisNumber(value){
   return rounded.toLocaleString(undefined, {maximumFractionDigits: digits, minimumFractionDigits: 0});
 }
 function formatMainChartYAxisTick(value, index, ticks, unitSpec){
-  if(shouldHideEdgeTick(index, ticks)) return '';
   const divisor = Math.max(1e-9, Number(unitSpec?.divisor) || 1);
   return formatScaledAxisNumber((Number(value) || 0) / divisor);
 }
@@ -17246,6 +17289,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     animation:false,
     responsive:true,
     maintainAspectRatio:false,
+    layout:{padding:{right:28}},
     interaction:{mode:"nearest", intersect:false},
     plugins:{
       legend:{display:showLegend, labels:{filter:(item, data)=>{
@@ -17269,7 +17313,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     },
     scales:{
       x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
-      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
+      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
   if(graphType === "education"){
@@ -17500,7 +17544,7 @@ function runMonte(settingsOverride=null){
         y:{
           title:{display:true,text:`総資産（${monteYAxisUnitSpec.label}）`},
           ...getAxisBounds(yData, firstCfg, false),
-          ticks:{callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, monteYAxisUnitSpec); }}
+          ticks:{includeBounds:false, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, monteYAxisUnitSpec); }}
         }
       }
     },
@@ -19151,6 +19195,9 @@ function buildCompareChartSelectionGuidePlugin(kind){
       if(!guide?.axis || !chart?.chartArea) return;
       const {ctx, chartArea:area} = chart;
       ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
       ctx.lineWidth = 1.5;
       if(guide.axis === 'x' && Number.isFinite(guide.startPx) && Number.isFinite(guide.currentPx)){
         const left = Math.max(area.left, Math.min(area.right, Math.min(guide.startPx, guide.currentPx)));
@@ -20026,14 +20073,24 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   if(!Number.isFinite(n)) return false;
   const px = scale.getPixelForValue(n);
   if(!Number.isFinite(px)) return false;
-  const left = Number(scale.left);
   const right = Number(scale.right);
-  if(!Number.isFinite(left) || !Number.isFinite(right)) return false;
-  const isFirst = index === 0;
-  const isLast = index === ticks.length - 1;
-  if(isFirst && px < left + 6) return true;
-  if(isLast && px > right + 8) return true;
+  if(!Number.isFinite(right)) return false;
+  const tickValues = ticks.map(t=>Number(t?.value ?? t)).filter(v=>Number.isFinite(v));
+  if(!tickValues.length) return false;
+  const maxTickValue = Math.max(...tickValues);
+  const isLast = Math.abs(n - maxTickValue) < 1e-9;
+  if(isLast && px >= right - 18) return true;
   return false;
+}
+
+function isCompareXAxisTickPastLeftEdge(scale, value){
+  if(!scale) return false;
+  const n = Number(value);
+  if(!Number.isFinite(n)) return false;
+  const px = Number(scale.getPixelForValue?.(n));
+  const left = Number(scale.left);
+  if(!Number.isFinite(px) || !Number.isFinite(left)) return false;
+  return px < left;
 }
 function setupMonteCompareChartInteractions(){
   const kind = 'monte';
@@ -20499,13 +20556,13 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   if(!Number.isFinite(n)) return false;
   const px = scale.getPixelForValue(n);
   if(!Number.isFinite(px)) return false;
-  const left = Number(scale.left);
   const right = Number(scale.right);
-  if(!Number.isFinite(left) || !Number.isFinite(right)) return false;
-  const isFirst = index === 0;
-  const isLast = index === ticks.length - 1;
-  if(isFirst && px < left + 6) return true;
-  if(isLast && px > right + 8) return true;
+  if(!Number.isFinite(right)) return false;
+  const tickValues = ticks.map(t=>Number(t?.value ?? t)).filter(v=>Number.isFinite(v));
+  if(!tickValues.length) return false;
+  const maxTickValue = Math.max(...tickValues);
+  const isLast = Math.abs(n - maxTickValue) < 1e-9;
+  if(isLast && px >= right - 18) return true;
   return false;
 }
 
@@ -20610,6 +20667,7 @@ function renderWithdrawalComparisonChart(results){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
+      layout:{padding:{right:28}},
       plugins:{
         legend:{
           display:true,
@@ -20631,10 +20689,11 @@ function renderWithdrawalComparisonChart(results){
             const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 7);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
-          ticks:{
+                    ticks:{
             autoSkip:false,
+            includeBounds:false,
             callback:function(v, idx, ticks){
-              if(shouldHideCompareXAxisEdgeTick(this, v, idx, ticks)) return '';
+              if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
               const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 7);
               return formatCompareMoneyByMeta(
                 v,
@@ -20645,8 +20704,18 @@ function renderWithdrawalComparisonChart(results){
             }
           },
           grid:{
-            color:(ctx)=>Number(ctx.tick?.value) === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)',
-            lineWidth:(ctx)=>Number(ctx.tick?.value) === 0 ? 2 : 1
+            color:(ctx)=>{
+              const scale = ctx?.scale;
+              const value = Number(ctx?.tick?.value);
+              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
+              return value === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)';
+            },
+            lineWidth:(ctx)=>{
+              const scale = ctx?.scale;
+              const value = Number(ctx?.tick?.value);
+              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
+              return value === 0 ? 2 : 1;
+            }
           }
         },
         y:{
@@ -20660,6 +20729,7 @@ function renderWithdrawalComparisonChart(results){
           title:{display:true, text:densityAxisMeta.title},
           ticks:{
             autoSkip:false,
+            includeBounds:false,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
           }
         }
@@ -21830,6 +21900,7 @@ function renderMonteCompareChart(results){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
+      layout:{padding:{right:28}},
       plugins:{
         legend:{display:true, labels:{sort(a,b){ return (Number(a?.datasetIndex) || 0) - (Number(b?.datasetIndex) || 0); }}},
         monteCompareMedianGuides:{guides:medianGuides}
@@ -21844,15 +21915,29 @@ function renderMonteCompareChart(results){
             const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 7);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
-          ticks:{
+                    ticks:{
             autoSkip:false,
+            includeBounds:false,
             callback:function(v, idx, ticks){
-              if(shouldHideCompareXAxisEdgeTick(this, v, idx, ticks)) return '';
+              if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
               const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 7);
               return formatCompareMoneyByMeta(v, moneyDisplayMeta, false, getCompareMoneyTickDecimals(moneyDisplayMeta, dynamicStep, ticks));
             }
           },
-          grid:{color:(ctx)=>Number(ctx.tick?.value) === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)', lineWidth:(ctx)=>Number(ctx.tick?.value) === 0 ? 2 : 1}
+          grid:{
+            color:(ctx)=>{
+              const scale = ctx?.scale;
+              const value = Number(ctx?.tick?.value);
+              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
+              return value === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)';
+            },
+            lineWidth:(ctx)=>{
+              const scale = ctx?.scale;
+              const value = Number(ctx?.tick?.value);
+              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
+              return value === 0 ? 2 : 1;
+            }
+          }
         },
         y:{
           beginAtZero:true,
@@ -21865,6 +21950,7 @@ function renderMonteCompareChart(results){
           title:{display:true, text:densityAxisMeta.title},
           ticks:{
             autoSkip:false,
+            includeBounds:false,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
           }
         }
