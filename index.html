@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>資産寿命シミュレータ デザインモック v5</title>
+<title>資産寿命シミュレータ デザインモック v6</title>
 <style>
   :root{
     --bg:#f3f6fb;
@@ -35,6 +35,7 @@
   .stack{display:flex;flex-direction:column;gap:14px;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--shadow-2);}
 
+  /* ---------- top ---------- */
   .top-card{overflow:hidden;}
   .top-hero{padding:22px 24px 18px;background:var(--top-solid);border-bottom:1px solid var(--line);}
   .top-hero-inner{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;}
@@ -49,7 +50,7 @@
     box-shadow:12px -6px 0 0 #fff,24px -12px 0 0 #fff;
   }
   .logo::after{
-    content:"";position:absolute;left:13px;top:18px;width:28px;height:4px;border-radius:999px;background:#fff;
+    content:"";position:absolute;left:13px;top:20px;width:26px;height:4px;border-radius:999px;background:#fff;
     transform:rotate(-35deg);transform-origin:left center;
   }
   .title{font-size:31px;font-weight:700;line-height:1.13;letter-spacing:.01em;margin:2px 0 8px;color:var(--text);}
@@ -73,12 +74,7 @@
     content:"";position:absolute;right:15px;top:50%;width:8px;height:8px;border-right:2px solid #667c90;border-bottom:2px solid #667c90;
     transform:translateY(-60%) rotate(45deg);
   }
-  .icon-btn.dots::before,.icon-btn.dots::after,.icon-btn.dots span{
-    content:"";position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:#53677d;transform:translateY(-50%);
-  }
-  .icon-btn.dots::before{left:13px}.icon-btn.dots span{left:19px}.icon-btn.dots::after{left:25px}
-
-  .chart-zone{padding:4px 18px 18px;background:#fff;}
+  .chart-zone{padding:4px 18px 10px;background:#fff;}
   .chart-card{
     position:relative;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#fbfdff 0%, #ffffff 100%);
     overflow:hidden;box-shadow:var(--shadow-1);
@@ -93,7 +89,12 @@
   .dot{width:8px;height:8px;border-radius:50%}
   .g{background:#8e99a8}.r{background:#d95b6a}.b{background:#4f8eff}.gr{background:#22a16f}.o{background:#f1a43a}.p{background:#7a63f6}
   .chart-svg{width:100%;height:340px;display:block;background:#fff;}
-  .resize-row{display:flex;justify-content:center;margin-top:2px;}
+
+  /* resize handle moved INSIDE graph section bottom */
+  .resize-inline{
+    display:flex;justify-content:center;align-items:center;
+    padding:0 0 14px;background:#fff;
+  }
   .resize-handle{
     width:76px;height:16px;border-radius:999px;border:1px solid #d0d9e4;background:#fff;box-shadow:var(--shadow-1);position:relative;
   }
@@ -101,23 +102,47 @@
     content:"";position:absolute;left:50%;top:50%;width:24px;height:4px;border-radius:999px;background:#b7c7d7;transform:translate(-50%,-50%);
   }
 
-  .tab-structure{background:#fff;}
-  .tab-top{padding:14px 14px 0;background:#fff;}
-  .tabs-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;min-width:0;}
-  .tabs-area{flex:1 1 auto;min-width:0;overflow:hidden;}
-  .tabs-track{display:flex;align-items:flex-end;gap:0;width:max-content;}
+  /* ---------- tabs ---------- */
+  .tab-structure{
+    background:transparent;
+    border:none;
+    box-shadow:none;
+  }
+  .tab-top{
+    padding:0 14px 0;
+    position:relative;
+  }
+  .tabs-row{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:16px;min-width:0;
+  }
+  .tabs-area{
+    flex:1 1 auto;min-width:0;position:relative;
+  }
+  .tabs-divider{
+    position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line);
+    z-index:1;
+  }
+  .tabs-track{
+    position:relative;z-index:2;display:flex;align-items:flex-end;gap:0;width:max-content;
+  }
   .tab{
     min-width:92px;padding:10px 16px 11px;text-align:center;font-size:14px;font-weight:700;color:#66798d;
-    background:linear-gradient(180deg,#edf3fb 0%, #e8eff8 100%);border:1px solid var(--line-strong);border-bottom:1px solid var(--line);position:relative;
+    background:linear-gradient(180deg,#edf3fb 0%, #e8eff8 100%);
+    border:1px solid var(--line-strong);border-bottom:1px solid var(--line);
+    position:relative;
+    border-top-left-radius:13px;border-top-right-radius:13px;
   }
-  .tab:first-child{border-top-left-radius:13px;border-top-right-radius:13px}
-  .tab:not(:first-child){margin-left:-1px;border-top-left-radius:13px;border-top-right-radius:13px}
+  .tab:not(:first-child){margin-left:-1px;}
   .tab.active{
     color:var(--text);background:#fff;z-index:3;border-bottom-color:#fff;
     box-shadow:10px 0 12px -12px rgba(22,41,66,.16),-10px 0 12px -12px rgba(22,41,66,.16);
   }
   .tab.plus{min-width:54px;padding-left:0;padding-right:0}
-  .switch-wrap{flex:0 0 auto;padding-top:2px;}
+  .switch-wrap{
+    flex:0 0 auto;
+    padding-top:2px;
+    padding-bottom:6px; /* small gap from center line */
+  }
   .mode-switch{
     display:inline-flex;align-items:center;overflow:hidden;border:1px solid var(--line-strong);border-radius:12px;background:#edf3fb;box-shadow:var(--shadow-1);
   }
@@ -126,10 +151,22 @@
   }
   .mode.active{background:#fff;color:var(--text);}
 
+  /* only lower shell remains; top corners rounded, bottom straight */
   .menu-band{
-    margin-top:-1px;border-top-left-radius:16px;border-top-right-radius:16px;border-top:1px solid var(--line);background:#fff;
+    margin-top:-1px;
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    border-top:none;
+    border-top-left-radius:16px;
+    border-top-right-radius:16px;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    background:#fff;
+    box-shadow:var(--shadow-1);
+    overflow:hidden;
   }
-  .nav-bar-wrap{padding:10px 14px 14px;background:#fff;border-bottom:1px solid var(--line);}
+  .nav-bar-wrap{padding:10px 14px 14px;background:#fff;}
   .nav-bar{display:flex;gap:8px;overflow:auto;padding-bottom:2px;}
   .nav-item{
     display:inline-flex;align-items:center;min-height:38px;padding:0 14px;white-space:nowrap;border:1px solid var(--line-strong);
@@ -137,6 +174,7 @@
   }
   .nav-item.active{background:#fff;color:var(--text);box-shadow:var(--shadow-1);}
 
+  /* ---------- content ---------- */
   .section-card{
     background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-1);overflow:hidden;
   }
@@ -281,22 +319,21 @@
   .preview-title{font-size:15px;font-weight:700;color:var(--text)}
   .preview-body{padding:14px;background:#fff}
 
-  .helper{font-size:12px;color:#6f8396;line-height:1.6}
-
   @media (max-width:1024px){ .grid-3{grid-template-columns:repeat(2,minmax(0,1fr));} }
   @media (max-width:760px){
     .page{padding:12px 10px 22px}
     .top-hero{padding:18px 16px 14px}
     .graph-toolbar{padding:12px 16px 8px}
-    .chart-zone{padding:4px 12px 14px}
+    .chart-zone{padding:4px 12px 8px}
+    .resize-inline{padding:0 0 12px}
     .title{font-size:24px}
     .comment{font-size:13px}
     .logo{width:48px;height:48px;border-radius:12px}
     .logo::before{left:11px;bottom:10px;width:7px;height:16px;box-shadow:10px -6px 0 0 #fff,20px -12px 0 0 #fff}
-    .logo::after{left:11px;top:15px;width:24px}
+    .logo::after{left:11px;top:17px;width:22px}
     .chart-svg{height:260px}
     .grid-3,.grid-2{grid-template-columns:1fr}
-    .tab-top{padding:12px 10px 0}
+    .tab-top{padding:0 10px 0}
     .nav-bar-wrap{padding:8px 10px 12px}
     .tab{min-width:78px;padding:9px 12px 10px;font-size:13px}
     .mode{min-width:64px;padding:8px 10px;font-size:13px}
@@ -328,7 +365,6 @@
           <div class="toolbar-label">グラフ</div>
           <div class="select-like">資産推移（重ね描き）</div>
         </div>
-        <div class="icon-btn dots" aria-label="グラフメニュー"><span></span></div>
       </div>
 
       <div class="chart-zone">
@@ -394,16 +430,17 @@
           </svg>
         </div>
       </div>
+
+      <div class="resize-inline">
+        <div class="resize-handle" title="グラフと入力の境界を上下移動"></div>
+      </div>
     </section>
 
-    <div class="resize-row">
-      <div class="resize-handle" title="グラフと入力の境界を上下移動"></div>
-    </div>
-
-    <section class="tab-structure card">
+    <section class="tab-structure">
       <div class="tab-top">
         <div class="tabs-row">
           <div class="tabs-area">
+            <div class="tabs-divider"></div>
             <div class="tabs-track">
               <div class="tab active">条件1</div>
               <div class="tab">条件2</div>
@@ -455,6 +492,7 @@
               <div class="spin-btns"><span></span><span></span></div>
             </div>
           </div>
+
           <div class="field">
             <div class="field-label">生年月日</div>
             <div class="date-wrap">
@@ -466,12 +504,14 @@
               <div class="cal-btn" title="カレンダー"></div>
             </div>
           </div>
+
           <div class="field">
             <div class="field-label">家族構成</div>
             <select class="select">
               <option>夫婦＋子ども3人</option>
             </select>
           </div>
+
           <div class="field">
             <div class="field-label">通貨</div>
             <div class="radio-row">
@@ -479,6 +519,7 @@
               <div class="radio-chip"><span class="radio"></span> ドル</div>
             </div>
           </div>
+
           <div class="field">
             <div class="field-label">インフレ率 <span class="badge linked">簡単連動</span></div>
             <div class="spin">
@@ -486,192 +527,12 @@
               <div class="spin-btns"><span></span><span></span></div>
             </div>
           </div>
+
           <div class="field">
             <div class="field-label">期待利回り <span class="badge linked">簡単連動</span></div>
             <div class="spin">
               <input value="5.0" />
               <div class="spin-btns"><span></span><span></span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section-card">
-      <div class="section-head">
-        <div>
-          <div class="section-title">簡単モード UI サンプル</div>
-          <div class="section-sub">スライダ・ボタン・カスタムプルダウンの見え方確認用。</div>
-        </div>
-        <div class="badge premium">Premium</div>
-      </div>
-      <div class="section-body">
-        <div class="grid-2">
-          <div class="field">
-            <div class="field-label">リスク許容度 <span class="badge linked">簡単連動</span></div>
-            <div class="slider-demo">
-              <div class="slider-labels"><span>堅実</span><span>成長重視</span></div>
-              <div class="slider-track">
-                <div class="slider-fill"></div>
-                <div class="slider-thumb"></div>
-              </div>
-            </div>
-            <div class="helper">横長ノブ、青の塗りつぶし、影は控えめのままにしています。</div>
-          </div>
-          <div class="field">
-            <div class="field-label">取り崩しルール（カスタムプルダウン例）</div>
-            <div class="dropdown-sample">
-              <div class="dropdown-item active">
-                <div class="dropdown-title">定額取り崩し</div>
-                <div class="dropdown-desc">毎年同じ金額を取り崩します。動作が直感的で説明しやすい方式です。</div>
-              </div>
-              <div class="dropdown-item">
-                <div class="dropdown-title">定率取り崩し</div>
-                <div class="dropdown-desc">毎年、資産残高に対する一定割合を取り崩します。</div>
-              </div>
-              <div class="dropdown-item">
-                <div class="dropdown-title">2バケツ戦略型 <span class="badge premium">Premium</span></div>
-                <div class="dropdown-desc">現金バッファを維持しつつ、長期資産を活用する上級者向けルールです。</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="height:14px"></div>
-        <div class="btn-row">
-          <div class="btn primary">シミュレーション</div>
-          <div class="btn secondary">条件をコピー</div>
-          <div class="btn danger">初期化</div>
-          <div class="btn premium">プレミアム機能を表示</div>
-        </div>
-        <div style="height:12px"></div>
-        <div class="btn-row">
-          <div class="btn secondary long outline-strong">比較条件を追加</div>
-          <div class="btn premium long outline-strong">プレミアム診断を試す</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section-card">
-      <div class="section-head">
-        <div>
-          <div class="section-title">現在の運用資産</div>
-          <div class="section-sub">テーブル / タイトル行 / 行強調 / チェック / ＋ボタンのサンプルです。</div>
-        </div>
-        <div class="plus-btn" title="行追加"></div>
-      </div>
-      <div class="section-body">
-        <div class="table-shell">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:70px;">反映</th>
-                <th>項目</th>
-                <th style="width:120px;">評価額</th>
-                <th style="width:110px;">利回り</th>
-                <th style="width:110px;">配当率</th>
-                <th style="width:120px;">口座種別</th>
-                <th style="width:90px;">簡単連動</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="linked-row">
-                <td style="text-align:center;"><span class="check on"></span></td>
-                <td>全世界株式 <span class="mini-badge">簡単</span></td>
-                <td class="num">3,500 万円</td>
-                <td class="num">5.0 %</td>
-                <td class="num">1.6 %</td>
-                <td style="text-align:center;">課税</td>
-                <td style="text-align:center;">○</td>
-              </tr>
-              <tr>
-                <td style="text-align:center;"><span class="check on"></span></td>
-                <td>債券ファンド</td>
-                <td class="num">1,100 万円</td>
-                <td class="num">1.2 %</td>
-                <td class="num">0.5 %</td>
-                <td style="text-align:center;">NISA</td>
-                <td style="text-align:center;">-</td>
-              </tr>
-              <tr>
-                <td style="text-align:center;"><span class="check"></span></td>
-                <td>現金</td>
-                <td class="num">800 万円</td>
-                <td class="num">0.0 %</td>
-                <td class="num">0.0 %</td>
-                <td style="text-align:center;">預貯金</td>
-                <td style="text-align:center;">-</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="section-card">
-      <div class="section-head">
-        <div>
-          <div class="section-title">プレビューシート / モーダル サンプル</div>
-          <div class="section-sub">今回のタブ周辺調整後の全体見え方確認用です。</div>
-        </div>
-        <div class="btn-row">
-          <div class="btn secondary">プレビューを開く</div>
-          <div class="btn primary">設定を開く</div>
-        </div>
-      </div>
-      <div class="section-body">
-        <div class="grid-2">
-          <div class="preview-sheet">
-            <div class="preview-head">
-              <div class="preview-title">グラフ軸設定 プレビュー</div>
-              <div class="badge success">保存可能</div>
-            </div>
-            <div class="preview-body">
-              <div class="grid-2">
-                <div class="field">
-                  <div class="field-label">X軸表示</div>
-                  <div class="radio-row">
-                    <div class="radio-chip active"><span class="radio"></span> 年齢</div>
-                    <div class="radio-chip"><span class="radio"></span> 西暦</div>
-                  </div>
-                </div>
-                <div class="field">
-                  <div class="field-label">Y軸最大値</div>
-                  <div class="spin">
-                    <input value="4.0" />
-                    <div class="spin-btns"><span></span><span></span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-wrap">
-            <div class="modal">
-              <div class="modal-head">
-                <div class="modal-title">モンテカルロ設定</div>
-                <div class="close"></div>
-              </div>
-              <div class="modal-body">
-                <div class="grid-2">
-                  <div class="field">
-                    <div class="field-label">試行回数</div>
-                    <div class="spin">
-                      <input value="1000" />
-                      <div class="spin-btns"><span></span><span></span></div>
-                    </div>
-                  </div>
-                  <div class="field">
-                    <div class="field-label">利回りモデル</div>
-                    <select class="select">
-                      <option>一様分布</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-foot">
-                <div class="btn secondary">キャンセル</div>
-                <div class="btn primary">保存</div>
-              </div>
             </div>
           </div>
         </div>
