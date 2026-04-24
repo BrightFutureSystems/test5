@@ -3024,6 +3024,23 @@ document.addEventListener("scroll", (ev)=>{
   }
 }
 
+
+/* ===== v805: match scenario tab border color to menu/category frame ===== */
+.tab-btn,
+#addTabBtn{
+  border-color:#d8e2f0 !important;
+}
+
+.tab-btn.active{
+  border-color:#d8e2f0 !important;
+  border-bottom-color:transparent !important;
+}
+
+.tab-btn:not(.active)::before,
+#addTabBtn::before{
+  background:#d8e2f0 !important;
+}
+
 </style>
 </head>
 <body>
