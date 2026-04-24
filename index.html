@@ -29868,3 +29868,247 @@ body.body-v844-chart-resizing{
   schedule();
 })();
 </script>
+
+<!-- ===== v846: restore chart resize reliably + remove inner chart frame ===== -->
+<style id="v846-chart-frame-and-resize-style">
+#chartCanvasStickyWrap{
+  border:none !important;
+  box-shadow:none !important;
+  background:transparent !important;
+  border-radius:0 !important;
+  margin:0 12px !important;
+  padding:10px 0 8px !important;
+}
+#chart{
+  width:100% !important;
+  height:var(--v846-chart-height, var(--v844-chart-height, var(--v843-chart-height, 418px))) !important;
+  max-width:var(--v846-chart-max-width, var(--v844-chart-max-width, var(--v843-chart-max-width, 980px))) !important;
+  margin:0 auto !important;
+}
+.chart-resize-handle-slot{
+  cursor:ns-resize !important;
+  touch-action:none !important;
+  padding:8px 0 12px !important;
+}
+.chart-resize-handle{
+  pointer-events:none;
+}
+body.body-v846-chart-resizing{
+  user-select:none !important;
+  -webkit-user-select:none !important;
+  overscroll-behavior:none !important;
+  touch-action:none !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartTopPanel{
+    overflow:visible !important;
+  }
+  #chartCanvasStickyWrap{
+    margin:0 !important;
+    padding:8px 0 8px !important;
+  }
+  #chart{
+    max-width:100% !important;
+    height:var(--v846-chart-height, var(--v844-chart-height, 262px)) !important;
+  }
+  .chart-resize-handle-slot{
+    padding:6px 0 10px !important;
+  }
+}
+</style>
+<script id="v846-chart-frame-and-resize-script">
+(function(){
+  const DESKTOP_MQ = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
+  const MOBILE_MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
+  const DESKTOP = { min: 260, max: 560, def: 432, maxWidth: 980, inputMin: 220, bottomMargin: 12 };
+  const MOBILE = { min: 200, max: 420, def: 262, maxWidth: null, inputMin: 180, bottomMargin: 8 };
+  let desktopHeight = null;
+  let mobileHeight = null;
+  let dragging = false;
+  let dragPointerId = null;
+  let dragStartY = 0;
+  let dragStartHeight = 0;
+  let rafId = 0;
+
+  function isDesktop(){ return !!(DESKTOP_MQ && DESKTOP_MQ.matches); }
+  function isMobile(){ return !!(MOBILE_MQ && MOBILE_MQ.matches); }
+  function modeCfg(){ return isDesktop() ? DESKTOP : MOBILE; }
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+  function getChartEl(){ return document.getElementById('chart'); }
+  function getHandle(){ return document.querySelector('.chart-resize-handle-slot'); }
+  function getInputs(){ return document.getElementById('inputs'); }
+  function getActiveStoredHeight(){ return isDesktop() ? desktopHeight : mobileHeight; }
+  function setActiveStoredHeight(v){ if(isDesktop()) desktopHeight = v; else mobileHeight = v; }
+
+  function readChartHeight(){
+    const chartEl = getChartEl();
+    const cfg = modeCfg();
+    if(!chartEl) return cfg.def;
+    const rectHeight = chartEl.getBoundingClientRect().height;
+    if(Number.isFinite(rectHeight) && rectHeight > 0) return Math.round(rectHeight);
+    const cssHeight = parseFloat(window.getComputedStyle(chartEl).height || String(cfg.def));
+    return Number.isFinite(cssHeight) && cssHeight > 0 ? Math.round(cssHeight) : cfg.def;
+  }
+
+  function setRootVars(height){
+    const root = document.documentElement;
+    root.style.setProperty('--v846-chart-height', height + 'px');
+    if(isDesktop()) root.style.setProperty('--v846-chart-max-width', DESKTOP.maxWidth + 'px');
+    else root.style.setProperty('--v846-chart-max-width', '100%');
+  }
+
+  function syncInputsHeight(){
+    const inputsEl = getInputs();
+    if(!inputsEl) return;
+    const cfg = modeCfg();
+    const rect = inputsEl.getBoundingClientRect();
+    const available = Math.floor(window.innerHeight - rect.top - cfg.bottomMargin);
+    inputsEl.style.maxHeight = Math.max(cfg.inputMin, available) + 'px';
+  }
+
+  function resizeChartInstance(){
+    try{
+      if(typeof chart !== 'undefined' && chart && typeof chart.resize === 'function'){
+        chart.resize();
+        requestAnimationFrame(()=>{ try{ chart.resize(); }catch(_e){} });
+      }
+    }catch(_e){}
+  }
+
+  function applyLayout(height){
+    const cfg = modeCfg();
+    const nextHeight = clamp(Math.round(height), cfg.min, cfg.max);
+    setActiveStoredHeight(nextHeight);
+    setRootVars(nextHeight);
+    syncInputsHeight();
+    resizeChartInstance();
+  }
+
+  function scheduleApply(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){
+      rafId = 0;
+      const cfg = modeCfg();
+      let h = getActiveStoredHeight();
+      if(h == null) h = clamp(readChartHeight(), cfg.min, cfg.max);
+      applyLayout(h);
+    });
+  }
+
+  function clientYFromEvent(ev){
+    if(typeof ev.clientY === 'number') return ev.clientY;
+    if(ev.touches && ev.touches[0] && typeof ev.touches[0].clientY === 'number') return ev.touches[0].clientY;
+    if(ev.changedTouches && ev.changedTouches[0] && typeof ev.changedTouches[0].clientY === 'number') return ev.changedTouches[0].clientY;
+    return NaN;
+  }
+
+  function onMove(ev){
+    if(!dragging) return;
+    if(dragPointerId != null && ev.pointerId != null && ev.pointerId !== dragPointerId) return;
+    const y = clientYFromEvent(ev);
+    if(!Number.isFinite(y)) return;
+    if(ev.cancelable) ev.preventDefault();
+    applyLayout(dragStartHeight + (y - dragStartY));
+  }
+
+  function finish(ev){
+    if(!dragging) return;
+    if(ev && dragPointerId != null && ev.pointerId != null && ev.pointerId !== dragPointerId) return;
+    dragging = false;
+    dragPointerId = null;
+    document.body.classList.remove('body-v846-chart-resizing');
+    document.documentElement.style.cursor = '';
+    const handle = getHandle();
+    if(handle && ev && ev.pointerId != null && typeof handle.releasePointerCapture === 'function'){
+      try{ handle.releasePointerCapture(ev.pointerId); }catch(_e){}
+    }
+    syncInputsHeight();
+  }
+
+  function start(ev){
+    const handle = getHandle();
+    if(!handle || !handle.contains(ev.target)) return;
+    if(ev.pointerType === 'mouse' && ev.button !== 0) return;
+    if(ev.type === 'mousedown' && ev.button !== 0) return;
+    const y = clientYFromEvent(ev);
+    if(!Number.isFinite(y)) return;
+    if(ev.cancelable) ev.preventDefault();
+    const cfg = modeCfg();
+    dragging = true;
+    dragPointerId = ev.pointerId != null ? ev.pointerId : null;
+    dragStartY = y;
+    dragStartHeight = clamp(getActiveStoredHeight() == null ? readChartHeight() : getActiveStoredHeight(), cfg.min, cfg.max);
+    document.body.classList.add('body-v846-chart-resizing');
+    document.documentElement.style.cursor = 'ns-resize';
+    if(handle && ev.pointerId != null && typeof handle.setPointerCapture === 'function'){
+      try{ handle.setPointerCapture(ev.pointerId); }catch(_e){}
+    }
+  }
+
+  function bind(){
+    const handle = getHandle();
+    if(!handle || handle.dataset.v846Bound === '1') return;
+    handle.dataset.v846Bound = '1';
+    if(window.PointerEvent){
+      handle.addEventListener('pointerdown', start, {passive:false});
+      document.addEventListener('pointermove', onMove, {passive:false});
+      document.addEventListener('pointerup', finish, {passive:false});
+      document.addEventListener('pointercancel', finish, {passive:false});
+    }else{
+      handle.addEventListener('mousedown', start, {passive:false});
+      document.addEventListener('mousemove', onMove, {passive:false});
+      document.addEventListener('mouseup', finish, {passive:true});
+      handle.addEventListener('touchstart', start, {passive:false});
+      document.addEventListener('touchmove', onMove, {passive:false});
+      document.addEventListener('touchend', finish, {passive:true});
+      document.addEventListener('touchcancel', finish, {passive:true});
+    }
+    window.addEventListener('blur', finish, {passive:true});
+  }
+
+  function onModeChange(){ scheduleApply(); }
+
+  window.addEventListener('load', function(){
+    bind();
+    scheduleApply();
+  }, {once:true});
+  window.addEventListener('resize', scheduleApply, {passive:true});
+  window.addEventListener('orientationchange', scheduleApply, {passive:true});
+  if(DESKTOP_MQ){
+    if(typeof DESKTOP_MQ.addEventListener === 'function') DESKTOP_MQ.addEventListener('change', onModeChange);
+    else if(typeof DESKTOP_MQ.addListener === 'function') DESKTOP_MQ.addListener(onModeChange);
+  }
+  if(MOBILE_MQ){
+    if(typeof MOBILE_MQ.addEventListener === 'function') MOBILE_MQ.addEventListener('change', onModeChange);
+    else if(typeof MOBILE_MQ.addListener === 'function') MOBILE_MQ.addListener(onModeChange);
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(scheduleApply);
+    window.addEventListener('load', function(){
+      ['chartWrap','chartTopPanel','tabsBar','inputs','chartCanvasStickyWrap'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+  const originalDraw = window.draw;
+  if(typeof originalDraw === 'function' && !window.__v846DrawWrapped){
+    window.__v846DrawWrapped = true;
+    window.draw = function(){
+      const result = originalDraw.apply(this, arguments);
+      scheduleApply();
+      return result;
+    };
+  }
+  const originalRunMonte = window.runMonte;
+  if(typeof originalRunMonte === 'function' && !window.__v846RunMonteWrapped){
+    window.__v846RunMonteWrapped = true;
+    window.runMonte = function(){
+      const result = originalRunMonte.apply(this, arguments);
+      scheduleApply();
+      return result;
+    };
+  }
+  scheduleApply();
+})();
+</script>
