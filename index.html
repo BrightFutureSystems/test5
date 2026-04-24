@@ -30112,3 +30112,105 @@ body.body-v846-chart-resizing{
   scheduleApply();
 })();
 </script>
+
+
+<!-- ===== v847: fix mobile chart stop position at chart top and prevent overscroll slip ===== -->
+<style id="v847-mobile-chart-stop-fix-style">
+@media (max-width:900px), (pointer:coarse){
+  #chartWrap,
+  #chartWrap.chart-wrap-rel{
+    position:static !important;
+    top:auto !important;
+    z-index:auto !important;
+  }
+  #chartTopPanel{
+    position:sticky !important;
+    top:calc(var(--v847-mobile-chart-stick-top, 0px) * -1) !important;
+    z-index:20 !important;
+  }
+  #chartCanvasStickyWrap{
+    position:relative !important;
+    top:auto !important;
+    z-index:auto !important;
+  }
+}
+</style>
+<script id="v847-mobile-chart-stop-fix-script">
+(function(){
+  const MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
+  let rafId = 0;
+  let lockScroll = false;
+
+  function isMobileLike(){ return !!(MQ && MQ.matches); }
+  function getPanel(){ return document.getElementById('chartTopPanel'); }
+  function getCanvasWrap(){ return document.getElementById('chartCanvasStickyWrap'); }
+
+  function updateStickyOffset(){
+    const root = document.documentElement;
+    if(!isMobileLike()){
+      root.style.removeProperty('--v847-mobile-chart-stick-top');
+      return;
+    }
+    const panel = getPanel();
+    const canvasWrap = getCanvasWrap();
+    if(!panel || !canvasWrap) return;
+    const panelRect = panel.getBoundingClientRect();
+    const canvasRect = canvasWrap.getBoundingClientRect();
+    const offset = Math.max(0, Math.round(canvasRect.top - panelRect.top));
+    root.style.setProperty('--v847-mobile-chart-stick-top', offset + 'px');
+  }
+
+  function getMobileChartStopScrollY(){
+    const canvasWrap = getCanvasWrap();
+    if(!canvasWrap) return 0;
+    const offset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--v847-mobile-chart-stick-top')) || 0;
+    const absTop = window.scrollY + canvasWrap.getBoundingClientRect().top;
+    return Math.max(0, Math.round(absTop - offset));
+  }
+
+  function capScrollAtChartTop(){
+    if(!isMobileLike() || lockScroll) return;
+    const maxY = getMobileChartStopScrollY();
+    if(window.scrollY > maxY + 1){
+      lockScroll = true;
+      window.scrollTo(window.scrollX || 0, maxY);
+      requestAnimationFrame(function(){ lockScroll = false; });
+    }
+  }
+
+  function scheduleAll(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){
+      rafId = 0;
+      updateStickyOffset();
+      capScrollAtChartTop();
+    });
+  }
+
+  window.addEventListener('load', scheduleAll, {once:true});
+  window.addEventListener('resize', scheduleAll, {passive:true});
+  window.addEventListener('orientationchange', scheduleAll, {passive:true});
+  window.addEventListener('scroll', function(){
+    if(!isMobileLike()) return;
+    capScrollAtChartTop();
+  }, {passive:true});
+  window.addEventListener('touchmove', function(){
+    if(!isMobileLike()) return;
+    capScrollAtChartTop();
+  }, {passive:true});
+  if(MQ){
+    if(typeof MQ.addEventListener === 'function') MQ.addEventListener('change', scheduleAll);
+    else if(typeof MQ.addListener === 'function') MQ.addListener(scheduleAll);
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(scheduleAll);
+    window.addEventListener('load', function(){
+      ['chartTopPanel','chartCanvasStickyWrap','chartTopBar','chartWrap'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+  scheduleAll();
+})();
+</script>
