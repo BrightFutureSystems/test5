@@ -30232,15 +30232,20 @@ body.body-v846-chart-resizing{
   }
 }
 </style>
-<script id="v848-mobile-input-height-and-scroll-cap-script">
+<script id="v849-mobile-input-height-and-smooth-scroll-cap-script">
 (function(){
   const MOBILE_MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
   const BOTTOM_MARGIN = 0;
   const MIN_INPUT_HEIGHT = 220;
+  const CAP_TOLERANCE = 1;
+  const SNAP_DURATION = 170;
   let layoutRaf = 0;
   let capRaf = 0;
+  let snapRaf = 0;
+  let wheelTimer = 0;
   let cachedStopY = null;
-  let isCapping = false;
+  let isTouching = false;
+  let isSnapping = false;
 
   function isMobile(){
     return !!(MOBILE_MQ && MOBILE_MQ.matches);
@@ -30276,6 +30281,42 @@ body.body-v846-chart-resizing{
     return cachedStopY;
   }
 
+  function currentScrollY(){
+    return window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+
+  function cancelSnap(){
+    if(snapRaf) cancelAnimationFrame(snapRaf);
+    snapRaf = 0;
+    isSnapping = false;
+  }
+
+  function smoothSnapToStop(stopY){
+    if(stopY == null || !isMobile()) return;
+    const startY = currentScrollY();
+    if(startY <= stopY + CAP_TOLERANCE) return;
+    cancelSnap();
+    isSnapping = true;
+    const startAt = performance.now();
+    const distance = startY - stopY;
+    const startX = window.pageXOffset || 0;
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+    function step(now){
+      if(!isMobile()) { cancelSnap(); return; }
+      const t = Math.min(1, (now - startAt) / SNAP_DURATION);
+      const y = startY - distance * easeOutCubic(t);
+      window.scrollTo(startX, Math.max(stopY, Math.round(y)));
+      if(t < 1 && currentScrollY() > stopY + CAP_TOLERANCE){
+        snapRaf = requestAnimationFrame(step);
+      }else{
+        window.scrollTo(startX, stopY);
+        snapRaf = 0;
+        isSnapping = false;
+      }
+    }
+    snapRaf = requestAnimationFrame(step);
+  }
+
   function syncMobileInputsHeight(){
     const root = document.documentElement;
     const inputs = document.getElementById('inputs');
@@ -30283,6 +30324,7 @@ body.body-v846-chart-resizing{
     if(!isMobile()){
       root.style.removeProperty('--v848-mobile-input-height');
       cachedStopY = null;
+      cancelSnap();
       return;
     }
     const stopY = mobileStopY();
@@ -30299,33 +30341,39 @@ body.body-v846-chart-resizing{
     layoutRaf = requestAnimationFrame(function(){
       layoutRaf = 0;
       syncMobileInputsHeight();
-      scheduleScrollCap();
+      scheduleScrollCap(false);
     });
   }
 
-  function capMobileWindowScroll(){
+  function capMobileWindowScroll(force){
     capRaf = 0;
-    if(!isMobile() || isCapping) return;
+    if(!isMobile() || isSnapping) return;
     const stopY = currentStopY();
     if(stopY == null) return;
-    const y = window.pageYOffset || document.documentElement.scrollTop || 0;
-    if(y <= stopY + 1) return;
-    isCapping = true;
-    window.scrollTo(window.pageXOffset || 0, stopY);
-    requestAnimationFrame(function(){ isCapping = false; });
+    const y = currentScrollY();
+    if(y <= stopY + CAP_TOLERANCE) return;
+    if(isTouching && !force) return;
+    smoothSnapToStop(stopY);
   }
 
-  function scheduleScrollCap(){
+  function scheduleScrollCap(force){
     if(capRaf) return;
-    capRaf = requestAnimationFrame(capMobileWindowScroll);
+    capRaf = requestAnimationFrame(function(){ capMobileWindowScroll(!!force); });
+  }
+
+  function scheduleWheelSettledCap(){
+    if(wheelTimer) clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(function(){ scheduleScrollCap(true); }, 80);
   }
 
   window.addEventListener('load', scheduleLayoutSync, {once:true, passive:true});
   window.addEventListener('resize', scheduleLayoutSync, {passive:true});
   window.addEventListener('orientationchange', scheduleLayoutSync, {passive:true});
-  window.addEventListener('scroll', scheduleScrollCap, {passive:true});
-  window.addEventListener('touchend', scheduleScrollCap, {passive:true});
-  window.addEventListener('wheel', scheduleScrollCap, {passive:true});
+  window.addEventListener('scroll', function(){ scheduleScrollCap(false); }, {passive:true});
+  window.addEventListener('touchstart', function(){ isTouching = true; cancelSnap(); }, {passive:true});
+  window.addEventListener('touchend', function(){ isTouching = false; scheduleScrollCap(true); }, {passive:true});
+  window.addEventListener('touchcancel', function(){ isTouching = false; scheduleScrollCap(true); }, {passive:true});
+  window.addEventListener('wheel', scheduleWheelSettledCap, {passive:true});
   if(window.visualViewport) window.visualViewport.addEventListener('resize', scheduleLayoutSync, {passive:true});
   if(MOBILE_MQ){
     if(typeof MOBILE_MQ.addEventListener === 'function') MOBILE_MQ.addEventListener('change', scheduleLayoutSync);
@@ -30342,8 +30390,8 @@ body.body-v846-chart-resizing{
   }
 
   const originalDraw = window.draw;
-  if(typeof originalDraw === 'function' && !window.__v848MobileInputsDrawWrapped){
-    window.__v848MobileInputsDrawWrapped = true;
+  if(typeof originalDraw === 'function' && !window.__v849MobileInputsDrawWrapped){
+    window.__v849MobileInputsDrawWrapped = true;
     window.draw = function(){
       const result = originalDraw.apply(this, arguments);
       scheduleLayoutSync();
@@ -30353,3 +30401,4 @@ body.body-v846-chart-resizing{
   scheduleLayoutSync();
 })();
 </script>
+
