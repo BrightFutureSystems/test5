@@ -3041,6 +3041,1316 @@ document.addEventListener("scroll", (ev)=>{
   background:#d8e2f0 !important;
 }
 
+
+
+/* ===== v806: input area visual tone refinement only (no structure / no JS changes) ===== */
+#commonSettingsPanel,
+#simpleModePanel,
+#detailModePanel{
+  --v806-line:#cfd9e5;
+  --v806-line-strong:#bccbda;
+  --v806-line-soft:#e7eef6;
+  --v806-text:#122b45;
+  --v806-text-2:#1f3c5a;
+  --v806-muted:#607589;
+  --v806-blue:#4f8eff;
+  --v806-purple:#7a63f6;
+  --v806-green:#22a16f;
+  --v806-red:#d95b6a;
+  --v806-shadow:0 1px 2px rgba(18,38,63,.035);
+}
+
+#commonSettingsPanel > .section,
+#simpleModePanel > .section,
+#detailModePanel > .section{
+  border-color:var(--v806-line) !important;
+  border-radius:18px !important;
+  background:#fff !important;
+  box-shadow:var(--v806-shadow) !important;
+}
+
+#commonSettingsPanel > .section > h2,
+#simpleModePanel > .section > h2,
+#detailModePanel > .section > h2{
+  margin:-12px -12px 12px !important;
+  padding:14px 16px !important;
+  border-bottom:1px solid var(--v806-line) !important;
+  border-radius:18px 18px 0 0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+  color:var(--v806-text) !important;
+  font-size:1.12rem !important;
+  font-weight:700 !important;
+  line-height:1.35 !important;
+}
+
+#commonSettingsPanel .subhead,
+#simpleModePanel .subhead,
+#detailModePanel .subhead,
+#commonSettingsPanel .simple-mode-card-title-main,
+#simpleModePanel .simple-mode-card-title-main,
+#detailModePanel .simple-mode-card-title-main{
+  color:var(--v806-text) !important;
+}
+
+#commonSettingsPanel .help,
+#simpleModePanel .help,
+#detailModePanel .help,
+#commonSettingsPanel .muted,
+#simpleModePanel .muted,
+#detailModePanel .muted,
+#commonSettingsPanel .simple-mode-card-note,
+#simpleModePanel .simple-mode-card-note,
+#detailModePanel .simple-mode-card-note,
+#commonSettingsPanel .simple-mode-field-help,
+#simpleModePanel .simple-mode-field-help,
+#detailModePanel .simple-mode-field-help,
+#commonSettingsPanel .simple-mode-note,
+#simpleModePanel .simple-mode-note,
+#detailModePanel .simple-mode-note{
+  color:var(--v806-muted) !important;
+}
+
+#commonSettingsPanel .simple-mode-card,
+#simpleModePanel .simple-mode-card,
+#detailModePanel .simple-mode-card,
+#commonSettingsPanel .infl-box,
+#simpleModePanel .infl-box,
+#detailModePanel .infl-box,
+#commonSettingsPanel .loan-control-box,
+#simpleModePanel .loan-control-box,
+#detailModePanel .loan-control-box,
+#commonSettingsPanel .loan-summary,
+#simpleModePanel .loan-summary,
+#detailModePanel .loan-summary,
+#commonSettingsPanel .withdrawal-rule-summary,
+#simpleModePanel .withdrawal-rule-summary,
+#detailModePanel .withdrawal-rule-summary{
+  border-color:var(--v806-line) !important;
+  border-radius:16px !important;
+  background:#fbfdff !important;
+  box-shadow:var(--v806-shadow) !important;
+}
+
+#commonSettingsPanel .simple-mode-field,
+#simpleModePanel .simple-mode-field,
+#detailModePanel .simple-mode-field{
+  border-top-color:var(--v806-line-soft) !important;
+}
+
+#commonSettingsPanel input[type=number],
+#simpleModePanel input[type=number],
+#detailModePanel input[type=number],
+#commonSettingsPanel input[type=text],
+#simpleModePanel input[type=text],
+#detailModePanel input[type=text],
+#commonSettingsPanel input[type=date],
+#simpleModePanel input[type=date],
+#detailModePanel input[type=date],
+#commonSettingsPanel select,
+#simpleModePanel select,
+#detailModePanel select{
+  border-color:var(--v806-line-strong) !important;
+  border-radius:10px !important;
+  background:#fff !important;
+  color:var(--v806-text-2) !important;
+  box-shadow:var(--v806-shadow) !important;
+}
+
+#commonSettingsPanel input[type=number]:focus,
+#simpleModePanel input[type=number]:focus,
+#detailModePanel input[type=number]:focus,
+#commonSettingsPanel input[type=text]:focus,
+#simpleModePanel input[type=text]:focus,
+#detailModePanel input[type=text]:focus,
+#commonSettingsPanel input[type=date]:focus,
+#simpleModePanel input[type=date]:focus,
+#detailModePanel input[type=date]:focus,
+#commonSettingsPanel select:focus,
+#simpleModePanel select:focus,
+#detailModePanel select:focus{
+  outline:2px solid rgba(79,142,255,.22) !important;
+  outline-offset:1px !important;
+  border-color:#9ebcf4 !important;
+}
+
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn){
+  border-color:var(--v806-line-strong) !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:#2f4a66 !important;
+  box-shadow:var(--v806-shadow) !important;
+  font-weight:600;
+}
+
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):hover,
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):hover,
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):hover{
+  background:#f3f7fc !important;
+}
+
+#commonSettingsPanel .danger-btn,
+#simpleModePanel .danger-btn,
+#detailModePanel .danger-btn{
+  background:var(--v806-red) !important;
+  border-color:var(--v806-red) !important;
+  color:#fff !important;
+}
+
+#commonSettingsPanel .danger-btn:hover,
+#simpleModePanel .danger-btn:hover,
+#detailModePanel .danger-btn:hover{
+  background:#c94858 !important;
+  border-color:#c94858 !important;
+}
+
+#commonSettingsPanel table,
+#simpleModePanel table,
+#detailModePanel table{
+  color:var(--v806-text-2);
+}
+
+#commonSettingsPanel th,
+#simpleModePanel th,
+#detailModePanel th{
+  border-color:#e3ebf3 !important;
+  background:linear-gradient(180deg,#f4f8fe 0%, #ebf2fb 100%) !important;
+  color:#43607b !important;
+  font-weight:700 !important;
+}
+
+#commonSettingsPanel td,
+#simpleModePanel td,
+#detailModePanel td{
+  border-color:#e9f0f6 !important;
+  background-color:#fff;
+  color:var(--v806-text-2);
+}
+
+#commonSettingsPanel .simple-linked-row td,
+#simpleModePanel .simple-linked-row td,
+#detailModePanel .simple-linked-row td{
+  background:#eef6ff !important;
+}
+
+#commonSettingsPanel .simple-linked-badge,
+#simpleModePanel .simple-linked-badge,
+#detailModePanel .simple-linked-badge{
+  background:#e7f1ff !important;
+  color:#376fca !important;
+  border:1px solid #d0e2fb !important;
+  border-radius:999px !important;
+}
+
+#commonSettingsPanel .premium-badge,
+#simpleModePanel .premium-badge,
+#detailModePanel .premium-badge,
+#commonSettingsPanel .badge-premium,
+#simpleModePanel .badge-premium,
+#detailModePanel .badge-premium{
+  background:#f0e9ff !important;
+  color:var(--v806-purple) !important;
+  border-color:#e2d6ff !important;
+}
+
+#commonSettingsPanel .add-row-btn,
+#simpleModePanel .add-row-btn,
+#detailModePanel .add-row-btn,
+#commonSettingsPanel .plus-btn,
+#simpleModePanel .plus-btn,
+#detailModePanel .plus-btn{
+  border-color:#cfe0fb !important;
+  background:#eef5ff !important;
+  color:#2f67bd !important;
+}
+
+#commonSettingsPanel input[readonly],
+#simpleModePanel input[readonly],
+#detailModePanel input[readonly],
+#commonSettingsPanel input[disabled],
+#simpleModePanel input[disabled],
+#detailModePanel input[disabled],
+#commonSettingsPanel select[disabled],
+#simpleModePanel select[disabled],
+#detailModePanel select[disabled]{
+  background:#f6f9fd !important;
+  color:#6f8397 !important;
+  box-shadow:none !important;
+}
+
+#commonSettingsPanel .row-label-btn:hover,
+#simpleModePanel .row-label-btn:hover,
+#detailModePanel .row-label-btn:hover{
+  background:#eef5ff !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #commonSettingsPanel > .section,
+  #simpleModePanel > .section,
+  #detailModePanel > .section{
+    border-radius:16px !important;
+  }
+  #commonSettingsPanel > .section > h2,
+  #simpleModePanel > .section > h2,
+  #detailModePanel > .section > h2{
+    padding:12px 14px !important;
+    border-radius:16px 16px 0 0 !important;
+    font-size:1.05rem !important;
+  }
+}
+
+
+/* ===== v807: round normal input-table outer corners only ===== */
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border:1px solid var(--v806-line) !important;
+  border-radius:16px !important;
+  overflow:hidden !important;
+  clip-path:inset(0 round 16px) !important;
+  background:#fff !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:1px solid #e3ebf3 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child{
+  border-right:0 !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *{
+  border-bottom:0 !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > *,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > *,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > *{
+  border-bottom:1px solid var(--v806-line) !important;
+}
+
+#commonSettingsPanel .table-scroll,
+#simpleModePanel .table-scroll,
+#detailModePanel .table-scroll,
+#commonSettingsPanel .loan-wrap,
+#simpleModePanel .loan-wrap,
+#detailModePanel .loan-wrap,
+#commonSettingsPanel .edu-wrap,
+#simpleModePanel .edu-wrap,
+#detailModePanel .edu-wrap,
+#commonSettingsPanel .child-allowance-wrap,
+#simpleModePanel .child-allowance-wrap,
+#detailModePanel .child-allowance-wrap{
+  border-radius:16px !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  #simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  #detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){
+    border-radius:14px !important;
+    clip-path:inset(0 round 14px) !important;
+  }
+  #commonSettingsPanel .table-scroll,
+  #simpleModePanel .table-scroll,
+  #detailModePanel .table-scroll,
+  #commonSettingsPanel .loan-wrap,
+  #simpleModePanel .loan-wrap,
+  #detailModePanel .loan-wrap,
+  #commonSettingsPanel .edu-wrap,
+  #simpleModePanel .edu-wrap,
+  #detailModePanel .edu-wrap,
+  #commonSettingsPanel .child-allowance-wrap,
+  #simpleModePanel .child-allowance-wrap,
+  #detailModePanel .child-allowance-wrap{
+    border-radius:14px !important;
+  }
+}
+
+/* ===== v808: add visible divider under normal table title/header rows only ===== */
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th{
+  border-bottom:1px solid var(--v806-line) !important;
+}
+
+/* ===== v809: restore hover transitions for input-area controls only ===== */
+#commonSettingsPanel input[type=number],
+#simpleModePanel input[type=number],
+#detailModePanel input[type=number],
+#commonSettingsPanel input[type=text],
+#simpleModePanel input[type=text],
+#detailModePanel input[type=text],
+#commonSettingsPanel input[type=date],
+#simpleModePanel input[type=date],
+#detailModePanel input[type=date],
+#commonSettingsPanel select,
+#simpleModePanel select,
+#detailModePanel select,
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#commonSettingsPanel .row-label-btn,
+#simpleModePanel .row-label-btn,
+#detailModePanel .row-label-btn{
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+}
+
+#commonSettingsPanel input[type=number]:not(:disabled):not([readonly]):hover,
+#simpleModePanel input[type=number]:not(:disabled):not([readonly]):hover,
+#detailModePanel input[type=number]:not(:disabled):not([readonly]):hover,
+#commonSettingsPanel input[type=text]:not(:disabled):not([readonly]):hover,
+#simpleModePanel input[type=text]:not(:disabled):not([readonly]):hover,
+#detailModePanel input[type=text]:not(:disabled):not([readonly]):hover,
+#commonSettingsPanel input[type=date]:not(:disabled):not([readonly]):hover,
+#simpleModePanel input[type=date]:not(:disabled):not([readonly]):hover,
+#detailModePanel input[type=date]:not(:disabled):not([readonly]):hover,
+#commonSettingsPanel select:not(:disabled):hover,
+#simpleModePanel select:not(:disabled):hover,
+#detailModePanel select:not(:disabled):hover{
+  border-color:#9ebcf4 !important;
+  box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+}
+
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):hover,
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):hover,
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):hover{
+  background:#f3f7fc !important;
+  border-color:#aebfd2 !important;
+  box-shadow:0 2px 6px rgba(18,38,63,.08) !important;
+  transform:translateY(-1px) !important;
+}
+
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):active,
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):active,
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):active{
+  transform:translateY(0) !important;
+  box-shadow:var(--v806-shadow) !important;
+}
+
+#commonSettingsPanel .add-row-btn:not(:disabled):hover,
+#simpleModePanel .add-row-btn:not(:disabled):hover,
+#detailModePanel .add-row-btn:not(:disabled):hover,
+#commonSettingsPanel .plus-btn:not(:disabled):hover,
+#simpleModePanel .plus-btn:not(:disabled):hover,
+#detailModePanel .plus-btn:not(:disabled):hover{
+  background:#e3f0ff !important;
+  border-color:#a9c8f5 !important;
+  color:#1f5faa !important;
+}
+
+#commonSettingsPanel .danger-btn:not(:disabled):hover,
+#simpleModePanel .danger-btn:not(:disabled):hover,
+#detailModePanel .danger-btn:not(:disabled):hover{
+  background:#c94858 !important;
+  border-color:#c94858 !important;
+  box-shadow:0 2px 6px rgba(217,91,106,.18) !important;
+}
+
+#commonSettingsPanel button:disabled,
+#simpleModePanel button:disabled,
+#detailModePanel button:disabled,
+#commonSettingsPanel input:disabled,
+#simpleModePanel input:disabled,
+#detailModePanel input:disabled,
+#commonSettingsPanel select:disabled,
+#simpleModePanel select:disabled,
+#detailModePanel select:disabled{
+  transform:none !important;
+}
+
+/* ===== v810: keep button hover position fixed + unify child-allowance empty frame ===== */
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn),
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn){
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+  transform:none !important;
+}
+
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):hover,
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):hover,
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):hover{
+  background:#f8fbff !important;
+  border-color:#b8c8db !important;
+  box-shadow:0 1px 3px rgba(18,38,63,.07) !important;
+  transform:none !important;
+}
+
+#commonSettingsPanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):active,
+#simpleModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):active,
+#detailModePanel button:not(.tab-btn):not(.detail-sticky-btn):not(.input-mode-toggle):not(.hero-menu-btn):not(.graph-menu-btn):not(:disabled):active{
+  transform:none !important;
+  box-shadow:var(--v806-shadow) !important;
+}
+
+#commonSettingsPanel .add-row-btn:not(:disabled):hover,
+#simpleModePanel .add-row-btn:not(:disabled):hover,
+#detailModePanel .add-row-btn:not(:disabled):hover,
+#commonSettingsPanel .plus-btn:not(:disabled):hover,
+#simpleModePanel .plus-btn:not(:disabled):hover,
+#detailModePanel .plus-btn:not(:disabled):hover{
+  background:#eaf2ff !important;
+  border-color:#b7cff4 !important;
+  color:#1f5faa !important;
+  box-shadow:0 1px 3px rgba(18,38,63,.07) !important;
+  transform:none !important;
+}
+
+#commonSettingsPanel .danger-btn:not(:disabled):hover,
+#simpleModePanel .danger-btn:not(:disabled):hover,
+#detailModePanel .danger-btn:not(:disabled):hover{
+  background:#cf5361 !important;
+  border-color:#cf5361 !important;
+  box-shadow:0 1px 3px rgba(217,91,106,.16) !important;
+  transform:none !important;
+}
+
+#commonSettingsPanel .child-allowance-empty,
+#simpleModePanel .child-allowance-empty,
+#detailModePanel .child-allowance-empty{
+  padding:12px 14px !important;
+  border:1px solid var(--v806-line) !important;
+  border-radius:16px !important;
+  background:linear-gradient(180deg,#fbfdff 0%, #ffffff 100%) !important;
+  color:#607589 !important;
+  box-shadow:var(--v806-shadow) !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #commonSettingsPanel .child-allowance-empty,
+  #simpleModePanel .child-allowance-empty,
+  #detailModePanel .child-allowance-empty{
+    border-radius:14px !important;
+    padding:11px 12px !important;
+  }
+}
+
+
+/* ===== v811: lower input area subheads and small action buttons visual unification only ===== */
+#commonSettingsPanel .subhead,
+#simpleModePanel .subhead,
+#detailModePanel .subhead,
+.withdrawal-rule-section-title,
+.monte-settings-section-title,
+.chart-axis-section-title,
+.loan-detail-section-title,
+.edu-detail-section-title,
+.insurance-assist-section-title,
+.pension-helper-section-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:14px 0 8px !important;
+  padding:8px 10px;
+  border:1px solid #d8e2f0;
+  border-radius:12px;
+  background:linear-gradient(180deg, #f8fbff 0%, #eef5fd 100%);
+  color:#122b45 !important;
+  font-weight:700 !important;
+  line-height:1.35;
+  box-shadow:0 1px 2px rgba(15,23,42,.03);
+}
+#commonSettingsPanel .subhead::before,
+#simpleModePanel .subhead::before,
+#detailModePanel .subhead::before{
+  content:"";
+  width:4px;
+  height:16px;
+  border-radius:999px;
+  background:#4f8eff;
+  flex:0 0 auto;
+}
+#commonSettingsPanel .subhead-with-action,
+#simpleModePanel .subhead-with-action,
+#detailModePanel .subhead-with-action{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:14px 0 8px !important;
+  padding:8px 10px;
+  border:1px solid #d8e2f0;
+  border-radius:12px;
+  background:linear-gradient(180deg, #f8fbff 0%, #eef5fd 100%);
+  box-shadow:0 1px 2px rgba(15,23,42,.03);
+}
+#commonSettingsPanel .subhead-with-action .subhead,
+#simpleModePanel .subhead-with-action .subhead,
+#detailModePanel .subhead-with-action .subhead{
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+#commonSettingsPanel .add-row-btn,
+#simpleModePanel .add-row-btn,
+#detailModePanel .add-row-btn,
+#commonSettingsPanel .subhead-action-btn,
+#simpleModePanel .subhead-action-btn,
+#detailModePanel .subhead-action-btn,
+#commonSettingsPanel .loan-detail-btn,
+#simpleModePanel .loan-detail-btn,
+#detailModePanel .loan-detail-btn,
+#commonSettingsPanel .curve-btn,
+#simpleModePanel .curve-btn,
+#detailModePanel .curve-btn,
+#commonSettingsPanel .pension-helper-btn,
+#simpleModePanel .pension-helper-btn,
+#detailModePanel .pension-helper-btn,
+#commonSettingsPanel .insurance-assist-btn,
+#simpleModePanel .insurance-assist-btn,
+#detailModePanel .insurance-assist-btn,
+#commonSettingsPanel .edu-reset-btn,
+#simpleModePanel .edu-reset-btn,
+#detailModePanel .edu-reset-btn,
+#commonSettingsPanel .icon-btn,
+#simpleModePanel .icon-btn,
+#detailModePanel .icon-btn{
+  border:1px solid #cfd9e5 !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:#2f4a66 !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04) !important;
+  font-weight:700;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+  transform:none !important;
+}
+#commonSettingsPanel .add-row-btn:hover,
+#simpleModePanel .add-row-btn:hover,
+#detailModePanel .add-row-btn:hover,
+#commonSettingsPanel .subhead-action-btn:hover,
+#simpleModePanel .subhead-action-btn:hover,
+#detailModePanel .subhead-action-btn:hover,
+#commonSettingsPanel .loan-detail-btn:hover,
+#simpleModePanel .loan-detail-btn:hover,
+#detailModePanel .loan-detail-btn:hover,
+#commonSettingsPanel .curve-btn:hover,
+#simpleModePanel .curve-btn:hover,
+#detailModePanel .curve-btn:hover,
+#commonSettingsPanel .pension-helper-btn:hover,
+#simpleModePanel .pension-helper-btn:hover,
+#detailModePanel .pension-helper-btn:hover,
+#commonSettingsPanel .insurance-assist-btn:hover,
+#simpleModePanel .insurance-assist-btn:hover,
+#detailModePanel .insurance-assist-btn:hover,
+#commonSettingsPanel .edu-reset-btn:hover,
+#simpleModePanel .edu-reset-btn:hover,
+#detailModePanel .edu-reset-btn:hover,
+#commonSettingsPanel .icon-btn:hover,
+#simpleModePanel .icon-btn:hover,
+#detailModePanel .icon-btn:hover{
+  background:#f8fbff !important;
+  border-color:#b9c9dc !important;
+  color:#122b45 !important;
+  box-shadow:0 2px 5px rgba(15,23,42,.07) !important;
+  transform:none !important;
+}
+#commonSettingsPanel .add-row-btn,
+#simpleModePanel .add-row-btn,
+#detailModePanel .add-row-btn{
+  min-width:38px;
+  color:#376fca !important;
+  border-color:#cfe0fb !important;
+  background:#eef5ff !important;
+}
+#commonSettingsPanel .add-row-btn:hover,
+#simpleModePanel .add-row-btn:hover,
+#detailModePanel .add-row-btn:hover{
+  color:#245aa5 !important;
+  border-color:#b9d4f7 !important;
+  background:#e7f1ff !important;
+}
+#commonSettingsPanel .danger-btn,
+#simpleModePanel .danger-btn,
+#detailModePanel .danger-btn,
+#commonSettingsPanel button.danger-btn,
+#simpleModePanel button.danger-btn,
+#detailModePanel button.danger-btn{
+  background:#d95b6a !important;
+  color:#fff !important;
+  border-color:#d95b6a !important;
+  box-shadow:0 1px 2px rgba(217,91,106,.16) !important;
+  transform:none !important;
+}
+#commonSettingsPanel .danger-btn:hover,
+#simpleModePanel .danger-btn:hover,
+#detailModePanel .danger-btn:hover,
+#commonSettingsPanel button.danger-btn:hover,
+#simpleModePanel button.danger-btn:hover,
+#detailModePanel button.danger-btn:hover{
+  background:#c94857 !important;
+  border-color:#c94857 !important;
+  color:#fff !important;
+  box-shadow:0 2px 5px rgba(217,91,106,.22) !important;
+  transform:none !important;
+}
+#commonSettingsPanel button:disabled,
+#simpleModePanel button:disabled,
+#detailModePanel button:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  box-shadow:none !important;
+  transform:none !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #commonSettingsPanel .subhead,
+  #simpleModePanel .subhead,
+  #detailModePanel .subhead,
+  .withdrawal-rule-section-title,
+  .monte-settings-section-title,
+  .chart-axis-section-title,
+  .loan-detail-section-title,
+  .edu-detail-section-title,
+  .insurance-assist-section-title,
+  .pension-helper-section-title{
+    margin:12px 0 7px !important;
+    padding:7px 9px;
+    border-radius:11px;
+    font-size:13px;
+  }
+  #commonSettingsPanel .subhead-with-action,
+  #simpleModePanel .subhead-with-action,
+  #detailModePanel .subhead-with-action{
+    margin:12px 0 7px !important;
+    padding:7px 9px;
+    border-radius:11px;
+  }
+}
+
+
+/* ===== v812: remove subhead background band, keep left blue accent only ===== */
+#commonSettingsPanel .subhead,
+#simpleModePanel .subhead,
+#detailModePanel .subhead{
+  margin:14px 0 8px !important;
+  padding:2px 0 !important;
+  border:none !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  color:#122b45 !important;
+}
+#commonSettingsPanel .subhead-with-action,
+#simpleModePanel .subhead-with-action,
+#detailModePanel .subhead-with-action{
+  margin:14px 0 8px !important;
+  padding:2px 0 !important;
+  border:none !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+#commonSettingsPanel .subhead::before,
+#simpleModePanel .subhead::before,
+#detailModePanel .subhead::before{
+  width:4px !important;
+  height:20px !important;
+  border-radius:999px !important;
+  background:#4f8eff !important;
+  flex:0 0 auto !important;
+}
+#commonSettingsPanel .subhead-with-action .subhead,
+#simpleModePanel .subhead-with-action .subhead,
+#detailModePanel .subhead-with-action .subhead{
+  margin:0 !important;
+  padding:0 !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #commonSettingsPanel .subhead,
+  #simpleModePanel .subhead,
+  #detailModePanel .subhead,
+  #commonSettingsPanel .subhead-with-action,
+  #simpleModePanel .subhead-with-action,
+  #detailModePanel .subhead-with-action{
+    margin:12px 0 7px !important;
+    padding:2px 0 !important;
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+}
+
+
+/* ===== v813: simple mode card visual refinement only ===== */
+#simpleModePanel .simple-mode-root{gap:14px !important;}
+#simpleModePanel .simple-mode-card{border:1px solid #d8e2f0 !important;border-radius:18px !important;background:#fff !important;box-shadow:0 1px 2px rgba(15,23,42,.045) !important;padding:14px 16px 16px !important;overflow:hidden !important;}
+#simpleModePanel .simple-mode-card:hover{border-color:#c9d7e8 !important;box-shadow:0 3px 10px rgba(15,23,42,.055) !important;}
+#simpleModePanel .simple-mode-card-title{align-items:flex-start !important;gap:8px !important;margin:0 0 10px !important;padding:0 0 10px !important;border-bottom:1px solid #e7eef6 !important;}
+#simpleModePanel .simple-mode-card-title-main{color:#122b45 !important;font-size:1.08rem !important;font-weight:800 !important;letter-spacing:.01em !important;line-height:1.35 !important;}
+#simpleModePanel .simple-mode-card-note,#simpleModePanel .simple-mode-field-help,#simpleModePanel .simple-mode-note{color:#607589 !important;line-height:1.65 !important;}
+#simpleModePanel .simple-mode-card-note{margin:2px 0 0 !important;}
+#simpleModePanel .simple-mode-field{gap:8px !important;padding:10px 0 !important;border-top:1px solid #e7eef6 !important;}
+#simpleModePanel .simple-mode-card-title + .simple-mode-field,#simpleModePanel .simple-mode-field:first-child{border-top:none !important;padding-top:0 !important;}
+#simpleModePanel .simple-mode-field-label{color:#122b45 !important;font-weight:800 !important;}
+#simpleModePanel .simple-mode-field-value{color:#516a82 !important;font-weight:700 !important;}
+#simpleModePanel .simple-mode-slider{margin:2px 0 0 !important;accent-color:#4f8eff !important;}
+#simpleModePanel .simple-mode-input-row{margin-top:2px !important;}
+#simpleModePanel .simple-mode-field.is-disabled{opacity:.58 !important;}
+@media (max-width:900px), (pointer:coarse){#simpleModePanel .simple-mode-root{gap:12px !important;}#simpleModePanel .simple-mode-card{border-radius:16px !important;padding:12px 12px 14px !important;}#simpleModePanel .simple-mode-card-title{margin-bottom:9px !important;padding-bottom:9px !important;}#simpleModePanel .simple-mode-card-title-main{font-size:1.02rem !important;}#simpleModePanel .simple-mode-field{padding:9px 0 !important;}}
+
+
+
+/* ===== v814: simple mode title/help spacing and mock-like range slider only ===== */
+#simpleModePanel .simple-mode-card-title{
+  align-items:flex-start !important;
+  gap:10px !important;
+  margin:0 0 12px !important;
+  padding:0 0 12px !important;
+  border-bottom:1px solid #e7eef6 !important;
+}
+#simpleModePanel .simple-mode-card-title-main{
+  color:#122b45 !important;
+  font-size:1.1rem !important;
+  font-weight:800 !important;
+  line-height:1.32 !important;
+  letter-spacing:.01em !important;
+}
+#simpleModePanel .simple-mode-card-note{
+  color:#688096 !important;
+  font-size:12px !important;
+  line-height:1.65 !important;
+  margin-top:1px !important;
+}
+#simpleModePanel .simple-mode-field{
+  gap:8px !important;
+  padding:11px 0 !important;
+  border-top:1px solid #e9f0f6 !important;
+}
+#simpleModePanel .simple-mode-card-title + .simple-mode-field,
+#simpleModePanel .simple-mode-field:first-child{
+  border-top:none !important;
+  padding-top:0 !important;
+}
+#simpleModePanel .simple-mode-field-help,
+#simpleModePanel .simple-mode-note{
+  color:#6f8396 !important;
+  font-size:12px !important;
+  line-height:1.65 !important;
+}
+#simpleModePanel .simple-mode-field-label{color:#243b53 !important;}
+#simpleModePanel .simple-mode-field-value{color:#53677d !important;font-variant-numeric:tabular-nums !important;}
+#simpleModePanel .simple-mode-slider{
+  width:100% !important;
+  height:28px !important;
+  margin:2px 0 0 !important;
+  padding:0 !important;
+  appearance:none !important;
+  -webkit-appearance:none !important;
+  background:transparent !important;
+  cursor:pointer !important;
+}
+#simpleModePanel .simple-mode-slider:focus{outline:none !important;}
+#simpleModePanel .simple-mode-slider::-webkit-slider-runnable-track{
+  height:12px !important;
+  border-radius:999px !important;
+  border:1px solid #cfe0f3 !important;
+  background:linear-gradient(180deg, #e8f0f9 0%, #dce7f3 100%) !important;
+  box-shadow:inset 0 1px 1px rgba(18,38,63,.04) !important;
+}
+#simpleModePanel .simple-mode-slider::-webkit-slider-thumb{
+  -webkit-appearance:none !important;
+  width:34px !important;
+  height:24px !important;
+  margin-top:-7px !important;
+  border-radius:999px !important;
+  border:1px solid #a5c4ff !important;
+  background:linear-gradient(180deg,#fff 0%, #eef5ff 100%) !important;
+  box-shadow:0 4px 12px rgba(79,142,255,.16), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+#simpleModePanel .simple-mode-slider:hover::-webkit-slider-thumb{
+  border-color:#8fb6ff !important;
+  box-shadow:0 5px 14px rgba(79,142,255,.20), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+#simpleModePanel .simple-mode-slider:focus-visible::-webkit-slider-thumb{
+  box-shadow:0 0 0 4px rgba(79,142,255,.18), 0 5px 14px rgba(79,142,255,.20) !important;
+}
+#simpleModePanel .simple-mode-slider::-moz-range-track{
+  height:12px !important;
+  border-radius:999px !important;
+  border:1px solid #cfe0f3 !important;
+  background:linear-gradient(180deg, #e8f0f9 0%, #dce7f3 100%) !important;
+  box-shadow:inset 0 1px 1px rgba(18,38,63,.04) !important;
+}
+#simpleModePanel .simple-mode-slider::-moz-range-thumb{
+  width:34px !important;
+  height:24px !important;
+  border-radius:999px !important;
+  border:1px solid #a5c4ff !important;
+  background:linear-gradient(180deg,#fff 0%, #eef5ff 100%) !important;
+  box-shadow:0 4px 12px rgba(79,142,255,.16), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+#simpleModePanel .simple-mode-slider:hover::-moz-range-thumb{
+  border-color:#8fb6ff !important;
+  box-shadow:0 5px 14px rgba(79,142,255,.20), inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+#simpleModePanel .simple-mode-slider:disabled{cursor:not-allowed !important;opacity:.62 !important;}
+#simpleModePanel .simple-mode-field.is-disabled .simple-mode-slider{cursor:not-allowed !important;}
+@media (max-width:900px), (pointer:coarse){
+  #simpleModePanel .simple-mode-card-title{gap:8px !important;margin-bottom:10px !important;padding-bottom:10px !important;}
+  #simpleModePanel .simple-mode-field{gap:7px !important;padding:10px 0 !important;}
+  #simpleModePanel .simple-mode-slider{height:30px !important;}
+  #simpleModePanel .simple-mode-slider::-webkit-slider-thumb{width:36px !important;height:26px !important;margin-top:-8px !important;}
+  #simpleModePanel .simple-mode-slider::-moz-range-thumb{width:36px !important;height:26px !important;}
+}
+
+
+/* ===== v815: simple mode card title band matches other card headers ===== */
+#simpleModePanel .simple-mode-card{
+  padding:0 !important;
+}
+#simpleModePanel .simple-mode-card-title{
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+  margin:0 !important;
+  padding:13px 16px !important;
+  border-bottom:1px solid #d8e2f0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+}
+#simpleModePanel .simple-mode-card-title-main{
+  color:#122b45 !important;
+  font-size:1.1rem !important;
+  font-weight:800 !important;
+  line-height:1.32 !important;
+  letter-spacing:.01em !important;
+}
+#simpleModePanel .simple-mode-card-note{
+  color:#688096 !important;
+  font-size:12px !important;
+  line-height:1.55 !important;
+  margin:2px 0 0 !important;
+}
+#simpleModePanel .simple-mode-field{
+  margin-left:16px !important;
+  margin-right:16px !important;
+}
+#simpleModePanel .simple-mode-card-title + .simple-mode-field,
+#simpleModePanel .simple-mode-field:first-child{
+  margin-top:14px !important;
+  border-top:none !important;
+  padding-top:0 !important;
+}
+#simpleModePanel .simple-mode-card .simple-mode-field:last-child{
+  margin-bottom:16px !important;
+}
+#simpleModePanel .simple-mode-note{
+  margin:10px 16px 16px !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #simpleModePanel .simple-mode-card-title{
+    gap:8px !important;
+    padding:12px 12px !important;
+  }
+  #simpleModePanel .simple-mode-field{
+    margin-left:12px !important;
+    margin-right:12px !important;
+  }
+  #simpleModePanel .simple-mode-card-title + .simple-mode-field,
+  #simpleModePanel .simple-mode-field:first-child{
+    margin-top:12px !important;
+  }
+  #simpleModePanel .simple-mode-card .simple-mode-field:last-child{
+    margin-bottom:14px !important;
+  }
+  #simpleModePanel .simple-mode-note{
+    margin:9px 12px 14px !important;
+  }
+}
+
+
+/* ===== v816: simple mode range slider filled progress before thumb ===== */
+#simpleModePanel .simple-mode-slider{
+  --simple-slider-progress:0%;
+}
+#simpleModePanel .simple-mode-slider::-webkit-slider-runnable-track{
+  background:linear-gradient(90deg, #70acff 0%, #4f8eff var(--simple-slider-progress), #dce7f3 var(--simple-slider-progress), #dce7f3 100%) !important;
+}
+#simpleModePanel .simple-mode-slider::-moz-range-track{
+  background:linear-gradient(180deg, #e8f0f9 0%, #dce7f3 100%) !important;
+}
+#simpleModePanel .simple-mode-slider::-moz-range-progress{
+  height:12px !important;
+  border-radius:999px !important;
+  background:linear-gradient(90deg,#70acff 0%, #4f8eff 100%) !important;
+}
+</style>
+
+
+<!-- ===== v827: special table visual unification only (cashflow + compare tables / CSS tail append) ===== -->
+<style>
+  :root{
+    --v827-table-line:#d8e2f0;
+    --v827-table-line-soft:#e7eef6;
+    --v827-table-head-1:#f7fbff;
+    --v827-table-head-2:#edf5fd;
+    --v827-table-text:#122b45;
+    --v827-table-muted:#607589;
+    --v827-table-blue-soft:#eff6ff;
+    --v827-table-green-soft:#f0fdf4;
+    --v827-table-red-soft:#fff1f2;
+    --v827-table-orange-soft:#fff7ed;
+    --v827-table-purple-soft:#f5f3ff;
+    --v827-table-shadow:0 1px 2px rgba(18,38,63,.035), 0 8px 20px rgba(18,38,63,.035);
+  }
+
+  .cashflow-table-shell{
+    border-color:var(--v827-table-line) !important;
+    border-radius:16px !important;
+    background:#fff !important;
+    box-shadow:var(--v827-table-shadow) !important;
+  }
+  .cashflow-top-scroll{
+    background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
+    border-bottom-color:var(--v827-table-line) !important;
+  }
+  .cashflow-table-wrap{background:#fff !important;}
+  .cashflow-table{
+    color:var(--v827-table-text) !important;
+    background:#fff !important;
+  }
+  .cashflow-table th,
+  .cashflow-table td{
+    border-right-color:var(--v827-table-line-soft) !important;
+    border-bottom-color:var(--v827-table-line-soft) !important;
+  }
+  .cashflow-table thead th,
+  .cashflow-table thead .cashflow-item-col,
+  .cashflow-table .cashflow-sticky-row > th,
+  .cashflow-table .cashflow-sticky-row > td,
+  .cashflow-table .cashflow-sticky-row > th.cashflow-item-col,
+  .cashflow-table .cashflow-meta-row > th,
+  .cashflow-table .cashflow-meta-row > td,
+  .cashflow-table .cashflow-meta-row > th.cashflow-item-col{
+    background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+  }
+  .cashflow-table .cashflow-item-col{
+    background:#fff !important;
+    color:var(--v827-table-text) !important;
+    font-weight:600 !important;
+    border-right-color:var(--v827-table-line) !important;
+  }
+  .cashflow-table .cashflow-year-col{
+    color:#43607b !important;
+    font-variant-numeric:tabular-nums !important;
+  }
+  .cashflow-table .cashflow-item-group{
+    background:#eef4fb !important;
+    color:#24445f !important;
+    font-weight:700 !important;
+  }
+  .cashflow-table tbody tr:not(.cashflow-highlight-income):not(.cashflow-highlight-expense):not(.cashflow-highlight-tax):not(.cashflow-highlight-balance):not(.cashflow-highlight-asset):not(.cashflow-meta-row):not(.cashflow-sticky-row):nth-child(even) > th,
+  .cashflow-table tbody tr:not(.cashflow-highlight-income):not(.cashflow-highlight-expense):not(.cashflow-highlight-tax):not(.cashflow-highlight-balance):not(.cashflow-highlight-asset):not(.cashflow-meta-row):not(.cashflow-sticky-row):nth-child(even) > td{
+    background:#fbfdff !important;
+  }
+  .cashflow-table tr.cashflow-highlight-income > th,
+  .cashflow-table tr.cashflow-highlight-income > td{background:var(--v827-table-green-soft) !important;}
+  .cashflow-table tr.cashflow-highlight-expense > th,
+  .cashflow-table tr.cashflow-highlight-expense > td{background:var(--v827-table-red-soft) !important;}
+  .cashflow-table tr.cashflow-highlight-tax > th,
+  .cashflow-table tr.cashflow-highlight-tax > td{background:var(--v827-table-orange-soft) !important;}
+  .cashflow-table tr.cashflow-highlight-balance > th,
+  .cashflow-table tr.cashflow-highlight-balance > td{background:var(--v827-table-blue-soft) !important;}
+  .cashflow-table tr.cashflow-highlight-asset > th,
+  .cashflow-table tr.cashflow-highlight-asset > td{background:var(--v827-table-purple-soft) !important;}
+  .cashflow-table .cashflow-cell-money,
+  .cashflow-table .cashflow-cell-age,
+  .cashflow-table .cashflow-cell-int{
+    font-variant-numeric:tabular-nums !important;
+  }
+  .cashflow-neg{color:#b91c1c !important;font-weight:700 !important;}
+  .cashflow-pos{color:#15803d !important;font-weight:700 !important;}
+  .cashflow-muted{color:var(--v827-table-muted) !important;}
+
+  #withdrawalCompareResultTableWrap,
+  #crashCompareResultTableWrap,
+  #monteCompareResultTableWrap,
+  .withdrawal-compare-table-wrap{
+    border-color:var(--v827-table-line) !important;
+    border-radius:16px !important;
+    background:#fff !important;
+    box-shadow:var(--v827-table-shadow) !important;
+  }
+  #withdrawalCompareResultTableWrap:empty,
+  #crashCompareResultTableWrap:empty,
+  #monteCompareResultTableWrap:empty{
+    border:none !important;
+    box-shadow:none !important;
+  }
+  .withdrawal-compare-table{
+    color:var(--v827-table-text) !important;
+    background:#fff !important;
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    margin-bottom:0 !important;
+  }
+  .withdrawal-compare-table th,
+  .withdrawal-compare-table td{
+    border-color:var(--v827-table-line-soft) !important;
+    background:#fff !important;
+    color:var(--v827-table-text) !important;
+    font-variant-numeric:tabular-nums !important;
+  }
+  .withdrawal-compare-table th{
+    background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+  }
+  .withdrawal-compare-table .compare-group-label,
+  .withdrawal-compare-table th:first-child,
+  .withdrawal-compare-table td:first-child{
+    background:#eef4fb !important;
+    color:#24445f !important;
+    font-weight:700 !important;
+  }
+  .withdrawal-compare-table .compare-row-fixed th,
+  .withdrawal-compare-table .compare-row-fixed td{
+    background:var(--v827-table-blue-soft) !important;
+    color:#183b63 !important;
+    font-weight:700 !important;
+  }
+  .withdrawal-compare-table .compare-row-median th,
+  .withdrawal-compare-table .compare-row-median td{
+    background:#fff8df !important;
+    color:#5c4413 !important;
+    font-weight:700 !important;
+  }
+  .withdrawal-compare-table tbody tr:not(.compare-row-fixed):not(.compare-row-median):nth-child(even) > th,
+  .withdrawal-compare-table tbody tr:not(.compare-row-fixed):not(.compare-row-median):nth-child(even) > td{
+    background:#fbfdff !important;
+  }
+  .withdrawal-compare-status,
+  .compare-header-note,
+  .withdrawal-param-case-help,
+  .cashflow-modal-note,
+  .cashflow-modal-unit-note{
+    color:var(--v827-table-muted) !important;
+  }
+  .withdrawal-compare-section{
+    border-color:var(--v827-table-line) !important;
+    border-radius:16px !important;
+    background:#fff !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.025) !important;
+  }
+  .withdrawal-param-case-table,
+  .crash-history-table{
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    color:var(--v827-table-text) !important;
+  }
+  .withdrawal-param-case-table th,
+  .crash-history-table th{
+    background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
+    color:#43607b !important;
+    border-color:var(--v827-table-line-soft) !important;
+  }
+  .withdrawal-param-case-table td,
+  .crash-history-table td{
+    border-color:var(--v827-table-line-soft) !important;
+    background:#fff !important;
+    color:var(--v827-table-text) !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .cashflow-table-shell,
+    #withdrawalCompareResultTableWrap,
+    #crashCompareResultTableWrap,
+    #monteCompareResultTableWrap,
+    .withdrawal-compare-table-wrap{
+      border-radius:14px !important;
+    }
+  }
+</style>
+
+
+
+<!-- ===== v830: preview input table header line + remove first-column tint from compare/case input tables only ===== -->
+<style>
+  /* プレビューシート入力テーブル：タイトル行の下線をメインテーブル同等に明示 */
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) thead th{
+    border-bottom:1px solid #cfd9e5 !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) thead tr{
+    border-bottom:1px solid #cfd9e5 !important;
+  }
+
+  /* 取り崩し比較：ルール比較／ケース比較の左列だけ、データ行の色付けを消す */
+  .withdrawal-preview-sheet #withdrawalCompareRuleBody > tr > th,
+  .withdrawal-preview-sheet #withdrawalCompareRuleBody > tr > td,
+  .withdrawal-preview-sheet #withdrawalCompareParamCaseBody > tr > th,
+  .withdrawal-preview-sheet #withdrawalCompareParamCaseBody > tr > td{
+    background:#fff !important;
+  }
+
+  .withdrawal-preview-sheet #withdrawalCompareRuleBody > tr > th:first-child,
+  .withdrawal-preview-sheet #withdrawalCompareRuleBody > tr > td:first-child,
+  .withdrawal-preview-sheet #withdrawalCompareParamCaseBody > tr > th:first-child,
+  .withdrawal-preview-sheet #withdrawalCompareParamCaseBody > tr > td:first-child{
+    background:#fff !important;
+    color:#1f3c5a !important;
+    font-weight:700 !important;
+  }
+
+  /* 暴落設定：ケース比較の左列だけ、データ行の色付けを消す */
+  .withdrawal-preview-sheet #crashCompareCaseBody > tr > th,
+  .withdrawal-preview-sheet #crashCompareCaseBody > tr > td{
+    background:#fff !important;
+  }
+
+  .withdrawal-preview-sheet #crashCompareCaseBody > tr > th:first-child,
+  .withdrawal-preview-sheet #crashCompareCaseBody > tr > td:first-child{
+    background:#fff !important;
+    color:#1f3c5a !important;
+    font-weight:700 !important;
+  }
+
+  /* モンテカルロ設定のケース入力も同じ入力テーブルなので、同系統の左列色付けを消す */
+  .withdrawal-preview-sheet #monteCompareCaseBody > tr > th,
+  .withdrawal-preview-sheet #monteCompareCaseBody > tr > td{
+    background:#fff !important;
+  }
+
+  .withdrawal-preview-sheet #monteCompareCaseBody > tr > th:first-child,
+  .withdrawal-preview-sheet #monteCompareCaseBody > tr > td:first-child{
+    background:#fff !important;
+    color:#1f3c5a !important;
+    font-weight:700 !important;
+  }
+</style>
+
+
+
+<!-- ===== v835: blue-tone borders for compare frames and split buttons only ===== -->
+<style>
+  #withdrawalCompareSection,
+  #crashCompareSection{
+    border-color:#cfd9e5 !important;
+  }
+
+  #withdrawalCompareSection .withdrawal-compare-content,
+  #crashCompareSection .crash-compare-content,
+  #crashCompareSection .withdrawal-compare-content{
+    border-color:#cfd9e5 !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group,
+  #withdrawalCompareSection .withdrawal-compare-split,
+  #crashCompareSection .split-btn-group,
+  #crashCompareSection .crash-compare-split,
+  .monte-settings-modal .monte-compare-header .split-btn-group,
+  .monte-settings-modal .monte-compare-header .withdrawal-compare-split,
+  .monte-settings-section .monte-compare-header .split-btn-group,
+  .monte-settings-section .monte-compare-header .withdrawal-compare-split{
+    border-color:#bccbda !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group > button,
+  #crashCompareSection .split-btn-group > button,
+  .monte-settings-modal .monte-compare-header .split-btn-group > button,
+  .monte-settings-section .monte-compare-header .split-btn-group > button{
+    border-color:#bccbda !important;
+    color:inherit !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group > button + button,
+  #crashCompareSection .split-btn-group > button + button,
+  .monte-settings-modal .monte-compare-header .split-btn-group > button + button,
+  .monte-settings-section .monte-compare-header .split-btn-group > button + button{
+    border-left-color:#bccbda !important;
+  }
+</style>
+
+
+<!-- ===== v836: make withdrawal/crash compare split buttons match monte compare split button ===== -->
+<style>
+  #withdrawalCompareSection,
+  #crashCompareSection{
+    border-color:#cfd9e5 !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split,
+  #crashCompareSection .split-btn-group.crash-compare-split{
+    border:1px solid #bccbda !important;
+    background:#fff !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+    transform:none !important;
+    overflow:hidden !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split:hover,
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split:active,
+  #crashCompareSection .split-btn-group.crash-compare-split:hover,
+  #crashCompareSection .split-btn-group.crash-compare-split:active{
+    border-color:#bccbda !important;
+    background:#fff !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+    transform:none !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button,
+  #crashCompareSection .split-btn-group.crash-compare-split > button{
+    background:#fff !important;
+    color:#2f4a66 !important;
+    border:0 !important;
+    box-shadow:none !important;
+    transform:none !important;
+    transition:background-color .16s ease !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button + button,
+  #crashCompareSection .split-btn-group.crash-compare-split > button + button{
+    border-left:1px solid #bccbda !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button:not(:disabled):hover,
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button:not(:disabled):focus-visible,
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button:not(:disabled):active,
+  #crashCompareSection .split-btn-group.crash-compare-split > button:not(:disabled):hover,
+  #crashCompareSection .split-btn-group.crash-compare-split > button:not(:disabled):focus-visible,
+  #crashCompareSection .split-btn-group.crash-compare-split > button:not(:disabled):active{
+    background:#f3f7fc !important;
+    color:#2f4a66 !important;
+    border-color:transparent !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button + button:not(:disabled):hover,
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button + button:not(:disabled):focus-visible,
+  #withdrawalCompareSection .split-btn-group.withdrawal-compare-split > button + button:not(:disabled):active,
+  #crashCompareSection .split-btn-group.crash-compare-split > button + button:not(:disabled):hover,
+  #crashCompareSection .split-btn-group.crash-compare-split > button + button:not(:disabled):focus-visible,
+  #crashCompareSection .split-btn-group.crash-compare-split > button + button:not(:disabled):active{
+    border-left:1px solid #bccbda !important;
+  }
 </style>
 </head>
 <body>
@@ -9536,6 +10846,16 @@ function getSimpleModeFieldLockReason(key){
   return "";
 }
 function getSimpleModeRangeId(key){ return `simple_${key}_range`; }
+function updateSimpleModeSliderFill(rangeEl){
+  if(!rangeEl) return;
+  const min = Number(rangeEl.min);
+  const max = Number(rangeEl.max);
+  const value = Number(rangeEl.value);
+  const pct = Number.isFinite(min) && Number.isFinite(max) && max > min && Number.isFinite(value)
+    ? Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))
+    : 0;
+  rangeEl.style.setProperty("--simple-slider-progress", pct + "%");
+}
 function getSimpleModeNumberId(key){ return `simple_${key}_number`; }
 function getSimpleModeStepDigits(step){
   const raw = String(step ?? "1");
@@ -9562,6 +10882,7 @@ function updateSimpleModeFieldBounds(key, value = null){
     el.min = String(min);
     el.max = String(max);
   });
+  updateSimpleModeSliderFill(rangeEl);
 }
 function clampSimpleModeValue(value, def){
   const min = numValue(def?.min, 0);
@@ -9649,7 +10970,10 @@ function setSimpleModeFieldUIValue(key, value){
   const displayEl = document.getElementById(`simple_${key}_display`);
   const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
   const clamped = normalizeSimpleModeValueForDisplay(clampSimpleModeValue(value, dynamicDef), def);
-  if(rangeEl) rangeEl.value = String(clamped);
+  if(rangeEl){
+    rangeEl.value = String(clamped);
+    updateSimpleModeSliderFill(rangeEl);
+  }
   if(numberEl){
     numberEl.value = String(clamped);
     numberEl.setAttribute("value", String(clamped));
@@ -26357,5 +27681,1629 @@ window.addEventListener("load", ()=>{
   restoreInputModeScroll(currentInputMode);
 });
 </script>
+
+<!-- ===== v818: modal and preview sheet visual tone only ===== -->
+<style>
+  .modal-backdrop.show{
+    background:rgba(18,35,52,.22) !important;
+  }
+
+  .modal-card{
+    border:1px solid #cfd9e5 !important;
+    border-radius:20px !important;
+    background:#fff !important;
+    box-shadow:0 14px 34px rgba(18,38,63,.14) !important;
+    overflow:hidden !important;
+  }
+
+  .modal-card > .modal-text[id]:first-child,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child{
+    display:flex !important;
+    align-items:center !important;
+    min-height:52px !important;
+    margin:0 !important;
+    padding:14px 18px !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    background:linear-gradient(180deg, #f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:700 !important;
+    line-height:1.35 !important;
+  }
+
+  .modal-card > .modal-text[id]:first-child + *,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child + *{
+    margin-top:14px !important;
+  }
+
+  .modal-card > .modal-actions{
+    margin-top:14px !important;
+    padding:0 18px 18px !important;
+    background:#fff !important;
+  }
+
+  .modal-actions button{
+    min-height:40px !important;
+    padding:0 16px !important;
+    border-radius:12px !important;
+    border:1px solid #bccbda !important;
+    background:#fff !important;
+    color:#2f4a66 !important;
+    font-weight:700 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.04) !important;
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+    transform:none !important;
+  }
+  .modal-actions button:hover{
+    background:#f7fbff !important;
+    border-color:#aebfd1 !important;
+    color:#122b45 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+    transform:none !important;
+  }
+  .modal-actions button:last-child:not(.danger-btn){
+    border-color:#4f8eff !important;
+    background:#4f8eff !important;
+    color:#fff !important;
+  }
+  .modal-actions button:last-child:not(.danger-btn):hover{
+    border-color:#367bf2 !important;
+    background:#367bf2 !important;
+    color:#fff !important;
+  }
+  .modal-actions .danger-btn,
+  .modal-actions button.danger-btn{
+    border-color:#dc2626 !important;
+    background:#dc2626 !important;
+    color:#fff !important;
+  }
+  .modal-actions .danger-btn:hover,
+  .modal-actions button.danger-btn:hover{
+    border-color:#b91c1c !important;
+    background:#b91c1c !important;
+    color:#fff !important;
+  }
+
+  .withdrawal-preview-sheet{
+    border:1px solid #cfd9e5 !important;
+    border-bottom:none !important;
+    border-radius:20px 20px 0 0 !important;
+    box-shadow:0 -14px 34px rgba(18,38,63,.16) !important;
+    overflow:hidden !important;
+    background:#fff !important;
+  }
+  .withdrawal-preview-handle{
+    background:linear-gradient(180deg, #f9fbfe 0%, #f2f6fc 100%) !important;
+    border-bottom:1px solid #e7eef6 !important;
+    padding:11px 0 9px !important;
+  }
+  .withdrawal-preview-handle span{
+    background:#b7c7d7 !important;
+    box-shadow:none !important;
+  }
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child{
+    min-height:50px !important;
+    margin:0 !important;
+    padding:13px 18px !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    background:linear-gradient(180deg, #f7fbff 0%, #edf5fd 100%) !important;
+  }
+  .withdrawal-preview-sheet .modal-actions{
+    border-top:1px solid #e7eef6 !important;
+    padding:14px 18px 18px !important;
+    background:#fff !important;
+  }
+
+  .chart-axis-preview-sheet,
+  .crash-preview-sheet,
+  .monte-settings-modal.withdrawal-preview-sheet,
+  .withdrawal-rule-modal.withdrawal-preview-sheet{
+    border-color:#cfd9e5 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card{
+      border-radius:18px !important;
+    }
+    .modal-card > .modal-text[id]:first-child,
+    .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child{
+      min-height:48px !important;
+      padding:12px 14px !important;
+      font-size:16px !important;
+    }
+    .modal-card > .modal-actions,
+    .withdrawal-preview-sheet .modal-actions{
+      padding:12px 14px 14px !important;
+    }
+    .modal-actions button{
+      min-height:38px !important;
+      padding:0 14px !important;
+    }
+    .withdrawal-preview-sheet{
+      border-radius:18px 18px 0 0 !important;
+    }
+  }
+</style>
+
+
+
+<!-- ===== v821: unify modal / preview hover animations with main screen controls ===== -->
+<style>
+  .modal-card input[type=number],
+  .modal-card input[type=text],
+  .modal-card input[type=date],
+  .modal-card textarea,
+  .modal-card select,
+  .withdrawal-preview-sheet input[type=number],
+  .withdrawal-preview-sheet input[type=text],
+  .withdrawal-preview-sheet input[type=date],
+  .withdrawal-preview-sheet textarea,
+  .withdrawal-preview-sheet select,
+  .chart-axis-preview-sheet input[type=number],
+  .chart-axis-preview-sheet input[type=text],
+  .chart-axis-preview-sheet input[type=date],
+  .chart-axis-preview-sheet textarea,
+  .chart-axis-preview-sheet select,
+  .crash-preview-sheet input[type=number],
+  .crash-preview-sheet input[type=text],
+  .crash-preview-sheet input[type=date],
+  .crash-preview-sheet textarea,
+  .crash-preview-sheet select{
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+  }
+
+  .modal-card input[type=number]:not(:disabled):not([readonly]):hover,
+  .modal-card input[type=text]:not(:disabled):not([readonly]):hover,
+  .modal-card input[type=date]:not(:disabled):not([readonly]):hover,
+  .modal-card textarea:not(:disabled):not([readonly]):hover,
+  .modal-card select:not(:disabled):hover,
+  .withdrawal-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet select:not(:disabled):hover,
+  .chart-axis-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet select:not(:disabled):hover,
+  .crash-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet select:not(:disabled):hover{
+    border-color:#9ebcf4 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+  }
+
+  .modal-card button,
+  .withdrawal-preview-sheet button,
+  .chart-axis-preview-sheet button,
+  .crash-preview-sheet button{
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+    transform:none !important;
+  }
+
+  .modal-card button:not(:disabled):hover,
+  .withdrawal-preview-sheet button:not(:disabled):hover,
+  .chart-axis-preview-sheet button:not(:disabled):hover,
+  .crash-preview-sheet button:not(:disabled):hover{
+    background:#f8fbff !important;
+    border-color:#b8c8db !important;
+    box-shadow:0 1px 3px rgba(18,38,63,.07) !important;
+    transform:none !important;
+  }
+
+  .modal-card button:not(:disabled):active,
+  .withdrawal-preview-sheet button:not(:disabled):active,
+  .chart-axis-preview-sheet button:not(:disabled):active,
+  .crash-preview-sheet button:not(:disabled):active{
+    transform:none !important;
+    box-shadow:var(--v806-shadow) !important;
+  }
+
+  .modal-card .add-row-btn:not(:disabled):hover,
+  .modal-card .plus-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .add-row-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .plus-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .add-row-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .plus-btn:not(:disabled):hover,
+  .crash-preview-sheet .add-row-btn:not(:disabled):hover,
+  .crash-preview-sheet .plus-btn:not(:disabled):hover{
+    background:#eaf2ff !important;
+    border-color:#b7cff4 !important;
+    color:#1f5faa !important;
+    box-shadow:0 1px 3px rgba(18,38,63,.07) !important;
+    transform:none !important;
+  }
+
+  .modal-card .danger-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .danger-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .danger-btn:not(:disabled):hover,
+  .crash-preview-sheet .danger-btn:not(:disabled):hover{
+    background:#cf5361 !important;
+    border-color:#cf5361 !important;
+    color:#fff !important;
+    box-shadow:0 1px 3px rgba(217,91,106,.16) !important;
+    transform:none !important;
+  }
+
+  .modal-card button:disabled,
+  .withdrawal-preview-sheet button:disabled,
+  .chart-axis-preview-sheet button:disabled,
+  .crash-preview-sheet button:disabled,
+  .modal-card input:disabled,
+  .withdrawal-preview-sheet input:disabled,
+  .chart-axis-preview-sheet input:disabled,
+  .crash-preview-sheet input:disabled,
+  .modal-card select:disabled,
+  .withdrawal-preview-sheet select:disabled,
+  .chart-axis-preview-sheet select:disabled,
+  .crash-preview-sheet select:disabled{
+    transform:none !important;
+  }
+</style>
+
+
+
+<!-- ===== v827: remove cashflow modal title top white gap with ID-specific override ===== -->
+<style>
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle{
+    margin:-14px -14px 0 !important;
+    width:auto !important;
+    border-radius:20px 20px 0 0 !important;
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:52px !important;
+    min-height:52px !important;
+    padding:0 18px !important;
+    line-height:1 !important;
+  }
+
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + *{
+    margin-top:14px !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle{
+      margin:-10px -8px 0 !important;
+      border-radius:18px 18px 0 0 !important;
+      height:48px !important;
+      min-height:48px !important;
+      padding:0 14px !important;
+      line-height:1 !important;
+    }
+  }
+</style>
+
+
+
+<!-- ===== v828: modal table visual reset to match main tables only (no structure / no JS / no column width changes) ===== -->
+<style>
+  /* Scope: modal / preview-sheet tables only. Cashflow table is intentionally excluded. */
+  .modal-card table:not(.cashflow-table),
+  .withdrawal-preview-sheet table:not(.cashflow-table){
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:none !important;
+  }
+
+  .modal-card table:not(.cashflow-table) th,
+  .withdrawal-preview-sheet table:not(.cashflow-table) th{
+    border:1px solid #e3ebf3 !important;
+    background:linear-gradient(180deg,#f4f8fe 0%, #ebf2fb 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+  }
+
+  .modal-card table:not(.cashflow-table) td,
+  .withdrawal-preview-sheet table:not(.cashflow-table) td{
+    border:1px solid #e9f0f6 !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+  }
+
+  /* Remove the v827 special shell styling that made modal comparison tables look unlike main tables. */
+  .modal-card .withdrawal-compare-table-wrap,
+  .withdrawal-preview-sheet .withdrawal-compare-table-wrap,
+  #withdrawalCompareResultTableWrap,
+  #crashCompareResultTableWrap,
+  #monteCompareResultTableWrap{
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+
+  /* Comparison tables: keep existing widths, but make cell tone identical to normal main tables. */
+  .modal-card .withdrawal-compare-table,
+  .withdrawal-preview-sheet .withdrawal-compare-table,
+  .modal-card .withdrawal-param-case-table,
+  .withdrawal-preview-sheet .withdrawal-param-case-table,
+  .modal-card .crash-history-table,
+  .withdrawal-preview-sheet .crash-history-table,
+  .modal-card .overlay-settings-table,
+  .modal-card .income-curve-table,
+  .modal-card .loan-prepay-table,
+  .modal-card .edu-detail-onetime-table,
+  .modal-card .edu-detail-preschool-table,
+  .modal-card .social-detail-table{
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+    background:#fff !important;
+    box-shadow:none !important;
+  }
+
+  .modal-card .withdrawal-compare-table .compare-group-label,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-group-label,
+  .modal-card .withdrawal-compare-table th:first-child,
+  .modal-card .withdrawal-compare-table td:first-child,
+  .withdrawal-preview-sheet .withdrawal-compare-table th:first-child,
+  .withdrawal-preview-sheet .withdrawal-compare-table td:first-child,
+  .modal-card .withdrawal-compare-table .compare-row-fixed th,
+  .modal-card .withdrawal-compare-table .compare-row-fixed td,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-row-fixed th,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-row-fixed td,
+  .modal-card .withdrawal-compare-table .compare-row-median th,
+  .modal-card .withdrawal-compare-table .compare-row-median td,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-row-median th,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-row-median td{
+    background:#fff !important;
+    color:#1f3c5a !important;
+  }
+
+  .modal-card .withdrawal-compare-table tbody tr:nth-child(even) > th,
+  .modal-card .withdrawal-compare-table tbody tr:nth-child(even) > td,
+  .withdrawal-preview-sheet .withdrawal-compare-table tbody tr:nth-child(even) > th,
+  .withdrawal-preview-sheet .withdrawal-compare-table tbody tr:nth-child(even) > td{
+    background:#fff !important;
+  }
+
+  /* Drag-order table had its own separated-border styling; visually align it with normal tables only. */
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table{
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+    border:none !important;
+  }
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table th,
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table td{
+    border:1px solid #e9f0f6 !important;
+    background:#fff !important;
+    box-shadow:none !important;
+  }
+  .withdrawal-order-manual-wrap .withdrawal-param-case-table th{
+    border-color:#e3ebf3 !important;
+    background:linear-gradient(180deg,#f4f8fe 0%, #ebf2fb 100%) !important;
+    color:#43607b !important;
+  }
+
+  .modal-card table:not(.cashflow-table) tr > *:last-child,
+  .withdrawal-preview-sheet table:not(.cashflow-table) tr > *:last-child{
+    border-right:1px solid #e9f0f6 !important;
+  }
+
+  .modal-card table:not(.cashflow-table) tbody tr:last-child > th,
+  .modal-card table:not(.cashflow-table) tbody tr:last-child > td,
+  .withdrawal-preview-sheet table:not(.cashflow-table) tbody tr:last-child > th,
+  .withdrawal-preview-sheet table:not(.cashflow-table) tbody tr:last-child > td{
+    border-bottom:1px solid #e9f0f6 !important;
+  }
+</style>
+
+<!-- ===== v832: drag ghost border color + preview button hover correction only ===== -->
+<style>
+  .withdrawal-order-row-drag-ghost,
+  table.withdrawal-order-row-drag-ghost{
+    border-color:#cfd9e5 !important;
+    outline:1px solid #cfd9e5 !important;
+    outline-offset:0 !important;
+  }
+  .withdrawal-order-row-drag-ghost th,
+  .withdrawal-order-row-drag-ghost td,
+  table.withdrawal-order-row-drag-ghost th,
+  table.withdrawal-order-row-drag-ghost td{
+    border-color:#e9f0f6 !important;
+    border-right-color:#e3ebf3 !important;
+    border-bottom-color:#e9f0f6 !important;
+    background-clip:padding-box !important;
+  }
+  .withdrawal-order-row-drag-ghost tr > *:last-child,
+  table.withdrawal-order-row-drag-ghost tr > *:last-child{
+    border-right-color:transparent !important;
+  }
+
+  .withdrawal-preview-sheet button,
+  .withdrawal-preview-sheet .split-btn-group,
+  .withdrawal-preview-sheet .split-btn-group > button,
+  .withdrawal-preview-sheet .row-label-btn,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle,
+  .chart-axis-preview-sheet button,
+  .chart-axis-preview-sheet .split-btn-group,
+  .chart-axis-preview-sheet .split-btn-group > button,
+  .chart-axis-preview-sheet .row-label-btn,
+  .crash-preview-sheet button,
+  .crash-preview-sheet .split-btn-group,
+  .crash-preview-sheet .split-btn-group > button,
+  .crash-preview-sheet .row-label-btn{
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet button:not(:disabled):hover,
+  .withdrawal-preview-sheet .split-btn-group:hover,
+  .withdrawal-preview-sheet .split-btn-group > button:not(:disabled):hover,
+  .withdrawal-preview-sheet .row-label-btn:hover,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:hover,
+  .chart-axis-preview-sheet button:not(:disabled):hover,
+  .chart-axis-preview-sheet .split-btn-group:hover,
+  .chart-axis-preview-sheet .split-btn-group > button:not(:disabled):hover,
+  .chart-axis-preview-sheet .row-label-btn:hover,
+  .crash-preview-sheet button:not(:disabled):hover,
+  .crash-preview-sheet .split-btn-group:hover,
+  .crash-preview-sheet .split-btn-group > button:not(:disabled):hover,
+  .crash-preview-sheet .row-label-btn:hover{
+    background:#eaf2ff !important;
+    border-color:#b7cff4 !important;
+    color:#1f5faa !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet button:not(:disabled):active,
+  .withdrawal-preview-sheet .split-btn-group:active,
+  .withdrawal-preview-sheet .split-btn-group > button:not(:disabled):active,
+  .withdrawal-preview-sheet .row-label-btn:active,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:active,
+  .chart-axis-preview-sheet button:not(:disabled):active,
+  .chart-axis-preview-sheet .split-btn-group:active,
+  .chart-axis-preview-sheet .split-btn-group > button:not(:disabled):active,
+  .chart-axis-preview-sheet .row-label-btn:active,
+  .crash-preview-sheet button:not(:disabled):active,
+  .crash-preview-sheet .split-btn-group:active,
+  .crash-preview-sheet .split-btn-group > button:not(:disabled):active,
+  .crash-preview-sheet .row-label-btn:active{
+    background:#dbeafe !important;
+    border-color:#9ebcf4 !important;
+    color:#1e4f91 !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+</style>
+
+
+<!-- ===== v833: preview-sheet button hover parity with main controls only ===== -->
+<style>
+  .withdrawal-preview-sheet button,
+  .withdrawal-preview-sheet .split-btn-group,
+  .withdrawal-preview-sheet .split-btn-group > button,
+  .withdrawal-preview-sheet .row-label-btn,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle,
+  .chart-axis-preview-sheet button,
+  .chart-axis-preview-sheet .split-btn-group,
+  .chart-axis-preview-sheet .split-btn-group > button,
+  .chart-axis-preview-sheet .row-label-btn,
+  .crash-preview-sheet button,
+  .crash-preview-sheet .split-btn-group,
+  .crash-preview-sheet .split-btn-group > button,
+  .crash-preview-sheet .row-label-btn{
+    transform:none !important;
+    transition:background-color .16s ease, border-color .16s ease, box-shadow .16s ease !important;
+  }
+
+  .withdrawal-preview-sheet button:not(.danger-btn),
+  .withdrawal-preview-sheet .split-btn-group > button:not(.danger-btn),
+  .chart-axis-preview-sheet button:not(.danger-btn),
+  .chart-axis-preview-sheet .split-btn-group > button:not(.danger-btn),
+  .crash-preview-sheet button:not(.danger-btn),
+  .crash-preview-sheet .split-btn-group > button:not(.danger-btn){
+    color:#2f4a66 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+  }
+
+  .withdrawal-preview-sheet .split-btn-group,
+  .chart-axis-preview-sheet .split-btn-group,
+  .crash-preview-sheet .split-btn-group{
+    background:#fff !important;
+    box-shadow:none !important;
+  }
+
+  .withdrawal-preview-sheet .split-btn-group:hover,
+  .chart-axis-preview-sheet .split-btn-group:hover,
+  .crash-preview-sheet .split-btn-group:hover{
+    background:#fff !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet button:not(:disabled):not(.danger-btn):hover,
+  .withdrawal-preview-sheet .split-btn-group > button:not(:disabled):not(.danger-btn):hover,
+  .withdrawal-preview-sheet .row-label-btn:hover,
+  .chart-axis-preview-sheet button:not(:disabled):not(.danger-btn):hover,
+  .chart-axis-preview-sheet .split-btn-group > button:not(:disabled):not(.danger-btn):hover,
+  .chart-axis-preview-sheet .row-label-btn:hover,
+  .crash-preview-sheet button:not(:disabled):not(.danger-btn):hover,
+  .crash-preview-sheet .split-btn-group > button:not(:disabled):not(.danger-btn):hover,
+  .crash-preview-sheet .row-label-btn:hover{
+    background:#f3f7fc !important;
+    color:#2f4a66 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet button:not(:disabled):not(.danger-btn):active,
+  .withdrawal-preview-sheet .split-btn-group > button:not(:disabled):not(.danger-btn):active,
+  .withdrawal-preview-sheet .row-label-btn:active,
+  .chart-axis-preview-sheet button:not(:disabled):not(.danger-btn):active,
+  .chart-axis-preview-sheet .split-btn-group > button:not(:disabled):not(.danger-btn):active,
+  .chart-axis-preview-sheet .row-label-btn:active,
+  .crash-preview-sheet button:not(:disabled):not(.danger-btn):active,
+  .crash-preview-sheet .split-btn-group > button:not(:disabled):not(.danger-btn):active,
+  .crash-preview-sheet .row-label-btn:active{
+    background:#eef5ff !important;
+    color:#2f4a66 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet .add-row-btn,
+  .withdrawal-preview-sheet .plus-btn,
+  .chart-axis-preview-sheet .add-row-btn,
+  .chart-axis-preview-sheet .plus-btn,
+  .crash-preview-sheet .add-row-btn,
+  .crash-preview-sheet .plus-btn{
+    color:#2f67bd !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+  }
+
+  .withdrawal-preview-sheet .add-row-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .plus-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .add-row-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .plus-btn:not(:disabled):hover,
+  .crash-preview-sheet .add-row-btn:not(:disabled):hover,
+  .crash-preview-sheet .plus-btn:not(:disabled):hover{
+    background:#eef5ff !important;
+    border-color:#cfe0fb !important;
+    color:#2f67bd !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet .danger-btn,
+  .chart-axis-preview-sheet .danger-btn,
+  .crash-preview-sheet .danger-btn{
+    color:#fff !important;
+  }
+
+  .withdrawal-preview-sheet .danger-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .danger-btn:not(:disabled):hover,
+  .crash-preview-sheet .danger-btn:not(:disabled):hover{
+    color:#fff !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:hover,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:active{
+    background:#f3f7fc !important;
+    color:#94a3b8 !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+</style>
+
+
+<!-- ===== v838: crash history table first column and note spacing/style ===== -->
+<style>
+  /* Scope: 暴落設定プレビューシート内の「暴落の歴史（参考）」テーブルと直下注記のみ。
+     構造・列幅・JS・比較結果テーブル本体は変更しない。 */
+  .crash-preview-sheet #crashHistoryContent .crash-history-table th:nth-child(1),
+  .crash-preview-sheet #crashHistoryContent .crash-history-table td:nth-child(1){
+    text-align:center !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
+    margin-bottom:10px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent > .help{
+    margin:0 !important;
+    color:var(--muted) !important;
+    font-size:.88rem !important;
+    line-height:1.5 !important;
+    font-weight:400 !important;
+    text-align:left !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
+      margin-bottom:9px !important;
+    }
+    .crash-preview-sheet #crashHistoryContent > .help{
+      font-size:12px !important;
+      line-height:1.5 !important;
+    }
+  }
+</style>
+
 </body>
 </html>
+
+<!-- ===== v817: reduce simple mode slider thumb shadow only ===== -->
+<style>
+  #simpleModePanel .simple-mode-slider::-webkit-slider-thumb{
+    box-shadow:0 1px 3px rgba(79,142,255,.14) !important;
+  }
+  #simpleModePanel .simple-mode-slider::-moz-range-thumb{
+    box-shadow:0 1px 3px rgba(79,142,255,.14) !important;
+  }
+</style>
+
+<!-- ===== v819: remove modal/preview subhead boxes and add blue accents; align simple mode subhead size ===== -->
+<style>
+  .withdrawal-rule-section-title,
+  .monte-settings-section-title,
+  .chart-axis-section-title,
+  .loan-detail-section-title,
+  .edu-detail-section-title,
+  .insurance-assist-section-title,
+  .pension-helper-section-title,
+  .insurance-assist-section-title,
+  .edu-detail-subgroup-title,
+  .withdrawal-compare-section .subhead,
+  .loan-detail-result strong{
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    margin:14px 0 10px !important;
+    padding:2px 0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:800 !important;
+    line-height:1.35 !important;
+  }
+
+  .withdrawal-rule-section-title::before,
+  .monte-settings-section-title::before,
+  .chart-axis-section-title::before,
+  .loan-detail-section-title::before,
+  .edu-detail-section-title::before,
+  .insurance-assist-section-title::before,
+  .pension-helper-section-title::before,
+  .edu-detail-subgroup-title::before{
+    content:"" !important;
+    width:5px !important;
+    height:26px !important;
+    border-radius:999px !important;
+    background:#4f8eff !important;
+    flex:0 0 auto !important;
+  }
+
+  .withdrawal-rule-section,
+  .monte-settings-section,
+  .chart-axis-section,
+  .loan-detail-section,
+  .edu-detail-section,
+  .insurance-assist-section,
+  .pension-helper-section{
+    border-color:#d8e2f0 !important;
+    border-radius:16px !important;
+    background:#fff !important;
+  }
+
+  #simpleModePanel .simple-mode-card-title{
+    align-items:center !important;
+    gap:10px !important;
+  }
+  #simpleModePanel .simple-mode-card-title::before{
+    content:"" !important;
+    width:5px !important;
+    height:26px !important;
+    border-radius:999px !important;
+    background:#4f8eff !important;
+    flex:0 0 auto !important;
+  }
+  #simpleModePanel .simple-mode-card-title-main{
+    font-size:18px !important;
+    font-weight:800 !important;
+    line-height:1.35 !important;
+    color:#122b45 !important;
+  }
+  #simpleModePanel .simple-mode-card-note{
+    margin-top:1px !important;
+    color:#688096 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .withdrawal-rule-section-title,
+    .monte-settings-section-title,
+    .chart-axis-section-title,
+    .loan-detail-section-title,
+    .edu-detail-section-title,
+    .insurance-assist-section-title,
+    .pension-helper-section-title,
+    .edu-detail-subgroup-title{
+      margin:12px 0 8px !important;
+      font-size:17px !important;
+      gap:9px !important;
+    }
+    .withdrawal-rule-section-title::before,
+    .monte-settings-section-title::before,
+    .chart-axis-section-title::before,
+    .loan-detail-section-title::before,
+    .edu-detail-section-title::before,
+    .insurance-assist-section-title::before,
+    .pension-helper-section-title::before,
+    .edu-detail-subgroup-title::before,
+    #simpleModePanel .simple-mode-card-title::before{
+      width:5px !important;
+      height:24px !important;
+    }
+    #simpleModePanel .simple-mode-card-title-main{
+      font-size:17px !important;
+    }
+  }
+</style>
+
+<!-- ===== v820: move simple mode blue accent from card title to field subheads only ===== -->
+<style>
+  #simpleModePanel .simple-mode-card-title::before{
+    content:none !important;
+    display:none !important;
+  }
+  #simpleModePanel .simple-mode-card-title{
+    gap:10px !important;
+  }
+
+  #simpleModePanel .simple-mode-field-label{
+    align-items:center !important;
+    gap:10px !important;
+  }
+  #simpleModePanel .simple-mode-field-label-main{
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    color:#122b45 !important;
+    font-size:16px !important;
+    font-weight:800 !important;
+    line-height:1.35 !important;
+  }
+  #simpleModePanel .simple-mode-field-label-main::before{
+    content:"" !important;
+    width:4px !important;
+    height:20px !important;
+    border-radius:999px !important;
+    background:#4f8eff !important;
+    flex:0 0 auto !important;
+  }
+  #simpleModePanel .simple-mode-field-value{
+    font-size:12px !important;
+    font-weight:700 !important;
+    color:#53677d !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    #simpleModePanel .simple-mode-card-title::before{
+      content:none !important;
+      display:none !important;
+    }
+    #simpleModePanel .simple-mode-field-label-main{
+      gap:9px !important;
+      font-size:16px !important;
+    }
+    #simpleModePanel .simple-mode-field-label-main::before{
+      width:4px !important;
+      height:20px !important;
+    }
+  }
+</style>
+
+<!-- ===== v822: full-bleed title bands for modals and preview sheets only ===== -->
+<style>
+  .modal-card > .modal-text[id]:first-child{
+    margin:-18px -16px 0 !important;
+    width:auto !important;
+    border-radius:20px 20px 0 0 !important;
+  }
+
+  .modal-card > .modal-text[id]:first-child + *{
+    margin-top:14px !important;
+  }
+
+  .withdrawal-preview-sheet{
+    padding:0 !important;
+  }
+
+  .modal-card.withdrawal-preview-sheet > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child{
+    margin:0 !important;
+    width:100% !important;
+    border-radius:0 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card > .modal-text[id]:first-child{
+      margin:-14px -10px 0 !important;
+      border-radius:18px 18px 0 0 !important;
+    }
+    .modal-card.withdrawal-preview-sheet > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child{
+      margin:0 !important;
+      border-radius:0 !important;
+    }
+  }
+</style>
+
+<!-- ===== v823: add inner left padding to Monte Carlo settings sheet only ===== -->
+<style>
+  #monteCarloSettingsModal .monte-settings-grid{
+    padding-left:18px !important;
+    padding-right:18px !important;
+    padding-bottom:4px !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    #monteCarloSettingsModal .monte-settings-grid{
+      padding-left:14px !important;
+      padding-right:14px !important;
+    }
+  }
+</style>
+
+<!-- ===== v824: vertically center blue title-band text only ===== -->
+<style>
+  .modal-card > .modal-text[id]:first-child,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:52px !important;
+    padding-top:0 !important;
+    padding-bottom:0 !important;
+    line-height:1.2 !important;
+  }
+
+  #cashflowModalTitle{
+    display:flex !important;
+    align-items:center !important;
+    min-height:52px !important;
+    padding-top:0 !important;
+    padding-bottom:0 !important;
+    line-height:1.2 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card > .modal-text[id]:first-child,
+    .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    #cashflowModalTitle{
+      min-height:48px !important;
+      padding-top:0 !important;
+      padding-bottom:0 !important;
+      line-height:1.2 !important;
+    }
+  }
+</style>
+
+<!-- ===== v825: force vertical centering for all blue title-band text ===== -->
+<style>
+  /* Modal / preview title bands: force exact height + center alignment. */
+  .modal-card > .modal-text[id]:first-child,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #cashflowModalTitle{
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:52px !important;
+    min-height:52px !important;
+    padding:0 18px !important;
+    margin-top:0 !important;
+    margin-bottom:0 !important;
+    line-height:1 !important;
+  }
+
+  /* Some preview sheets use the title directly after the draggable handle. */
+  .withdrawal-preview-scroll > .modal-text[id]:first-child{
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:52px !important;
+    min-height:52px !important;
+    padding:0 18px !important;
+    margin:0 !important;
+    line-height:1 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card > .modal-text[id]:first-child,
+    .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    #cashflowModalTitle{
+      height:48px !important;
+      min-height:48px !important;
+      padding:0 14px !important;
+      line-height:1 !important;
+    }
+  }
+</style>
+
+<!-- ===== v826: remove white top gap while keeping title-band text vertically centered ===== -->
+<style>
+  .modal-card > .modal-text[id]:first-child{
+    margin:-18px -16px 0 !important;
+    width:auto !important;
+    border-radius:20px 20px 0 0 !important;
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:52px !important;
+    min-height:52px !important;
+    padding:0 18px !important;
+    line-height:1 !important;
+  }
+
+  .modal-card > .modal-text[id]:first-child + *{
+    margin-top:14px !important;
+  }
+
+  .modal-card.withdrawal-preview-sheet > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-scroll > .modal-text[id]:first-child{
+    margin:0 !important;
+    width:100% !important;
+    border-radius:0 !important;
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:52px !important;
+    min-height:52px !important;
+    padding:0 18px !important;
+    line-height:1 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card > .modal-text[id]:first-child{
+      margin:-14px -10px 0 !important;
+      border-radius:18px 18px 0 0 !important;
+      height:48px !important;
+      min-height:48px !important;
+      padding:0 14px !important;
+      line-height:1 !important;
+    }
+
+    .modal-card.withdrawal-preview-sheet > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-scroll > .modal-text[id]:first-child{
+      margin:0 !important;
+      border-radius:0 !important;
+      height:48px !important;
+      min-height:48px !important;
+      padding:0 14px !important;
+      line-height:1 !important;
+    }
+  }
+</style>
+
+<!-- ===== v826: left-align subhead-with-action titles for social/pension simple sections only ===== -->
+<style>
+  #detailModePanel .subhead.subhead-with-action:has(#resetSocialSimpleBtn),
+  #detailModePanel .subhead.subhead-with-action:has(#resetPensionTaxSimpleBtn){
+    justify-content:flex-start !important;
+    text-align:left !important;
+  }
+
+  #detailModePanel .subhead.subhead-with-action:has(#resetSocialSimpleBtn) > span,
+  #detailModePanel .subhead.subhead-with-action:has(#resetPensionTaxSimpleBtn) > span{
+    margin-right:auto !important;
+    text-align:left !important;
+    justify-self:flex-start !important;
+    flex:0 1 auto !important;
+  }
+
+  #detailModePanel .subhead.subhead-with-action:has(#resetSocialSimpleBtn) > .subhead-action-btn,
+  #detailModePanel .subhead.subhead-with-action:has(#resetPensionTaxSimpleBtn) > .subhead-action-btn{
+    margin-left:auto !important;
+  }
+</style>
+
+<!-- ===== v829: restore comparison result tables and align preview input tables with main tables only ===== -->
+<style>
+  /* 1) 比較結果テーブルは v826 相当へ戻す（v827/v828 の特殊装飾を打ち消す） */
+  #withdrawalCompareResultTableWrap,
+  #crashCompareResultTableWrap,
+  #monteCompareResultTableWrap,
+  .withdrawal-compare-table-wrap{
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  .withdrawal-compare-section{
+    border:1px solid var(--border) !important;
+    border-radius:12px !important;
+    padding:10px !important;
+    background:#fff !important;
+    box-shadow:none !important;
+  }
+
+  .withdrawal-compare-table{
+    width:max-content !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+    table-layout:auto !important;
+    font-size:12px !important;
+    color:#111827 !important;
+    background:#fff !important;
+    margin-bottom:10px !important;
+    clip-path:none !important;
+    overflow:visible !important;
+  }
+
+  .withdrawal-compare-table th,
+  .withdrawal-compare-table td{
+    border:1px solid var(--border) !important;
+    padding:4px 2px !important;
+    text-align:center !important;
+    vertical-align:middle !important;
+    white-space:nowrap !important;
+    color:#111827 !important;
+    background:#fff !important;
+    font-variant-numeric:normal !important;
+  }
+
+  .withdrawal-compare-table th{
+    background:#fafafa !important;
+    line-height:1.25 !important;
+    color:#111827 !important;
+    font-weight:700 !important;
+  }
+
+  .withdrawal-compare-table .compare-group-label{
+    background:#f8fafc !important;
+    font-weight:700 !important;
+    white-space:normal !important;
+    color:#111827 !important;
+  }
+
+  .withdrawal-compare-table .compare-row-fixed th,
+  .withdrawal-compare-table .compare-row-fixed td{
+    background:#fff !important;
+    color:#111827 !important;
+    font-weight:700 !important;
+  }
+
+  .withdrawal-compare-table .compare-row-median th,
+  .withdrawal-compare-table .compare-row-median td{
+    background:#fffbeb !important;
+    color:#111827 !important;
+    font-weight:400 !important;
+  }
+
+  .withdrawal-compare-table th:first-child,
+  .withdrawal-compare-table td:first-child{
+    text-align:center !important;
+    width:54px !important;
+    min-width:54px !important;
+    padding-left:2px !important;
+    padding-right:2px !important;
+  }
+
+  .withdrawal-compare-table th:nth-child(2),
+  .withdrawal-compare-table td:nth-child(2){
+    width:58px !important;
+    min-width:58px !important;
+    padding-left:2px !important;
+    padding-right:2px !important;
+    text-align:center !important;
+  }
+
+  .withdrawal-compare-table th:nth-child(n+3),
+  .withdrawal-compare-table td:nth-child(n+3){
+    width:1% !important;
+    min-width:0 !important;
+    padding-left:2px !important;
+    padding-right:2px !important;
+  }
+
+  /* 2) プレビューシート内の入力テーブルだけ、メイン入力テーブルと同じ外観へ寄せる */
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table){
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    border:1px solid #cfd9e5 !important;
+    border-radius:16px !important;
+    overflow:hidden !important;
+    clip-path:inset(0 round 16px) !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:none !important;
+    margin-bottom:10px !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) th,
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) td{
+    border-top:0 !important;
+    border-left:0 !important;
+    border-right:1px solid #e3ebf3 !important;
+    border-bottom:1px solid #e9f0f6 !important;
+    text-align:center !important;
+    vertical-align:middle !important;
+    color:#1f3c5a !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) th{
+    background:linear-gradient(180deg,#f4f8fe 0%, #ebf2fb 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) td{
+    background:#fff !important;
+    font-weight:400 !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) tr > *:last-child{
+    border-right:0 !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) tbody tr:last-child > th,
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) tbody tr:last-child > td{
+    border-bottom:0 !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) .compare-group-label,
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) td:first-child,
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) th:first-child{
+    color:#1f3c5a !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) td:first-child{
+    background:#fff !important;
+    font-weight:700 !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) select,
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) input[type=number],
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) input[type=text],
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) input[type=date]{
+    border-color:#bccbda !important;
+    border-radius:10px !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table) .input-unit{
+    padding-left:0 !important;
+    justify-content:center !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .withdrawal-preview-sheet .withdrawal-param-case-table:not(.withdrawal-compare-table){
+      border-radius:14px !important;
+      clip-path:inset(0 round 14px) !important;
+    }
+
+    .withdrawal-compare-table{
+      min-width:0 !important;
+      font-size:11px !important;
+    }
+  }
+</style>
+
+<!-- ===== v831: preview input table alignment, drag-line color, hover parity only ===== -->
+<style>
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td{
+    text-align:left !important;
+  }
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td .input-unit,
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td .period-line,
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td .withdrawal-order-rank{
+    justify-content:flex-start !important;
+    text-align:left !important;
+    padding-left:0 !important;
+  }
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td > input[type=number],
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td > input[type=text],
+  .withdrawal-preview-sheet .withdrawal-order-manual-wrap .withdrawal-param-case-table tbody td > select{
+    margin-left:0 !important;
+    margin-right:auto !important;
+  }
+  .withdrawal-preview-sheet .withdrawal-order-row.drag-shifted > td::before,
+  .withdrawal-preview-sheet .withdrawal-order-row.drag-gap-next > td::before{
+    background:#e9f0f6 !important;
+  }
+  .withdrawal-preview-sheet .withdrawal-order-row-drag-ghost td{
+    border-right-color:#e3ebf3 !important;
+    border-bottom-color:#e9f0f6 !important;
+  }
+  .withdrawal-preview-sheet input[type=number],
+  .withdrawal-preview-sheet input[type=text],
+  .withdrawal-preview-sheet input[type=date],
+  .withdrawal-preview-sheet textarea,
+  .withdrawal-preview-sheet select,
+  .chart-axis-preview-sheet input[type=number],
+  .chart-axis-preview-sheet input[type=text],
+  .chart-axis-preview-sheet input[type=date],
+  .chart-axis-preview-sheet textarea,
+  .chart-axis-preview-sheet select,
+  .crash-preview-sheet input[type=number],
+  .crash-preview-sheet input[type=text],
+  .crash-preview-sheet input[type=date],
+  .crash-preview-sheet textarea,
+  .crash-preview-sheet select{
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+  }
+  .withdrawal-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet select:not(:disabled):hover,
+  .chart-axis-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet select:not(:disabled):hover,
+  .crash-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet select:not(:disabled):hover{
+    border-color:#9ebcf4 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+  }
+  .withdrawal-preview-sheet button,
+  .withdrawal-preview-sheet .row-label-btn,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle,
+  .chart-axis-preview-sheet button,
+  .chart-axis-preview-sheet .row-label-btn,
+  .crash-preview-sheet button,
+  .crash-preview-sheet .row-label-btn{
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+  }
+  .withdrawal-preview-sheet button:not(:disabled):hover,
+  .withdrawal-preview-sheet .row-label-btn:hover,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:hover,
+  .chart-axis-preview-sheet button:not(:disabled):hover,
+  .chart-axis-preview-sheet .row-label-btn:hover,
+  .crash-preview-sheet button:not(:disabled):hover,
+  .crash-preview-sheet .row-label-btn:hover{
+    background:#f3f7fc !important;
+    border-color:#aebfd2 !important;
+    box-shadow:0 2px 6px rgba(18,38,63,.08) !important;
+    transform:translateY(-1px) !important;
+  }
+  .withdrawal-preview-sheet button:not(:disabled):active,
+  .withdrawal-preview-sheet .row-label-btn:active,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:active,
+  .chart-axis-preview-sheet button:not(:disabled):active,
+  .chart-axis-preview-sheet .row-label-btn:active,
+  .crash-preview-sheet button:not(:disabled):active,
+  .crash-preview-sheet .row-label-btn:active{
+    transform:translateY(0) !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+  }
+  .withdrawal-preview-sheet .add-row-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .plus-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .add-row-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .plus-btn:not(:disabled):hover,
+  .crash-preview-sheet .add-row-btn:not(:disabled):hover,
+  .crash-preview-sheet .plus-btn:not(:disabled):hover{
+    background:#eaf2ff !important;
+    border-color:#b7cff4 !important;
+    color:#1f5faa !important;
+    box-shadow:0 2px 6px rgba(18,38,63,.08) !important;
+    transform:translateY(-1px) !important;
+  }
+</style>
+
+<!-- ===== v834: unify preview sheet control/frame border colors to blue tone only ===== -->
+<style>
+  .withdrawal-preview-sheet,
+  .chart-axis-preview-sheet,
+  .crash-preview-sheet{
+    --preview-blue-line:#cfd9e5;
+    --preview-blue-line-strong:#bccbda;
+    --preview-blue-line-soft:#e7eef6;
+    --preview-blue-hover:#eaf2ff;
+    --preview-blue-hover-line:#9ebcf4;
+    --preview-shadow:0 1px 2px rgba(18,38,63,.035);
+    border-color:var(--preview-blue-line) !important;
+  }
+
+  .withdrawal-preview-sheet .modal-card,
+  .chart-axis-preview-sheet .modal-card,
+  .crash-preview-sheet .modal-card,
+  .withdrawal-preview-sheet .withdrawal-rule-section,
+  .chart-axis-preview-sheet .chart-axis-section,
+  .crash-preview-sheet .withdrawal-rule-section,
+  .withdrawal-preview-sheet .withdrawal-rule-summary,
+  .chart-axis-preview-sheet .withdrawal-rule-summary,
+  .crash-preview-sheet .withdrawal-rule-summary{
+    border-color:var(--preview-blue-line) !important;
+  }
+
+  .withdrawal-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table),
+  .chart-axis-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table),
+  .crash-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table){
+    border-color:var(--preview-blue-line) !important;
+  }
+
+  .withdrawal-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table) th,
+  .chart-axis-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table) th,
+  .crash-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table) th{
+    border-color:var(--preview-blue-line-soft) !important;
+    border-bottom-color:var(--preview-blue-line) !important;
+  }
+
+  .withdrawal-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table) td,
+  .chart-axis-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table) td,
+  .crash-preview-sheet table:not(.withdrawal-compare-table):not(.cashflow-table) td{
+    border-color:var(--preview-blue-line-soft) !important;
+  }
+
+  .withdrawal-preview-sheet input[type=number],
+  .withdrawal-preview-sheet input[type=text],
+  .withdrawal-preview-sheet input[type=date],
+  .withdrawal-preview-sheet textarea,
+  .withdrawal-preview-sheet select,
+  .chart-axis-preview-sheet input[type=number],
+  .chart-axis-preview-sheet input[type=text],
+  .chart-axis-preview-sheet input[type=date],
+  .chart-axis-preview-sheet textarea,
+  .chart-axis-preview-sheet select,
+  .crash-preview-sheet input[type=number],
+  .crash-preview-sheet input[type=text],
+  .crash-preview-sheet input[type=date],
+  .crash-preview-sheet textarea,
+  .crash-preview-sheet select{
+    border-color:var(--preview-blue-line-strong) !important;
+    box-shadow:var(--preview-shadow) !important;
+    color:inherit !important;
+    transform:none !important;
+  }
+
+  .withdrawal-preview-sheet button,
+  .withdrawal-preview-sheet .split-btn-group,
+  .withdrawal-preview-sheet .split-btn-group > button,
+  .withdrawal-preview-sheet .row-label-btn,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle,
+  .withdrawal-preview-sheet .add-row-btn,
+  .withdrawal-preview-sheet .plus-btn,
+  .chart-axis-preview-sheet button,
+  .chart-axis-preview-sheet .split-btn-group,
+  .chart-axis-preview-sheet .split-btn-group > button,
+  .chart-axis-preview-sheet .row-label-btn,
+  .chart-axis-preview-sheet .add-row-btn,
+  .chart-axis-preview-sheet .plus-btn,
+  .crash-preview-sheet button,
+  .crash-preview-sheet .split-btn-group,
+  .crash-preview-sheet .split-btn-group > button,
+  .crash-preview-sheet .row-label-btn,
+  .crash-preview-sheet .add-row-btn,
+  .crash-preview-sheet .plus-btn{
+    border-color:var(--preview-blue-line-strong) !important;
+    box-shadow:var(--preview-shadow) !important;
+    transform:none !important;
+    color:inherit !important;
+  }
+
+  .withdrawal-preview-sheet .split-btn-group > button + button,
+  .chart-axis-preview-sheet .split-btn-group > button + button,
+  .crash-preview-sheet .split-btn-group > button + button{
+    border-left-color:var(--preview-blue-line-strong) !important;
+  }
+
+  .withdrawal-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet select:not(:disabled):hover,
+  .chart-axis-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet select:not(:disabled):hover,
+  .crash-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet select:not(:disabled):hover{
+    background:#fff !important;
+    border-color:var(--preview-blue-hover-line) !important;
+    box-shadow:var(--preview-shadow) !important;
+    transform:none !important;
+    color:inherit !important;
+  }
+
+  .withdrawal-preview-sheet button:not(:disabled):hover,
+  .withdrawal-preview-sheet .split-btn-group > button:not(:disabled):hover,
+  .withdrawal-preview-sheet .row-label-btn:hover,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:hover,
+  .withdrawal-preview-sheet .add-row-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .plus-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet button:not(:disabled):hover,
+  .chart-axis-preview-sheet .split-btn-group > button:not(:disabled):hover,
+  .chart-axis-preview-sheet .row-label-btn:hover,
+  .chart-axis-preview-sheet .add-row-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .plus-btn:not(:disabled):hover,
+  .crash-preview-sheet button:not(:disabled):hover,
+  .crash-preview-sheet .split-btn-group > button:not(:disabled):hover,
+  .crash-preview-sheet .row-label-btn:hover,
+  .crash-preview-sheet .add-row-btn:not(:disabled):hover,
+  .crash-preview-sheet .plus-btn:not(:disabled):hover{
+    background:var(--preview-blue-hover) !important;
+    border-color:var(--preview-blue-hover-line) !important;
+    box-shadow:var(--preview-shadow) !important;
+    transform:none !important;
+    color:inherit !important;
+  }
+
+  .withdrawal-preview-sheet button:not(:disabled):active,
+  .withdrawal-preview-sheet .split-btn-group > button:not(:disabled):active,
+  .withdrawal-preview-sheet .row-label-btn:active,
+  .withdrawal-preview-sheet .withdrawal-order-drag-handle:active,
+  .withdrawal-preview-sheet .add-row-btn:not(:disabled):active,
+  .withdrawal-preview-sheet .plus-btn:not(:disabled):active,
+  .chart-axis-preview-sheet button:not(:disabled):active,
+  .chart-axis-preview-sheet .split-btn-group > button:not(:disabled):active,
+  .chart-axis-preview-sheet .row-label-btn:active,
+  .chart-axis-preview-sheet .add-row-btn:not(:disabled):active,
+  .chart-axis-preview-sheet .plus-btn:not(:disabled):active,
+  .crash-preview-sheet button:not(:disabled):active,
+  .crash-preview-sheet .split-btn-group > button:not(:disabled):active,
+  .crash-preview-sheet .row-label-btn:active,
+  .crash-preview-sheet .add-row-btn:not(:disabled):active,
+  .crash-preview-sheet .plus-btn:not(:disabled):active{
+    background:var(--preview-blue-hover) !important;
+    box-shadow:var(--preview-shadow) !important;
+    transform:none !important;
+    color:inherit !important;
+  }
+
+  .withdrawal-preview-sheet .plus-btn::before,
+  .withdrawal-preview-sheet .plus-btn::after,
+  .chart-axis-preview-sheet .plus-btn::before,
+  .chart-axis-preview-sheet .plus-btn::after,
+  .crash-preview-sheet .plus-btn::before,
+  .crash-preview-sheet .plus-btn::after{
+    background:#4f8eff !important;
+  }
+</style>
+
+<!-- ===== v837: crash history table visual alignment with main preview tables only ===== -->
+<style>
+  /* Scope: 暴落設定プレビューシート内の「暴落の歴史（参考）」テーブルのみ。
+     構造・列幅・JS・比較結果テーブル本体は変更しない。 */
+  .crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
+    border:1px solid var(--preview-blue-line, #cfd9e5) !important;
+    border-radius:14px !important;
+    background:#fff !important;
+    box-shadow:var(--preview-shadow, 0 1px 2px rgba(18,38,63,.035)) !important;
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table{
+    width:100% !important;
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    margin-bottom:0 !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:none !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table th,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table td{
+    border:0 !important;
+    border-right:1px solid var(--preview-blue-line-soft, #e7eef6) !important;
+    border-bottom:1px solid var(--preview-blue-line-soft, #e7eef6) !important;
+    color:#1f3c5a !important;
+    vertical-align:middle !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table th{
+    background:linear-gradient(180deg, #f4f8fe 0%, #ebf2fb 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+    border-bottom-color:var(--preview-blue-line, #cfd9e5) !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table td{
+    background:#fff !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tr > *:last-child{
+    border-right:0 !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td{
+    border-bottom:0 !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
+    border-top-left-radius:13px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
+    border-top-right-radius:13px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
+    border-bottom-left-radius:13px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
+    border-bottom-right-radius:13px !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
+      border-radius:12px !important;
+    }
+    .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
+      border-top-left-radius:11px !important;
+    }
+    .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
+      border-top-right-radius:11px !important;
+    }
+    .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
+      border-bottom-left-radius:11px !important;
+    }
+    .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
+      border-bottom-right-radius:11px !important;
+    }
+  }
+
+
+/* ===== v839: upper graph border colors align closer to mock ===== */
+#appHero{
+  border-color:#cfd9e5 !important;
+}
+#chartTopPanel{
+  border-color:#cfd9e5 !important;
+}
+#chartTopBar{
+  border-bottom:none !important;
+}
+#chartCanvasStickyWrap{
+  border-color:#cfd9e5 !important;
+}
+.chart-resize-handle{
+  border-color:#bccbda !important;
+}
+.chart-resize-handle::before{
+  background:#bccbda !important;
+}
+.hero-menu-btn,
+.graph-menu-btn{
+  border-color:#bccbda !important;
+}
+.graph-select,
+#leftTopControls .graph-select,
+#leftTopControls select.graph-select,
+#leftTopControls .field .graph-select{
+  border-color:#bccbda !important;
+}
+
+</style>
