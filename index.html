@@ -2897,6 +2897,10 @@ document.addEventListener("scroll", (ev)=>{
   transition:none !important;
   opacity:0 !important;
 }
+#detailStickyNav.sticky-nav-frame-no-transition::after,
+#simpleStickyNav.sticky-nav-frame-no-transition::after{
+  transition:none !important;
+}
 #detailStickyNav .detail-sticky-btn,
 #simpleStickyNav .detail-sticky-btn{
   position:relative !important;
@@ -11477,6 +11481,28 @@ function updateStickyNavActiveFrame(nav){
   nav.style.setProperty("--sticky-active-opacity", "1");
 }
 
+function beginStickyNavFrameReset(nav){
+  if(!nav) return;
+  nav.classList.add("sticky-nav-initializing");
+  nav.classList.add("sticky-nav-frame-no-transition");
+  nav.style.setProperty("--sticky-active-opacity", "0");
+}
+
+function finishStickyNavFrameReset(nav, afterFrameUpdate){
+  if(!nav) return;
+  requestAnimationFrame(()=>{
+    if(typeof afterFrameUpdate === "function") afterFrameUpdate();
+    updateStickyNavActiveFrame(nav);
+    requestAnimationFrame(()=>{
+      updateStickyNavActiveFrame(nav);
+      nav.classList.remove("sticky-nav-initializing");
+      requestAnimationFrame(()=>{
+        nav.classList.remove("sticky-nav-frame-no-transition");
+      });
+    });
+  });
+}
+
 function setActiveSimpleStickySection(sectionId){
   currentSimpleStickySectionId = sectionId || "";
   const nav = getSimpleStickyNav();
@@ -11612,7 +11638,7 @@ function buildSimpleStickyNav(){
     element.classList.add("simple-sticky-target");
     return { id: element.id, title: item.title, element };
   }).filter(Boolean);
-  nav.classList.add("sticky-nav-initializing");
+  beginStickyNavFrameReset(nav);
   const initialSimpleTop = Math.max(0, +(getInputModeScrollStore().simple || 0));
   const initialActiveId = simpleStickySections.length ? getSimpleStickySectionForScrollTop(initialSimpleTop) : "";
   currentSimpleStickySectionId = initialActiveId;
@@ -11634,13 +11660,13 @@ function buildSimpleStickyNav(){
   simpleStickyNavBuilt = true;
   if(simpleStickySections.length){
     setActiveSimpleStickySection(initialActiveId);
-    requestAnimationFrame(()=>{
+    finishStickyNavFrameReset(nav, ()=>{
       refreshActiveSimpleStickySectionFromScroll();
-      nav.classList.remove("sticky-nav-initializing");
     });
   }else{
     setActiveSimpleStickySection("");
     nav.classList.remove("sticky-nav-initializing");
+    nav.classList.remove("sticky-nav-frame-no-transition");
   }
 }
 
@@ -11791,7 +11817,7 @@ function buildDetailStickyNav(){
   const panel = document.getElementById("detailModePanel");
   const nav = getDetailStickyNav();
   if(!panel || !nav) return;
-  nav.classList.add("sticky-nav-initializing");
+  beginStickyNavFrameReset(nav);
   detailStickySections = Array.from(panel.querySelectorAll(":scope > .section"))
     .map((section, idx)=>{
       const heading = section.querySelector("h2");
@@ -11827,7 +11853,9 @@ function buildDetailStickyNav(){
     const finalize = ()=>{
       pendingDetailRestoreScrollTop = null;
       refreshActiveDetailStickySectionFromScroll();
+      updateStickyNavActiveFrame(nav);
       nav.classList.remove("sticky-nav-initializing");
+      requestAnimationFrame(()=>nav.classList.remove("sticky-nav-frame-no-transition"));
       if(pendingInputModeReveal === "detail"){
         panel.classList.remove("mode-panel-preparing");
         pendingInputModeReveal = "";
@@ -11842,6 +11870,7 @@ function buildDetailStickyNav(){
     setActiveDetailStickySection("");
     pendingDetailRestoreScrollTop = null;
     nav.classList.remove("sticky-nav-initializing");
+    nav.classList.remove("sticky-nav-frame-no-transition");
     if(pendingInputModeReveal === "detail"){
       panel.classList.remove("mode-panel-preparing");
       pendingInputModeReveal = "";
@@ -29529,6 +29558,15 @@ body.body-v844-chart-resizing{
 </style>
 
 
+
+<style id="v851-mobile-detail-sticky-font-fix">
+@media (max-width:900px), (pointer:coarse){
+  #detailStickyNav .detail-sticky-btn{
+    font-size:12px !important;
+    line-height:1 !important;
+  }
+}
+</style>
 <style id="v841-pc-chart-stop-local-input-scroll">
 @media (min-width:901px) and (pointer:fine){
   #inputs{
