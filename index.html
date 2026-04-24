@@ -30217,3 +30217,139 @@ body.body-v846-chart-resizing{
   scheduleMobileInputsHeightSync();
 })();
 </script>
+
+<!-- ===== v848: mobile-only input height refinement + light page scroll cap ===== -->
+<style id="v848-mobile-input-height-and-scroll-cap-style">
+@media (max-width:900px), (pointer:coarse){
+  #inputs{
+    height:var(--v848-mobile-input-height, var(--v847-mobile-input-height, auto)) !important;
+    max-height:var(--v848-mobile-input-height, var(--v847-mobile-input-height, none)) !important;
+    min-height:220px !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    overscroll-behavior-y:contain !important;
+    padding-bottom:4px !important;
+  }
+}
+</style>
+<script id="v848-mobile-input-height-and-scroll-cap-script">
+(function(){
+  const MOBILE_MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
+  const BOTTOM_MARGIN = 0;
+  const MIN_INPUT_HEIGHT = 220;
+  let layoutRaf = 0;
+  let capRaf = 0;
+  let cachedStopY = null;
+  let isCapping = false;
+
+  function isMobile(){
+    return !!(MOBILE_MQ && MOBILE_MQ.matches);
+  }
+
+  function viewportHeight(){
+    const values = [window.innerHeight, document.documentElement ? document.documentElement.clientHeight : 0];
+    if(window.visualViewport && Number.isFinite(window.visualViewport.height)) values.push(window.visualViewport.height);
+    return Math.max.apply(null, values.filter(function(v){ return Number.isFinite(v) && v > 0; })) || 0;
+  }
+
+  function absoluteOffsetTop(el){
+    let y = 0;
+    let node = el;
+    while(node){
+      y += node.offsetTop || 0;
+      node = node.offsetParent;
+    }
+    return y;
+  }
+
+  function mobileStopY(){
+    const chartTop = document.getElementById('chartCanvasStickyWrap');
+    if(!chartTop) return null;
+    const y = absoluteOffsetTop(chartTop);
+    if(!Number.isFinite(y) || y < 0) return null;
+    cachedStopY = Math.round(y);
+    return cachedStopY;
+  }
+
+  function currentStopY(){
+    if(cachedStopY == null) return mobileStopY();
+    return cachedStopY;
+  }
+
+  function syncMobileInputsHeight(){
+    const root = document.documentElement;
+    const inputs = document.getElementById('inputs');
+    if(!inputs) return;
+    if(!isMobile()){
+      root.style.removeProperty('--v848-mobile-input-height');
+      cachedStopY = null;
+      return;
+    }
+    const stopY = mobileStopY();
+    if(stopY == null) return;
+    const inputsY = absoluteOffsetTop(inputs);
+    const vh = viewportHeight();
+    const rawHeight = vh + stopY - inputsY - BOTTOM_MARGIN;
+    const height = Math.max(MIN_INPUT_HEIGHT, Math.round(rawHeight));
+    root.style.setProperty('--v848-mobile-input-height', height + 'px');
+  }
+
+  function scheduleLayoutSync(){
+    if(layoutRaf) cancelAnimationFrame(layoutRaf);
+    layoutRaf = requestAnimationFrame(function(){
+      layoutRaf = 0;
+      syncMobileInputsHeight();
+      scheduleScrollCap();
+    });
+  }
+
+  function capMobileWindowScroll(){
+    capRaf = 0;
+    if(!isMobile() || isCapping) return;
+    const stopY = currentStopY();
+    if(stopY == null) return;
+    const y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    if(y <= stopY + 1) return;
+    isCapping = true;
+    window.scrollTo(window.pageXOffset || 0, stopY);
+    requestAnimationFrame(function(){ isCapping = false; });
+  }
+
+  function scheduleScrollCap(){
+    if(capRaf) return;
+    capRaf = requestAnimationFrame(capMobileWindowScroll);
+  }
+
+  window.addEventListener('load', scheduleLayoutSync, {once:true, passive:true});
+  window.addEventListener('resize', scheduleLayoutSync, {passive:true});
+  window.addEventListener('orientationchange', scheduleLayoutSync, {passive:true});
+  window.addEventListener('scroll', scheduleScrollCap, {passive:true});
+  window.addEventListener('touchend', scheduleScrollCap, {passive:true});
+  window.addEventListener('wheel', scheduleScrollCap, {passive:true});
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', scheduleLayoutSync, {passive:true});
+  if(MOBILE_MQ){
+    if(typeof MOBILE_MQ.addEventListener === 'function') MOBILE_MQ.addEventListener('change', scheduleLayoutSync);
+    else if(typeof MOBILE_MQ.addListener === 'function') MOBILE_MQ.addListener(scheduleLayoutSync);
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(scheduleLayoutSync);
+    window.addEventListener('load', function(){
+      ['chartWrap','chartTopPanel','chartCanvasStickyWrap','chart','tabsBar','inputs'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+
+  const originalDraw = window.draw;
+  if(typeof originalDraw === 'function' && !window.__v848MobileInputsDrawWrapped){
+    window.__v848MobileInputsDrawWrapped = true;
+    window.draw = function(){
+      const result = originalDraw.apply(this, arguments);
+      scheduleLayoutSync();
+      return result;
+    };
+  }
+  scheduleLayoutSync();
+})();
+</script>
