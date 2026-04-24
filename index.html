@@ -30258,3 +30258,17 @@ body.body-v846-chart-resizing{
   schedule();
 })();
 </script>
+
+<style>
+/* ===== v853: prevent sticky menu whole-bar flash during mode switch ===== */
+@media (max-width:900px), (pointer:coarse){
+  #detailStickyNav.sticky-nav-initializing,
+  #simpleStickyNav.sticky-nav-initializing{
+    visibility:visible !important;
+  }
+  #detailStickyNav.sticky-nav-initializing::after,
+  #simpleStickyNav.sticky-nav-initializing::after{
+    opacity:0 !important;
+  }
+}
+</style>
