@@ -4356,6 +4356,333 @@ document.addEventListener("scroll", (ev)=>{
     border-left:1px solid #bccbda !important;
   }
 </style>
+
+<!-- ===== v856: unify modal/dialog buttons and remove title-band treatment from confirmation dialogs ===== -->
+<style>
+  /* 全ダイアログ共通：モック寄せのカード・ボタン外観 */
+  .modal-backdrop{
+    background:rgba(18,35,54,.28) !important;
+  }
+  .modal-card{
+    border:1px solid #cfd9e5 !important;
+    border-radius:20px !important;
+    background:#fff !important;
+    box-shadow:0 16px 40px rgba(20,35,56,.12) !important;
+    color:#122b45 !important;
+  }
+  .modal-card > .modal-text[id]:first-child,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #cashflowModalTitle{
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:700 !important;
+    letter-spacing:0 !important;
+  }
+  .modal-actions{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:10px !important;
+    margin-top:18px !important;
+  }
+  .modal-actions button{
+    min-height:40px !important;
+    padding:0 18px !important;
+    border:1px solid #bccbda !important;
+    border-radius:12px !important;
+    background:#fff !important;
+    color:#2f4a66 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+    font-size:14px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    transform:none !important;
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+  }
+  .modal-actions button:hover{
+    background:#f8fbff !important;
+    border-color:#aebfd2 !important;
+    color:#122b45 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+    transform:none !important;
+  }
+  .modal-actions button:focus,
+  .modal-actions button:focus-visible{
+    outline:none !important;
+    border-color:#4f8eff !important;
+    box-shadow:0 0 0 3px rgba(79,142,255,.22), 0 1px 2px rgba(18,38,63,.03) !important;
+  }
+  .modal-actions button.danger-btn,
+  .modal-actions .danger-btn,
+  button.danger-btn{
+    background:#d95b6a !important;
+    border-color:#d95b6a !important;
+    color:#fff !important;
+    box-shadow:0 1px 2px rgba(217,91,106,.16) !important;
+  }
+  .modal-actions button.danger-btn:hover,
+  .modal-actions .danger-btn:hover,
+  button.danger-btn:hover{
+    background:#c94857 !important;
+    border-color:#c94857 !important;
+    color:#fff !important;
+    box-shadow:0 2px 5px rgba(217,91,106,.22) !important;
+  }
+  .modal-actions button.danger-btn:focus,
+  .modal-actions button.danger-btn:focus-visible,
+  button.danger-btn:focus,
+  button.danger-btn:focus-visible{
+    outline:none !important;
+    border-color:#4f8eff !important;
+    box-shadow:0 0 0 3px rgba(79,142,255,.28), 0 1px 2px rgba(217,91,106,.16) !important;
+  }
+
+  /* 削除・初期化・選択確認などの確認ダイアログ：タイトル帯扱いをやめる */
+  #deleteRowModal .modal-card,
+  #deleteTabModal .modal-card,
+  #resetDefaultsConfirmModal .modal-card,
+  #loanDetailConflictModal .modal-card{
+    width:min(560px, calc(100vw - 28px)) !important;
+    padding:22px 22px 20px !important;
+    border-radius:20px !important;
+  }
+  #deleteRowModal .modal-card > .modal-text[id]:first-child,
+  #deleteTabModal .modal-card > .modal-text[id]:first-child,
+  #resetDefaultsConfirmModal .modal-card > .modal-text[id]:first-child,
+  #loanDetailConflictModal .modal-card > .modal-text[id]:first-child{
+    display:block !important;
+    height:auto !important;
+    min-height:0 !important;
+    width:auto !important;
+    margin:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    color:#122b45 !important;
+    font-size:17px !important;
+    font-weight:700 !important;
+    line-height:1.55 !important;
+  }
+  #resetDefaultsConfirmModal #resetDefaultsConfirmMessage{
+    margin:10px 0 0 !important;
+    color:#53677d !important;
+    font-size:14px !important;
+    font-weight:400 !important;
+    line-height:1.65 !important;
+  }
+  #deleteRowModal .modal-actions,
+  #deleteTabModal .modal-actions,
+  #resetDefaultsConfirmModal .modal-actions,
+  #loanDetailConflictModal .modal-actions{
+    margin-top:20px !important;
+    padding-top:0 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card{
+      border-radius:18px !important;
+    }
+    .modal-card > .modal-text[id]:first-child,
+    .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    #cashflowModalTitle{
+      font-size:17px !important;
+    }
+    .modal-actions{
+      gap:9px !important;
+      margin-top:16px !important;
+    }
+    .modal-actions button{
+      min-height:38px !important;
+      padding:0 15px !important;
+      border-radius:12px !important;
+      font-size:13px !important;
+    }
+    #deleteRowModal .modal-card,
+    #deleteTabModal .modal-card,
+    #resetDefaultsConfirmModal .modal-card,
+    #loanDetailConflictModal .modal-card{
+      width:min(560px, calc(100vw - 20px)) !important;
+      padding:18px 18px 16px !important;
+      border-radius:18px !important;
+    }
+    #deleteRowModal .modal-card > .modal-text[id]:first-child,
+    #deleteTabModal .modal-card > .modal-text[id]:first-child,
+    #resetDefaultsConfirmModal .modal-card > .modal-text[id]:first-child,
+    #loanDetailConflictModal .modal-card > .modal-text[id]:first-child{
+      font-size:16px !important;
+      line-height:1.55 !important;
+    }
+  }
+</style>
+
+
+
+<!-- ===== v857: reduce bottom whitespace under modal/dialog action buttons only ===== -->
+<style>
+  /* Plain modal/dialog cards: keep v856 button design, only tighten bottom space. */
+  .modal-backdrop .modal-card:not(.withdrawal-preview-sheet){
+    padding-bottom:10px !important;
+  }
+
+  .modal-backdrop .modal-actions{
+    margin-bottom:0 !important;
+    padding-bottom:0 !important;
+  }
+
+  /* Confirmation dialogs were visibly bottom-heavy in v856. */
+  #deleteRowModal .modal-card,
+  #deleteTabModal .modal-card,
+  #resetDefaultsConfirmModal .modal-card,
+  #loanDetailConflictModal .modal-card{
+    padding-bottom:12px !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-backdrop .modal-card:not(.withdrawal-preview-sheet){
+      padding-bottom:8px !important;
+    }
+
+    #deleteRowModal .modal-card,
+    #deleteTabModal .modal-card,
+    #resetDefaultsConfirmModal .modal-card,
+    #loanDetailConflictModal .modal-card{
+      padding-bottom:10px !important;
+    }
+  }
+</style>
+
+
+
+<!-- ===== v858: modal table line refinement and modal scroll restoration ===== -->
+<style>
+  .modal-backdrop .modal-card:not(.withdrawal-preview-sheet){max-height:calc(100vh - 24px) !important;max-height:calc(100dvh - 24px) !important;overflow:auto !important;-webkit-overflow-scrolling:touch !important;}
+  @media (max-width:900px), (pointer:coarse){.modal-backdrop{align-items:center !important;padding:10px !important;}.modal-backdrop .modal-card:not(.withdrawal-preview-sheet){max-height:calc(100vh - 20px) !important;max-height:calc(100dvh - 20px) !important;}}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){border-collapse:separate !important;border-spacing:0 !important;border:1px solid #cfd9e5 !important;border-radius:14px !important;overflow:visible !important;clip-path:none !important;-webkit-mask:none !important;mask:none !important;background:#fff !important;box-shadow:0 1px 2px rgba(18,38,63,.03) !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td{border-top:0 !important;border-left:0 !important;border-right:1px solid #e3ebf3 !important;border-bottom:1px solid #e9f0f6 !important;background-clip:padding-box !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th{background:linear-gradient(180deg,#f4f8fe 0%, #ebf2fb 100%) !important;color:#43607b !important;font-weight:700 !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > td,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th{border-bottom:1px solid #cfd9e5 !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child{border-right:0 !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *{border-bottom:0 !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:first-child,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:first-child,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:first-child{border-top-left-radius:13px !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:last-child,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:last-child,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:last-child{border-top-right-radius:13px !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:first-child,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:first-child{border-bottom-left-radius:13px !important;}
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:last-child,.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:last-child{border-bottom-right-radius:13px !important;}
+  .modal-card .income-curve-table-wrap,.modal-card .loan-prepay-table-wrap,.modal-card .edu-detail-onetime-table-wrap,.modal-card .edu-detail-preschool-table-wrap,.modal-card .overlay-settings-table-wrap,.modal-card .withdrawal-compare-table-wrap,.modal-card .table-scroll{overflow-x:auto !important;overflow-y:visible !important;-webkit-overflow-scrolling:touch !important;border-radius:0 !important;clip-path:none !important;-webkit-mask:none !important;mask:none !important;}
+</style>
+
+
+<!-- ===== v860: modal title bands flush to card edges, no inner white margin ===== -->
+<style>
+  /*
+    Full modal title bands: do not paint the surrounding white area.
+    Instead, pull the title band to the modal card edges and keep body padding below it.
+    Confirmation dialogs are intentionally excluded because their first text is message content, not a band title.
+  */
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #pensionHelperTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #educationCopyTitle,
+    #insuranceAssistTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ){
+    display:flex !important;
+    align-items:center !important;
+    min-height:64px !important;
+    margin:-18px -16px 16px !important;
+    padding:16px 18px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:20px 20px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:700 !important;
+    line-height:1.35 !important;
+    box-shadow:none !important;
+  }
+
+  /* Preview-sheet style modals already start at the card top; keep the band full-width there too. */
+  .withdrawal-preview-sheet :is(
+    #withdrawalRuleTitle,
+    #crashTestTitle,
+    #monteCarloSettingsTitle,
+    #chartAxisTitle
+  ){
+    display:flex !important;
+    align-items:center !important;
+    min-height:58px !important;
+    width:auto !important;
+    margin:0 0 14px !important;
+    padding:15px 18px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:700 !important;
+    line-height:1.35 !important;
+    box-shadow:none !important;
+    flex:0 0 auto !important;
+  }
+
+  /* Keep confirmation dialogs as plain message dialogs, not title-band modals. */
+  #deleteRowModal .modal-card > .modal-text[id]:first-child,
+  #deleteTabModal .modal-card > .modal-text[id]:first-child,
+  #resetDefaultsConfirmModal .modal-card > .modal-text[id]:first-child,
+  #loanDetailConflictModal .modal-card > .modal-text[id]:first-child{
+    min-height:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card:not(.withdrawal-preview-sheet) > :is(
+      #incomeCurveTitle,
+      #pensionHelperTitle,
+      #loanDetailTitle,
+      #educationDetailTitle,
+      #educationCopyTitle,
+      #insuranceAssistTitle,
+      #fireDiagnosisTitle,
+      #overlaySettingsTitle,
+      #cashflowModalTitle
+    ){
+      min-height:58px !important;
+      margin:-14px -10px 14px !important;
+      padding:14px 16px !important;
+      border-radius:18px 18px 0 0 !important;
+      font-size:17px !important;
+    }
+
+    .withdrawal-preview-sheet :is(
+      #withdrawalRuleTitle,
+      #crashTestTitle,
+      #monteCarloSettingsTitle,
+      #chartAxisTitle
+    ){
+      min-height:54px !important;
+      padding:13px 16px !important;
+      font-size:17px !important;
+      border-radius:18px 18px 0 0 !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -4430,9 +4757,9 @@ document.addEventListener("scroll", (ev)=>{
       <canvas id="chart"></canvas>
       <button id="chartAxisBtn" type="button" aria-label="軸設定を開く" hidden>軸</button>
     </div>
-    <div class="chart-resize-handle-slot" aria-hidden="true"><div class="chart-resize-handle"></div></div>
 
     </div>
+    <div class="chart-resize-handle-slot" aria-hidden="true"><div class="chart-resize-handle"></div></div>
 
     <div id="overflowMenu" class="overflow-menu" aria-hidden="true">
       <button id="overflowMenuAxisBtn" type="button">グラフ軸設定</button>
@@ -28565,36 +28892,67 @@ body.body-v844-chart-resizing{
 
 
 
-<!-- ===== v855: mute active sticky button visual during initialization to prevent button-only flash ===== -->
-<style>
-#detailStickyNav.sticky-nav-initializing .detail-sticky-btn,
-#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn,
-#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn,
-#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn{
-  transition:none !important;
-  animation:none !important;
+<style id="v866-slim-chart-resize-bar-between-graph-and-tabs">
+/* Scope: graph height resize bar only. Move the visible handle out of the graph card feel,
+   keep only the inner iPhone-like bar, and reduce vertical space. */
+#chartCanvasStickyWrap{
+  padding-bottom:2px !important;
 }
-
-#detailStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
-#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
-#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active,
-#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active{
-  color:#5a6d82 !important;
-  background:transparent !important;
-  border-color:transparent !important;
-  box-shadow:none !important;
+#chartWrap{
+  padding-bottom:4px !important;
 }
-
-#detailStickyNav.sticky-nav-initializing .detail-sticky-btn.active:hover,
-#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn.active:hover,
-#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active:hover,
-#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active:hover{
-  color:#5a6d82 !important;
+#chartWrap > .chart-resize-handle-slot{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  height:14px !important;
+  min-height:14px !important;
+  padding:0 !important;
+  margin:2px 0 2px !important;
   background:transparent !important;
-  border-color:transparent !important;
+  border:0 !important;
   box-shadow:none !important;
+  cursor:ns-resize !important;
+  touch-action:none !important;
+}
+#chartWrap > .chart-resize-handle-slot .chart-resize-handle{
+  width:min(33vw, 420px) !important;
+  min-width:120px !important;
+  max-width:420px !important;
+  height:5px !important;
+  min-height:5px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:#bccbda !important;
+  box-shadow:none !important;
+  pointer-events:none !important;
+}
+#chartWrap > .chart-resize-handle-slot .chart-resize-handle::before{
+  content:none !important;
+  display:none !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap{
+    padding-bottom:2px !important;
+  }
+  #chartWrap{
+    padding-bottom:2px !important;
+  }
+  #chartWrap > .chart-resize-handle-slot{
+    height:12px !important;
+    min-height:12px !important;
+    margin:1px 0 1px !important;
+  }
+  #chartWrap > .chart-resize-handle-slot .chart-resize-handle{
+    width:33vw !important;
+    min-width:112px !important;
+    max-width:180px !important;
+    height:5px !important;
+  }
 }
 </style>
+
 </body>
 </html>
 
@@ -30305,29 +30663,1060 @@ body.body-v846-chart-resizing{
 }
 </style>
 
-<!-- ===== v854: suppress active sticky button flash during mode/tab initialization ===== -->
+
 <style>
-#detailStickyNav.sticky-nav-initializing .detail-sticky-btn,
-#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn,
-#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn,
-#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn{
-  transition:none !important;
-  animation:none !important;
+/* ===== v854: real rounded table corners without fixed scroll-wrapper masking ===== */
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  :where(.table-scroll,.loan-wrap,.edu-wrap,.child-allowance-wrap,.basic-children-pane,.loan-prepay-table-wrap,.edu-detail-onetime-table-wrap,.edu-detail-preschool-table-wrap,.overlay-settings-table-wrap,.withdrawal-compare-table-wrap){
+  border-radius:0 !important;
+  clip-path:none !important;
 }
 
-#detailStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
-#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
-#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active,
-#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active{
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){
+  clip-path:none !important;
+  overflow:visible !important;
+}
+
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table){
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border-radius:16px !important;
+}
+
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) th,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) td{
+  background-clip:padding-box !important;
+}
+
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > thead:first-child > tr:first-child > *:first-child,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:first-child > tr:first-child > *:first-child,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:first-child > *:first-child{
+  border-top-left-radius:15px !important;
+}
+
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > thead:first-child > tr:first-child > *:last-child,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:first-child > tr:first-child > *:last-child,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:first-child > *:last-child{
+  border-top-right-radius:15px !important;
+}
+
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:last-child > tr:last-child > *:first-child,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:last-child > *:first-child{
+  border-bottom-left-radius:15px !important;
+}
+
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:last-child > tr:last-child > *:last-child,
+:where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+  table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:last-child > *:last-child{
+  border-bottom-right-radius:15px !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table){
+    border-radius:14px !important;
+  }
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > thead:first-child > tr:first-child > *:first-child,
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:first-child > tr:first-child > *:first-child,
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:first-child > *:first-child{
+    border-top-left-radius:13px !important;
+  }
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > thead:first-child > tr:first-child > *:last-child,
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:first-child > tr:first-child > *:last-child,
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:first-child > *:last-child{
+    border-top-right-radius:13px !important;
+  }
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:last-child > tr:last-child > *:first-child,
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:last-child > *:first-child{
+    border-bottom-left-radius:13px !important;
+  }
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tbody:last-child > tr:last-child > *:last-child,
+  :where(#commonSettingsPanel,#simpleModePanel,#detailModePanel,.modal-card,.withdrawal-preview-sheet)
+    table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost):not(.withdrawal-compare-table) > tr:last-child > *:last-child{
+    border-bottom-right-radius:13px !important;
+  }
+}
+</style>
+
+
+<style>
+/* ===== v855: definitive table rounded corners without scroll-wrapper masking ===== */
+#commonSettingsPanel .table-scroll,
+#simpleModePanel .table-scroll,
+#detailModePanel .table-scroll,
+#commonSettingsPanel .loan-wrap,
+#simpleModePanel .loan-wrap,
+#detailModePanel .loan-wrap,
+#commonSettingsPanel .edu-wrap,
+#simpleModePanel .edu-wrap,
+#detailModePanel .edu-wrap,
+#commonSettingsPanel .child-allowance-wrap,
+#simpleModePanel .child-allowance-wrap,
+#detailModePanel .child-allowance-wrap,
+#commonSettingsPanel .basic-children-pane,
+#simpleModePanel .basic-children-pane,
+#detailModePanel .basic-children-pane,
+.modal-card .table-scroll,
+.modal-card .loan-wrap,
+.modal-card .edu-wrap,
+.modal-card .child-allowance-wrap,
+.modal-card .basic-children-pane,
+.modal-card .loan-prepay-table-wrap,
+.modal-card .edu-detail-onetime-table-wrap,
+.modal-card .edu-detail-preschool-table-wrap,
+.modal-card .overlay-settings-table-wrap,
+.modal-card .withdrawal-compare-table-wrap,
+.modal-card .withdrawal-param-case-table-wrap,
+.modal-card .crash-history-table-wrap,
+.withdrawal-preview-sheet .table-scroll,
+.withdrawal-preview-sheet .loan-wrap,
+.withdrawal-preview-sheet .edu-wrap,
+.withdrawal-preview-sheet .child-allowance-wrap,
+.withdrawal-preview-sheet .basic-children-pane,
+.withdrawal-preview-sheet .loan-prepay-table-wrap,
+.withdrawal-preview-sheet .edu-detail-onetime-table-wrap,
+.withdrawal-preview-sheet .edu-detail-preschool-table-wrap,
+.withdrawal-preview-sheet .overlay-settings-table-wrap,
+.withdrawal-preview-sheet .withdrawal-compare-table-wrap,
+.withdrawal-preview-sheet .withdrawal-param-case-table-wrap,
+.withdrawal-preview-sheet .crash-history-table-wrap{
+  border-radius:0 !important;
+  clip-path:none !important;
+  -webkit-mask:none !important;
+  mask:none !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border-radius:16px !important;
+  overflow:visible !important;
+  clip-path:none !important;
+  -webkit-mask:none !important;
+  mask:none !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td{
+  background-clip:padding-box !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:first-child,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:first-child,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:first-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:first-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:first-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:first-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:first-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:first-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:first-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:first-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:first-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:first-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:first-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:first-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:first-child{
+  border-top-left-radius:15px !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:last-child,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:last-child,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:last-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:last-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:last-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:last-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:last-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:last-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:last-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:last-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:last-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:last-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > thead:first-child > tr:first-child > *:last-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:first-child > tr:first-child > *:last-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:first-child > *:last-child{
+  border-top-right-radius:15px !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:first-child,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:first-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:first-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:first-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:first-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:first-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:first-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:first-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:first-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:first-child{
+  border-bottom-left-radius:15px !important;
+}
+
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:last-child,
+#commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:last-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:last-child,
+#simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:last-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:last-child,
+#detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:last-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:last-child,
+.modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:last-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tbody:last-child > tr:last-child > *:last-child,
+.withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *:last-child{
+  border-bottom-right-radius:15px !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #commonSettingsPanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  #simpleModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  #detailModePanel table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){
+    border-radius:14px !important;
+  }
+}
+</style>
+
+<!-- ===== v859: full modal visual audit alignment with integrated mock ===== -->
+<style>
+  /* Scope: modal / preview sheet visual system only. No layout logic, chart, scroll-stop, or calculation changes. */
+  .modal-backdrop.show,
+  .modal-backdrop.preview-visible{
+    background:rgba(18,35,52,.24) !important;
+  }
+
+  .modal-card,
+  .withdrawal-preview-sheet,
+  .chart-axis-preview-sheet,
+  .crash-preview-sheet,
+  .monte-settings-modal.withdrawal-preview-sheet{
+    border-color:#cfd9e5 !important;
+    background:#fff !important;
+    color:#122b45 !important;
+    box-shadow:0 16px 40px rgba(20,35,56,.10) !important;
+  }
+
+  .modal-card{border-radius:20px !important;}
+  .withdrawal-preview-sheet,
+  .chart-axis-preview-sheet,
+  .crash-preview-sheet,
+  .monte-settings-modal.withdrawal-preview-sheet{
+    border-radius:18px 18px 0 0 !important;
+  }
+
+  /* Modal title bars: mock-like pale band, consistent text color. Confirmation dialogs are explicitly excluded below. */
+  .modal-card > .modal-text[id]:first-child,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:52px !important;
+    margin:0 !important;
+    padding:14px 18px !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:700 !important;
+    line-height:1.35 !important;
+    box-shadow:none !important;
+  }
+
+  .modal-card > .modal-text[id]:first-child + *,
+  .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child + *,
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + *{
+    margin-top:14px !important;
+  }
+
+  .modal-text,
+  .modal-card .withdrawal-rule-note,
+  .modal-card .monte-settings-note,
+  .modal-card .chart-axis-note,
+  .modal-card .loan-detail-note,
+  .modal-card .edu-detail-note,
+  .modal-card .insurance-assist-note,
+  .modal-card .pension-helper-note,
+  .modal-card .income-curve-note,
+  .modal-card .helper,
+  .modal-card .muted,
+  .modal-card .small{
+    color:#607589 !important;
+  }
+
+  .modal-card .withdrawal-rule-section-title,
+  .modal-card .monte-settings-section-title,
+  .modal-card .chart-axis-section-title,
+  .modal-card .loan-detail-section-title,
+  .modal-card .edu-detail-section-title,
+  .modal-card .insurance-assist-section-title,
+  .modal-card .pension-helper-section-title{
+    color:#122b45 !important;
+    border-color:#d8e2f0 !important;
+    background:linear-gradient(180deg,#f8fbff 0%, #eef5fd 100%) !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+  }
+
+  .modal-card .withdrawal-rule-section,
+  .modal-card .monte-settings-section,
+  .modal-card .chart-axis-section,
+  .modal-card .loan-detail-section,
+  .modal-card .edu-detail-section,
+  .modal-card .insurance-assist-section,
+  .modal-card .pension-helper-section,
+  .modal-card .withdrawal-compare-section,
+  .modal-card .loan-control-box,
+  .modal-card .loan-summary,
+  .modal-card .withdrawal-rule-summary,
+  .modal-card .monte-settings-summary,
+  .modal-card .insurance-assist-preview,
+  .modal-card .loan-detail-result,
+  .modal-card .pension-helper-static,
+  .modal-card .edu-detail-static{
+    border-color:#cfd9e5 !important;
+    border-radius:14px !important;
+    background:#fbfdff !important;
+    color:#1f3c5a !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+  }
+
+  /* Inputs / selects inside all modals: same tone as main input controls. */
+  .modal-card input[type=number],
+  .modal-card input[type=text],
+  .modal-card input[type=date],
+  .modal-card textarea,
+  .modal-card select,
+  .withdrawal-preview-sheet input[type=number],
+  .withdrawal-preview-sheet input[type=text],
+  .withdrawal-preview-sheet input[type=date],
+  .withdrawal-preview-sheet textarea,
+  .withdrawal-preview-sheet select,
+  .chart-axis-preview-sheet input[type=number],
+  .chart-axis-preview-sheet input[type=text],
+  .chart-axis-preview-sheet input[type=date],
+  .chart-axis-preview-sheet textarea,
+  .chart-axis-preview-sheet select,
+  .crash-preview-sheet input[type=number],
+  .crash-preview-sheet input[type=text],
+  .crash-preview-sheet input[type=date],
+  .crash-preview-sheet textarea,
+  .crash-preview-sheet select{
+    border-color:#bccbda !important;
+    border-radius:10px !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+    transform:none !important;
+  }
+
+  .modal-card input[type=number]:not(:disabled):not([readonly]):hover,
+  .modal-card input[type=text]:not(:disabled):not([readonly]):hover,
+  .modal-card input[type=date]:not(:disabled):not([readonly]):hover,
+  .modal-card textarea:not(:disabled):not([readonly]):hover,
+  .modal-card select:not(:disabled):hover,
+  .withdrawal-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet select:not(:disabled):hover,
+  .chart-axis-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet select:not(:disabled):hover,
+  .crash-preview-sheet input[type=number]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=text]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type=date]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet textarea:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet select:not(:disabled):hover{
+    border-color:#9ebcf4 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+  }
+
+  .modal-card input[type=number]:focus,
+  .modal-card input[type=text]:focus,
+  .modal-card input[type=date]:focus,
+  .modal-card textarea:focus,
+  .modal-card select:focus,
+  .withdrawal-preview-sheet input[type=number]:focus,
+  .withdrawal-preview-sheet input[type=text]:focus,
+  .withdrawal-preview-sheet input[type=date]:focus,
+  .withdrawal-preview-sheet textarea:focus,
+  .withdrawal-preview-sheet select:focus,
+  .chart-axis-preview-sheet input[type=number]:focus,
+  .chart-axis-preview-sheet input[type=text]:focus,
+  .chart-axis-preview-sheet input[type=date]:focus,
+  .chart-axis-preview-sheet textarea:focus,
+  .chart-axis-preview-sheet select:focus,
+  .crash-preview-sheet input[type=number]:focus,
+  .crash-preview-sheet input[type=text]:focus,
+  .crash-preview-sheet input[type=date]:focus,
+  .crash-preview-sheet textarea:focus,
+  .crash-preview-sheet select:focus{
+    outline:2px solid rgba(79,142,255,.22) !important;
+    outline-offset:1px !important;
+    border-color:#9ebcf4 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+  }
+
+  .modal-card input[readonly],
+  .modal-card input:disabled,
+  .modal-card select:disabled,
+  .withdrawal-preview-sheet input[readonly],
+  .withdrawal-preview-sheet input:disabled,
+  .withdrawal-preview-sheet select:disabled,
+  .chart-axis-preview-sheet input[readonly],
+  .chart-axis-preview-sheet input:disabled,
+  .chart-axis-preview-sheet select:disabled,
+  .crash-preview-sheet input[readonly],
+  .crash-preview-sheet input:disabled,
+  .crash-preview-sheet select:disabled{
+    background:#f6f9fd !important;
+    color:#6f8397 !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+
+  /* Buttons: mock colors and main-input hover animation parity. */
+  .modal-card button,
+  .withdrawal-preview-sheet button,
+  .chart-axis-preview-sheet button,
+  .crash-preview-sheet button,
+  .modal-card .split-btn-group,
+  .withdrawal-preview-sheet .split-btn-group,
+  .chart-axis-preview-sheet .split-btn-group,
+  .crash-preview-sheet .split-btn-group{
+    border-color:#bccbda !important;
+    color:#2f4a66 !important;
+    background:#fff !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+    transform:none !important;
+  }
+
+  .modal-card button:not(:disabled):hover,
+  .withdrawal-preview-sheet button:not(:disabled):hover,
+  .chart-axis-preview-sheet button:not(:disabled):hover,
+  .crash-preview-sheet button:not(:disabled):hover{
+    background:#f8fbff !important;
+    border-color:#b8c8db !important;
+    color:#122b45 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+    transform:none !important;
+  }
+
+  .modal-card button:not(:disabled):active,
+  .withdrawal-preview-sheet button:not(:disabled):active,
+  .chart-axis-preview-sheet button:not(:disabled):active,
+  .crash-preview-sheet button:not(:disabled):active{
+    background:#edf5ff !important;
+    border-color:#9ebcf4 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+    transform:none !important;
+  }
+
+  .modal-actions button:last-child:not(.danger-btn),
+  .modal-card button.primary-btn,
+  .withdrawal-preview-sheet .modal-actions button:last-child:not(.danger-btn),
+  .chart-axis-preview-sheet .modal-actions button:last-child:not(.danger-btn),
+  .crash-preview-sheet .modal-actions button:last-child:not(.danger-btn){
+    background:#4f8eff !important;
+    border-color:#4f8eff !important;
+    color:#fff !important;
+    box-shadow:0 1px 2px rgba(79,142,255,.16) !important;
+  }
+
+  .modal-actions button:last-child:not(.danger-btn):hover,
+  .modal-card button.primary-btn:hover,
+  .withdrawal-preview-sheet .modal-actions button:last-child:not(.danger-btn):hover,
+  .chart-axis-preview-sheet .modal-actions button:last-child:not(.danger-btn):hover,
+  .crash-preview-sheet .modal-actions button:last-child:not(.danger-btn):hover{
+    background:#367bf2 !important;
+    border-color:#367bf2 !important;
+    color:#fff !important;
+    box-shadow:0 2px 6px rgba(79,142,255,.22) !important;
+  }
+
+  .modal-card .danger-btn,
+  .withdrawal-preview-sheet .danger-btn,
+  .chart-axis-preview-sheet .danger-btn,
+  .crash-preview-sheet .danger-btn,
+  .modal-actions button.danger-btn{
+    background:#d95b6a !important;
+    border-color:#d95b6a !important;
+    color:#fff !important;
+    box-shadow:0 1px 2px rgba(217,91,106,.16) !important;
+  }
+
+  .modal-card .danger-btn:not(:disabled):hover,
+  .withdrawal-preview-sheet .danger-btn:not(:disabled):hover,
+  .chart-axis-preview-sheet .danger-btn:not(:disabled):hover,
+  .crash-preview-sheet .danger-btn:not(:disabled):hover,
+  .modal-actions button.danger-btn:not(:disabled):hover{
+    background:#c94857 !important;
+    border-color:#c94857 !important;
+    color:#fff !important;
+    box-shadow:0 2px 6px rgba(217,91,106,.22) !important;
+  }
+
+  .modal-card button:focus,
+  .modal-card button:focus-visible,
+  .withdrawal-preview-sheet button:focus,
+  .withdrawal-preview-sheet button:focus-visible,
+  .chart-axis-preview-sheet button:focus,
+  .chart-axis-preview-sheet button:focus-visible,
+  .crash-preview-sheet button:focus,
+  .crash-preview-sheet button:focus-visible,
+  .modal-actions button:focus,
+  .modal-actions button:focus-visible{
+    outline:none !important;
+    border-color:#4f8eff !important;
+    box-shadow:0 0 0 3px rgba(79,142,255,.22), 0 1px 2px rgba(18,38,63,.03) !important;
+  }
+
+  .modal-card button:disabled,
+  .withdrawal-preview-sheet button:disabled,
+  .chart-axis-preview-sheet button:disabled,
+  .crash-preview-sheet button:disabled{
+    opacity:.48 !important;
+    cursor:not-allowed !important;
+    box-shadow:none !important;
+    transform:none !important;
+  }
+
+  .modal-actions{
+    display:flex !important;
+    justify-content:flex-end !important;
+    align-items:center !important;
+    gap:10px !important;
+    margin-top:14px !important;
+    padding-bottom:0 !important;
+  }
+
+  .modal-card > .modal-actions{
+    padding:0 18px 12px !important;
+  }
+
+  .withdrawal-preview-sheet .modal-actions{
+    border-top:1px solid #e7eef6 !important;
+    padding:12px 18px 14px !important;
+    background:#fff !important;
+  }
+
+  /* Confirmation dialogs remain text-only: no fake title band. */
+  #deleteRowModal .modal-card,
+  #deleteTabModal .modal-card,
+  #resetDefaultsConfirmModal .modal-card,
+  #loanDetailConflictModal .modal-card{
+    padding:20px 22px 12px !important;
+    border-radius:20px !important;
+  }
+
+  #deleteRowModal .modal-card > .modal-text[id]:first-child,
+  #deleteTabModal .modal-card > .modal-text[id]:first-child,
+  #resetDefaultsConfirmModal .modal-card > .modal-text[id]:first-child,
+  #loanDetailConflictModal .modal-card > .modal-text[id]:first-child{
+    display:block !important;
+    min-height:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    color:#122b45 !important;
+    font-size:17px !important;
+    font-weight:700 !important;
+    line-height:1.55 !important;
+  }
+
+  #deleteRowModal .modal-actions,
+  #deleteTabModal .modal-actions,
+  #resetDefaultsConfirmModal .modal-actions,
+  #loanDetailConflictModal .modal-actions{
+    margin-top:18px !important;
+    padding:0 !important;
+  }
+
+  /* Modal tables: mock table system, thin non-doubled lines, and guaranteed header/title-row underline. */
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost),
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost){
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    border:1px solid #cfd9e5 !important;
+    border-radius:14px !important;
+    overflow:visible !important;
+    clip-path:none !important;
+    -webkit-mask:none !important;
+    mask:none !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.03) !important;
+  }
+
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) th{
+    border-top:0 !important;
+    border-left:0 !important;
+    border-right:1px solid #e3ebf3 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    background:linear-gradient(180deg,#f4f8fe 0%, #ebf2fb 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+    background-clip:padding-box !important;
+  }
+
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) td{
+    border-top:0 !important;
+    border-left:0 !important;
+    border-right:1px solid #edf3f8 !important;
+    border-bottom:1px solid #e9f0f6 !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    background-clip:padding-box !important;
+  }
+
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > td,
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > td,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > td,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > th,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) thead tr:last-child > td,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr:first-child > th{
+    border-bottom:1px solid #cfd9e5 !important;
+  }
+
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tr > *:last-child{
+    border-right:0 !important;
+  }
+
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,
+  .modal-card table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,
+  .withdrawal-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,
+  .chart-axis-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) tbody tr:last-child > *,
+  .crash-preview-sheet table:not(.cashflow-table):not(.withdrawal-order-row-drag-ghost) > tr:last-child > *{
+    border-bottom:0 !important;
+  }
+
+  .modal-card .income-curve-table-wrap,
+  .modal-card .loan-prepay-table-wrap,
+  .modal-card .edu-detail-onetime-table-wrap,
+  .modal-card .edu-detail-preschool-table-wrap,
+  .modal-card .overlay-settings-table-wrap,
+  .modal-card .withdrawal-compare-table-wrap,
+  .modal-card .table-scroll,
+  .withdrawal-preview-sheet .withdrawal-compare-table-wrap,
+  .withdrawal-preview-sheet .table-scroll,
+  .chart-axis-preview-sheet .table-scroll,
+  .crash-preview-sheet .table-scroll{
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    -webkit-overflow-scrolling:touch !important;
+    border-radius:0 !important;
+    clip-path:none !important;
+    -webkit-mask:none !important;
+    mask:none !important;
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-backdrop{padding:10px !important;}
+    .modal-card{border-radius:18px !important;}
+    .modal-card > .modal-text[id]:first-child,
+    .modal-card > .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+    #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle{
+      min-height:48px !important;
+      padding:12px 14px !important;
+      font-size:16px !important;
+    }
+    .modal-card > .modal-actions{padding:0 14px 10px !important;}
+    .withdrawal-preview-sheet .modal-actions{padding:11px 14px 12px !important;}
+    .modal-actions button{min-height:38px !important;padding:0 14px !important;font-size:13px !important;}
+    #deleteRowModal .modal-card,
+    #deleteTabModal .modal-card,
+    #resetDefaultsConfirmModal .modal-card,
+    #loanDetailConflictModal .modal-card{padding:18px 18px 10px !important;border-radius:18px !important;}
+  }
+</style>
+
+<!-- ===== v861: remove modal subsection title blue background bands only ===== -->
+<style>
+  /* Modal subsection titles: keep only the left blue accent, remove the filled band. */
+  .modal-card .withdrawal-rule-section-title,
+  .modal-card .monte-settings-section-title,
+  .modal-card .chart-axis-section-title,
+  .modal-card .loan-detail-section-title,
+  .modal-card .edu-detail-section-title,
+  .modal-card .insurance-assist-section-title,
+  .modal-card .pension-helper-section-title,
+  .modal-card .edu-detail-subgroup-title,
+  .modal-card .withdrawal-compare-section .subhead{
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    margin:14px 0 10px !important;
+    padding:2px 0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    background-image:none !important;
+    box-shadow:none !important;
+    color:#122b45 !important;
+    font-weight:800 !important;
+    line-height:1.35 !important;
+  }
+
+  .modal-card .withdrawal-rule-section-title::before,
+  .modal-card .monte-settings-section-title::before,
+  .modal-card .chart-axis-section-title::before,
+  .modal-card .loan-detail-section-title::before,
+  .modal-card .edu-detail-section-title::before,
+  .modal-card .insurance-assist-section-title::before,
+  .modal-card .pension-helper-section-title::before,
+  .modal-card .edu-detail-subgroup-title::before,
+  .modal-card .withdrawal-compare-section .subhead::before{
+    content:"" !important;
+    width:5px !important;
+    height:26px !important;
+    border-radius:999px !important;
+    background:#4f8eff !important;
+    flex:0 0 auto !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card .withdrawal-rule-section-title,
+    .modal-card .monte-settings-section-title,
+    .modal-card .chart-axis-section-title,
+    .modal-card .loan-detail-section-title,
+    .modal-card .edu-detail-section-title,
+    .modal-card .insurance-assist-section-title,
+    .modal-card .pension-helper-section-title,
+    .modal-card .edu-detail-subgroup-title,
+    .modal-card .withdrawal-compare-section .subhead{
+      margin:12px 0 8px !important;
+      padding:2px 0 !important;
+      background:transparent !important;
+      background-image:none !important;
+      box-shadow:none !important;
+    }
+    .modal-card .withdrawal-rule-section-title::before,
+    .modal-card .monte-settings-section-title::before,
+    .modal-card .chart-axis-section-title::before,
+    .modal-card .loan-detail-section-title::before,
+    .modal-card .edu-detail-section-title::before,
+    .modal-card .insurance-assist-section-title::before,
+    .modal-card .pension-helper-section-title::before,
+    .modal-card .edu-detail-subgroup-title::before,
+    .modal-card .withdrawal-compare-section .subhead::before{
+      width:5px !important;
+      height:24px !important;
+    }
+  }
+</style>
+<!-- ===== v862: strong modal button focus ring for all action buttons ===== -->
+<style>
+  .modal-card button:focus,
+  .modal-card button:focus-visible,
+  .withdrawal-preview-sheet button:focus,
+  .withdrawal-preview-sheet button:focus-visible,
+  .chart-axis-preview-sheet button:focus,
+  .chart-axis-preview-sheet button:focus-visible,
+  .crash-preview-sheet button:focus,
+  .crash-preview-sheet button:focus-visible,
+  .modal-actions button:focus,
+  .modal-actions button:focus-visible{
+    outline:none !important;
+    border-color:#4f8eff !important;
+    box-shadow:
+      0 0 0 3px rgba(79,142,255,.18),
+      0 0 0 6px rgba(79,142,255,.08),
+      0 1px 2px rgba(18,38,63,.03) !important;
+  }
+
+  .modal-actions button:last-child:not(.danger-btn):focus,
+  .modal-actions button:last-child:not(.danger-btn):focus-visible,
+  .modal-card button.primary-btn:focus,
+  .modal-card button.primary-btn:focus-visible,
+  .withdrawal-preview-sheet .modal-actions button:last-child:not(.danger-btn):focus,
+  .withdrawal-preview-sheet .modal-actions button:last-child:not(.danger-btn):focus-visible,
+  .chart-axis-preview-sheet .modal-actions button:last-child:not(.danger-btn):focus,
+  .chart-axis-preview-sheet .modal-actions button:last-child:not(.danger-btn):focus-visible,
+  .crash-preview-sheet .modal-actions button:last-child:not(.danger-btn):focus,
+  .crash-preview-sheet .modal-actions button:last-child:not(.danger-btn):focus-visible{
+    border-color:#4f8eff !important;
+    box-shadow:
+      0 0 0 3px rgba(79,142,255,.22),
+      0 0 0 6px rgba(79,142,255,.10),
+      0 1px 2px rgba(79,142,255,.16) !important;
+  }
+
+  .modal-card .danger-btn:focus,
+  .modal-card .danger-btn:focus-visible,
+  .withdrawal-preview-sheet .danger-btn:focus,
+  .withdrawal-preview-sheet .danger-btn:focus-visible,
+  .chart-axis-preview-sheet .danger-btn:focus,
+  .chart-axis-preview-sheet .danger-btn:focus-visible,
+  .crash-preview-sheet .danger-btn:focus,
+  .crash-preview-sheet .danger-btn:focus-visible,
+  .modal-actions button.danger-btn:focus,
+  .modal-actions button.danger-btn:focus-visible{
+    border-color:#4f8eff !important;
+    box-shadow:
+      0 0 0 3px rgba(79,142,255,.22),
+      0 0 0 6px rgba(79,142,255,.10),
+      0 1px 2px rgba(217,91,106,.16) !important;
+  }
+</style>
+
+<!-- ===== v863: cashflow modal title band flush to modal edges ===== -->
+<style>
+  /* 年度別収支表だけ、旧CSSでカード内側に残っていた白余白を消す。
+     白部分を塗るのではなく、カード上端にタイトル帯を置き直す。 */
+  #cashflowModal .modal-card.cashflow-modal{
+    padding-top:0 !important;
+  }
+
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    box-sizing:border-box !important;
+    width:auto !important;
+    height:64px !important;
+    min-height:64px !important;
+    margin:0 -14px 14px !important;
+    padding:0 18px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:20px 20px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:18px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+  }
+
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + .cashflow-modal-grid{
+    margin-top:0 !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    #cashflowModal .modal-card.cashflow-modal{
+      padding-top:0 !important;
+    }
+
+    #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle{
+      height:56px !important;
+      min-height:56px !important;
+      margin:0 -8px 12px !important;
+      padding:0 14px !important;
+      border-radius:18px 18px 0 0 !important;
+      font-size:17px !important;
+    }
+  }
+</style>
+
+<!-- ===== v864: remove bottom gap under cashflow table only ===== -->
+<style>
+  /* 年度別収支表のテーブル最下部だけ調整。
+     テーブルと横スクロールバー／テーブル枠下端の間に出る余白をなくす。 */
+  #cashflowModal .cashflow-modal-shell,
+  #cashflowModal .cashflow-table-shell{
+    margin-bottom:0 !important;
+    padding-bottom:0 !important;
+  }
+
+  #cashflowModal .cashflow-table-wrap{
+    margin-bottom:0 !important;
+    padding-bottom:0 !important;
+    background:#fff !important;
+  }
+
+  #cashflowModal .cashflow-table{
+    margin-bottom:0 !important;
+  }
+
+  #cashflowModal .cashflow-table-wrap::after{
+    content:none !important;
+    display:none !important;
+    height:0 !important;
+  }
+</style>
+
+<!-- ===== v865: preview sheet title corners square and slimmer top drag handle ===== -->
+<style>
+  /* Scope: preview-sheet style modals only
+     Targets: graph axis / withdrawal / crash / monte-carlo settings preview sheets. */
+  #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-handle,
+  #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-handle,
+  #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle,
+  #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle{
+    padding:5px 0 4px !important;
+    min-height:18px !important;
+    height:18px !important;
+    background:#fff !important;
+    border-bottom:1px solid #e7eef6 !important;
+  }
+
+  #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
+  #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
+  #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
+  #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle span{
+    width:46px !important;
+    height:4px !important;
+    border-radius:999px !important;
+    background:#b7c7d7 !important;
+    box-shadow:none !important;
+  }
+
+  #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-scroll > .modal-text[id]:first-child,
+  #withdrawalRuleModal .withdrawal-preview-sheet :is(#withdrawalRuleTitle),
+  #crashTestModal .withdrawal-preview-sheet :is(#crashTestTitle),
+  #monteCarloSettingsModal .withdrawal-preview-sheet :is(#monteCarloSettingsTitle),
+  #chartAxisModal .withdrawal-preview-sheet :is(#chartAxisTitle){
+    border-radius:0 !important;
+    margin-left:0 !important;
+    margin-right:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    box-shadow:none !important;
+  }
+</style>
+
+<!-- ===== v866: slim chart resize bar between graph category and tabs ===== -->
+<style id="v866-slim-chart-resize-bar-between-graph-and-tabs-final">
+/* Scope: graph height resize bar only. Keep only the inner iPhone-like bar and reduce vertical space. */
+#chartCanvasStickyWrap{
+  padding-bottom:2px !important;
+}
+#chartWrap{
+  padding-bottom:4px !important;
+}
+#chartWrap > .chart-resize-handle-slot{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  height:14px !important;
+  min-height:14px !important;
+  padding:0 !important;
+  margin:2px 0 2px !important;
   background:transparent !important;
-  border-color:transparent !important;
+  border:0 !important;
   box-shadow:none !important;
+  cursor:ns-resize !important;
+  touch-action:none !important;
 }
+#chartWrap > .chart-resize-handle-slot .chart-resize-handle{
+  width:min(33vw, 420px) !important;
+  min-width:120px !important;
+  max-width:420px !important;
+  height:5px !important;
+  min-height:5px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:#bccbda !important;
+  box-shadow:none !important;
+  pointer-events:none !important;
+}
+#chartWrap > .chart-resize-handle-slot .chart-resize-handle::before{
+  content:none !important;
+  display:none !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap{
+    padding-bottom:2px !important;
+  }
+  #chartWrap{
+    padding-bottom:2px !important;
+  }
+  #chartWrap > .chart-resize-handle-slot{
+    height:12px !important;
+    min-height:12px !important;
+    margin:1px 0 1px !important;
+  }
+  #chartWrap > .chart-resize-handle-slot .chart-resize-handle{
+    width:33vw !important;
+    min-width:112px !important;
+    max-width:180px !important;
+    height:5px !important;
+  }
+}
+</style>
 
-#detailStickyNav.sticky-nav-initializing::after,
-#simpleStickyNav.sticky-nav-initializing::after,
-#detailStickyNav.sticky-nav-frame-no-transition::after,
-#simpleStickyNav.sticky-nav-frame-no-transition::after{
-  transition:none !important;
+<!-- ===== v867: reduce lower gap below chart resize bar only ===== -->
+<style id="v867-reduce-lower-gap-below-chart-resize-bar-only">
+/* Scope: lower gap between the resize bar and tabs only. Do not change the upper gap or bar design. */
+#chartWrap{
+  padding-bottom:0 !important;
+}
+#tabsBar{
+  margin-top:2px !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartWrap{
+    padding-bottom:0 !important;
+  }
+  #tabsBar{
+    margin-top:1px !important;
+  }
 }
 </style>
