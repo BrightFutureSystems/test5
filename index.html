@@ -28563,6 +28563,38 @@ body.body-v844-chart-resizing{
 })();
 </script>
 
+
+
+<!-- ===== v855: mute active sticky button visual during initialization to prevent button-only flash ===== -->
+<style>
+#detailStickyNav.sticky-nav-initializing .detail-sticky-btn,
+#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn,
+#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn,
+#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn{
+  transition:none !important;
+  animation:none !important;
+}
+
+#detailStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
+#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
+#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active,
+#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active{
+  color:#5a6d82 !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+#detailStickyNav.sticky-nav-initializing .detail-sticky-btn.active:hover,
+#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn.active:hover,
+#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active:hover,
+#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active:hover{
+  color:#5a6d82 !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+</style>
 </body>
 </html>
 
