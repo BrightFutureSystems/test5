@@ -2994,6 +2994,36 @@ document.addEventListener("scroll", (ev)=>{
   }
 }
 
+
+/* ===== v803: restore mobile input-mode switch width and reduce bottom gap ===== */
+@media (max-width:900px), (pointer:coarse){
+  .input-mode-toggle{
+    width:118px !important;
+    min-width:118px !important;
+    height:37px !important;
+    min-height:37px !important;
+  }
+  .input-mode-toggle-track{
+    height:37px !important;
+  }
+  .input-mode-toggle-option,
+  .input-mode-toggle-label{
+    font-size:13px !important;
+  }
+}
+
+
+/* ===== v804: match PC input-mode switch bottom gap to mobile ===== */
+@media (min-width:901px) and (pointer:fine){
+  .input-mode-toggle{
+    height:41px !important;
+    min-height:41px !important;
+  }
+  .input-mode-toggle-track{
+    height:41px !important;
+  }
+}
+
 </style>
 </head>
 <body>
