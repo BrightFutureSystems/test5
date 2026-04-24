@@ -30272,3 +30272,30 @@ body.body-v846-chart-resizing{
   }
 }
 </style>
+
+<!-- ===== v854: suppress active sticky button flash during mode/tab initialization ===== -->
+<style>
+#detailStickyNav.sticky-nav-initializing .detail-sticky-btn,
+#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn,
+#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn,
+#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn{
+  transition:none !important;
+  animation:none !important;
+}
+
+#detailStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
+#simpleStickyNav.sticky-nav-initializing .detail-sticky-btn.active,
+#detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active,
+#simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn.active{
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+#detailStickyNav.sticky-nav-initializing::after,
+#simpleStickyNav.sticky-nav-initializing::after,
+#detailStickyNav.sticky-nav-frame-no-transition::after,
+#simpleStickyNav.sticky-nav-frame-no-transition::after{
+  transition:none !important;
+}
+</style>
