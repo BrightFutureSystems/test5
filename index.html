@@ -28330,6 +28330,210 @@ window.addEventListener("load", ()=>{
   }
 </style>
 
+
+<style id="v844-chart-resize-mobile-style">
+.chart-resize-handle-slot{
+  touch-action:none !important;
+}
+body.body-v844-chart-resizing{
+  overscroll-behavior:none;
+  touch-action:none;
+}
+#chart{
+  height:var(--v844-chart-height, var(--v843-chart-height, 418px)) !important;
+  max-width:var(--v844-chart-max-width, var(--v843-chart-max-width, 980px)) !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chart{
+    height:var(--v844-chart-height, 248px) !important;
+    max-width:100% !important;
+  }
+}
+</style>
+<script id="v844-chart-resize-mobile-script">
+(function(){
+  const DESKTOP_MQ = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
+  const MOBILE_MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
+  const DESKTOP_MIN = 240;
+  const DESKTOP_MAX = 520;
+  const MOBILE_MIN = 180;
+  const MOBILE_MAX = 360;
+  const BOTTOM_MARGIN_DESKTOP = 12;
+  const BOTTOM_MARGIN_MOBILE = 8;
+  let currentHeight = null;
+  let dragging = false;
+  let dragPointerId = null;
+  let dragStartY = 0;
+  let dragStartHeight = 0;
+  let rafId = 0;
+
+  function isDesktopMode(){ return !!(DESKTOP_MQ && DESKTOP_MQ.matches); }
+  function isMobileLike(){ return !!(MOBILE_MQ && MOBILE_MQ.matches); }
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+  function getChartCanvas(){ return document.getElementById('chart'); }
+  function getChartHandleSlot(){ return document.querySelector('.chart-resize-handle-slot'); }
+  function getInputs(){ return document.getElementById('inputs'); }
+  function getBottomMargin(){ return isDesktopMode() ? BOTTOM_MARGIN_DESKTOP : BOTTOM_MARGIN_MOBILE; }
+  function getMinHeight(){ return isDesktopMode() ? DESKTOP_MIN : MOBILE_MIN; }
+  function getMaxHeight(){ return isDesktopMode() ? DESKTOP_MAX : MOBILE_MAX; }
+  function getDefaultHeight(){ return isDesktopMode() ? 418 : 248; }
+
+  function readChartHeight(){
+    const chartEl = getChartCanvas();
+    if(!chartEl) return getDefaultHeight();
+    const rectHeight = chartEl.getBoundingClientRect().height;
+    if(Number.isFinite(rectHeight) && rectHeight > 0) return Math.round(rectHeight);
+    const cssHeight = parseFloat(window.getComputedStyle(chartEl).height || String(getDefaultHeight()));
+    return Number.isFinite(cssHeight) && cssHeight > 0 ? Math.round(cssHeight) : getDefaultHeight();
+  }
+
+  function setRootVars(height){
+    const root = document.documentElement;
+    root.style.setProperty('--v844-chart-height', height + 'px');
+    if(isDesktopMode()) root.style.setProperty('--v844-chart-max-width', '980px');
+    else root.style.removeProperty('--v844-chart-max-width');
+  }
+
+  function syncInputsHeight(){
+    const inputsEl = getInputs();
+    if(!inputsEl) return;
+    const rect = inputsEl.getBoundingClientRect();
+    const available = Math.floor(window.innerHeight - rect.top - getBottomMargin());
+    if(isDesktopMode()){
+      inputsEl.style.maxHeight = Math.max(220, available) + 'px';
+      return;
+    }
+    if(isMobileLike()){
+      inputsEl.style.maxHeight = Math.max(180, available) + 'px';
+      return;
+    }
+    inputsEl.style.maxHeight = '';
+  }
+
+  function resizeChartInstance(){
+    try{
+      if(typeof chart !== 'undefined' && chart && typeof chart.resize === 'function') chart.resize();
+    }catch(_e){}
+  }
+
+  function applyLayout(height){
+    const nextHeight = clamp(Math.round(height), getMinHeight(), getMaxHeight());
+    currentHeight = nextHeight;
+    setRootVars(nextHeight);
+    syncInputsHeight();
+    resizeChartInstance();
+  }
+
+  function scheduleApply(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){
+      rafId = 0;
+      if(currentHeight == null) currentHeight = clamp(readChartHeight(), getMinHeight(), getMaxHeight());
+      applyLayout(currentHeight);
+    });
+  }
+
+  function getClientY(ev){
+    if(typeof ev.clientY === 'number') return ev.clientY;
+    if(ev.touches && ev.touches[0] && typeof ev.touches[0].clientY === 'number') return ev.touches[0].clientY;
+    if(ev.changedTouches && ev.changedTouches[0] && typeof ev.changedTouches[0].clientY === 'number') return ev.changedTouches[0].clientY;
+    return NaN;
+  }
+
+  function onPointerMove(ev){
+    if(!dragging) return;
+    if(dragPointerId != null && ev.pointerId != null && ev.pointerId !== dragPointerId) return;
+    const y = getClientY(ev);
+    if(!Number.isFinite(y)) return;
+    if(ev.cancelable) ev.preventDefault();
+    applyLayout(dragStartHeight + (y - dragStartY));
+  }
+
+  function finishDrag(ev){
+    if(!dragging) return;
+    if(ev && dragPointerId != null && ev.pointerId != null && ev.pointerId !== dragPointerId) return;
+    dragging = false;
+    dragPointerId = null;
+    document.body.classList.remove('body-v844-chart-resizing');
+    document.documentElement.style.cursor = '';
+    const handle = getChartHandleSlot();
+    if(handle && ev && ev.pointerId != null && typeof handle.releasePointerCapture === 'function'){
+      try{ handle.releasePointerCapture(ev.pointerId); }catch(_e){}
+    }
+    syncInputsHeight();
+  }
+
+  function startDrag(ev){
+    const handle = getChartHandleSlot();
+    if(!handle || !handle.contains(ev.target)) return;
+    if(ev.pointerType === 'mouse' && ev.button !== 0) return;
+    const y = getClientY(ev);
+    if(!Number.isFinite(y)) return;
+    if(ev.cancelable) ev.preventDefault();
+    dragging = true;
+    dragPointerId = ev.pointerId != null ? ev.pointerId : null;
+    dragStartY = y;
+    dragStartHeight = currentHeight == null ? clamp(readChartHeight(), getMinHeight(), getMaxHeight()) : currentHeight;
+    document.body.classList.add('body-v844-chart-resizing');
+    document.documentElement.style.cursor = 'ns-resize';
+    if(ev.pointerId != null && typeof handle.setPointerCapture === 'function'){
+      try{ handle.setPointerCapture(ev.pointerId); }catch(_e){}
+    }
+  }
+
+  function bindHandle(){
+    const handle = getChartHandleSlot();
+    if(!handle || handle.dataset.v844Bound === '1') return;
+    handle.dataset.v844Bound = '1';
+    if(window.PointerEvent){
+      handle.addEventListener('pointerdown', startDrag, {passive:false});
+      handle.addEventListener('pointermove', onPointerMove, {passive:false});
+      handle.addEventListener('pointerup', finishDrag, {passive:false});
+      handle.addEventListener('pointercancel', finishDrag, {passive:false});
+      handle.addEventListener('lostpointercapture', finishDrag, {passive:true});
+    }else{
+      handle.addEventListener('mousedown', startDrag, {passive:false});
+      window.addEventListener('mousemove', onPointerMove, {passive:false});
+      window.addEventListener('mouseup', finishDrag, {passive:true});
+      handle.addEventListener('touchstart', startDrag, {passive:false});
+      window.addEventListener('touchmove', onPointerMove, {passive:false});
+      window.addEventListener('touchend', finishDrag, {passive:true});
+      window.addEventListener('touchcancel', finishDrag, {passive:true});
+    }
+  }
+
+  function handleModeChange(){
+    currentHeight = clamp(currentHeight == null ? readChartHeight() : currentHeight, getMinHeight(), getMaxHeight());
+    scheduleApply();
+  }
+
+  window.addEventListener('load', function(){
+    bindHandle();
+    scheduleApply();
+  }, {once:true});
+  window.addEventListener('resize', scheduleApply, {passive:true});
+  window.addEventListener('orientationchange', scheduleApply, {passive:true});
+  if(DESKTOP_MQ){
+    if(typeof DESKTOP_MQ.addEventListener === 'function') DESKTOP_MQ.addEventListener('change', handleModeChange);
+    else if(typeof DESKTOP_MQ.addListener === 'function') DESKTOP_MQ.addListener(handleModeChange);
+  }
+  if(MOBILE_MQ){
+    if(typeof MOBILE_MQ.addEventListener === 'function') MOBILE_MQ.addEventListener('change', handleModeChange);
+    else if(typeof MOBILE_MQ.addListener === 'function') MOBILE_MQ.addListener(handleModeChange);
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(scheduleApply);
+    window.addEventListener('load', function(){
+      ['chartWrap','tabsBar','inputs','chartCanvasStickyWrap'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+  scheduleApply();
+})();
+</script>
+
 </body>
 </html>
 
@@ -29323,3 +29527,344 @@ window.addEventListener("load", ()=>{
   }
 }
 </style>
+
+
+<style id="v841-pc-chart-stop-local-input-scroll">
+@media (min-width:901px) and (pointer:fine){
+  #inputs{
+    height:calc(100vh - var(--v841-chart-wrap-height, 560px) - var(--v841-tabs-bar-height, 45px) - var(--v841-page-padding-bottom, 0px)) !important;
+    max-height:calc(100vh - var(--v841-chart-wrap-height, 560px) - var(--v841-tabs-bar-height, 45px) - var(--v841-page-padding-bottom, 0px)) !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain !important;
+  }
+}
+</style>
+<script id="v841-pc-chart-stop-local-input-scroll-script">
+(function(){
+  const mq = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
+  let ticking = false;
+  let locking = false;
+
+  function outerBlockHeight(el){
+    if(!el) return 0;
+    const rect = el.getBoundingClientRect();
+    const styles = window.getComputedStyle ? window.getComputedStyle(el) : null;
+    const mt = styles ? (parseFloat(styles.marginTop) || 0) : 0;
+    const mb = styles ? (parseFloat(styles.marginBottom) || 0) : 0;
+    return Math.max(0, Math.ceil(rect.height + mt + mb));
+  }
+
+  function updateV841ScrollVars(){
+    const root = document.documentElement;
+    const chartWrap = document.getElementById('chartWrap');
+    const tabsBar = document.getElementById('tabsBar');
+    const page = document.querySelector('.page');
+    if(chartWrap) root.style.setProperty('--v841-chart-wrap-height', outerBlockHeight(chartWrap) + 'px');
+    if(tabsBar) root.style.setProperty('--v841-tabs-bar-height', outerBlockHeight(tabsBar) + 'px');
+    if(page){
+      const styles = window.getComputedStyle ? window.getComputedStyle(page) : null;
+      const pb = styles ? Math.ceil(parseFloat(styles.paddingBottom) || 0) : 0;
+      root.style.setProperty('--v841-page-padding-bottom', pb + 'px');
+    }
+  }
+
+  function getChartStopScrollY(){
+    const chartWrap = document.getElementById('chartWrap');
+    if(!chartWrap) return 0;
+    return Math.max(0, Math.round(chartWrap.offsetTop || 0));
+  }
+
+  function capWindowScrollAfterChartStops(){
+    if(!mq || !mq.matches) return;
+    if(locking) return;
+    const maxY = getChartStopScrollY();
+    if(window.scrollY > maxY + 1){
+      locking = true;
+      window.scrollTo(window.scrollX || 0, maxY);
+      locking = false;
+    }
+  }
+
+  function scheduleV841LayoutSync(){
+    if(ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function(){
+      ticking = false;
+      updateV841ScrollVars();
+      capWindowScrollAfterChartStops();
+    });
+  }
+
+  window.addEventListener('load', scheduleV841LayoutSync, {passive:true});
+  window.addEventListener('resize', scheduleV841LayoutSync, {passive:true});
+  window.addEventListener('orientationchange', scheduleV841LayoutSync, {passive:true});
+  window.addEventListener('scroll', function(){
+    if(!mq || !mq.matches) return;
+    capWindowScrollAfterChartStops();
+  }, {passive:true});
+
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(scheduleV841LayoutSync);
+    window.addEventListener('load', function(){
+      ['chartWrap','tabsBar','inputs'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+
+  scheduleV841LayoutSync();
+})();
+</script>
+
+<style id="v843-chart-resize-style">
+.chart-resize-handle-slot{
+  cursor:ns-resize;
+  touch-action:none;
+}
+.chart-resize-handle{
+  pointer-events:none;
+}
+@media (min-width:901px) and (pointer:fine){
+  #chart{
+    height:var(--v843-chart-height, 418px) !important;
+    max-width:var(--v843-chart-max-width, 980px) !important;
+  }
+}
+</style>
+<script id="v843-chart-resize-script">
+(function(){
+  const mq = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
+  const MIN_HEIGHT = 240;
+  const MAX_HEIGHT = 520;
+  const BOTTOM_MARGIN = 12;
+  const DEFAULT_WIDTH = 980;
+  let desktopHeight = null;
+  let dragging = false;
+  let dragStartY = 0;
+  let dragStartHeight = 0;
+  let rafId = 0;
+
+  function isDesktopMode(){
+    return !!(mq && mq.matches);
+  }
+
+  function clamp(value, min, max){
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function getChartCanvas(){
+    return document.getElementById('chart');
+  }
+
+  function getChartHandleSlot(){
+    return document.querySelector('.chart-resize-handle-slot');
+  }
+
+  function getDesktopBaseHeight(){
+    const chartEl = getChartCanvas();
+    if(!chartEl) return 418;
+    const rectHeight = chartEl.getBoundingClientRect().height;
+    if(Number.isFinite(rectHeight) && rectHeight > 0) return Math.round(rectHeight);
+    const cssHeight = parseFloat(window.getComputedStyle(chartEl).height || '418');
+    return Number.isFinite(cssHeight) && cssHeight > 0 ? Math.round(cssHeight) : 418;
+  }
+
+  function setRootVars(height){
+    const root = document.documentElement;
+    root.style.setProperty('--v843-chart-height', height + 'px');
+    root.style.setProperty('--v843-chart-max-width', DEFAULT_WIDTH + 'px');
+  }
+
+  function syncInputsHeight(){
+    const inputsEl = document.getElementById('inputs');
+    if(!inputsEl) return;
+    if(!isDesktopMode()){
+      inputsEl.style.maxHeight = '';
+      return;
+    }
+    const rect = inputsEl.getBoundingClientRect();
+    const available = Math.floor(window.innerHeight - rect.top - BOTTOM_MARGIN);
+    inputsEl.style.maxHeight = Math.max(220, available) + 'px';
+  }
+
+  function resizeChartInstance(){
+    try{
+      if(typeof chart !== 'undefined' && chart && typeof chart.resize === 'function') chart.resize();
+    }catch(_e){}
+  }
+
+  function applyDesktopChartLayout(height){
+    const nextHeight = clamp(Math.round(height), MIN_HEIGHT, MAX_HEIGHT);
+    desktopHeight = nextHeight;
+    if(!isDesktopMode()) return;
+    setRootVars(nextHeight);
+    syncInputsHeight();
+    resizeChartInstance();
+  }
+
+  function scheduleApply(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){
+      rafId = 0;
+      if(isDesktopMode()){
+        if(desktopHeight == null) desktopHeight = clamp(getDesktopBaseHeight(), MIN_HEIGHT, MAX_HEIGHT);
+        applyDesktopChartLayout(desktopHeight);
+      }else{
+        const root = document.documentElement;
+        root.style.removeProperty('--v843-chart-height');
+        root.style.removeProperty('--v843-chart-max-width');
+        syncInputsHeight();
+      }
+    });
+  }
+
+  function onDragMove(ev){
+    if(!dragging) return;
+    const clientY = Number(ev.clientY);
+    if(!Number.isFinite(clientY)) return;
+    applyDesktopChartLayout(dragStartHeight + (clientY - dragStartY));
+  }
+
+  function finishDrag(){
+    if(!dragging) return;
+    dragging = false;
+    document.body.classList.remove('body-v843-chart-resizing');
+    document.documentElement.style.cursor = '';
+    window.removeEventListener('mousemove', onDragMove);
+    window.removeEventListener('mouseup', finishDrag);
+    window.removeEventListener('blur', finishDrag);
+    syncInputsHeight();
+  }
+
+  function startDrag(ev){
+    if(!isDesktopMode()) return;
+    if(ev.button !== 0) return;
+    const handle = getChartHandleSlot();
+    if(!handle || !handle.contains(ev.target)) return;
+    ev.preventDefault();
+    dragging = true;
+    dragStartY = ev.clientY;
+    dragStartHeight = desktopHeight == null ? clamp(getDesktopBaseHeight(), MIN_HEIGHT, MAX_HEIGHT) : desktopHeight;
+    document.body.classList.add('body-v843-chart-resizing');
+    document.documentElement.style.cursor = 'ns-resize';
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', finishDrag);
+    window.addEventListener('blur', finishDrag);
+  }
+
+  function handleModeChange(){
+    if(isDesktopMode()){
+      if(desktopHeight == null) desktopHeight = clamp(getDesktopBaseHeight(), MIN_HEIGHT, MAX_HEIGHT);
+    }
+    scheduleApply();
+  }
+
+  window.addEventListener('load', function(){
+    const handle = getChartHandleSlot();
+    if(handle) handle.addEventListener('mousedown', startDrag);
+    scheduleApply();
+  }, {once:true});
+  window.addEventListener('resize', scheduleApply, {passive:true});
+  window.addEventListener('orientationchange', scheduleApply, {passive:true});
+  if(mq){
+    if(typeof mq.addEventListener === 'function') mq.addEventListener('change', handleModeChange);
+    else if(typeof mq.addListener === 'function') mq.addListener(handleModeChange);
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(scheduleApply);
+    window.addEventListener('load', function(){
+      ['chartWrap','tabsBar','inputs','chartCanvasStickyWrap'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+  const originalDraw = window.draw;
+  if(typeof originalDraw === 'function'){
+    window.draw = function(){
+      const result = originalDraw.apply(this, arguments);
+      scheduleApply();
+      return result;
+    };
+  }
+  const originalRunMonte = window.runMonte;
+  if(typeof originalRunMonte === 'function'){
+    window.runMonte = function(){
+      const result = originalRunMonte.apply(this, arguments);
+      scheduleApply();
+      return result;
+    };
+  }
+  scheduleApply();
+})();
+</script>
+
+
+<!-- ===== v845: mobile graph sticks with chart frame top aligned to viewport top ===== -->
+<style id="v845-mobile-chart-stick-style">
+@media (max-width:900px), (pointer:coarse){
+  #chartWrap,
+  #chartWrap.chart-wrap-rel{
+    position:static !important;
+    top:auto !important;
+    z-index:auto !important;
+    padding-bottom:2px !important;
+  }
+  #chartTopPanel{
+    position:sticky !important;
+    top:calc(var(--v845-mobile-chart-topbar-offset, 0px) * -1) !important;
+    z-index:20 !important;
+  }
+  #chartCanvasStickyWrap{
+    position:relative !important;
+    top:auto !important;
+    z-index:auto !important;
+  }
+}
+</style>
+<script id="v845-mobile-chart-stick-script">
+(function(){
+  const MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
+  let rafId = 0;
+  function isMobileLike(){ return !!(MQ && MQ.matches); }
+  function apply(){
+    const root = document.documentElement;
+    if(!isMobileLike()){
+      root.style.removeProperty('--v845-mobile-chart-topbar-offset');
+      return;
+    }
+    const topBar = document.getElementById('chartTopBar');
+    const panel = document.getElementById('chartTopPanel');
+    if(!topBar || !panel) return;
+    const panelStyle = window.getComputedStyle(panel);
+    const barRect = topBar.getBoundingClientRect();
+    const barHeight = Math.round(barRect.height || topBar.offsetHeight || 0);
+    const borderTop = parseFloat(panelStyle.borderTopWidth || '0') || 0;
+    const offset = Math.max(0, Math.round(barHeight + borderTop));
+    root.style.setProperty('--v845-mobile-chart-topbar-offset', offset + 'px');
+  }
+  function schedule(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){ rafId = 0; apply(); });
+  }
+  window.addEventListener('load', schedule, {once:true});
+  window.addEventListener('resize', schedule, {passive:true});
+  window.addEventListener('orientationchange', schedule, {passive:true});
+  if(MQ){
+    if(typeof MQ.addEventListener === 'function') MQ.addEventListener('change', schedule);
+    else if(typeof MQ.addListener === 'function') MQ.addListener(schedule);
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(schedule);
+    window.addEventListener('load', function(){
+      ['chartTopBar','chartTopPanel','chartCanvasStickyWrap'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+  schedule();
+})();
+</script>
