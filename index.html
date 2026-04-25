@@ -32627,5 +32627,104 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 }
 </style>
+<!-- ===== v890: mobile title band height unified to income-curve standard ===== -->
+<style id="v890-mobile-title-band-standard-height">
+/* Scope: mobile modal / preview-sheet title bands only. No JS / structure changes. */
+@media (max-width:900px), (pointer:coarse){
+  /*
+    Standard mobile title band = v889 income-curve title band:
+    min-height 48px, font-size 16px, vertically centered.
+  */
+  .modal-card:not(.withdrawal-preview-sheet){
+    --v890-title-pad-top:18px;
+    --v890-title-pad-x:16px;
+  }
+
+  .income-curve-modal,
+  .loan-detail-modal,
+  .edu-detail-modal,
+  .insurance-assist-modal{
+    --v890-title-pad-top:14px;
+    --v890-title-pad-x:10px;
+  }
+
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #pensionHelperTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #educationCopyTitle,
+    #insuranceAssistTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ){
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:48px !important;
+    height:48px !important;
+    margin:calc(-1 * var(--v890-title-pad-top)) calc(-1 * var(--v890-title-pad-x)) 14px !important;
+    padding:0 14px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+  }
+
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+    #withdrawalRuleTitle,
+    #crashTestTitle,
+    #monteCarloSettingsTitle,
+    #chartAxisTitle
+  ){
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:48px !important;
+    height:48px !important;
+    width:auto !important;
+    margin:0 0 14px !important;
+    padding:0 14px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+    flex:0 0 48px !important;
+  }
+
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #pensionHelperTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #educationCopyTitle,
+    #insuranceAssistTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ) + *,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+    #withdrawalRuleTitle,
+    #crashTestTitle,
+    #monteCarloSettingsTitle,
+    #chartAxisTitle
+  ) + *{
+    margin-top:0 !important;
+  }
+}
+</style>
 </body>
 </html>
