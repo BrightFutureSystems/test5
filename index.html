@@ -4148,7 +4148,7 @@ document.addEventListener("scroll", (ev)=>{
     border-bottom-right-radius:16px !important;
   }
   .withdrawal-compare-table .compare-group-label{
-    background:#eef2f6 !important;
+    background:#ffffff !important;
     color:#334155 !important;
     font-weight:700 !important;
     border-bottom-left-radius:16px !important;
@@ -16205,7 +16205,7 @@ function renderCrashCompareHeader(results){
   const head = document.getElementById('crashCompareHead');
   if(!head) return;
   const cols = buildCompareHeaderCols(results);
-  head.innerHTML = `<tr><th class="compare-group-col">大分類</th><th class="compare-metric-col">指標</th>${cols}</tr>`;
+  head.innerHTML = `<tr><th class="compare-metric-col" colspan="2">指標</th>${cols}</tr>`;
 }
 function renderCrashComparisonTable(results){
   const body = document.getElementById('crashCompareBody');
@@ -21914,7 +21914,7 @@ function renderWithdrawalCompareHeader(results){
   const head = document.getElementById('withdrawalCompareHead');
   if(!head) return;
   const cols = buildCompareHeaderCols(results);
-  head.innerHTML = `<tr><th class="compare-group-col">大分類</th><th class="compare-metric-col">指標</th>${cols}</tr>`;
+  head.innerHTML = `<tr><th class="compare-metric-col" colspan="2">指標</th>${cols}</tr>`;
 }
 function updateWithdrawalCompareModeUI(){
   const compareMode = getWithdrawalCompareMode();
@@ -24825,7 +24825,7 @@ function renderMonteCompareHeader(results){
   const head = document.getElementById('monteCompareHead');
   if(!head) return;
   const cols = buildCompareHeaderCols(results);
-  head.innerHTML = `<tr><th class="compare-group-col">大分類</th><th class="compare-metric-col">指標</th>${cols}</tr>`;
+  head.innerHTML = `<tr><th class="compare-metric-col" colspan="2">指標</th>${cols}</tr>`;
 }
 function renderMonteCompareTable(results){
   const body = document.getElementById('monteCompareBody');
@@ -28445,6 +28445,14 @@ window.addEventListener("load", ()=>{
     background:#fff !important;
   }
 
+  .modal-card .withdrawal-compare-table .compare-row-median th,
+  .modal-card .withdrawal-compare-table .compare-row-median td,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-row-median th,
+  .withdrawal-preview-sheet .withdrawal-compare-table .compare-row-median td{
+    background:#f7f1df !important;
+    color:#3f3a2d !important;
+  }
+
   /* Drag-order table had its own separated-border styling; visually align it with normal tables only. */
   .withdrawal-order-manual-wrap .withdrawal-param-case-table{
     border-collapse:collapse !important;
@@ -28979,6 +28987,112 @@ body.body-v844-chart-resizing{
 }
 </style>
 
+
+
+<!-- ===== v879: crash history table mock alignment / real rounded corners only ===== -->
+<style>
+  /* Scope: 暴落の歴史（参考）テーブルのみ。表自体に角丸と外枠を持たせ、ラッパーのマスクには依存しない。 */
+  #crashHistoryContent > .withdrawal-compare-table-wrap,
+  .crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    overflow-x:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  #crashHistoryContent .crash-history-table,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table{
+    width:100% !important;
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    border:1px solid #c9d2dc !important;
+    border-radius:16px !important;
+    margin-bottom:0 !important;
+    background:#ffffff !important;
+    color:#243b53 !important;
+    box-shadow:none !important;
+  }
+
+  #crashHistoryContent .crash-history-table th,
+  #crashHistoryContent .crash-history-table td,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table th,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table td{
+    border:0 !important;
+    border-right:1px solid #cfd6df !important;
+    border-bottom:1px solid #cfd6df !important;
+    color:#243b53 !important;
+    vertical-align:middle !important;
+  }
+
+  #crashHistoryContent .crash-history-table th,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table th{
+    background:linear-gradient(180deg, #f4f8fe 0%, #ebf2fb 100%) !important;
+    color:#43607b !important;
+    font-weight:700 !important;
+    border-bottom-color:#c9d2dc !important;
+  }
+
+  #crashHistoryContent .crash-history-table td,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table td{
+    background:#ffffff !important;
+  }
+
+  #crashHistoryContent .crash-history-table tr > *:last-child,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tr > *:last-child{
+    border-right:0 !important;
+  }
+
+  #crashHistoryContent .crash-history-table tbody tr:last-child > td,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td{
+    border-bottom:0 !important;
+  }
+
+  #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
+    border-top-left-radius:16px !important;
+  }
+
+  #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
+    border-top-right-radius:16px !important;
+  }
+
+  #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
+    border-bottom-left-radius:16px !important;
+  }
+
+  #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child,
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
+    border-bottom-right-radius:16px !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    #crashHistoryContent .crash-history-table,
+    .crash-preview-sheet #crashHistoryContent .crash-history-table{
+      border-radius:14px !important;
+    }
+    #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child,
+    .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
+      border-top-left-radius:14px !important;
+    }
+    #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child,
+    .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
+      border-top-right-radius:14px !important;
+    }
+    #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child,
+    .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
+      border-bottom-left-radius:14px !important;
+    }
+    #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child,
+    .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
+      border-bottom-right-radius:14px !important;
+    }
+  }
+</style>
+
 </body>
 </html>
 
@@ -29428,7 +29542,7 @@ body.body-v844-chart-resizing{
   }
 
   .withdrawal-compare-table .compare-group-label{
-    background:#f8fafc !important;
+    background:#ffffff !important;
     font-weight:700 !important;
     white-space:normal !important;
     color:#111827 !important;
@@ -29443,7 +29557,7 @@ body.body-v844-chart-resizing{
 
   .withdrawal-compare-table .compare-row-median th,
   .withdrawal-compare-table .compare-row-median td{
-    background:#fffbeb !important;
+    background:#f7f1df !important;
     color:#111827 !important;
     font-weight:400 !important;
   }
