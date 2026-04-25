@@ -4097,10 +4097,10 @@ document.addEventListener("scroll", (ev)=>{
   #crashCompareResultTableWrap,
   #monteCompareResultTableWrap,
   .withdrawal-compare-table-wrap{
-    border-color:var(--v827-table-line) !important;
-    border-radius:16px !important;
-    background:#fff !important;
-    box-shadow:var(--v827-table-shadow) !important;
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
   }
   #withdrawalCompareResultTableWrap:empty,
   #crashCompareResultTableWrap:empty,
@@ -4109,46 +4109,72 @@ document.addEventListener("scroll", (ev)=>{
     box-shadow:none !important;
   }
   .withdrawal-compare-table{
-    color:var(--v827-table-text) !important;
-    background:#fff !important;
+    color:#111827 !important;
+    background:#ffffff !important;
     border-collapse:separate !important;
     border-spacing:0 !important;
+    border:1px solid #c9d2dc !important;
+    border-radius:16px !important;
     margin-bottom:0 !important;
   }
   .withdrawal-compare-table th,
   .withdrawal-compare-table td{
-    border-color:var(--v827-table-line-soft) !important;
-    background:#fff !important;
-    color:var(--v827-table-text) !important;
+    border:none !important;
+    border-right:1px solid #cfd6df !important;
+    border-bottom:1px solid #cfd6df !important;
+    background:#ffffff !important;
+    color:#243b53 !important;
     font-variant-numeric:tabular-nums !important;
   }
-  .withdrawal-compare-table th{
-    background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
-    color:#43607b !important;
+  .withdrawal-compare-table tr > *:last-child{
+    border-right:none !important;
+  }
+  .withdrawal-compare-table tbody tr:last-child > *{
+    border-bottom:none !important;
+  }
+  .withdrawal-compare-table thead th{
+    background:#eef2f6 !important;
+    color:#334155 !important;
     font-weight:700 !important;
   }
-  .withdrawal-compare-table .compare-group-label,
-  .withdrawal-compare-table th:first-child,
-  .withdrawal-compare-table td:first-child{
-    background:#eef4fb !important;
-    color:#24445f !important;
+  .withdrawal-compare-table thead tr:first-child th:first-child{
+    border-top-left-radius:16px !important;
+  }
+  .withdrawal-compare-table thead tr:first-child th:last-child{
+    border-top-right-radius:16px !important;
+  }
+  .withdrawal-compare-table tbody tr:last-child > th:last-child,
+  .withdrawal-compare-table tbody tr:last-child > td:last-child{
+    border-bottom-right-radius:16px !important;
+  }
+  .withdrawal-compare-table .compare-group-label{
+    background:#eef2f6 !important;
+    color:#334155 !important;
+    font-weight:700 !important;
+    border-bottom-left-radius:16px !important;
+  }
+  .withdrawal-compare-table th.compare-group-col,
+  .withdrawal-compare-table th.compare-metric-col,
+  .withdrawal-compare-table td.compare-group-col,
+  .withdrawal-compare-table td.compare-metric-col{
+    background:#eef2f6 !important;
+    color:#334155 !important;
     font-weight:700 !important;
   }
   .withdrawal-compare-table .compare-row-fixed th,
   .withdrawal-compare-table .compare-row-fixed td{
-    background:var(--v827-table-blue-soft) !important;
-    color:#183b63 !important;
     font-weight:700 !important;
   }
   .withdrawal-compare-table .compare-row-median th,
   .withdrawal-compare-table .compare-row-median td{
-    background:#fff8df !important;
-    color:#5c4413 !important;
+    background:#f7f1df !important;
+    color:#3f3a2d !important;
     font-weight:700 !important;
   }
-  .withdrawal-compare-table tbody tr:not(.compare-row-fixed):not(.compare-row-median):nth-child(even) > th,
-  .withdrawal-compare-table tbody tr:not(.compare-row-fixed):not(.compare-row-median):nth-child(even) > td{
-    background:#fbfdff !important;
+  .withdrawal-compare-table tbody tr:not(.compare-row-median) > th.compare-metric-col,
+  .withdrawal-compare-table tbody tr:not(.compare-row-median) > td,
+  .withdrawal-compare-table tbody tr:not(.compare-row-median) > th:not(.compare-group-label):not(.compare-group-col){
+    background:#ffffff !important;
   }
   .withdrawal-compare-status,
   .compare-header-note,
@@ -4756,10 +4782,10 @@ document.addEventListener("scroll", (ev)=>{
     <div id="chartCanvasStickyWrap">
       <canvas id="chart"></canvas>
       <button id="chartAxisBtn" type="button" aria-label="軸設定を開く" hidden>軸</button>
+      <div class="chart-resize-handle-slot" aria-hidden="true"><div class="chart-resize-handle"></div></div>
     </div>
 
     </div>
-    <div class="chart-resize-handle-slot" aria-hidden="true"><div class="chart-resize-handle"></div></div>
 
     <div id="overflowMenu" class="overflow-menu" aria-hidden="true">
       <button id="overflowMenuAxisBtn" type="button">グラフ軸設定</button>
@@ -21881,7 +21907,7 @@ function buildCompareHeaderCols(results){
   return (results || []).map((r, idx)=>{
     const color = getCompareHeaderPaletteColor(idx);
     const bg = hexToRgbaString(color, 0.18);
-    return `<th style="background:${bg};">${escapeHtml(r.label || '')}</th>`;
+    return `<th class="compare-series-head" style="background:${bg} !important;color:#1f2937 !important;">${escapeHtml(r.label || '')}</th>`;
   }).join('');
 }
 function renderWithdrawalCompareHeader(results){
@@ -22048,9 +22074,9 @@ const COMMON_COMPARE_ROW_DEFS = [
     {label:'最大値', key:'best'},
     {label:'95%点', key:'p95'},
     {label:'90%点', key:'p90'},
+    {label:'平均値', key:'mean'},
     {label:'一定利率', key:'fixed', className:'compare-row-fixed'},
     {label:'中央値', key:'median', className:'compare-row-median'},
-    {label:'平均値', key:'mean'},
     {label:'10%点', key:'p10'},
     {label:'5%点', key:'p05'},
     {label:'最小値', key:'worst'}
@@ -29957,95 +29983,6 @@ body.body-v844-chart-resizing{
   }
 }
 </style>
-<style id="v841-pc-chart-stop-local-input-scroll">
-@media (min-width:901px) and (pointer:fine){
-  #inputs{
-    height:calc(100vh - var(--v841-chart-wrap-height, 560px) - var(--v841-tabs-bar-height, 45px) - var(--v841-page-padding-bottom, 0px)) !important;
-    max-height:calc(100vh - var(--v841-chart-wrap-height, 560px) - var(--v841-tabs-bar-height, 45px) - var(--v841-page-padding-bottom, 0px)) !important;
-    min-height:0 !important;
-    overflow-y:auto !important;
-    overscroll-behavior:contain !important;
-  }
-}
-</style>
-<script id="v841-pc-chart-stop-local-input-scroll-script">
-(function(){
-  const mq = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
-  let ticking = false;
-  let locking = false;
-
-  function outerBlockHeight(el){
-    if(!el) return 0;
-    const rect = el.getBoundingClientRect();
-    const styles = window.getComputedStyle ? window.getComputedStyle(el) : null;
-    const mt = styles ? (parseFloat(styles.marginTop) || 0) : 0;
-    const mb = styles ? (parseFloat(styles.marginBottom) || 0) : 0;
-    return Math.max(0, Math.ceil(rect.height + mt + mb));
-  }
-
-  function updateV841ScrollVars(){
-    const root = document.documentElement;
-    const chartWrap = document.getElementById('chartWrap');
-    const tabsBar = document.getElementById('tabsBar');
-    const page = document.querySelector('.page');
-    if(chartWrap) root.style.setProperty('--v841-chart-wrap-height', outerBlockHeight(chartWrap) + 'px');
-    if(tabsBar) root.style.setProperty('--v841-tabs-bar-height', outerBlockHeight(tabsBar) + 'px');
-    if(page){
-      const styles = window.getComputedStyle ? window.getComputedStyle(page) : null;
-      const pb = styles ? Math.ceil(parseFloat(styles.paddingBottom) || 0) : 0;
-      root.style.setProperty('--v841-page-padding-bottom', pb + 'px');
-    }
-  }
-
-  function getChartStopScrollY(){
-    const chartWrap = document.getElementById('chartWrap');
-    if(!chartWrap) return 0;
-    return Math.max(0, Math.round(chartWrap.offsetTop || 0));
-  }
-
-  function capWindowScrollAfterChartStops(){
-    if(!mq || !mq.matches) return;
-    if(locking) return;
-    const maxY = getChartStopScrollY();
-    if(window.scrollY > maxY + 1){
-      locking = true;
-      window.scrollTo(window.scrollX || 0, maxY);
-      locking = false;
-    }
-  }
-
-  function scheduleV841LayoutSync(){
-    if(ticking) return;
-    ticking = true;
-    window.requestAnimationFrame(function(){
-      ticking = false;
-      updateV841ScrollVars();
-      capWindowScrollAfterChartStops();
-    });
-  }
-
-  window.addEventListener('load', scheduleV841LayoutSync, {passive:true});
-  window.addEventListener('resize', scheduleV841LayoutSync, {passive:true});
-  window.addEventListener('orientationchange', scheduleV841LayoutSync, {passive:true});
-  window.addEventListener('scroll', function(){
-    if(!mq || !mq.matches) return;
-    capWindowScrollAfterChartStops();
-  }, {passive:true});
-
-  if(window.ResizeObserver){
-    const ro = new ResizeObserver(scheduleV841LayoutSync);
-    window.addEventListener('load', function(){
-      ['chartWrap','tabsBar','inputs'].forEach(function(id){
-        const el = document.getElementById(id);
-        if(el) ro.observe(el);
-      });
-    }, {once:true});
-  }
-
-  scheduleV841LayoutSync();
-})();
-</script>
-
 <style id="v843-chart-resize-style">
 .chart-resize-handle-slot{
   cursor:ns-resize;
@@ -31717,6 +31654,314 @@ body.body-v846-chart-resizing{
   }
   #tabsBar{
     margin-top:1px !important;
+  }
+}
+</style>
+
+
+<!-- ===== v869: natural header/input height allocation on PC and mobile; no sticky stop ===== -->
+<style id="v869-natural-header-input-layout-style">
+/* v869 scope: graph/tabs/menu/input height allocation only. No fixed positioning and no forced window scroll stop. */
+#chartWrap,
+#chartWrap.chart-wrap-rel,
+#chartTopPanel,
+#chartCanvasStickyWrap{
+  position:static !important;
+  top:auto !important;
+  z-index:auto !important;
+}
+
+#inputs{
+  height:var(--v869-inputs-height, auto) !important;
+  max-height:var(--v869-inputs-height, none) !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+
+#chartWrap > .chart-resize-handle-slot{
+  height:5px !important;
+  min-height:5px !important;
+  padding:0 !important;
+  margin:4px 0 4px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  cursor:ns-resize !important;
+  touch-action:none !important;
+}
+#chartWrap > .chart-resize-handle-slot .chart-resize-handle{
+  width:min(33vw, 420px) !important;
+  min-width:120px !important;
+  max-width:420px !important;
+  height:5px !important;
+  min-height:5px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:#bccbda !important;
+  box-shadow:none !important;
+  pointer-events:none !important;
+}
+#chartWrap > .chart-resize-handle-slot .chart-resize-handle::before{
+  content:none !important;
+  display:none !important;
+}
+#tabsBar{
+  margin-top:4px !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #chartWrap > .chart-resize-handle-slot{
+    height:5px !important;
+    min-height:5px !important;
+    margin:4px 0 4px !important;
+    padding:0 !important;
+  }
+  #chartWrap > .chart-resize-handle-slot .chart-resize-handle{
+    width:33vw !important;
+    min-width:112px !important;
+    max-width:180px !important;
+    height:5px !important;
+  }
+  #tabsBar{
+    margin-top:4px !important;
+  }
+}
+</style>
+<script id="v869-natural-header-input-layout-script">
+(function(){
+  const MOBILE_MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
+  const DESKTOP_MQ = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
+  const SAFETY_OFFSET_MOBILE = 28;
+  const SAFETY_OFFSET_DESKTOP = 30;
+  let rafId = 0;
+
+  function isMobile(){ return !!(MOBILE_MQ && MOBILE_MQ.matches); }
+  function isDesktop(){ return !!(DESKTOP_MQ && DESKTOP_MQ.matches); }
+  function getViewportHeight(){
+    const vv = window.visualViewport;
+    const visualH = vv && Number.isFinite(vv.height) ? vv.height : 0;
+    const innerH = Number.isFinite(window.innerHeight) ? window.innerHeight : 0;
+    return Math.max(visualH, innerH, 0);
+  }
+  function pageTop(el){
+    if(!el) return NaN;
+    const rect = el.getBoundingClientRect();
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    return rect.top + scrollY;
+  }
+  function getBasisEl(){
+    if(isMobile()) return document.getElementById('chartCanvasStickyWrap') || document.getElementById('chartWrap');
+    return document.getElementById('chartWrap') || document.getElementById('chartCanvasStickyWrap');
+  }
+  function getSafetyOffset(){ return isMobile() ? SAFETY_OFFSET_MOBILE : SAFETY_OFFSET_DESKTOP; }
+  function updateInputsHeight(){
+    const root = document.documentElement;
+    const inputsEl = document.getElementById('inputs');
+    const basisEl = getBasisEl();
+    const active = isMobile() || isDesktop();
+    if(!active){
+      root.style.removeProperty('--v869-inputs-height');
+      return;
+    }
+    if(!inputsEl || !basisEl) return;
+
+    const basisTop = pageTop(basisEl);
+    const inputsTop = pageTop(inputsEl);
+    const viewportH = getViewportHeight();
+    if(!Number.isFinite(basisTop) || !Number.isFinite(inputsTop) || !Number.isFinite(viewportH) || viewportH <= 0) return;
+
+    const headerHeightFromBasis = Math.max(0, inputsTop - basisTop);
+    const minHeight = isMobile() ? 180 : 220;
+    const nextHeight = Math.max(minHeight, Math.floor(viewportH - headerHeightFromBasis - getSafetyOffset()));
+    const nextValue = nextHeight + 'px';
+    if(root.style.getPropertyValue('--v869-inputs-height') !== nextValue){
+      root.style.setProperty('--v869-inputs-height', nextValue);
+    }
+  }
+  function schedule(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){ rafId = 0; updateInputsHeight(); });
+  }
+
+  window.addEventListener('load', schedule, {once:true});
+  window.addEventListener('resize', schedule, {passive:true});
+  window.addEventListener('orientationchange', schedule, {passive:true});
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', schedule, {passive:true});
+  [MOBILE_MQ, DESKTOP_MQ].forEach(function(mq){
+    if(!mq) return;
+    if(typeof mq.addEventListener === 'function') mq.addEventListener('change', schedule);
+    else if(typeof mq.addListener === 'function') mq.addListener(schedule);
+  });
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(schedule);
+    window.addEventListener('load', function(){
+      ['chart','chartWrap','chartTopPanel','chartCanvasStickyWrap','tabsBar','tabButtonsRow','simpleStickyNav','detailStickyNav','inputs'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+  const previousDraw = window.draw;
+  if(typeof previousDraw === 'function' && !window.__v869NaturalDrawWrapped){
+    window.__v869NaturalDrawWrapped = true;
+    window.draw = function(){ const result = previousDraw.apply(this, arguments); schedule(); return result; };
+  }
+  const previousRunMonte = window.runMonte;
+  if(typeof previousRunMonte === 'function' && !window.__v869NaturalRunMonteWrapped){
+    window.__v869NaturalRunMonteWrapped = true;
+    window.runMonte = function(){ const result = previousRunMonte.apply(this, arguments); schedule(); return result; };
+  }
+  schedule();
+})();
+</script>
+
+<!-- ===== v872: put chart resize bar fully inside graph category lower center ===== -->
+<style id="v872-chart-resize-bar-inside-category-lower-center">
+/* Scope: chart resize bar placement only. Keep bar size/color and keep tab gap unchanged. */
+#chartTopPanel{
+  position:relative !important;
+}
+#chartCanvasStickyWrap{
+  position:relative !important;
+  padding-bottom:18px !important;
+  overflow:visible !important;
+}
+#chartWrap{
+  padding-bottom:0 !important;
+}
+#chartCanvasStickyWrap > .chart-resize-handle-slot{
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:6px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  height:5px !important;
+  min-height:5px !important;
+  padding:0 !important;
+  margin:0 !important;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  cursor:ns-resize !important;
+  touch-action:none !important;
+  z-index:3 !important;
+}
+#chartCanvasStickyWrap > .chart-resize-handle-slot .chart-resize-handle{
+  width:52px !important;
+  min-width:52px !important;
+  max-width:52px !important;
+  height:5px !important;
+  min-height:5px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:#cbd5e1 !important;
+  box-shadow:none !important;
+  pointer-events:none !important;
+}
+#chartCanvasStickyWrap > .chart-resize-handle-slot .chart-resize-handle::before{
+  content:none !important;
+  display:none !important;
+}
+#tabsBar{
+  margin-top:0 !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap{
+    padding-bottom:16px !important;
+  }
+  #chartWrap{
+    padding-bottom:0 !important;
+  }
+  #chartCanvasStickyWrap > .chart-resize-handle-slot{
+    bottom:5px !important;
+    height:5px !important;
+    min-height:5px !important;
+    padding:0 !important;
+    margin:0 !important;
+  }
+  #chartCanvasStickyWrap > .chart-resize-handle-slot .chart-resize-handle{
+    width:52px !important;
+    min-width:52px !important;
+    max-width:52px !important;
+    height:5px !important;
+    min-height:5px !important;
+  }
+  #tabsBar{
+    margin-top:0 !important;
+  }
+}
+</style>
+
+<!-- ===== v873: restore graph-to-tabs gap to input category spacing only ===== -->
+<style id="v873-graph-tabs-gap-match-input-category">
+/* Scope: only the vertical gap between the graph category and scenario tabs. */
+#tabsBar{
+  margin-top:12px !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #tabsBar{
+    margin-top:12px !important;
+  }
+}
+</style>
+
+<!-- ===== v876: loan detail conflict dialog action buttons vertical layout ===== -->
+<style id="v876-loan-detail-conflict-buttons-vertical">
+/* Scope: only the warning dialog shown before opening the mortgage detail settings. */
+#loanDetailConflictModal .modal-card{
+  width:min(720px, calc(100vw - 32px)) !important;
+}
+#loanDetailConflictModal .modal-actions{
+  display:flex !important;
+  flex-direction:column !important;
+  flex-wrap:nowrap !important;
+  align-items:stretch !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+}
+#loanDetailConflictModal .modal-actions button{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  min-height:38px !important;
+  height:38px !important;
+  padding:0 14px !important;
+  white-space:nowrap !important;
+  line-height:1 !important;
+  text-align:center !important;
+}
+
+@media (max-width:640px), (pointer:coarse){
+  #loanDetailConflictModal .modal-card{
+    width:min(460px, 100%) !important;
+  }
+  #loanDetailConflictModal .modal-actions{
+    gap:8px !important;
+  }
+  #loanDetailConflictModal .modal-actions button{
+    padding-left:12px !important;
+    padding-right:12px !important;
+    font-size:13px !important;
+  }
+}
+
+@media (max-width:340px){
+  #loanDetailConflictModal .modal-actions button{
+    font-size:12px !important;
+    padding-left:10px !important;
+    padding-right:10px !important;
   }
 }
 </style>
