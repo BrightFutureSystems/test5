@@ -28990,9 +28990,71 @@ body.body-v844-chart-resizing{
 
 
 
-</body>
-</html>
+<!-- ===== v880: tab/menu line clipping + inactive bottom line + active-drag mask fix ===== -->
+<style id="v880-tab-menu-line-fixes">
+/* Scope: scenario tabs / fixed menu bar only. */
+#modeMenuBar{
+  overflow:hidden !important;
+  border-top-right-radius:16px !important;
+}
+#modeMenuBar #detailStickyNav,
+#modeMenuBar #simpleStickyNav{
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  border-radius:0 16px 0 0 !important;
+  background-clip:padding-box !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #modeMenuBar{
+    border-top-right-radius:14px !important;
+  }
+  #modeMenuBar #detailStickyNav,
+  #modeMenuBar #simpleStickyNav{
+    border-radius:0 14px 0 0 !important;
+  }
+}
 
+/* Keep the bottom horizontal line under all non-active tabs and the plus tab. */
+.tab-btn:not(.active),
+#addTabBtn{
+  border-bottom-color:#cfd9e5 !important;
+}
+.tab-btn:not(.active)::before,
+#addTabBtn::before{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:-1px !important;
+  height:1px !important;
+  background:#cfd9e5 !important;
+  z-index:60 !important;
+  pointer-events:none !important;
+}
+
+/* During dragging, an active tab must keep hiding the menu boundary line. */
+.tab-btn.active.tab-dragging{
+  visibility:visible !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  color:transparent !important;
+  box-shadow:none !important;
+}
+.tab-btn.active.tab-dragging::before{
+  content:"" !important;
+  position:absolute !important;
+  left:1px !important;
+  right:1px !important;
+  bottom:-3px !important;
+  height:5px !important;
+  background:#fff !important;
+  z-index:70 !important;
+  pointer-events:none !important;
+}
+.tab-btn.active.tab-dragging::after{
+  content:none !important;
+}
+</style>
 <!-- ===== v817: reduce simple mode slider thumb shadow only ===== -->
 <style>
   #simpleModePanel .simple-mode-slider::-webkit-slider-thumb{
@@ -32063,3 +32125,311 @@ body.body-v846-chart-resizing{
   }
 }
 </style>
+
+<!-- ===== v879: tab and fixed menu border color + top line/right corner correction ===== -->
+<style id="v879-tab-fixed-menu-frame-correction">
+/* Scope: scenario tabs and the fixed normal menu bar only. */
+#tabsBar{
+  position:relative !important;
+  z-index:26 !important;
+}
+#tabsBar::after{
+  background:#cfd9e5 !important;
+}
+.tab-btn,
+#addTabBtn{
+  border-color:#cfd9e5 !important;
+}
+.tab-btn.active{
+  border-color:#cfd9e5 !important;
+  border-bottom-color:transparent !important;
+}
+.tab-btn:not(.active)::before,
+#addTabBtn::before{
+  background:#cfd9e5 !important;
+  bottom:-1px !important;
+  height:1px !important;
+  z-index:60 !important;
+}
+.tab-btn.active::before{
+  left:1px !important;
+  right:1px !important;
+  bottom:-3px !important;
+  height:5px !important;
+  background:#fff !important;
+  z-index:70 !important;
+}
+#modeMenuBar{
+  z-index:24 !important;
+  overflow:visible !important;
+}
+#modeMenuBar #detailStickyNav,
+#modeMenuBar #simpleStickyNav{
+  border-color:#cfd9e5 !important;
+  border-top:1px solid #cfd9e5 !important;
+  border-radius:0 16px 0 0 !important;
+}
+#modeMenuBar #detailStickyNav::after,
+#modeMenuBar #simpleStickyNav::after{
+  border-color:#cfd9e5 !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #modeMenuBar #detailStickyNav,
+  #modeMenuBar #simpleStickyNav{
+    border-radius:0 14px 0 0 !important;
+  }
+}
+</style>
+<!-- ===== v881: remove full-width tab baseline and redraw only required tab/menu lines ===== -->
+<style id="v881-tab-menu-line-redraw">
+/* Scope: scenario tabs and fixed normal menu bar only. */
+
+/* Remove the full-width baseline that protrudes past the rounded fixed-nav corner. */
+#tabsBar::after{
+  content:none !important;
+  display:none !important;
+}
+
+/* Align tab frame/vertical borders with the graph/category frame color. */
+.tab-btn,
+#addTabBtn{
+  border-color:#cfd9e5 !important;
+}
+
+/* Inactive tabs and the plus tab keep a lower horizontal line. */
+.tab-btn:not(.active),
+#addTabBtn{
+  border-bottom-color:#cfd9e5 !important;
+  box-shadow:inset 0 -1px 0 #cfd9e5 !important;
+}
+.tab-btn:not(.active)::before,
+#addTabBtn::before{
+  content:none !important;
+}
+.tab-btn:not(.active)::after,
+#addTabBtn::after{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:-1px !important;
+  height:1px !important;
+  background:#cfd9e5 !important;
+  border-radius:0 !important;
+  pointer-events:none !important;
+  z-index:80 !important;
+}
+
+/* Active tab has no lower boundary; it masks only the menu top border under itself. */
+.tab-btn.active{
+  border-color:#cfd9e5 !important;
+  border-bottom-color:#fff !important;
+  box-shadow:none !important;
+}
+.tab-btn.active::before{
+  content:none !important;
+}
+.tab-btn.active::after{
+  content:"" !important;
+  position:absolute !important;
+  left:1px !important;
+  right:1px !important;
+  bottom:-2px !important;
+  height:4px !important;
+  background:#fff !important;
+  border-radius:0 !important;
+  pointer-events:none !important;
+  z-index:90 !important;
+}
+
+/* Active-tab dragging: keep the source slot as a white mask so the lower line never appears. */
+.tab-btn.active.tab-dragging{
+  visibility:visible !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  color:transparent !important;
+  box-shadow:none !important;
+}
+.tab-btn.active.tab-dragging::before{
+  content:none !important;
+}
+.tab-btn.active.tab-dragging::after{
+  content:"" !important;
+  position:absolute !important;
+  left:1px !important;
+  right:1px !important;
+  bottom:-2px !important;
+  height:4px !important;
+  background:#fff !important;
+  border-radius:0 !important;
+  pointer-events:none !important;
+  z-index:90 !important;
+}
+
+/* Fixed nav top line is drawn by the nav itself and clipped by its own rounded corner. */
+#modeMenuBar{
+  overflow:hidden !important;
+  border-top-right-radius:16px !important;
+  background:#fff !important;
+}
+#modeMenuBar #detailStickyNav,
+#modeMenuBar #simpleStickyNav{
+  border-color:#cfd9e5 !important;
+  border-top:1px solid #cfd9e5 !important;
+  border-radius:0 16px 0 0 !important;
+  background:#fff !important;
+  background-clip:padding-box !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #modeMenuBar{
+    border-top-right-radius:14px !important;
+  }
+  #modeMenuBar #detailStickyNav,
+  #modeMenuBar #simpleStickyNav{
+    border-radius:0 14px 0 0 !important;
+  }
+}
+</style>
+<!-- ===== v882: tab drag ghost height and active source mask width fix ===== -->
+<style id="v882-tab-drag-ghost-and-mask-fix">
+/* Scope: scenario tab drag visuals only. */
+.tab-btn-drag-ghost,
+.tab-btn-drag-ghost.tab-btn{
+  height:44px !important;
+  min-height:44px !important;
+  max-height:44px !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  box-sizing:border-box !important;
+}
+.tab-btn-drag-ghost::before,
+.tab-btn-drag-ghost::after{
+  content:none !important;
+  display:none !important;
+}
+
+/* Keep the original active-tab slot as a full-width white mask while dragging. */
+.tab-btn.active.tab-dragging::before{
+  content:none !important;
+  display:none !important;
+}
+.tab-btn.active.tab-dragging::after{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:-2px !important;
+  height:4px !important;
+  background:#fff !important;
+  border-radius:0 !important;
+  pointer-events:none !important;
+  z-index:90 !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  .tab-btn-drag-ghost,
+  .tab-btn-drag-ghost.tab-btn{
+    height:40px !important;
+    min-height:40px !important;
+    max-height:40px !important;
+  }
+}
+</style>
+<!-- ===== v883: active drag mask follows ghost; inactive ghost bottom clipping ===== -->
+<style id="v883-tab-drag-ghost-following-mask">
+/* Scope: scenario tab drag visuals only. */
+
+/* Active source slot: do not leave the white mask behind at the original position. */
+.tab-btn.active.tab-dragging::before,
+.tab-btn.active.tab-dragging::after{
+  content:none !important;
+  display:none !important;
+}
+
+/* Active ghost carries the white lower mask while it moves. */
+.tab-btn-drag-ghost.active,
+.tab-btn-drag-ghost.tab-btn.active{
+  height:44px !important;
+  min-height:44px !important;
+  max-height:44px !important;
+  overflow:visible !important;
+}
+.tab-btn-drag-ghost.active::before{
+  content:none !important;
+  display:none !important;
+}
+.tab-btn-drag-ghost.active::after{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:-2px !important;
+  height:4px !important;
+  background:#fff !important;
+  border-radius:0 !important;
+  pointer-events:none !important;
+  z-index:90 !important;
+}
+
+/* Non-active ghost: visible height must not spill below the tab/menu boundary. */
+.tab-btn-drag-ghost:not(.active),
+.tab-btn-drag-ghost.tab-btn:not(.active){
+  height:43px !important;
+  min-height:43px !important;
+  max-height:43px !important;
+  overflow:hidden !important;
+}
+.tab-btn-drag-ghost:not(.active)::before,
+.tab-btn-drag-ghost:not(.active)::after{
+  content:none !important;
+  display:none !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  .tab-btn-drag-ghost.active,
+  .tab-btn-drag-ghost.tab-btn.active{
+    height:40px !important;
+    min-height:40px !important;
+    max-height:40px !important;
+  }
+  .tab-btn-drag-ghost:not(.active),
+  .tab-btn-drag-ghost.tab-btn:not(.active){
+    height:39px !important;
+    min-height:39px !important;
+    max-height:39px !important;
+  }
+}
+</style>
+<!-- ===== v884: active fixed-nav frame box sizing correction ===== -->
+<style id="v884-fixed-nav-active-frame-box-sizing">
+/* Scope: current-location active frame in simple/detail fixed nav only. */
+#modeMenuBar #detailStickyNav::after,
+#modeMenuBar #simpleStickyNav::after{
+  box-sizing:border-box !important;
+}
+</style>
+<!-- ===== v885: fixed-nav active frame vertical/text centering correction ===== -->
+<style id="v885-fixed-nav-active-frame-centering">
+/* Scope: current-location active frame and active label in simple/detail fixed nav only. */
+
+/* Move only the active frame 1px upward so its gap to the fixed-nav top/bottom looks even. */
+#modeMenuBar #detailStickyNav::after,
+#modeMenuBar #simpleStickyNav::after{
+  top:calc(var(--sticky-active-top) - 1px) !important;
+  height:var(--sticky-active-height) !important;
+  box-sizing:border-box !important;
+}
+
+/* Keep the active label visually centered inside the frame without changing layout width. */
+#modeMenuBar #detailStickyNav .detail-sticky-btn.active,
+#modeMenuBar #simpleStickyNav .detail-sticky-btn.active{
+  box-sizing:border-box !important;
+  line-height:1 !important;
+  padding-top:1px !important;
+  padding-bottom:0 !important;
+  text-align:center !important;
+}
+</style>
+</body>
+</html>
