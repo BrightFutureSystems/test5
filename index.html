@@ -32431,5 +32431,201 @@ body.body-v846-chart-resizing{
   text-align:center !important;
 }
 </style>
+<!-- ===== v886: preview sheet dim limited to tab top and tracks chart height ===== -->
+<style id="v886-preview-dim-tab-top-only">
+/* Scope: graph-axis / withdrawal / crash / monte preview sheets only. */
+
+/* Prevent generic modal backdrop styling from graying the graph area. */
+.withdrawal-preview-backdrop.show,
+.withdrawal-preview-backdrop.preview-visible{
+  background:transparent !important;
+}
+
+/* The dark dim starts at the tab top edge; the area above it stays clear. */
+.withdrawal-preview-backdrop .withdrawal-preview-dim{
+  top:var(--withdrawal-preview-top, 0px) !important;
+  bottom:0 !important;
+}
+</style>
+<script id="v886-preview-dim-tab-top-tracker">
+(function(){
+  function computePreviewDimTop(){
+    const tabsBar = document.getElementById('tabsBar');
+    if(tabsBar){
+      const rect = tabsBar.getBoundingClientRect();
+      if(Number.isFinite(rect.top)) return Math.max(0, Math.round(rect.top + window.scrollY));
+    }
+    const chartWrap = document.getElementById('chartWrap');
+    if(chartWrap){
+      const rect = chartWrap.getBoundingClientRect();
+      if(Number.isFinite(rect.bottom)) return Math.max(0, Math.round(rect.bottom + window.scrollY));
+    }
+    return 0;
+  }
+
+  window.updateWithdrawalPreviewTopVar = function(){
+    const top = computePreviewDimTop();
+    const docHeight = Math.max(
+      document.documentElement.scrollHeight || 0,
+      document.body?.scrollHeight || 0,
+      window.innerHeight || 0
+    );
+    document.documentElement.style.setProperty('--withdrawal-preview-top', `${top}px`);
+    document.documentElement.style.setProperty('--withdrawal-preview-doc-height', `${docHeight}px`);
+  };
+
+  function isPreviewSheetVisible(){
+    return !!document.querySelector('.withdrawal-preview-backdrop.show, .withdrawal-preview-backdrop.preview-visible');
+  }
+
+  function updateIfPreviewOpen(){
+    if(!isPreviewSheetVisible()) return;
+    window.updateWithdrawalPreviewTopVar();
+  }
+
+  let rafId = 0;
+  function schedulePreviewDimUpdate(){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){
+      rafId = 0;
+      updateIfPreviewOpen();
+    });
+  }
+
+  window.addEventListener('resize', schedulePreviewDimUpdate, {passive:true});
+  window.addEventListener('scroll', schedulePreviewDimUpdate, {passive:true});
+
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(schedulePreviewDimUpdate);
+    window.addEventListener('load', function(){
+      ['chartWrap','tabsBar','chartCanvasStickyWrap'].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+    }, {once:true});
+  }
+
+  document.addEventListener('pointermove', function(){
+    if(document.body.classList.contains('body-v844-chart-resizing')) schedulePreviewDimUpdate();
+  }, {passive:true});
+})();
+</script>
+<!-- ===== v887: disable input-mode switch and fixed-nav hover/action while preview dimmed ===== -->
+<style id="v887-preview-disable-mode-and-fixed-nav-hover">
+/* Scope: preview-sheet dimmed state only. */
+
+/* Disable simple/detail switch while a preview sheet is open. */
+body.withdrawal-preview-open #inputModeToggleBtn,
+body.withdrawal-preview-open #inputModeToggleBtn *,
+body.withdrawal-preview-open .input-mode-toggle,
+body.withdrawal-preview-open .input-mode-toggle *{
+  pointer-events:none !important;
+  cursor:not-allowed !important;
+  transition:none !important;
+  animation:none !important;
+}
+
+body.withdrawal-preview-open #inputModeToggleBtn:hover,
+body.withdrawal-preview-open .input-mode-toggle:hover,
+body.withdrawal-preview-open #inputModeToggleBtn:hover .input-mode-toggle-track,
+body.withdrawal-preview-open .input-mode-toggle:hover .input-mode-toggle-track,
+body.withdrawal-preview-open #inputModeToggleBtn:hover .input-mode-toggle-option,
+body.withdrawal-preview-open .input-mode-toggle:hover .input-mode-toggle-option{
+  background:inherit !important;
+  border-color:inherit !important;
+  box-shadow:inherit !important;
+  color:inherit !important;
+}
+
+/* Disable fixed-nav hover animation and section movement while a preview sheet is open. */
+body.withdrawal-preview-open #modeMenuBar,
+body.withdrawal-preview-open #modeMenuBar *,
+body.withdrawal-preview-open #simpleStickyNav,
+body.withdrawal-preview-open #detailStickyNav,
+body.withdrawal-preview-open #simpleStickyNav *,
+body.withdrawal-preview-open #detailStickyNav *{
+  pointer-events:none !important;
+  cursor:not-allowed !important;
+  transition:none !important;
+  animation:none !important;
+  scroll-behavior:auto !important;
+}
+
+body.withdrawal-preview-open #simpleStickyNav .detail-sticky-btn:hover,
+body.withdrawal-preview-open #detailStickyNav .detail-sticky-btn:hover{
+  color:inherit !important;
+  border-color:transparent !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+body.withdrawal-preview-open #simpleStickyNav .detail-sticky-btn.active:hover,
+body.withdrawal-preview-open #detailStickyNav .detail-sticky-btn.active:hover{
+  color:#0f172a !important;
+  border-color:transparent !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+</style>
+<!-- ===== v888: disable fixed-nav text selection while preview dimmed ===== -->
+<style id="v888-preview-disable-fixed-nav-text-selection">
+/* Scope: fixed nav only while preview sheet is open. */
+body.withdrawal-preview-open #modeMenuBar,
+body.withdrawal-preview-open #modeMenuBar *,
+body.withdrawal-preview-open #simpleStickyNav,
+body.withdrawal-preview-open #detailStickyNav,
+body.withdrawal-preview-open #simpleStickyNav *,
+body.withdrawal-preview-open #detailStickyNav *{
+  user-select:none !important;
+  -webkit-user-select:none !important;
+  -webkit-touch-callout:none !important;
+}
+</style>
+<!-- ===== v889: mobile modal title bands flush to card edges ===== -->
+<style id="v889-mobile-modal-title-band-flush">
+/* Scope: mobile title bands for full modal cards only. No JS / structure changes. */
+@media (max-width:900px), (pointer:coarse){
+  .modal-card:not(.withdrawal-preview-sheet){
+    --v889-title-pad-top:18px;
+    --v889-title-pad-x:16px;
+  }
+
+  .income-curve-modal,
+  .loan-detail-modal,
+  .edu-detail-modal,
+  .insurance-assist-modal{
+    --v889-title-pad-top:14px;
+    --v889-title-pad-x:10px;
+  }
+
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #pensionHelperTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #educationCopyTitle,
+    #insuranceAssistTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ){
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:48px !important;
+    margin:calc(-1 * var(--v889-title-pad-top)) calc(-1 * var(--v889-title-pad-x)) 14px !important;
+    padding:12px 14px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+    line-height:1.35 !important;
+    box-shadow:none !important;
+  }
+}
+</style>
 </body>
 </html>
