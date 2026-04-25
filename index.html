@@ -32726,5 +32726,426 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 }
 </style>
+<!-- ===== v891: mobile modal title band strict visual unification ===== -->
+<style id="v891-mobile-title-band-strict-unification">
+/* Scope: mobile modal / preview-sheet title bands only. No JS / structure changes. */
+@media (max-width:900px), (pointer:coarse){
+  /*
+    Strict standard for all mobile title bands:
+    - same visual height
+    - no white rim around the band
+    - title text vertically centered by flex + one-line fixed band
+    - same font size / line-height / padding
+  */
+
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #pensionHelperTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #educationCopyTitle,
+    #insuranceAssistTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ),
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+    #withdrawalRuleTitle,
+    #crashTestTitle,
+    #monteCarloSettingsTitle,
+    #chartAxisTitle
+  ){
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:48px !important;
+    min-height:48px !important;
+    max-height:48px !important;
+    padding:0 14px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+    overflow:hidden !important;
+    flex:0 0 48px !important;
+  }
+
+  /*
+    Pull normal modal title bands exactly to the card edges.
+    Existing mobile modal cards have either 18px/18px or 14px/10px top/x padding.
+  */
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #pensionHelperTitle,
+    #educationCopyTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ){
+    margin:-18px -18px 14px !important;
+  }
+
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #insuranceAssistTitle
+  ){
+    margin:-14px -10px 14px !important;
+  }
+
+  /*
+    Preview sheet title bands already live inside the sheet scroller, so they stay at the top of it.
+    Make the rule explicit to avoid inheriting older margins.
+  */
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+    #withdrawalRuleTitle,
+    #crashTestTitle,
+    #monteCarloSettingsTitle,
+    #chartAxisTitle
+  ){
+    width:auto !important;
+    margin:0 0 14px !important;
+  }
+
+  /*
+    Prevent older generic modal spacing rules from re-adding vertical offset after the band.
+  */
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #pensionHelperTitle,
+    #loanDetailTitle,
+    #educationDetailTitle,
+    #educationCopyTitle,
+    #insuranceAssistTitle,
+    #fireDiagnosisTitle,
+    #overlaySettingsTitle,
+    #cashflowModalTitle
+  ) + *,
+  .withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+    #withdrawalRuleTitle,
+    #crashTestTitle,
+    #monteCarloSettingsTitle,
+    #chartAxisTitle
+  ) + *{
+    margin-top:0 !important;
+  }
+}
+</style>
+<!-- ===== v892: modal title bands unified across PC and mobile ===== -->
+<style id="v892-title-band-unified-all-viewports">
+/* Scope: modal / preview-sheet title bands only. No JS / structure changes. */
+
+/*
+  Standard title band for both PC and mobile:
+  same as the mobile standard already used in v891.
+*/
+.modal-card:not(.withdrawal-preview-sheet) > :is(
+  #incomeCurveTitle,
+  #pensionHelperTitle,
+  #loanDetailTitle,
+  #educationDetailTitle,
+  #educationCopyTitle,
+  #insuranceAssistTitle,
+  #fireDiagnosisTitle,
+  #overlaySettingsTitle,
+  #cashflowModalTitle
+),
+.withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+  #withdrawalRuleTitle,
+  #crashTestTitle,
+  #monteCarloSettingsTitle,
+  #chartAxisTitle
+){
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  padding:0 14px !important;
+  border:0 !important;
+  border-bottom:1px solid #cfd9e5 !important;
+  border-radius:18px 18px 0 0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+  color:#122b45 !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  overflow:hidden !important;
+  flex:0 0 48px !important;
+}
+
+/*
+  Pull normal modal title bands to the modal-card edges.
+  These groups match the existing modal-card padding patterns.
+*/
+.modal-card:not(.withdrawal-preview-sheet) > :is(
+  #pensionHelperTitle,
+  #educationCopyTitle,
+  #fireDiagnosisTitle,
+  #overlaySettingsTitle,
+  #cashflowModalTitle
+){
+  margin:-18px -18px 14px !important;
+}
+
+.modal-card:not(.withdrawal-preview-sheet) > :is(
+  #incomeCurveTitle,
+  #loanDetailTitle,
+  #educationDetailTitle,
+  #insuranceAssistTitle
+){
+  margin:-14px -10px 14px !important;
+}
+
+/* Preview-sheet titles live inside the sheet scroll area. */
+.withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+  #withdrawalRuleTitle,
+  #crashTestTitle,
+  #monteCarloSettingsTitle,
+  #chartAxisTitle
+){
+  width:auto !important;
+  margin:0 0 14px !important;
+}
+
+/* Do not let older generic spacing rules add extra vertical offset after the title band. */
+.modal-card:not(.withdrawal-preview-sheet) > :is(
+  #incomeCurveTitle,
+  #pensionHelperTitle,
+  #loanDetailTitle,
+  #educationDetailTitle,
+  #educationCopyTitle,
+  #insuranceAssistTitle,
+  #fireDiagnosisTitle,
+  #overlaySettingsTitle,
+  #cashflowModalTitle
+) + *,
+.withdrawal-preview-sheet .withdrawal-preview-scroll > :is(
+  #withdrawalRuleTitle,
+  #crashTestTitle,
+  #monteCarloSettingsTitle,
+  #chartAxisTitle
+) + *{
+  margin-top:0 !important;
+}
+</style>
+<!-- ===== v893: cashflow title band match standard modal title height ===== -->
+<style id="v893-cashflow-title-band-match-standard">
+/* Scope: 年度別収支表 title band only. */
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+#cashflowModalTitle{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  padding:0 14px !important;
+  border:0 !important;
+  border-bottom:1px solid #cfd9e5 !important;
+  border-radius:18px 18px 0 0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+  color:#122b45 !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  overflow:hidden !important;
+  flex:0 0 48px !important;
+  margin:-18px -18px 14px !important;
+}
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + *,
+#cashflowModalTitle + *{
+  margin-top:0 !important;
+}
+</style>
+<!-- ===== v894: cashflow title band clipping fix ===== -->
+<style id="v894-cashflow-title-band-clipping-fix">
+/* Scope: 年度別収支表 title band only. */
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+#cashflowModalTitle{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  margin:0 0 14px !important;
+  padding:0 14px !important;
+  border:0 !important;
+  border-bottom:1px solid #cfd9e5 !important;
+  border-radius:18px 18px 0 0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+  color:#122b45 !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  overflow:hidden !important;
+  flex:0 0 48px !important;
+  transform:none !important;
+}
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + *,
+#cashflowModalTitle + *{
+  margin-top:0 !important;
+}
+</style>
+<!-- ===== v895: cashflow modal title flush without clipping ===== -->
+<style id="v895-cashflow-title-flush-no-clipping">
+/* Scope: 年度別収支表 title band only. PC / mobile common. */
+
+/*
+  Cashflow modal has its own card padding:
+  PC: 14px 14px 12px
+  mobile: 10px 8px 10px
+  Pull the title band by exactly that padding so the band reaches the card edges,
+  without pulling it above the card and clipping the text.
+*/
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+#cashflowModalTitle{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  margin:-14px -14px 14px !important;
+  padding:0 14px !important;
+  border:0 !important;
+  border-bottom:1px solid #cfd9e5 !important;
+  border-radius:18px 18px 0 0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+  color:#122b45 !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  overflow:hidden !important;
+  flex:0 0 48px !important;
+  transform:none !important;
+}
+
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + *,
+#cashflowModalTitle + *{
+  margin-top:0 !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+  #cashflowModalTitle{
+    margin:-10px -8px 14px !important;
+    padding:0 14px !important;
+  }
+}
+</style>
+<!-- ===== v896: cashflow title no negative top clipping ===== -->
+<style id="v896-cashflow-title-no-negative-top-clipping">
+/* Scope: 年度別収支表 title band area only. PC / mobile common. */
+
+/*
+  Do not pull the title upward with negative top margin.
+  The cashflow modal card has overflow:hidden, so negative top margin clips the title text.
+  Instead, remove only the card's top padding and let the title band sit naturally at the card top.
+*/
+#cashflowModal .modal-card.cashflow-modal{
+  padding-top:0 !important;
+}
+
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+#cashflowModalTitle{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  margin:0 -14px 14px !important;
+  padding:0 14px !important;
+  border:0 !important;
+  border-bottom:1px solid #cfd9e5 !important;
+  border-radius:18px 18px 0 0 !important;
+  background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+  color:#122b45 !important;
+  font-size:16px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  box-shadow:none !important;
+  overflow:hidden !important;
+  flex:0 0 48px !important;
+  transform:none !important;
+}
+
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle + *,
+#cashflowModalTitle + *{
+  margin-top:0 !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  #cashflowModal .modal-card.cashflow-modal{
+    padding-top:0 !important;
+  }
+
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+  #cashflowModalTitle{
+    margin:0 -8px 14px !important;
+    padding:0 14px !important;
+  }
+}
+</style>
+<!-- ===== v897: PC title band white-rim fix for four specified modals ===== -->
+<style id="v897-pc-four-modal-title-white-rim-fix">
+/* Scope: PC title bands only for the four specified modals. No JS / structure changes. */
+@media (min-width:901px) and (pointer:fine){
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #insuranceAssistTitle,
+    #loanDetailTitle,
+    #educationDetailTitle
+  ){
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    height:48px !important;
+    min-height:48px !important;
+    max-height:48px !important;
+    margin:-18px -16px 14px !important;
+    padding:0 14px !important;
+    border:0 !important;
+    border-bottom:1px solid #cfd9e5 !important;
+    border-radius:18px 18px 0 0 !important;
+    background:linear-gradient(180deg,#f7fbff 0%, #edf5fd 100%) !important;
+    color:#122b45 !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+    line-height:1 !important;
+    box-shadow:none !important;
+    overflow:hidden !important;
+    flex:0 0 48px !important;
+  }
+
+  .modal-card:not(.withdrawal-preview-sheet) > :is(
+    #incomeCurveTitle,
+    #insuranceAssistTitle,
+    #loanDetailTitle,
+    #educationDetailTitle
+  ) + *{
+    margin-top:0 !important;
+  }
+}
+</style>
 </body>
 </html>
