@@ -6635,8 +6635,12 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
     next.borderWidth = graphType === 'asset' ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
     next.borderDash = dash.length ? dash.slice() : [];
     if(next.type === 'line'){
-      next.backgroundColor = graphType === 'asset' ? colorToRgba(color, 0.09) : color + '22';
-      if(graphType === 'asset') next.fill = {target:"origin"};
+      if(graphType === 'asset'){
+        next.backgroundColor = (ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", 0.18, 0.028);
+        next.fill = {target:"origin"};
+      }else{
+        next.backgroundColor = color + '22';
+      }
     }
     return next;
   });
@@ -13112,8 +13116,9 @@ function renderTabs(){
     const lineStyle = normalizeOverlayLineStyle(style.lineStyle);
     const lineWidth = resolveAssetOverlayLineWidth(style.lineWidth);
     const lineBg = buildOverlayPreviewSvgDataUrl(lineColor, lineStyle, style.lineWidth, 60);
+    const lineBgMobile = buildOverlayPreviewSvgDataUrl(lineColor, lineStyle, style.lineWidth, 44);
     const title = overlayLocked ? "重ね描き対象外です。設定で追加してください" : "";
-    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}" ${title ? `title="${escapeHtml(title)}" aria-disabled="true"` : ""} style="${overlayIncluded ? `--overlay-line-color:${escapeHtml(lineColor)};--overlay-line-style:${escapeHtml(lineStyle)};--overlay-line-width:${escapeHtml(String(lineWidth))}px;--overlay-line-bg:${escapeHtml(lineBg)};` : ""}">${escapeHtml(s.name)}</button>`;
+    return `<button type="button" class="${cls}${draggingClass}" data-tab-index="${i}" data-scenario-id="${escapeHtml(s.id || "")}" draggable="${scenarios.length > 1 ? "true" : "false"}" ${title ? `title="${escapeHtml(title)}" aria-disabled="true"` : ""} style="${overlayIncluded ? `--overlay-line-color:${escapeHtml(lineColor)};--overlay-line-style:${escapeHtml(lineStyle)};--overlay-line-width:${escapeHtml(String(lineWidth))}px;--overlay-line-bg:${escapeHtml(lineBg)};--overlay-line-bg-mobile:${escapeHtml(lineBgMobile)};` : ""}">${escapeHtml(s.name)}</button>`;
   }).join("");
   el.querySelectorAll(".tab-btn").forEach(btn=>{
     const idx = +btn.dataset.tabIndex;
@@ -19833,6 +19838,36 @@ function colorToRgba(color, alpha){
   const b = parseInt(hex.slice(5,7), 16);
   return `rgba(${r},${g},${b},${a})`;
 }
+function makeAssetFillGradientFromZero(chart, color, direction = "both", strongAlpha = 0.12, weakAlpha = 0.012){
+  const area = chart?.chartArea;
+  const ctx = chart?.ctx;
+  const yScale = chart?.scales?.y;
+  if(!area || !ctx || !yScale) return colorToRgba(color, strongAlpha);
+  const top = area.top;
+  const bottom = area.bottom;
+  const height = Math.max(1, bottom - top);
+  let zeroPx = yScale.getPixelForValue(0);
+  if(!Number.isFinite(zeroPx)) zeroPx = bottom;
+  zeroPx = Math.max(top, Math.min(bottom, zeroPx));
+  const zeroStop = Math.max(0, Math.min(1, (zeroPx - top) / height));
+  const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+  if(direction === "positive"){
+    gradient.addColorStop(0, colorToRgba(color, strongAlpha));
+    gradient.addColorStop(zeroStop, colorToRgba(color, weakAlpha));
+    gradient.addColorStop(1, colorToRgba(color, weakAlpha));
+    return gradient;
+  }
+  if(direction === "negative"){
+    gradient.addColorStop(0, colorToRgba(color, weakAlpha));
+    gradient.addColorStop(zeroStop, colorToRgba(color, weakAlpha));
+    gradient.addColorStop(1, colorToRgba(color, strongAlpha));
+    return gradient;
+  }
+  gradient.addColorStop(0, colorToRgba(color, strongAlpha));
+  gradient.addColorStop(zeroStop, colorToRgba(color, weakAlpha));
+  gradient.addColorStop(1, colorToRgba(color, strongAlpha));
+  return gradient;
+}
 function buildLinePointsWithZeroCrossings(labels, data){
   const points = [];
   for(let i = 0; i < labels.length; i++){
@@ -19897,7 +19932,7 @@ function makeBarDataset(label, labels, data, opts={}){
 function buildAssetDatasets(sim, color, overlay, labelPrefix=""){
   if(overlay){
     return [makeLineDataset(labelPrefix || "総資産", sim.labels, sim.totalAssets, {
-      borderColor:color, backgroundColor:colorToRgba(color, 0.09), borderWidth:1.6, fill:{target:"origin"}, order:10
+      borderColor:color, backgroundColor:(ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", 0.18, 0.028), borderWidth:1.6, fill:{target:"origin"}, order:10
     })];
   }
   return [{
@@ -19918,7 +19953,9 @@ function buildAssetDatasets(sim, color, overlay, labelPrefix=""){
       },
       backgroundColor:ctx=>{
         const y0 = Number(ctx.p0.parsed.y), y1 = Number(ctx.p1.parsed.y);
-        return (y0 < 0 || y1 < 0) ? "rgba(217,91,106,0.10)" : "rgba(34,161,111,0.09)";
+        return (y0 < 0 || y1 < 0)
+          ? makeAssetFillGradientFromZero(ctx.chart, "#d95b6a", "negative", 0.12, 0.014)
+          : makeAssetFillGradientFromZero(ctx.chart, "#22a16f", "positive", 0.11, 0.012);
       }
     }
   }];
@@ -34603,6 +34640,18 @@ body.withdrawal-preview-open #detailStickyNav *{
       width:60px !important;
       transform:translateX(-50%) !important;
       background-size:60px 12px !important;
+    }
+  }
+</style>
+
+
+<!-- ===== v963: shorten mobile tab overlay preview line only ===== -->
+<style>
+  @media (max-width:900px), (pointer:coarse){
+    .tab-btn.overlay-included::after{
+      width:44px !important;
+      background-image:var(--overlay-line-bg-mobile, var(--overlay-line-bg)) !important;
+      background-size:44px 12px !important;
     }
   }
 </style>
