@@ -851,6 +851,7 @@ document.addEventListener("scroll", (ev)=>{
   .overlay-settings-table th:nth-child(4),.overlay-settings-table td:nth-child(4){width:112px;min-width:112px;}
   .overlay-settings-table th:nth-child(5),.overlay-settings-table td:nth-child(5){width:88px;min-width:88px;}
   .overlay-settings-table th:nth-child(6),.overlay-settings-table td:nth-child(6){width:96px;min-width:96px;}
+  .overlay-settings-table th:nth-child(7),.overlay-settings-table td:nth-child(7){width:56px;min-width:56px;}
   .overlay-settings-table .overlay-condition-name{display:inline-block;width:100%;max-width:none;font-weight:400;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
   .monte-settings-modal{width:min(760px, calc(100vw - 20px));max-height:min(92vh, 860px);overflow:auto;}
   .monte-settings-grid{display:flex;flex-direction:column;gap:12px;}
@@ -4003,6 +4004,227 @@ document.addEventListener("scroll", (ev)=>{
   border-radius:999px !important;
   background:linear-gradient(90deg,#70acff 0%, #4f8eff 100%) !important;
 }
+
+
+/* ===== v1008: unify graph-category top controls visual style only ===== */
+#chartTopBar{
+  --graph-control-height:40px;
+  --graph-control-radius:12px;
+  --graph-control-border:#cfd9e5;
+  --graph-control-border-hover:#b8c8db;
+  --graph-control-bg:#fff;
+  --graph-control-bg-hover:#f8fbff;
+  --graph-control-text:#2f4a66;
+}
+#chartTopBar .graph-select,
+#chartTopBar .split-btn-group,
+#chartTopBar .graph-menu-btn{
+  height:var(--graph-control-height) !important;
+  min-height:var(--graph-control-height) !important;
+  border-color:var(--graph-control-border) !important;
+  border-radius:var(--graph-control-radius) !important;
+  background:var(--graph-control-bg) !important;
+  color:var(--graph-control-text) !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04) !important;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+  transform:none !important;
+}
+#chartTopBar .graph-select{
+  padding:0 32px 0 10px !important;
+  line-height:var(--graph-control-height) !important;
+}
+#chartTopBar .split-btn-group{
+  display:inline-flex !important;
+  align-items:stretch !important;
+  overflow:hidden !important;
+  border:1px solid var(--graph-control-border) !important;
+}
+#chartTopBar .split-btn-group > button{
+  height:calc(var(--graph-control-height) - 2px) !important;
+  min-height:calc(var(--graph-control-height) - 2px) !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:var(--graph-control-text) !important;
+  box-shadow:none !important;
+  font-weight:700 !important;
+  transform:none !important;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+}
+#chartTopBar .split-btn-group > button + button{
+  border-left:1px solid var(--graph-control-border) !important;
+}
+#chartTopBar .graph-menu-btn{
+  width:var(--graph-control-height) !important;
+  min-width:var(--graph-control-height) !important;
+  padding:0 !important;
+}
+#overflowMenuBtn.hero-menu-btn{
+  width:40px !important;
+  height:40px !important;
+  min-width:40px !important;
+  border-color:#cfd9e5 !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:#2f4a66 !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04) !important;
+  transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+  transform:none !important;
+}
+#chartTopBar .graph-select:hover,
+#chartTopBar .split-btn-group:hover,
+#chartTopBar .split-btn-group > button:hover,
+#chartTopBar .graph-menu-btn:hover,
+#overflowMenuBtn.hero-menu-btn:hover{
+  background:#f8fbff !important;
+  border-color:#b8c8db !important;
+  color:#122b45 !important;
+  box-shadow:0 1px 3px rgba(15,23,42,.07) !important;
+  transform:none !important;
+}
+#chartTopBar .split-btn-group:hover > button + button{
+  border-left-color:#b8c8db !important;
+}
+#chartTopBar .split-btn-group.overlay-mode-active{
+  background:#eef3f8 !important;
+  border-color:#b8c8db !important;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.07) !important;
+  transform:none !important;
+}
+#chartTopBar .split-btn-group.overlay-mode-active > button{
+  background:transparent !important;
+  color:#334155 !important;
+}
+#chartTopBar .split-btn-group.overlay-mode-active > button:hover{
+  background:#e7eef7 !important;
+}
+#chartTopBar .graph-menu-btn::before{left:12px !important;}
+#chartTopBar .graph-menu-btn span{left:18px !important;}
+#chartTopBar .graph-menu-btn::after{left:24px !important;}
+#overflowMenuBtn.hero-menu-btn .hero-menu-line,
+#overflowMenuBtn.hero-menu-btn::before,
+#overflowMenuBtn.hero-menu-btn::after{
+  left:12px !important;
+  right:12px !important;
+  background:#5a6d83 !important;
+}
+#overflowMenuBtn.hero-menu-btn::before{top:14px !important;}
+#overflowMenuBtn.hero-menu-btn .hero-menu-line{top:19px !important;}
+#overflowMenuBtn.hero-menu-btn::after{top:24px !important;}
+@media (max-width:900px), (pointer:coarse){
+  #chartTopBar{
+    --graph-control-height:38px;
+    --graph-control-radius:12px;
+  }
+  #chartTopBar .graph-select{
+    width:116px !important;
+    line-height:var(--graph-control-height) !important;
+    padding-left:9px !important;
+    padding-right:28px !important;
+  }
+  #overflowMenuBtn.hero-menu-btn{
+    width:38px !important;
+    height:38px !important;
+    min-width:38px !important;
+    border-radius:12px !important;
+  }
+  #chartTopBar .graph-menu-btn::before{left:11px !important;}
+  #chartTopBar .graph-menu-btn span{left:17px !important;}
+  #chartTopBar .graph-menu-btn::after{left:23px !important;}
+  #overflowMenuBtn.hero-menu-btn .hero-menu-line,
+  #overflowMenuBtn.hero-menu-btn::before,
+  #overflowMenuBtn.hero-menu-btn::after{
+    left:11px !important;
+    right:11px !important;
+  }
+  #overflowMenuBtn.hero-menu-btn::before{top:13px !important;}
+  #overflowMenuBtn.hero-menu-btn .hero-menu-line{top:18px !important;}
+  #overflowMenuBtn.hero-menu-btn::after{top:23px !important;}
+}
+
+
+
+/* ===== v1009: refine graph-category select and overlay split button only ===== */
+#chartTopBar{
+  --graph-control-border:#bccbda;
+  --graph-control-border-hover:#9ebcf4;
+}
+#chartTopBar .graph-select,
+#chartTopBar .split-btn-group{
+  box-sizing:border-box !important;
+  border-color:var(--graph-control-border) !important;
+}
+#chartTopBar .graph-select{
+  background:#fff !important;
+  font-weight:400 !important;
+}
+#chartTopBar .graph-select:hover,
+#chartTopBar .graph-select:focus{
+  background:#fff !important;
+  border-color:var(--graph-control-border-hover) !important;
+  color:#2f4a66 !important;
+  box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+  transform:none !important;
+}
+#chartTopBar .split-btn-group{
+  background:#fff !important;
+  box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+}
+#chartTopBar .split-btn-group:hover,
+#chartTopBar .split-btn-group:active{
+  background:#fff !important;
+  border-color:var(--graph-control-border) !important;
+  box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+  transform:none !important;
+}
+#chartTopBar .split-btn-group > button{
+  height:100% !important;
+  min-height:0 !important;
+  background:#fff !important;
+  color:#2f4a66 !important;
+  font-weight:400 !important;
+  border:0 !important;
+  box-shadow:none !important;
+  transform:none !important;
+  transition:background-color .16s ease, color .16s ease !important;
+}
+#chartTopBar .split-btn-group > button + button{
+  border-left:1px solid var(--graph-control-border) !important;
+}
+#chartTopBar .split-btn-group > button:not(:disabled):hover,
+#chartTopBar .split-btn-group > button:not(:disabled):focus-visible,
+#chartTopBar .split-btn-group > button:not(:disabled):active{
+  background:#f3f7fc !important;
+  color:#2f4a66 !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+  transform:none !important;
+}
+#chartTopBar .split-btn-group > button + button:not(:disabled):hover,
+#chartTopBar .split-btn-group > button + button:not(:disabled):focus-visible,
+#chartTopBar .split-btn-group > button + button:not(:disabled):active{
+  border-left:1px solid var(--graph-control-border) !important;
+}
+#chartTopBar .split-btn-group.overlay-mode-active{
+  background:#f3f7fc !important;
+  border-color:var(--graph-control-border) !important;
+  box-shadow:inset 0 1px 2px rgba(18,38,63,.06) !important;
+  transform:none !important;
+}
+#chartTopBar .split-btn-group.overlay-mode-active > button{
+  background:transparent !important;
+  color:#2f4a66 !important;
+  font-weight:400 !important;
+}
+#chartTopBar .split-btn-group.overlay-mode-active > button:not(:disabled):hover{
+  background:#eaf2fb !important;
+}
+
 </style>
 
 
@@ -4783,7 +5005,9 @@ document.addEventListener("scroll", (ev)=>{
       </div>
     </div>
 
+    <div id="chartCustomLegend" class="chart-line-legend" hidden></div>
     <div id="chartCanvasStickyWrap">
+      <div id="chartExternalTooltip" class="chart-external-tooltip" hidden></div>
       <canvas id="chart"></canvas>
       <button id="chartAxisBtn" type="button" aria-label="軸設定を開く" hidden>軸</button>
       <div class="chart-resize-handle-slot" aria-hidden="true"><div class="chart-resize-handle"></div></div>
@@ -5650,7 +5874,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="overlay-settings-note">このワークスペースで重ね描き表示する条件を設定します</div>
       <div class="overlay-settings-table-wrap">
         <table class="overlay-settings-table">
-          <thead><tr><th>表示</th><th>条件名</th><th>色</th><th>線種</th><th>線幅</th><th>プレビュー</th></tr></thead>
+          <thead><tr><th>表示</th><th>条件名</th><th>色</th><th>線種</th><th>線幅</th><th>プレビュー</th><th>塗り</th></tr></thead>
           <tbody id="overlaySettingsBody"></tbody>
         </table>
       </div>
@@ -6136,17 +6360,17 @@ const IDECO_CATEGORY_OPTIONS = ["","自営業・フリーランス（第1号）"
 const TAB_COLORS = ["#2563eb","#15803d","#dc2626","#7c3aed","#d97706","#0f766e","#db2777","#a16207","#374151"];
 const GRAPH_REFERENCE_COLOR = "#8e99a8";
 const GRAPH_OVERLAY_COLORS = [
-  "#d95b6a", // 赤
-  "#4f8eff", // 青
-  "#22a16f", // 緑
-  "#f1a43a", // オレンジ
-  "#7a63f6", // 紫
-  "#0f766e", // ティール
-  "#db2777", // ピンク
-  "#0891b2", // シアン
-  "#65a30d", // オリーブ
-  "#a16207", // ブラウン
-  "#475569"  // スレート
+  "#cf616d", // 赤（セットA寄りに少し落ち着かせる）
+  "#3f73cf", // 青（少し深めにして紫と差をつける）
+  "#2b8b5f", // 緑（青みを少し減らして区別しやすくする）
+  "#db953a", // オレンジ
+  "#7d5ed6", // 紫（わずかに赤みを足して青と差をつける）
+  "#1b7a72", // ティール
+  "#c43b7a", // ピンク
+  "#2a8fab", // シアン
+  "#769726", // オリーブ
+  "#9a6920", // ブラウン
+  "#536273"  // スレート
 ];
 const GRADE_OPTIONS = ["年少未満","年少相当","年中相当","年長相当","小1","小2","小3","小4","小5","小6","中1","中2","中3","高1","高2","高3","短大1","短大2","大1","大2","大3","大4","修士1","修士2","博士1","博士2","博士3","卒業後"];
 const PRESCHOOL_DETAIL_AGE_OPTIONS = [0,1,2,3,4,5];
@@ -6331,7 +6555,7 @@ function buildDefaultWorkspaceOverlaySettings(){
   const map = {};
   (scenarios || []).forEach((s, idx)=>{
     if(!s?.id) return;
-    map[s.id] = { visible: idx === 0, color: getDefaultOverlayColorByIndex(idx), lineStyle: DEFAULT_OVERLAY_LINE_STYLE, lineWidth: DEFAULT_OVERLAY_LINE_WIDTH };
+    map[s.id] = { visible: idx === 0, color: getDefaultOverlayColorByIndex(idx), lineStyle: DEFAULT_OVERLAY_LINE_STYLE, lineWidth: DEFAULT_OVERLAY_LINE_WIDTH, fillArea: true };
   });
   return map;
 }
@@ -6391,7 +6615,7 @@ function buildDefaultOverlayStylesForScenario(tabIndex){
   const map = {};
   (scenarios || []).forEach((s, idx)=>{
     if(!s?.id) return;
-    map[s.id] = { visible: idx === tabIndex, color: getDefaultOverlayColorByIndex(idx), lineStyle: DEFAULT_OVERLAY_LINE_STYLE, lineWidth: DEFAULT_OVERLAY_LINE_WIDTH };
+    map[s.id] = { visible: idx === tabIndex, color: getDefaultOverlayColorByIndex(idx), lineStyle: DEFAULT_OVERLAY_LINE_STYLE, lineWidth: DEFAULT_OVERLAY_LINE_WIDTH, fillArea: true };
   });
   return map;
 }
@@ -6407,7 +6631,8 @@ function normalizeOverlayStylesMap(rawMap, ownerTabIndex){
       visible: raw.visible === true,
       color: typeof raw.color === 'string' && raw.color ? raw.color : getDefaultOverlayColorByIndex(idx),
       lineStyle: normalizeOverlayLineStyle(raw.lineStyle),
-      lineWidth: normalizeOverlayLineWidth(raw.lineWidth)
+      lineWidth: normalizeOverlayLineWidth(raw.lineWidth),
+      fillArea: raw.fillArea !== false
     };
   });
   const visibleIds = Object.entries(normalized).filter(([, item])=>item && item.visible === true).map(([id])=>id);
@@ -6455,7 +6680,7 @@ function getOverlayStylesForTab(_tabIndex, opts = {}){
 }
 function getOverlayEntriesForTab(_tabIndex){
   const styles = ensureWorkspaceOverlayState();
-  return (scenarios || []).map((s, idx)=>({ scenario: s, index: idx, style: styles[s.id] || {visible:false, color:getDefaultOverlayColorByIndex(idx), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH} }));
+  return (scenarios || []).map((s, idx)=>({ scenario: s, index: idx, style: styles[s.id] || {visible:false, color:getDefaultOverlayColorByIndex(idx), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true} }));
 }
 function hasVisibleOverlaySelection(_tabIndex){
   return isOverlayStylesEffectivelyVisible(ensureWorkspaceOverlayState(), currentTab);
@@ -6636,8 +6861,12 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
     next.borderDash = dash.length ? dash.slice() : [];
     if(next.type === 'line'){
       if(graphType === 'asset'){
-        next.backgroundColor = (ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", 0.18, 0.028);
-        next.fill = {target:"origin"};
+        if(style?.fillArea === false){
+          next.backgroundColor = 'rgba(0,0,0,0)';
+          next.fill = false;
+        }else{
+          next.fill = {target:"origin"};
+        }
       }else{
         next.backgroundColor = color + '22';
       }
@@ -6708,8 +6937,9 @@ function rebuildOverlaySettingsTable(){
     const resolvedColor = style.color || getDefaultOverlayColorByIndex(entry.index);
     const resolvedLineStyle = normalizeOverlayLineStyle(style.lineStyle);
     const resolvedLineWidth = normalizeOverlayLineWidth(style.lineWidth);
+    const resolvedFillArea = style.fillArea !== false;
     const disableVisibleToggle = style.visible && visibleCount <= 1;
-    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''} ${disableVisibleToggle ? 'disabled title="最後の1本は解除できません"' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${resolvedLineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${resolvedLineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${resolvedLineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(resolvedLineWidth)===1?'selected':''}>1</option><option value="2" ${Number(resolvedLineWidth)===2?'selected':''}>2</option><option value="3" ${Number(resolvedLineWidth)===3?'selected':''}>3</option><option value="4" ${Number(resolvedLineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview"></span></td></tr>`;
+    return `<tr data-scenario-id="${escapeHtml(s.id)}"><td><input type="checkbox" data-overlay-field="visible" ${style.visible ? 'checked' : ''} ${disableVisibleToggle ? 'disabled title="最後の1本は解除できません"' : ''}></td><td><div class="overlay-condition-name" title="${escapeHtml(s.name || '条件')}">${escapeHtml(s.name || '条件')}</div></td><td>${buildOverlayColorPaletteHtml(resolvedColor)}</td><td><select class="overlay-style-line" data-overlay-field="lineStyle"><option value="solid" ${resolvedLineStyle==='solid'?'selected':''}>実線</option><option value="dashed" ${resolvedLineStyle==='dashed'?'selected':''}>破線</option><option value="dotted" ${resolvedLineStyle==='dotted'?'selected':''}>点線</option></select></td><td><select class="overlay-style-width" data-overlay-field="lineWidth"><option value="1" ${Number(resolvedLineWidth)===1?'selected':''}>1</option><option value="2" ${Number(resolvedLineWidth)===2?'selected':''}>2</option><option value="3" ${Number(resolvedLineWidth)===3?'selected':''}>3</option><option value="4" ${Number(resolvedLineWidth)===4?'selected':''}>4</option></select></td><td><span class="overlay-style-preview"></span></td><td><input type="checkbox" data-overlay-field="fillArea" ${resolvedFillArea ? 'checked' : ''} title="領域を塗りつぶす" aria-label="領域を塗りつぶす"></td></tr>`;
   }).join('');
   body.querySelectorAll('tr[data-scenario-id]').forEach(row=>refreshOverlayPreviewForRow(row));
   updateOverlaySettingsNameColumnWidth();
@@ -6755,7 +6985,8 @@ function collectOverlaySettingsFromModal(){
       visible: !!row.querySelector('[data-overlay-field="visible"]')?.checked,
       color: row.querySelector('[data-overlay-field="color"]')?.value || getDefaultOverlayColorByIndex(idx),
       lineStyle: normalizeOverlayLineStyle(row.querySelector('[data-overlay-field="lineStyle"]')?.value),
-      lineWidth: normalizeOverlayLineWidth(row.querySelector('[data-overlay-field="lineWidth"]')?.value)
+      lineWidth: normalizeOverlayLineWidth(row.querySelector('[data-overlay-field="lineWidth"]')?.value),
+      fillArea: row.querySelector('[data-overlay-field="fillArea"]')?.checked !== false
     };
   });
   return normalizeOverlayStylesMap(next, currentTab);
@@ -19901,8 +20132,14 @@ function makeLineDataset(label, labels, data, opts={}){
     borderColor:opts.borderColor ?? "#111",
     backgroundColor:opts.backgroundColor ?? opts.borderColor ?? "#111",
     pointRadius:opts.pointRadius ?? 0,
-    pointHoverRadius:opts.pointHoverRadius ?? 3,
-    pointHitRadius:opts.pointHitRadius ?? 6,
+    pointHoverRadius:opts.pointHoverRadius ?? 4,
+    pointHitRadius:opts.pointHitRadius ?? 4,
+    pointBackgroundColor:opts.pointBackgroundColor ?? opts.borderColor ?? "#111",
+    pointBorderColor:opts.pointBorderColor ?? "#fff",
+    pointBorderWidth:opts.pointBorderWidth ?? 1.5,
+    pointHoverBackgroundColor:opts.pointHoverBackgroundColor ?? opts.borderColor ?? "#111",
+    pointHoverBorderColor:opts.pointHoverBorderColor ?? "#fff",
+    pointHoverBorderWidth:opts.pointHoverBorderWidth ?? 2,
     fill:opts.fill ?? false,
     borderDash:opts.borderDash ?? [],
     yAxisID:opts.yAxisID,
@@ -19929,10 +20166,17 @@ function makeBarDataset(label, labels, data, opts={}){
   };
 }
 
-function buildAssetDatasets(sim, color, overlay, labelPrefix=""){
+function getOverlayAssetFillAlphaSpec(overlayCount){
+  const count = Math.max(1, Number(overlayCount) || 1);
+  if(count >= 4) return {strong:0.10, weak:0.016};
+  if(count === 3) return {strong:0.14, weak:0.022};
+  return {strong:0.18, weak:0.028};
+}
+function buildAssetDatasets(sim, color, overlay, labelPrefix="", overlayCount=1){
   if(overlay){
+    const fillAlpha = getOverlayAssetFillAlphaSpec(overlayCount);
     return [makeLineDataset(labelPrefix || "総資産", sim.labels, sim.totalAssets, {
-      borderColor:color, backgroundColor:(ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", 0.18, 0.028), borderWidth:1.6, fill:{target:"origin"}, order:10
+      borderColor:color, backgroundColor:(ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", fillAlpha.strong, fillAlpha.weak), borderWidth:1.6, fill:{target:"origin"}, order:10
     })];
   }
   return [{
@@ -19941,21 +20185,33 @@ function buildAssetDatasets(sim, color, overlay, labelPrefix=""){
     data:buildLinePointsWithZeroCrossings(sim.labels, sim.totalAssets),
     parsing:false,
     pointRadius:0,
-    pointHoverRadius:3,
-    pointHitRadius:6,
+    pointHoverRadius:4,
+    pointHitRadius:4,
+    pointBackgroundColor:ctx=>{
+      const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
+      return y < 0 ? "#cf616d" : "#2b8b5f";
+    },
+    pointBorderColor:"#fff",
+    pointBorderWidth:1.5,
+    pointHoverBackgroundColor:ctx=>{
+      const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
+      return y < 0 ? "#cf616d" : "#2b8b5f";
+    },
+    pointHoverBorderColor:"#fff",
+    pointHoverBorderWidth:2,
     borderWidth:1.65,
     fill:{target:"origin"},
     spanGaps:true,
     segment:{
       borderColor:ctx=>{
         const y0 = Number(ctx.p0.parsed.y), y1 = Number(ctx.p1.parsed.y);
-        return (y0 < 0 || y1 < 0) ? "#d95b6a" : "#22a16f";
+        return (y0 < 0 || y1 < 0) ? "#cf616d" : "#2b8b5f";
       },
       backgroundColor:ctx=>{
         const y0 = Number(ctx.p0.parsed.y), y1 = Number(ctx.p1.parsed.y);
         return (y0 < 0 || y1 < 0)
-          ? makeAssetFillGradientFromZero(ctx.chart, "#d95b6a", "negative", 0.12, 0.014)
-          : makeAssetFillGradientFromZero(ctx.chart, "#22a16f", "positive", 0.11, 0.012);
+          ? makeAssetFillGradientFromZero(ctx.chart, "#cf616d", "negative", 0.12, 0.014)
+          : makeAssetFillGradientFromZero(ctx.chart, "#2b8b5f", "positive", 0.11, 0.012);
       }
     }
   }];
@@ -20084,8 +20340,8 @@ function requestDraw(options = {}){
   }, DRAW_DEBOUNCE_MS);
 }
 
-function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix=""){
-  if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix);
+function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix="", overlayCount=1){
+  if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix, overlayCount);
   if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix);
   if(graphType === "education") return buildEducationDatasets(sim, color, overlay, labelPrefix);
   if(graphType === "incomeExpense") return buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix);
@@ -20126,6 +20382,116 @@ function pluginLines(cfg, sim, monteInfo=null){
         ctx.strokeStyle = graphType === "asset" ? "#475569" : "#111827";
         ctx.beginPath(); ctx.moveTo(x.left,y0); ctx.lineTo(x.right,y0); ctx.stroke();
       }
+      if(graphType === "asset"){
+        const area = chart.chartArea;
+        const pxLife = x.getPixelForValue(cfg.lifeExpect);
+        if(Number.isFinite(pxLife) && pxLife >= area.left && pxLife <= area.right){
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+          ctx.clip();
+          ctx.strokeStyle = "#5b7c99";
+          ctx.lineWidth = 1.25;
+          ctx.setLineDash([7,5]);
+          ctx.beginPath();
+          ctx.moveTo(Math.round(pxLife) + 0.5, y.top);
+          ctx.lineTo(Math.round(pxLife) + 0.5, y.bottom);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+    },
+    afterDatasetsDraw(chart){
+      const graphType = document.getElementById("graphType")?.value || "";
+      if(graphType !== "asset") return;
+      const {ctx,scales} = chart;
+      const x = scales.x;
+      const y = scales.y;
+      const area = chart.chartArea;
+      if(!x || !y || !area) return;
+
+      function getAssetZeroCrossAgeForGuide(sim){
+        const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+        const values = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+        if(labels.length === 0 || values.length === 0) return null;
+        for(let i = 0; i < Math.min(labels.length, values.length); i++){
+          const age = Number(labels[i]);
+          const value = Number(values[i]);
+          if(!Number.isFinite(age) || !Number.isFinite(value)) continue;
+          if(value <= 0){
+            if(value === 0 || i === 0) return age;
+            const prevAge = Number(labels[i - 1]);
+            const prevValue = Number(values[i - 1]);
+            if(!Number.isFinite(prevAge) || !Number.isFinite(prevValue)) return age;
+            if(prevValue <= 0) return age;
+            const denom = prevValue - value;
+            if(!Number.isFinite(denom) || Math.abs(denom) < 1e-9) return age;
+            return prevAge + (age - prevAge) * (prevValue / denom);
+          }
+        }
+        return null;
+      }
+      function formatAssetLifeLabelAge(crossAge){
+        const EPS = 1e-9;
+        const age = Math.ceil(Number(crossAge) - EPS);
+        return Number.isFinite(age) ? age : null;
+      }
+      function drawVerticalGuideLabel(px, label, color, yPos, opts={}){
+        if(!Number.isFinite(px) || px < area.left || px > area.right) return;
+        const labelStroke = opts.labelStroke || "rgba(148,163,184,0.34)";
+        ctx.save();
+        ctx.font = "12px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const padX = 6;
+        const labelW = ctx.measureText(label).width + padX * 2;
+        const labelH = 20;
+        const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
+        const labelY = yPos === "bottom" ? y.bottom - 14 : y.top + 14;
+        ctx.fillStyle = "rgba(255,255,255,0.90)";
+        ctx.strokeStyle = labelStroke;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.fillText(label, labelX + padX, labelY);
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+
+      const assetZeroCrossAge = getAssetZeroCrossAgeForGuide(sim);
+      const assetLifeLabelAge = formatAssetLifeLabelAge(assetZeroCrossAge);
+      let pxD = null;
+      if(assetZeroCrossAge != null && assetLifeLabelAge != null){
+        pxD = x.getPixelForValue(assetZeroCrossAge);
+        if(Number.isFinite(pxD) && pxD >= area.left && pxD <= area.right){
+          ctx.strokeStyle = "#1f2937";
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(Math.round(pxD) + 0.5, y.top);
+          ctx.lineTo(Math.round(pxD) + 0.5, y.bottom);
+          ctx.stroke();
+        }
+      }
+
+      const pxLife = x.getPixelForValue(cfg.lifeExpect);
+      drawVerticalGuideLabel(pxLife, `想定寿命：${cfg.lifeExpect}歳`, "#5b7c99", "bottom", {
+        labelStroke: "rgba(91,124,153,0.30)"
+      });
+      if(pxD != null && assetLifeLabelAge != null){
+        drawVerticalGuideLabel(pxD, `資産寿命：${assetLifeLabelAge}歳`, "#1f2937", "top", {
+          labelStroke: "rgba(31,41,55,0.22)"
+        });
+      }
+
       ctx.restore();
     },
     afterDraw(chart){
@@ -20134,36 +20500,6 @@ function pluginLines(cfg, sim, monteInfo=null){
       const x = scales.x;
       const y = scales.y;
       ctx.save();
-
-      if(graphType === "asset"){
-        const area = chart.chartArea;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
-        ctx.clip();
-
-        const pxLife = x.getPixelForValue(cfg.lifeExpect);
-        if(Number.isFinite(pxLife) && pxLife >= area.left && pxLife <= area.right){
-          ctx.strokeStyle = "#2563eb";
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(pxLife,y.top); ctx.lineTo(pxLife,y.bottom); ctx.stroke();
-          ctx.fillStyle = "#2563eb";
-          ctx.font = "12px Arial";
-          ctx.fillText(`想定寿命：${cfg.lifeExpect}歳`, Math.min(pxLife+6, x.right-96), y.top+16);
-        }
-
-        if(sim.depletionAge){
-          const pxD = x.getPixelForValue(sim.depletionAge);
-          if(Number.isFinite(pxD) && pxD >= area.left && pxD <= area.right){
-            ctx.strokeStyle = "#111827";
-            ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(pxD,y.top); ctx.lineTo(pxD,y.bottom); ctx.stroke();
-            ctx.fillStyle = "#111827";
-            ctx.fillText(`資産寿命：${sim.depletionAge}歳`, Math.min(pxD+6, x.right-90), y.bottom-8);
-          }
-        }
-        ctx.restore();
-      }
 
       if(monteInfo){
         const tx = x.left + 12;
@@ -20440,6 +20776,83 @@ function formatMainChartYAxisTick(value, index, ticks, unitSpec){
   const divisor = Math.max(1e-9, Number(unitSpec?.divisor) || 1);
   return formatScaledAxisNumber((Number(value) || 0) / divisor);
 }
+function formatMainChartTooltipMoney(value, unitSpec, graphType){
+  const divisor = Math.max(1e-9, Number(unitSpec?.divisor) || 1);
+  const label = unitSpec?.label || "万円";
+  const raw = Number(value) || 0;
+  const displayValue = (graphType === "incomeExpense" && raw < 0) ? Math.abs(raw) : raw;
+  const scaled = displayValue / divisor;
+  if(label === "万円"){
+    return `${Math.round(scaled).toLocaleString()}万円`;
+  }
+  return `${scaled.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}${label}`;
+}
+function getDatasetColorForTooltip(dataset){
+  const color = Array.isArray(dataset?.borderColor) ? dataset.borderColor[0] : dataset?.borderColor;
+  return typeof color === "string" ? color : "#64748b";
+}
+function renderExternalChartTooltip(context, unitSpec, graphType, simRef){
+  const tooltipEl = document.getElementById("chartExternalTooltip");
+  const chartInstance = context?.chart;
+  const tooltip = context?.tooltip;
+  if(!tooltipEl || !chartInstance || !tooltip || tooltip.opacity === 0){
+    if(tooltipEl) tooltipEl.hidden = true;
+    return;
+  }
+  const dataPoints = Array.isArray(tooltip.dataPoints) ? tooltip.dataPoints : [];
+  if(!dataPoints.length){
+    tooltipEl.hidden = true;
+    return;
+  }
+  const title = getCalendarWindowTooltipTitle(simRef, dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label);
+  const rows = dataPoints
+    .filter(dp=>String(dp?.dataset?.label || "").trim())
+    .map(dp=>{
+      const color = getDatasetColorForTooltip(dp.dataset);
+      const label = escapeAttr(dp.dataset.label);
+      const value = escapeAttr(formatMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType));
+      return `<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(color)}"></span><span>${label}</span></span></span><span class="chart-external-tooltip-value">${value}</span></div>`;
+    });
+  if(!rows.length){
+    tooltipEl.hidden = true;
+    return;
+  }
+  tooltipEl.innerHTML = `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${rows.join("")}</div>`;
+  tooltipEl.hidden = false;
+  const canvas = chartInstance.canvas;
+  const parent = canvas?.parentElement;
+  if(!canvas || !parent) return;
+  const parentRect = parent.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const leftBase = canvasRect.left - parentRect.left;
+  const topBase = canvasRect.top - parentRect.top;
+  const tooltipWidth = tooltipEl.offsetWidth || 180;
+  const tooltipHeight = tooltipEl.offsetHeight || 80;
+  const caretX = leftBase + Number(tooltip.caretX || 0);
+  const caretY = topBase + Number(tooltip.caretY || 0);
+  const preferredX = caretX + 10;
+  const fallbackX = caretX - tooltipWidth - 10;
+  const preferredY = caretY - tooltipHeight - 10;
+  const edgeMargin = 22;
+  const maxX = Math.max(edgeMargin, parent.clientWidth - tooltipWidth - edgeMargin);
+  const maxY = Math.max(edgeMargin, parent.clientHeight - tooltipHeight - edgeMargin);
+  let left = preferredX;
+  if(left > maxX) left = fallbackX;
+  left = Math.max(edgeMargin, Math.min(left, maxX));
+  const viewportLeft = parentRect.left + left;
+  const viewportRight = viewportLeft + tooltipWidth;
+  if(viewportLeft < edgeMargin){
+    left += edgeMargin - viewportLeft;
+  }
+  if(viewportRight > window.innerWidth - edgeMargin){
+    left -= viewportRight - (window.innerWidth - edgeMargin);
+  }
+  left = Math.max(edgeMargin - parentRect.left, left);
+  const top = Math.max(edgeMargin, Math.min(preferredY, maxY));
+  tooltipEl.style.left = `${left}px`;
+  tooltipEl.style.top = `${top}px`;
+}
+
 function getMainChartBaseYAxisTitle(graphType){
   const titleMap = {
     asset:"総資産",
@@ -20463,6 +20876,74 @@ function getEducationRightAxisBounds(rightAxisData, cfg){
   return {min:0, max:Number(autoAxis.max), autoMax:Number(autoAxis.max)};
 }
 
+
+function escapeAttr(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function getLegendLineStyleFromDataset(ds){
+  const borderColor = Array.isArray(ds?.borderColor) ? ds.borderColor[0] : ds?.borderColor;
+  const color = typeof borderColor === "string" ? borderColor : "#64748b";
+  const width = Math.max(1, Math.min(6, Number(ds?.borderWidth) || 2));
+  const dash = Array.isArray(ds?.borderDash) ? ds.borderDash : [];
+  let style = "solid";
+  if(dash.length){
+    const first = Number(dash[0]) || 0;
+    style = first <= 2 ? "dotted" : "dashed";
+  }
+  return {color, width, style};
+}
+function shouldShowDatasetInLegend(ds){
+  return !!ds?.label && (!!ds ? (ds.data || []).some(p=>Number.isFinite(p?.y) && Math.abs(p.y) > 1e-9) : true);
+}
+function sortLegendDatasets(a, b){
+  const ia = Number.isFinite(Number(a?._overlayIndex)) ? Number(a._overlayIndex) : Number(a?._datasetIndex || 0);
+  const ib = Number.isFinite(Number(b?._overlayIndex)) ? Number(b._overlayIndex) : Number(b?._datasetIndex || 0);
+  if(ia !== ib) return ia - ib;
+  return Number(a?._datasetIndex || 0) - Number(b?._datasetIndex || 0);
+}
+function renderCustomChartLegend(chartInstance, display){
+  const legendEl = document.getElementById("chartCustomLegend");
+  if(!legendEl) return;
+  if(!display || !chartInstance?.data?.datasets?.length){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const datasets = (chartInstance.data.datasets || [])
+    .map((ds, idx)=>({...ds, _datasetIndex:idx}))
+    .filter(shouldShowDatasetInLegend)
+    .sort(sortLegendDatasets);
+  if(!datasets.length){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  legendEl.innerHTML = datasets.map(ds=>{
+    const line = getLegendLineStyleFromDataset(ds);
+    const label = escapeAttr(ds.label);
+    const datasetIndex = Number(ds._datasetIndex);
+    const visible = chartInstance.isDatasetVisible(datasetIndex);
+    const hiddenClass = visible ? "" : " is-hidden";
+    const pressed = visible ? "true" : "false";
+    return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample" style="color:${escapeAttr(line.color)};border-top-width:${line.width}px;border-top-style:${escapeAttr(line.style)};"></span><span class="chart-line-legend-label">${label}</span></button>`;
+  }).join("");
+  legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const datasetIndex = Number(btn.dataset.datasetIndex);
+      if(!Number.isFinite(datasetIndex)) return;
+      const nextVisible = !chartInstance.isDatasetVisible(datasetIndex);
+      chartInstance.setDatasetVisibility(datasetIndex, nextVisible);
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chartInstance.setActiveElements([]);
+      chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      chartInstance.update("none");
+      renderCustomChartLegend(chartInstance, display);
+    });
+  });
+  legendEl.hidden = false;
+}
+
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, _graphType:graphType}, symmetric);
@@ -20471,14 +20952,39 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const xMax = cfg.xAxisMax;
   const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
   const yUnitSpec = getMainChartYAxisUnitSpec(yData);
+  const compactChartLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
+  const chartLayoutPadding = compactChartLayout ? {left:10, right:12} : {left:6, right:22};
+  const yTickPadding = compactChartLayout ? 8 : 6;
   const options = {
     animation:false,
     responsive:true,
     maintainAspectRatio:false,
-    layout:{padding:{right:28}},
+    layout:{padding:chartLayoutPadding},
     interaction:{mode:"nearest", intersect:true},
+    events: graphType === "asset" ? [] : undefined,
     plugins:{
-      legend:{display:showLegend, labels:{filter:(item, data)=>{
+      legend:{display:false, labels:{
+        usePointStyle:true,
+        pointStyle:"line",
+        boxWidth:42,
+        boxHeight:10,
+        padding:14,
+        generateLabels(chart){
+          const base = Chart.defaults.plugins.legend.labels.generateLabels(chart) || [];
+          return base.map(item=>{
+            const ds = chart?.data?.datasets?.[item.datasetIndex] || {};
+            const borderColor = Array.isArray(ds.borderColor) ? ds.borderColor[0] : ds.borderColor;
+            return {
+              ...item,
+              pointStyle:"line",
+              fillStyle:"rgba(0,0,0,0)",
+              strokeStyle:borderColor || item.strokeStyle || item.fillStyle,
+              lineWidth:Math.max(2, Number(ds.borderWidth) || 2),
+              lineDash:Array.isArray(ds.borderDash) ? ds.borderDash.slice() : []
+            };
+          });
+        },
+        filter:(item, data)=>{
         const ds = data?.datasets?.[item.datasetIndex];
         return !!item.text && (!!ds ? ds.data.some(p=>Number.isFinite(p?.y) && Math.abs(p.y) > 1e-9) : true);
       }, sort:(a,b,data)=>{
@@ -20490,6 +20996,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
         return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
       }}},
       tooltip:{
+        enabled:graphType !== "asset",
+        external:graphType === "asset" ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef) : undefined,
         backgroundColor:"rgba(15,23,42,.94)",
         titleColor:"#f8fafc",
         bodyColor:"#f8fafc",
@@ -20516,7 +21024,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     },
     scales:{
       x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
-      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
+      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
   if(graphType === "asset"){
@@ -20532,6 +21040,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     };
     options.scales.y.border.color = "rgba(148,163,184,.18)";
     options.scales.y.ticks.color = "#64748b";
+    options.scales.y.ticks.padding = yTickPadding;
     options.scales.y.title.color = "#475569";
   }
   if(graphType === "education"){
@@ -20599,7 +21108,8 @@ function draw(){
   const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
   const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice().reverse() : [];
-  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
+  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true}}];
+  const overlayVisibleCount = overlay ? Math.max(1, targets.length) : 1;
 
   const currentDisplayCfg = getScenarioFromDOM();
   const currentCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
@@ -20618,7 +21128,7 @@ function draw(){
       firstCfg = cfg;
       baseSim = sim;
     }
-    const baseDatasets = buildDatasetsByGraphType(sim, graphType, entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx), overlay, s.name);
+    const baseDatasets = buildDatasetsByGraphType(sim, graphType, entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx), overlay, s.name, overlayVisibleCount);
     datasets.push(...(overlay ? applyOverlayStyleToDatasets(baseDatasets, {...(entry.style || {}), _overlayIndex:entry.index}, graphType) : baseDatasets));
     const arrays = {
       asset: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
@@ -20634,12 +21144,15 @@ function draw(){
   updateResultCards(currentCfg, currentSim);
 
   if(chart) chart.destroy();
+  const customLegendDisplay = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
     options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
     plugins:[pluginLines(firstCfg, baseSim)]
   });
+  chart.$useStrictPointTooltip = graphType === "asset";
+  renderCustomChartLegend(chart, customLegendDisplay);
 }
 
 function runMonte(settingsOverride=null){
@@ -20649,7 +21162,7 @@ function runMonte(settingsOverride=null){
   const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
   const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice().reverse() : [];
-  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH}}];
+  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true}}];
   const currentDisplayCfg = getScenarioFromDOM();
   const currentBaseCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
   const currentCfg = currentBaseCache.cfg;
@@ -20727,6 +21240,9 @@ function runMonte(settingsOverride=null){
   updateResultCards(currentCfg, currentSim);
 
   const monteYAxisUnitSpec = getMainChartYAxisUnitSpec(yData);
+  const compactMonteChartLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
+  const monteChartLayoutPadding = compactMonteChartLayout ? {left:10, right:12} : {left:6, right:22};
+  const monteYTickPadding = compactMonteChartLayout ? 8 : 6;
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"line",
@@ -20735,9 +21251,32 @@ function runMonte(settingsOverride=null){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
+      layout:{padding:monteChartLayoutPadding},
       interaction:{mode:"nearest", intersect:true},
+      events:[],
       plugins:{
-        legend:{display:overlay, labels:{filter:(item, data)=>{
+        legend:{display:false, labels:{
+          usePointStyle:true,
+          pointStyle:"line",
+          boxWidth:42,
+          boxHeight:10,
+          padding:14,
+          generateLabels(chart){
+            const base = Chart.defaults.plugins.legend.labels.generateLabels(chart) || [];
+            return base.map(item=>{
+              const ds = chart?.data?.datasets?.[item.datasetIndex] || {};
+              const borderColor = Array.isArray(ds.borderColor) ? ds.borderColor[0] : ds.borderColor;
+              return {
+                ...item,
+                pointStyle:"line",
+                fillStyle:"rgba(0,0,0,0)",
+                strokeStyle:borderColor || item.strokeStyle || item.fillStyle,
+                lineWidth:Math.max(2, Number(ds.borderWidth) || 2),
+                lineDash:Array.isArray(ds.borderDash) ? ds.borderDash.slice() : []
+              };
+            });
+          },
+          filter:(item, data)=>{
           const ds = data?.datasets?.[item.datasetIndex];
           return !!item.text && (!!ds ? ds.data.some(p=>Number.isFinite(p?.y) && Math.abs(p.y) > 1e-9) : true);
         }, sort:(a,b,data)=>{
@@ -20749,6 +21288,8 @@ function runMonte(settingsOverride=null){
           return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
         }}},
         tooltip:{
+          enabled:false,
+          external:(context)=>renderExternalChartTooltip(context, monteYAxisUnitSpec, "asset", baseSim),
           callbacks:{
             title(items){
               const first = items?.[0];
@@ -20771,12 +21312,14 @@ function runMonte(settingsOverride=null){
         y:{
           title:{display:true,text:`総資産（${monteYAxisUnitSpec.label}）`},
           ...getAxisBounds(yData, firstCfg, false),
-          ticks:{includeBounds:false, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, monteYAxisUnitSpec); }}
+          ticks:{includeBounds:false, padding:monteYTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, monteYAxisUnitSpec); }}
         }
       }
     },
     plugins:[pluginLines(firstCfg, baseSim, monteInfo)]
   });
+  chart.$useStrictPointTooltip = true;
+  renderCustomChartLegend(chart, overlay);
 }
 
 function getSaveData(){
@@ -28196,49 +28739,111 @@ window.addEventListener("load", ()=>{
       requestAnimationFrame(()=>syncChartAxisModalFromState());
     });
   });
-  function updateChartTooltipFromPointerEvent(e){
+  function clearChartTooltipFromPointer(){
     if(!chart) return;
+    const tooltipEl = document.getElementById("chartExternalTooltip");
+    if(tooltipEl) tooltipEl.hidden = true;
+    chart.setActiveElements([]);
+    chart.tooltip?.setActiveElements?.([], {x:0, y:0});
+    chart.update("none");
+  }
+  function updateChartTooltipFromPointerEvent(e){
+    if(!chart || !chart.$useStrictPointTooltip) return;
     const canvas = document.getElementById("chart");
     if(!canvas || e.target !== canvas) return;
     const rect = canvas.getBoundingClientRect();
     const clientX = typeof e.clientX === "number" ? e.clientX : (rect.left + rect.width / 2);
     const clientY = typeof e.clientY === "number" ? e.clientY : (rect.top + rect.height / 2);
-    const position = {x:clientX - rect.left, y:clientY - rect.top};
-    const sameIndexElements = chart.getElementsAtEventForMode(
-      e,
-      "index",
-      { intersect:false, axis:"x" },
-      false
-    ) || [];
+    const helperPosition = Chart?.helpers?.getRelativePosition ? Chart.helpers.getRelativePosition(e, chart) : null;
+    const position = helperPosition && Number.isFinite(helperPosition.x) && Number.isFinite(helperPosition.y)
+      ? helperPosition
+      : {x:clientX - rect.left, y:clientY - rect.top};
     let chosen = null;
-    if(sameIndexElements.length){
-      let bestDist = Infinity;
-      for(const item of sameIndexElements){
-        const meta = chart.getDatasetMeta(item.datasetIndex);
-        const point = meta?.data?.[item.index];
-        if(!point || typeof point.y !== 'number') continue;
-        const dist = Math.abs(point.y - position.y);
+    let bestDist = Infinity;
+    const maxDist = 8;
+    const datasets = chart.data?.datasets || [];
+    for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
+      if(!chart.isDatasetVisible(datasetIndex)) continue;
+      const ds = datasets[datasetIndex];
+      if(ds?.type && ds.type !== "line") continue;
+      if(!String(ds?.label || "").trim()) continue;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if(!meta || meta.hidden === true) continue;
+      const points = meta.data || [];
+      for(let index = 0; index < points.length; index++){
+        const rawPoint = Array.isArray(ds?.data) ? ds.data[index] : null;
+        const rawX = Number(rawPoint?.x);
+        const rawY = Number(rawPoint?.y);
+        const xScale = chart.scales?.[ds?.xAxisID || "x"];
+        const yScale = chart.scales?.[ds?.yAxisID || "y"];
+        if(!xScale || !yScale || !Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
+        const px = Number(xScale.getPixelForValue(rawX));
+        const py = Number(yScale.getPixelForValue(rawY));
+        if(!Number.isFinite(px) || !Number.isFinite(py)) continue;
+        const dx = px - position.x;
+        const dy = py - position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
         if(dist < bestDist){
           bestDist = dist;
-          chosen = item;
+          chosen = {datasetIndex, index, xValue:rawX};
         }
       }
     }
-    if(!chosen){
-      const nearestElements = chart.getElementsAtEventForMode(e, "nearest", {intersect:false}, false) || [];
-      chosen = nearestElements[0] || null;
-    }
-    if(!chosen){
-      chart.setActiveElements([]);
-      chart.tooltip?.setActiveElements?.([], {x:0, y:0});
-      chart.update("none");
+    if(!chosen || bestDist > maxDist || !Number.isFinite(Number(chosen.xValue))){
+      clearChartTooltipFromPointer();
       return;
     }
-    const activeElements = [{ datasetIndex:chosen.datasetIndex, index:chosen.index }];
-    chart.setActiveElements(activeElements);
-    chart.tooltip?.setActiveElements?.(activeElements, position);
+    const activeElements = [];
+    const xTolerance = 1e-7;
+    for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
+      if(!chart.isDatasetVisible(datasetIndex)) continue;
+      const ds = datasets[datasetIndex];
+      if(ds?.type && ds.type !== "line") continue;
+      if(!String(ds?.label || "").trim()) continue;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if(!meta || meta.hidden === true) continue;
+      const data = Array.isArray(ds?.data) ? ds.data : [];
+      let matchedIndex = -1;
+      for(let index = 0; index < data.length; index++){
+        const rawX = Number(data[index]?.x);
+        const rawY = Number(data[index]?.y);
+        if(!Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
+        if(Math.abs(rawX - Number(chosen.xValue)) <= xTolerance){
+          matchedIndex = index;
+          break;
+        }
+      }
+      if(matchedIndex >= 0){
+        const tooltipValue = Number(data[matchedIndex]?.y);
+        activeElements.push({datasetIndex, index:matchedIndex, _tooltipValue:tooltipValue, _sortDataset:{...ds, _datasetIndex:datasetIndex}});
+      }
+    }
+    activeElements.sort((a,b)=>{
+      const av = Number(a?._tooltipValue);
+      const bv = Number(b?._tooltipValue);
+      if(Number.isFinite(av) && Number.isFinite(bv) && bv !== av) return bv - av;
+      if(Number.isFinite(av) && !Number.isFinite(bv)) return -1;
+      if(!Number.isFinite(av) && Number.isFinite(bv)) return 1;
+      return sortLegendDatasets(a._sortDataset, b._sortDataset);
+    });
+    const tooltipActiveElements = activeElements.map(({datasetIndex, index})=>({datasetIndex, index}));
+    if(!tooltipActiveElements.length){
+      clearChartTooltipFromPointer();
+      return;
+    }
+    chart.setActiveElements(tooltipActiveElements);
+    chart.tooltip?.setActiveElements?.(tooltipActiveElements, position);
     chart.update("none");
   }
+  document.getElementById("chart")?.addEventListener("pointermove", (e)=>{
+    updateChartTooltipFromPointerEvent(e);
+  });
+  document.getElementById("chart")?.addEventListener("pointerleave", ()=>{
+    clearChartTooltipFromPointer();
+  });
+  document.getElementById("chart")?.addEventListener("pointercancel", ()=>{
+    clearChartTooltipFromPointer();
+  });
   document.getElementById("chart")?.addEventListener("click", (e)=>{
     updateChartTooltipFromPointerEvent(e);
   });
@@ -34654,6 +35259,486 @@ body.withdrawal-preview-open #detailStickyNav *{
       background-size:44px 12px !important;
     }
   }
+</style>
+
+
+<!-- ===== v970: custom long line legend for main chart only ===== -->
+<style>
+  .chart-line-legend{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:10px 22px;
+    min-height:24px;
+    margin:0 0 4px;
+    padding:0 8px 1px;
+    color:#4b5563;
+    font-size:13px;
+    font-weight:600;
+    line-height:1.3;
+  }
+  .chart-line-legend[hidden]{display:none !important;}
+  .chart-line-legend-item{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+    border:none;
+    background:transparent;
+    color:inherit;
+    padding:2px 0;
+    margin:0;
+    cursor:pointer;
+    font:inherit;
+  }
+  .chart-line-legend-item:hover{
+    background:transparent;
+    color:#0f172a;
+  }
+  .chart-line-legend-sample{
+    display:inline-block;
+    width:72px;
+    height:0;
+    border-top:2px solid currentColor;
+    flex:0 0 72px;
+  }
+  .chart-line-legend-label{
+    display:inline-block;
+  }
+  .chart-line-legend-item.is-hidden{
+    opacity:.42;
+  }
+  .chart-line-legend-item.is-hidden .chart-line-legend-label{
+    text-decoration:line-through;
+    text-decoration-thickness:1.5px;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    .chart-line-legend{
+      gap:8px 14px;
+      font-size:12px;
+      margin-bottom:3px;
+      padding-bottom:0;
+    }
+    .chart-line-legend-sample{
+      width:52px;
+      flex-basis:52px;
+    }
+  }
+</style>
+
+
+<!-- ===== v993: external HTML tooltip for main chart ===== -->
+<style>
+  .chart-external-tooltip{
+    position:absolute;
+    z-index:50;
+    display:block;
+    width:max-content;
+    min-width:0;
+    max-width:min(304px, calc(100vw - 36px));
+    padding:8px 12px;
+    border:1px solid rgba(148,163,184,.24);
+    border-radius:12px;
+    background:rgba(15,23,42,.94);
+    color:#f8fafc;
+    box-shadow:0 12px 28px rgba(15,23,42,.22);
+    pointer-events:none;
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+  }
+  .chart-external-tooltip[hidden]{display:none !important;}
+  .chart-external-tooltip-title{
+    font-size:12px;
+    font-weight:700;
+    color:#e2e8f0;
+    margin-bottom:5px;
+    white-space:nowrap;
+  }
+  .chart-external-tooltip-body{
+    display:table;
+    border-collapse:separate;
+    border-spacing:0;
+    width:max-content;
+  }
+  .chart-external-tooltip-row{
+    display:table-row;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .chart-external-tooltip-label-cell{
+    display:table-cell;
+    min-width:0;
+    max-width:156px;
+    vertical-align:middle;
+    padding:0;
+  }
+  .chart-external-tooltip-row + .chart-external-tooltip-row .chart-external-tooltip-label-cell,
+  .chart-external-tooltip-row + .chart-external-tooltip-row .chart-external-tooltip-value{
+    padding-top:4px;
+  }
+  .chart-external-tooltip-label{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    min-width:0;
+    padding-left:0;
+    margin-left:0;
+    max-width:156px;
+    overflow:visible;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .chart-external-tooltip-label > span:last-child{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    min-width:0;
+  }
+  .chart-external-tooltip-swatch{
+    width:9px;
+    height:9px;
+    border-radius:999px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.42);
+    flex:0 0 9px;
+  }
+  .chart-external-tooltip-value{
+    display:table-cell;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    width:66px;
+    min-width:66px;
+    padding-left:4px;
+    color:#f8fafc;
+    font-weight:700;
+    font-size:12px;
+    line-height:1.45;
+    vertical-align:middle;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    .chart-external-tooltip{
+      max-width:calc(100vw - 32px);
+      padding:8px 12px;
+    }
+    .chart-external-tooltip-title{
+      font-size:11px;
+      margin-bottom:4px;
+    }
+    .chart-external-tooltip-body{
+      border-spacing:0;
+    }
+    .chart-external-tooltip-row{
+      font-size:11px;
+    }
+    .chart-external-tooltip-label-cell{
+      max-width:138px;
+    }
+    .chart-external-tooltip-label{
+      gap:6px;
+      padding-left:0;
+      margin-left:0;
+      max-width:138px;
+      font-size:11px;
+    }
+    .chart-external-tooltip-value{
+      width:62px;
+      min-width:62px;
+      padding-left:3px;
+      font-size:11px;
+    }
+  }
+</style>
+
+
+<!-- ===== v1010: match graph select hover to input select hover only ===== -->
+<style>
+  #chartTopBar .graph-select:not(:disabled):hover{
+    background:#fff !important;
+    border-color:#9ebcf4 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+    color:#2f4a66 !important;
+    transform:none !important;
+  }
+</style>
+
+
+
+<!-- ===== v1011: keep overlay split toggle visually pressed while ON only ===== -->
+<style>
+  #chartTopBar .split-btn-group.overlay-mode-active{
+    transform:translateY(1px) !important;
+    background:#f3f7fc !important;
+    border-color:#bccbda !important;
+    box-shadow:inset 0 1px 2px rgba(18,38,63,.08) !important;
+  }
+  #chartTopBar .split-btn-group.overlay-mode-active > button{
+    background:transparent !important;
+    color:#2f4a66 !important;
+    font-weight:400 !important;
+  }
+</style>
+
+
+<!-- ===== v1012: mobile graph top controls one-row layout only ===== -->
+<style>
+  @media (max-width:900px), (pointer:coarse){
+    #chartTopBar{
+      display:flex !important;
+      flex-wrap:nowrap !important;
+      align-items:center !important;
+      justify-content:space-between !important;
+      gap:8px !important;
+      padding-left:12px !important;
+      padding-right:12px !important;
+    }
+    #leftTopControls{
+      flex:1 1 auto !important;
+      min-width:0 !important;
+      display:flex !important;
+      flex-wrap:nowrap !important;
+      align-items:center !important;
+      gap:8px !important;
+    }
+    #rightTopControls{
+      flex:0 0 auto !important;
+      min-width:0 !important;
+      margin-left:0 !important;
+      display:flex !important;
+      flex-wrap:nowrap !important;
+      align-items:center !important;
+      gap:0 !important;
+    }
+    #leftTopControls .field{
+      flex:0 1 142px !important;
+      min-width:132px !important;
+      max-width:150px !important;
+      width:auto !important;
+    }
+    #chartTopBar .graph-select{
+      width:100% !important;
+      min-width:132px !important;
+      max-width:150px !important;
+      padding-left:9px !important;
+      padding-right:26px !important;
+    }
+    #chartTopBar .split-btn-group{
+      flex:0 0 auto !important;
+      white-space:nowrap !important;
+    }
+    #chartTopBar .split-btn-main{
+      padding-left:10px !important;
+      padding-right:10px !important;
+      white-space:nowrap !important;
+    }
+    #chartTopBar .split-btn-toggle{
+      min-width:34px !important;
+      padding-left:8px !important;
+      padding-right:8px !important;
+    }
+  }
+</style>
+
+
+<!-- ===== v1014: date input option A, match normal input control visual only ===== -->
+<style>
+  #commonSettingsPanel input[type="date"],
+  #simpleModePanel input[type="date"],
+  #detailModePanel input[type="date"],
+  .modal-card input[type="date"],
+  .withdrawal-preview-sheet input[type="date"],
+  .chart-axis-preview-sheet input[type="date"],
+  .crash-preview-sheet input[type="date"]{
+    color-scheme:light !important;
+    height:32px !important;
+    min-height:32px !important;
+    padding:5px 6px !important;
+    border:1px solid #bccbda !important;
+    border-radius:10px !important;
+    background:#fff !important;
+    color:#1f3c5a !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+    font-size:14px !important;
+    font-variant-numeric:tabular-nums !important;
+    letter-spacing:normal !important;
+    transition:background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease !important;
+    transform:none !important;
+  }
+
+  #commonSettingsPanel input[type="date"]:not(:disabled):not([readonly]):hover,
+  #simpleModePanel input[type="date"]:not(:disabled):not([readonly]):hover,
+  #detailModePanel input[type="date"]:not(:disabled):not([readonly]):hover,
+  .modal-card input[type="date"]:not(:disabled):not([readonly]):hover,
+  .withdrawal-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover,
+  .chart-axis-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover,
+  .crash-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover{
+    border-color:#9ebcf4 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+    background:#fff !important;
+    transform:none !important;
+  }
+
+  #commonSettingsPanel input[type="date"]:focus,
+  #simpleModePanel input[type="date"]:focus,
+  #detailModePanel input[type="date"]:focus,
+  .modal-card input[type="date"]:focus,
+  .withdrawal-preview-sheet input[type="date"]:focus,
+  .chart-axis-preview-sheet input[type="date"]:focus,
+  .crash-preview-sheet input[type="date"]:focus{
+    outline:2px solid rgba(79,142,255,.22) !important;
+    outline-offset:1px !important;
+    border-color:#9ebcf4 !important;
+    box-shadow:0 1px 2px rgba(18,38,63,.035) !important;
+  }
+
+  #commonSettingsPanel input[type="date"]::-webkit-calendar-picker-indicator,
+  #simpleModePanel input[type="date"]::-webkit-calendar-picker-indicator,
+  #detailModePanel input[type="date"]::-webkit-calendar-picker-indicator,
+  .modal-card input[type="date"]::-webkit-calendar-picker-indicator,
+  .withdrawal-preview-sheet input[type="date"]::-webkit-calendar-picker-indicator,
+  .chart-axis-preview-sheet input[type="date"]::-webkit-calendar-picker-indicator,
+  .crash-preview-sheet input[type="date"]::-webkit-calendar-picker-indicator{
+    cursor:pointer !important;
+    opacity:.68 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+
+  #commonSettingsPanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  #simpleModePanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  #detailModePanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .modal-card input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .withdrawal-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .chart-axis-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .crash-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator{
+    opacity:.92 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+
+  #commonSettingsPanel input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+  #simpleModePanel input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+  #detailModePanel input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+  .modal-card input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+  .withdrawal-preview-sheet input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+  .chart-axis-preview-sheet input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+  .crash-preview-sheet input[type="date"]:disabled::-webkit-calendar-picker-indicator{
+    opacity:.38 !important;
+    cursor:not-allowed !important;
+  }
+</style>
+
+
+
+<!-- ===== v1015: date input height/radius match normal controls + flat calendar icon ===== -->
+<style>
+  #commonSettingsPanel input[type="date"],
+  #simpleModePanel input[type="date"],
+  #detailModePanel input[type="date"],
+  .modal-card input[type="date"],
+  .withdrawal-preview-sheet input[type="date"],
+  .chart-axis-preview-sheet input[type="date"],
+  .crash-preview-sheet input[type="date"]{
+    height:30px !important;
+    min-height:30px !important;
+    padding:5px 6px !important;
+    border-radius:10px !important;
+    line-height:18px !important;
+    appearance:auto !important;
+    -webkit-appearance:auto !important;
+  }
+
+  #commonSettingsPanel input[type="date"]::-webkit-calendar-picker-indicator,
+  #simpleModePanel input[type="date"]::-webkit-calendar-picker-indicator,
+  #detailModePanel input[type="date"]::-webkit-calendar-picker-indicator,
+  .modal-card input[type="date"]::-webkit-calendar-picker-indicator,
+  .withdrawal-preview-sheet input[type="date"]::-webkit-calendar-picker-indicator,
+  .chart-axis-preview-sheet input[type="date"]::-webkit-calendar-picker-indicator,
+  .crash-preview-sheet input[type="date"]::-webkit-calendar-picker-indicator{
+    width:16px !important;
+    height:16px !important;
+    margin:0 0 0 4px !important;
+    padding:0 !important;
+    opacity:.72 !important;
+    cursor:pointer !important;
+    background-color:transparent !important;
+    background-repeat:no-repeat !important;
+    background-position:center !important;
+    background-size:15px 15px !important;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%234f6680' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='3'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+    box-shadow:none !important;
+  }
+
+  #commonSettingsPanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  #simpleModePanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  #detailModePanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .modal-card input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .withdrawal-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .chart-axis-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .crash-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator{
+    opacity:.96 !important;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23376fca' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='3'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+  }
+</style>
+
+
+
+
+<!-- ===== v1016: keep date icon size on hover + narrow desktop datebox spacing ===== -->
+<style>
+  #commonSettingsPanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  #simpleModePanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  #detailModePanel input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .modal-card input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .withdrawal-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .chart-axis-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator,
+  .crash-preview-sheet input[type="date"]:not(:disabled):not([readonly]):hover::-webkit-calendar-picker-indicator{
+    width:16px !important;
+    height:16px !important;
+    margin:0 0 0 4px !important;
+    padding:0 !important;
+    background-size:15px 15px !important;
+    transform:none !important;
+    -webkit-transform:none !important;
+  }
+
+  @media (min-width:901px) and (pointer:fine){
+    #commonSettingsPanel input[type="date"].datebox,
+    #simpleModePanel input[type="date"].datebox,
+    #detailModePanel input[type="date"].datebox{
+      width:132px !important;
+      min-width:132px !important;
+      max-width:132px !important;
+    }
+  }
+
+/* ===== v1017: keep child birthdate + age on one line on mobile only ===== */
+@media (max-width:900px), (pointer:coarse){
+  #childRows td:nth-child(3) .basic-inline-date-age{
+    width:160px !important;
+    max-width:160px !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    gap:4px !important;
+  }
+  #childRows td:nth-child(3) .basic-inline-date-age .readonly-age-inline{
+    flex:0 0 auto !important;
+    width:auto !important;
+    min-width:0 !important;
+    margin-left:0 !important;
+    justify-content:flex-start !important;
+    white-space:nowrap !important;
+  }
+  #childRows td:nth-child(3) .basic-inline-date-age .readonly-age-text,
+  #childRows td:nth-child(3) .basic-inline-date-age .suffix,
+  #childRows td:nth-child(3) .basic-inline-date-age .age-paren{
+    font-size:12px !important;
+    white-space:nowrap !important;
+  }
+}
+
 </style>
 
 </body>
