@@ -33291,5 +33291,34 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 }
 </style>
+<!-- ===== v904: suppress fixed-nav active-frame flash during mode/tab rebuild ===== -->
+<style id="v904-fixed-nav-active-frame-rebuild-flash-fix">
+/* Scope: fixed nav current-location frame during nav rebuild only. */
+
+/*
+  Earlier mobile rule kept the whole fixed nav visible while initializing, but forced
+  the active frame opacity to 0. That made the current-location button disappear and
+  reappear for one frame during 詳細→簡単 and first simple-tab visits.
+  Keep the nav visible and keep the frame at its computed opacity; only disable motion.
+*/
+#modeMenuBar #detailStickyNav.sticky-nav-initializing::after,
+#modeMenuBar #simpleStickyNav.sticky-nav-initializing::after{
+  opacity:var(--sticky-active-opacity, 1) !important;
+  transition:none !important;
+}
+
+#modeMenuBar #detailStickyNav.sticky-nav-frame-no-transition::after,
+#modeMenuBar #simpleStickyNav.sticky-nav-frame-no-transition::after{
+  transition:none !important;
+}
+
+/* Avoid the active label itself fading/changing during the same rebuild frame. */
+#modeMenuBar #detailStickyNav.sticky-nav-initializing .detail-sticky-btn,
+#modeMenuBar #simpleStickyNav.sticky-nav-initializing .detail-sticky-btn,
+#modeMenuBar #detailStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn,
+#modeMenuBar #simpleStickyNav.sticky-nav-frame-no-transition .detail-sticky-btn{
+  transition:none !important;
+}
+</style>
 </body>
 </html>
