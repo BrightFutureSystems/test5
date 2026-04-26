@@ -33249,5 +33249,15 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 }
 </style>
+<!-- ===== v901: cashflow child-age first-column mobile background fix ===== -->
+<style id="v901-cashflow-child-age-mobile-first-col-bg">
+/* Scope: 年度別収支表の子ども年齢メタ行・第一列のみ。 */
+@media (max-width:900px), (pointer:coarse){
+  .cashflow-table tbody tr.cashflow-meta-row:not(.cashflow-sticky-row) > th.cashflow-item-col{
+    background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
+    color:#122b45 !important;
+  }
+}
+</style>
 </body>
 </html>
