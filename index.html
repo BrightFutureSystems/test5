@@ -6151,34 +6151,34 @@ const CASHFLOW_TABLE_COLUMNS = [
   {label:"児童手当", path:"income.childAllowance"},
   {label:"保険受取", path:"income.insuranceReceive"},
   {label:"利息収入（税引後）", path:"income.interest"},
-  {label:"利息源泉税（参考）", path:"tax.interestWithholding", className:"cashflow-neg"},
+  {label:"利息源泉税（参考）", path:"tax.interestWithholding"},
   {label:"配当収入（税引後）", path:"income.dividend"},
-  {label:"配当源泉税（参考）", path:"tax.dividendWithholding", className:"cashflow-neg"},
+  {label:"配当源泉税（参考）", path:"tax.dividendWithholding"},
   {label:"DC・退職受取", path:"income.other.dcReceipt"},
-  {label:"収入合計(A)", path:"income.total", className:"cashflow-pos"},
+  {label:"収入合計(A)", path:"income.total"},
   {label:"生活費", path:"expense.life"},
   {label:"教育費", path:"expense.education.total"},
   {label:"住宅費", path:"expense.housing.total"},
   {label:"保険料", path:"expense.insurancePremium"},
   {label:"定期支出", path:"expense.regular"},
   {label:"臨時支出", path:"expense.temporary"},
-  {label:"支出合計(B)", path:"expense.total", className:"cashflow-neg"},
-  {label:"社会保険料", path:"social.total", className:"cashflow-neg"},
-  {label:"所得税・住民税等", path:"tax.total", className:"cashflow-neg"},
-  {label:"税社保合計", path:"cashflow.taxSocialTotal", className:"cashflow-neg"},
+  {label:"支出合計(B)", path:"expense.total"},
+  {label:"社会保険料", path:"social.total"},
+  {label:"所得税・住民税等", path:"tax.total"},
+  {label:"税社保合計", path:"cashflow.taxSocialTotal"},
   {label:"年間収支(A-B)", path:"cashflow.gross", className:"cashflow-posneg"},
   {label:"税社保反映後収支", path:"cashflow.afterTaxSocial", className:"cashflow-posneg"},
-  {label:"資産運用：投資額(C)", path:"investment.contribution", className:"cashflow-neg"},
-  {label:"資産運用：取崩し額(D)", path:"investment.withdrawal", className:"cashflow-pos"},
-  {label:"生活費不足の売却額", path:"investment.sales.shortfall", className:"cashflow-pos"},
-  {label:"バッファ補充の売却額", path:"investment.sales.buffer", className:"cashflow-pos"},
-  {label:"総売却額（税引後）", path:"investment.sales.totalNet", className:"cashflow-pos"},
-  {label:"売却税", path:"investment.sales.tax", className:"cashflow-neg"},
+  {label:"資産運用：投資額(C)", path:"investment.contribution"},
+  {label:"資産運用：取崩し額(D)", path:"investment.withdrawal"},
+  {label:"生活費不足の売却額", path:"investment.sales.shortfall"},
+  {label:"バッファ補充の売却額", path:"investment.sales.buffer"},
+  {label:"総売却額（税引後）", path:"investment.sales.totalNet"},
+  {label:"売却税", path:"investment.sales.tax"},
   {label:"現金バッファ下限", path:"investment.buffer.floor", className:"cashflow-posneg"},
   {label:"現金バッファ目標", path:"investment.buffer.target", className:"cashflow-posneg"},
   {label:"資産運用：運用益", path:"investment.gain", className:"cashflow-posneg"},
   {label:"現預金の増減", path:"cash.changeBeforeInterest", className:"cashflow-posneg"},
-  {label:"現預金の利息", path:"cash.interest", className:"cashflow-posneg"},
+  {label:"現預金の利息", path:"cash.interest"},
   {label:"年末の現預金額", path:"cash.endingCash", className:"cashflow-posneg"},
   {label:"年末の総資産額", path:"assets.endingTotal", className:"cashflow-posneg"}
 ];
@@ -33257,6 +33257,21 @@ body.withdrawal-preview-open #detailStickyNav *{
     background:linear-gradient(180deg, var(--v827-table-head-1) 0%, var(--v827-table-head-2) 100%) !important;
     color:#122b45 !important;
   }
+}
+</style>
+<!-- ===== v902: simplify cashflow numeric colors and flatten age-row background ===== -->
+<style id="v902-cashflow-color-simplification">
+/* Scope: 年度別収支表の表示色のみ。 */
+
+/* 本人・配偶者・子どもの年齢行は、グラデーションではなくフラットな淡い青にする。 */
+.cashflow-table tbody tr.cashflow-sticky-row > th,
+.cashflow-table tbody tr.cashflow-sticky-row > td,
+.cashflow-table tbody tr.cashflow-sticky-row > th.cashflow-item-col,
+.cashflow-table tbody tr.cashflow-meta-row > th,
+.cashflow-table tbody tr.cashflow-meta-row > td,
+.cashflow-table tbody tr.cashflow-meta-row > th.cashflow-item-col{
+  background:#f3f8ff !important;
+  color:#122b45 !important;
 }
 </style>
 </body>
