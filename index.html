@@ -33218,5 +33218,36 @@ body.withdrawal-preview-open #detailStickyNav *{
   }, true);
 })();
 </script>
+<!-- ===== v900: suppress iPad row context menu touch highlight flash ===== -->
+<style id="v900-row-context-menu-ipad-highlight-fix">
+/* Scope: rowContextMenu only, touch/coarse environments only. */
+@media (pointer:coarse){
+  #rowContextMenu,
+  #rowContextMenu *,
+  #rowContextMenu button{
+    -webkit-tap-highlight-color:rgba(0,0,0,0) !important;
+    -webkit-touch-callout:none !important;
+    -webkit-user-select:none !important;
+    user-select:none !important;
+    transition:none !important;
+    animation:none !important;
+  }
+
+  #rowContextMenu{
+    background:#fff !important;
+  }
+
+  #rowContextMenu button,
+  #rowContextMenu button:hover,
+  #rowContextMenu button:active,
+  #rowContextMenu button:focus,
+  #rowContextMenu button:focus-visible{
+    background:transparent !important;
+    box-shadow:none !important;
+    outline:none !important;
+    filter:none !important;
+  }
+}
+</style>
 </body>
 </html>
