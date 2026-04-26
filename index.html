@@ -31814,7 +31814,7 @@ body.body-v846-chart-resizing{
 (function(){
   const MOBILE_MQ = window.matchMedia ? window.matchMedia('(max-width:900px), (pointer:coarse)') : null;
   const DESKTOP_MQ = window.matchMedia ? window.matchMedia('(min-width:901px) and (pointer:fine)') : null;
-  const SAFETY_OFFSET_MOBILE = 28;
+  const SAFETY_OFFSET_MOBILE = 10; // v931: reduce app-side bottom gap on mobile Safari; keep desktop unchanged.
   const SAFETY_OFFSET_DESKTOP = 30;
   let rafId = 0;
 
