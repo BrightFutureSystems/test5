@@ -33147,5 +33147,76 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 }
 </style>
+<!-- ===== v898: compare setting table first-column horizontal line weight fix ===== -->
+<style id="v898-compare-setting-first-column-line-fix">
+/* Scope: 暴落比較・取り崩し比較の設定入力テーブルのみ。 */
+.withdrawal-preview-sheet #withdrawalCompareRuleBody > tr > th:first-child,
+.withdrawal-preview-sheet #withdrawalCompareParamCaseBody > tr > th:first-child,
+.withdrawal-preview-sheet #crashCompareCaseBody > tr > th:first-child{
+  border-bottom:1px solid #e9f0f6 !important;
+  border-top:0 !important;
+}
+
+.withdrawal-preview-sheet #withdrawalCompareRuleBody > tr:last-child > th:first-child,
+.withdrawal-preview-sheet #withdrawalCompareParamCaseBody > tr:last-child > th:first-child,
+.withdrawal-preview-sheet #crashCompareCaseBody > tr:last-child > th:first-child{
+  border-bottom:0 !important;
+}
+</style>
+<!-- ===== v899: suppress native contextmenu flash after row-label long press ===== -->
+<script id="v899-row-label-longpress-contextmenu-flash-fix">
+(function(){
+  /* Scope: touch/tablet long-press row-label context menu only. */
+  let rowLabelTouchActive = false;
+  let suppressRowLabelContextMenuUntil = 0;
+
+  function isRowLabelTarget(target){
+    return !!(target && target.closest && target.closest('[data-row-menu]'));
+  }
+
+  document.addEventListener('pointerdown', function(e){
+    if(e.pointerType === 'mouse') return;
+    if(!isRowLabelTarget(e.target)) return;
+    rowLabelTouchActive = true;
+  }, true);
+
+  document.addEventListener('touchstart', function(e){
+    if(!isRowLabelTarget(e.target)) return;
+    rowLabelTouchActive = true;
+  }, {capture:true, passive:true});
+
+  function endRowLabelTouchActiveSoon(){
+    window.setTimeout(function(){ rowLabelTouchActive = false; }, 900);
+  }
+
+  document.addEventListener('pointerup', endRowLabelTouchActiveSoon, true);
+  document.addEventListener('pointercancel', endRowLabelTouchActiveSoon, true);
+  document.addEventListener('touchend', endRowLabelTouchActiveSoon, {capture:true, passive:true});
+  document.addEventListener('touchcancel', endRowLabelTouchActiveSoon, {capture:true, passive:true});
+
+  if(typeof window.openRowContextMenu === 'function' && !window.openRowContextMenu.__v899Wrapped){
+    const originalOpenRowContextMenu = window.openRowContextMenu;
+    window.openRowContextMenu = function(type, index, x, y){
+      if(rowLabelTouchActive){
+        suppressRowLabelContextMenuUntil = Date.now() + 900;
+      }
+      return originalOpenRowContextMenu.call(this, type, index, x, y);
+    };
+    window.openRowContextMenu.__v899Wrapped = true;
+  }
+
+  /*
+    Some tablets fire a native contextmenu event on finger release after our timer has
+    already opened the custom menu. If the existing bubble handler reopens/repositions it,
+    the menu flashes. Stop only that release-time duplicate.
+  */
+  document.addEventListener('contextmenu', function(e){
+    if(!isRowLabelTarget(e.target)) return;
+    if(Date.now() > suppressRowLabelContextMenuUntil) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+})();
+</script>
 </body>
 </html>
