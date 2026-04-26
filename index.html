@@ -33274,5 +33274,22 @@ body.withdrawal-preview-open #detailStickyNav *{
   color:#122b45 !important;
 }
 </style>
+<!-- ===== v903: mobile cashflow age rows force flat background ===== -->
+<style id="v903-mobile-cashflow-age-rows-force-flat-bg">
+/* Scope: スマホ時の年度別収支表・本人/配偶者/子ども年齢行のみ。 */
+@media (max-width:900px), (pointer:coarse){
+  #cashflowModal .cashflow-table tbody tr.cashflow-sticky-row > th,
+  #cashflowModal .cashflow-table tbody tr.cashflow-sticky-row > td,
+  #cashflowModal .cashflow-table tbody tr.cashflow-sticky-row > th.cashflow-item-col,
+  #cashflowModal .cashflow-table tbody tr.cashflow-meta-row > th,
+  #cashflowModal .cashflow-table tbody tr.cashflow-meta-row > td,
+  #cashflowModal .cashflow-table tbody tr.cashflow-meta-row > th.cashflow-item-col,
+  #cashflowModal .cashflow-table tbody tr.cashflow-meta-row:not(.cashflow-sticky-row) > th.cashflow-item-col{
+    background:#f3f8ff !important;
+    background-image:none !important;
+    color:#122b45 !important;
+  }
+}
+</style>
 </body>
 </html>
