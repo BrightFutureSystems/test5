@@ -33320,5 +33320,719 @@ body.withdrawal-preview-open #detailStickyNav *{
   transition:none !important;
 }
 </style>
+<!-- ===== v905: compare result median-row highlight and group-label white bg ===== -->
+<style id="v905-compare-result-median-row-bg">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/* 「想定寿命時残高」の大分類セルは白背景にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label{
+  background:#fff !important;
+  color:#111827 !important;
+  font-weight:700 !important;
+}
+
+/* 中央値のタイトルセル・結果セルだけ、添付と同じ淡い黄色背景にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td{
+  background:#f7f1df !important;
+  color:#111827 !important;
+}
+</style>
+<!-- ===== v906: compare result label color and metric-line weight fix ===== -->
+<style id="v906-compare-result-label-color-and-line-fix">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/* 想定寿命時残高・中央値行の文字色を、結果表の他セルと同じ紺色系へ戻す。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td{
+  color:#243b53 !important;
+}
+
+/* 指標列の横罫線を、結果行と同じ細線に揃える。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table th.compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table th.compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table th.compare-metric-col{
+  border-bottom:1px solid #cfd6df !important;
+  border-top:0 !important;
+}
+
+/* 最終行の指標列だけは、既存の最終行ルールに合わせて下罫線なし。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > th.compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > th.compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > th.compare-metric-col{
+  border-bottom:0 !important;
+}
+</style>
+<!-- ===== v907: compare result table match setting-table text and line colors ===== -->
+<style id="v907-compare-result-table-match-setting-table">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/*
+  上の設定表に合わせる:
+  - タイトル行: muted navy (#43607b)
+  - タイトル列 / 指標列 / 結果数値: dark navy (#1f3c5a)
+  - 罫線: 1px の薄い青グレーで統一
+*/
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border:1px solid #cfd9e5 !important;
+  color:#1f3c5a !important;
+  background:#fff !important;
+}
+
+/* まず全セルの罫線を完全に同一指定へリセット。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table td,
+#crashCompareResultTableWrap .withdrawal-compare-table th,
+#crashCompareResultTableWrap .withdrawal-compare-table td,
+#monteCompareResultTableWrap .withdrawal-compare-table th,
+#monteCompareResultTableWrap .withdrawal-compare-table td{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:1px solid #d8e2f0 !important;
+  border-bottom:1px solid #d8e2f0 !important;
+  color:#1f3c5a !important;
+  background:#fff !important;
+}
+
+/* タイトル行は上の設定表の見出しと同じ系統の色にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th,
+#crashCompareResultTableWrap .withdrawal-compare-table thead th,
+#monteCompareResultTableWrap .withdrawal-compare-table thead th{
+  color:#43607b !important;
+  font-weight:700 !important;
+  border-right:1px solid #d8e2f0 !important;
+  border-bottom:1px solid #cfd9e5 !important;
+}
+
+/* 指標列・タイトル列は上の設定表の左列と同じ濃い紺色。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-metric-col{
+  color:#1f3c5a !important;
+  font-weight:700 !important;
+  border-right:1px solid #d8e2f0 !important;
+  border-bottom:1px solid #d8e2f0 !important;
+}
+
+/* 「想定寿命時残高」の大分類セルは白背景のまま。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label{
+  background:#fff !important;
+}
+
+/* 結果の数値は、上の設定表の入力値／表示値と同じ濃い紺色。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody td,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody td,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody td{
+  color:#1f3c5a !important;
+  font-weight:400 !important;
+}
+
+/* 一定利率行は既存どおり太字だけ維持。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > td{
+  font-weight:700 !important;
+  color:#1f3c5a !important;
+}
+
+/* 中央値行は淡い黄色背景を維持し、文字色・罫線は他セルと統一。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td{
+  background:#f7f1df !important;
+  color:#1f3c5a !important;
+  border-right:1px solid #d8e2f0 !important;
+  border-bottom:1px solid #d8e2f0 !important;
+}
+
+/* 右端・最終行は二重線を作らない。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:last-child{
+  border-right:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *{
+  border-bottom:0 !important;
+}
+</style>
+<!-- ===== v908: compare result table exact thin-line and header unification ===== -->
+<style id="v908-compare-result-table-thin-line-header-unification">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/*
+  上の設定表と同じ見え方へ寄せる:
+  - 見出し背景: 淡い青
+  - 見出し文字: #43607b
+  - 本文/指標/結果値: #1f3c5a
+  - 内側罫線: 細い淡色 1px #e3ebf3
+  - タイトル行下も太くせず同じ線にする
+*/
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border:1px solid #cfd9e5 !important;
+  color:#1f3c5a !important;
+  background:#fff !important;
+}
+
+/* 全セルの縦横罫線を同じ細線に統一。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table td,
+#crashCompareResultTableWrap .withdrawal-compare-table th,
+#crashCompareResultTableWrap .withdrawal-compare-table td,
+#monteCompareResultTableWrap .withdrawal-compare-table th,
+#monteCompareResultTableWrap .withdrawal-compare-table td{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:1px solid #e3ebf3 !important;
+  border-bottom:1px solid #e3ebf3 !important;
+  color:#1f3c5a !important;
+}
+
+/* タイトル行。「指標」も「定率取り崩し」等も同じ背景・同じフォントカラー。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th,
+#crashCompareResultTableWrap .withdrawal-compare-table thead th,
+#monteCompareResultTableWrap .withdrawal-compare-table thead th{
+  background:linear-gradient(180deg,#f7fbff 0%,#edf5fd 100%) !important;
+  color:#43607b !important;
+  font-weight:700 !important;
+  border-right:1px solid #e3ebf3 !important;
+  border-bottom:1px solid #e3ebf3 !important;
+}
+
+/* 指標列・大分類列は本文系の濃い紺色。罫線は結果値列と完全同一。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-metric-col{
+  color:#1f3c5a !important;
+  font-weight:700 !important;
+  border-right:1px solid #e3ebf3 !important;
+  border-bottom:1px solid #e3ebf3 !important;
+}
+
+/* 想定寿命時残高の大分類セルは白背景指定を維持。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label{
+  background:#fff !important;
+}
+
+/* 結果値列は上の設定表の入力値と同じ濃い紺色。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody td,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody td,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody td{
+  color:#1f3c5a !important;
+  font-weight:400 !important;
+  border-right:1px solid #e3ebf3 !important;
+  border-bottom:1px solid #e3ebf3 !important;
+}
+
+/* 一定利率行は太字だけ維持。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-fixed > td{
+  color:#1f3c5a !important;
+  font-weight:700 !important;
+}
+
+/* 中央値行は淡い黄色背景を維持し、文字色・罫線は他セルと同一。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td{
+  background:#f7f1df !important;
+  color:#1f3c5a !important;
+  border-right:1px solid #e3ebf3 !important;
+  border-bottom:1px solid #e3ebf3 !important;
+}
+
+/* 右端・最終行は外枠と二重にしない。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:last-child{
+  border-right:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *{
+  border-bottom:0 !important;
+}
+</style>
+<!-- ===== v909: compare result header indicator bg and line color final unification ===== -->
+<style id="v909-compare-result-header-indicator-and-line-final">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/* 表内の全セル罫線を、結果値列と同じ淡い細線に統一する。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table td,
+#crashCompareResultTableWrap .withdrawal-compare-table th,
+#crashCompareResultTableWrap .withdrawal-compare-table td,
+#monteCompareResultTableWrap .withdrawal-compare-table th,
+#monteCompareResultTableWrap .withdrawal-compare-table td{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* タイトル行の下線も太くせず、表内セルと同じ線にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th,
+#crashCompareResultTableWrap .withdrawal-compare-table thead th,
+#monteCompareResultTableWrap .withdrawal-compare-table thead th{
+  background-color:#edf5fd !important;
+  background-image:linear-gradient(180deg,#f7fbff 0%,#edf5fd 100%) !important;
+  color:#43607b !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* 「指標」セルを、他のタイトルセルと完全に同じ背景・文字色にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th.compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table thead th.compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table thead th.compare-metric-col{
+  background-color:#edf5fd !important;
+  background-image:linear-gradient(180deg,#f7fbff 0%,#edf5fd 100%) !important;
+  color:#43607b !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* 結果列タイトルも「指標」と同じ文字色にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th:not(.compare-metric-col),
+#crashCompareResultTableWrap .withdrawal-compare-table thead th:not(.compare-metric-col),
+#monteCompareResultTableWrap .withdrawal-compare-table thead th:not(.compare-metric-col){
+  color:#43607b !important;
+}
+
+/* 指標列の横罫線は、結果値列と完全に同じ線にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-metric-col{
+  color:#1f3c5a !important;
+  background:#fff !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* 想定寿命時残高セルは白背景を維持し、罫線は結果値列と同じ。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-group-label{
+  background:#fff !important;
+  color:#1f3c5a !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* 結果値列も同じ文字色・同じ罫線で明示。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody td,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody td,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody td{
+  color:#1f3c5a !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* 中央値行の背景だけ維持し、罫線は同じ淡い細線。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td{
+  background:#f7f1df !important;
+  color:#1f3c5a !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+
+/* 右端・最終行は二重線を作らない。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:last-child{
+  border-right:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *{
+  border-bottom:0 !important;
+}
+</style>
+<!-- ===== v910: compare result median bg restore and header underline fix ===== -->
+<style id="v910-compare-result-median-bg-and-header-line-fix">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/* タイトル行下の線を、上の設定表と同じ少し濃い線にする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th,
+#crashCompareResultTableWrap .withdrawal-compare-table thead th,
+#monteCompareResultTableWrap .withdrawal-compare-table thead th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead th.compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table thead th.compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table thead th.compare-metric-col{
+  border-bottom:1px solid #cfd9e5 !important;
+}
+
+/* 中央値セルの背景色を元に戻す。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#crashCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > th,
+#monteCompareResultTableWrap .withdrawal-compare-table .compare-row-median > td{
+  background:#fffbeb !important;
+  color:#1f3c5a !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+</style>
+<!-- ===== v911: compare result median title cell bg fix ===== -->
+<style id="v911-compare-result-median-title-cell-bg-fix">
+/* Scope: 比較結果表の「中央値」タイトルセルのみ。 */
+
+/* 「中央値」のタイトルセルを、中央値の結果セルと同じ淡いオレンジにする。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr.compare-row-median > th.compare-metric-col,
+#crashCompareResultTableWrap .withdrawal-compare-table tr.compare-row-median > th.compare-metric-col,
+#monteCompareResultTableWrap .withdrawal-compare-table tr.compare-row-median > th.compare-metric-col{
+  background:#fffbeb !important;
+  background-image:none !important;
+  color:#1f3c5a !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
+</style>
+<!-- ===== v912: compare result table corner gap fix ===== -->
+<style id="v912-compare-result-table-corner-gap-fix">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/*
+  border-collapse:separate + table border-radius で角に背景の抜けが出るため、
+  table自身は角丸の外枠担当、角セル側にも同じ角丸を付けて隙間を塞ぐ。
+*/
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  overflow:hidden !important;
+  border-radius:16px !important;
+  background:#fff !important;
+}
+
+/* 左上・右上：タイトル行セルの背景を角まで伸ばす。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child{
+  border-top-left-radius:16px !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child{
+  border-top-right-radius:16px !important;
+}
+
+/* 左下：rowspan の「想定寿命時残高」セルが左下角まで届くため、ここにも角丸を付ける。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr > th.compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr > th.compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr > th.compare-group-label{
+  border-bottom-left-radius:16px !important;
+}
+
+/* 右下：最後の結果セルにも角丸を付けて外枠とつなげる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child{
+  border-bottom-right-radius:16px !important;
+}
+
+/* 表外周にセル背景が届くよう、角セルの外側罫線はtable外枠へ任せる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th{
+  border-top:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:first-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:first-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:first-child{
+  border-left:0 !important;
+}
+</style>
+<!-- ===== v913: compare result table corner gaps without masking ===== -->
+<style id="v913-compare-result-corner-gap-no-mask-fix">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/*
+  v912 の overflow:hidden 方式は使わない。
+  角セルそのものを外枠角まで塗ることで隙間を消す。
+*/
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  overflow:visible !important;
+  clip-path:none !important;
+  -webkit-mask:none !important;
+  mask:none !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  background:#fff !important;
+}
+
+/* 左上・右上のヘッダー角をセル背景で直接塗る。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child{
+  border-top-left-radius:15px !important;
+  background-color:#edf5fd !important;
+  background-image:linear-gradient(180deg,#f7fbff 0%,#edf5fd 100%) !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child{
+  border-top-right-radius:15px !important;
+  background-color:#edf5fd !important;
+  background-image:linear-gradient(180deg,#f7fbff 0%,#edf5fd 100%) !important;
+}
+
+/* 左下は rowspan の大分類セルが担当する。白背景を角まで直接塗る。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label{
+  border-bottom-left-radius:15px !important;
+  background:#fff !important;
+  background-image:none !important;
+}
+
+/* 右下も最後のセルで直接塗る。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child{
+  border-bottom-right-radius:15px !important;
+  background:#fff !important;
+  background-image:none !important;
+}
+
+/* 外周側のセル罫線は table 外枠と二重にしない。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:first-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:first-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:first-child{
+  border-left:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th{
+  border-top:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:last-child{
+  border-right:0 !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *{
+  border-bottom:0 !important;
+}
+
+/* 角のセル背景が外枠に届くよう、表の外枠色はそのまま維持。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  border:1px solid #cfd9e5 !important;
+  border-radius:16px !important;
+}
+</style>
+<!-- ===== v914: compare result table bottom-left corner fill only ===== -->
+<style id="v914-compare-result-bottom-left-corner-fill">
+/* Scope: 比較結果表の左下角のみ。マスク/overflow-hiddenは使わない。 */
+
+/*
+  rowspan の「想定寿命時残高」セルの左下角に残る抜けを、
+  セル自身と疑似要素の背景で埋める。
+*/
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label{
+  position:relative !important;
+  background:#fff !important;
+  background-image:none !important;
+  border-bottom-left-radius:15px !important;
+  overflow:visible !important;
+}
+
+/* 左下角の内側だけを白で塗り足す。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label::after,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label::after,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label::after{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  bottom:0 !important;
+  width:16px !important;
+  height:16px !important;
+  background:#fff !important;
+  border-bottom-left-radius:15px !important;
+  pointer-events:none !important;
+  z-index:0 !important;
+}
+
+/* ラベル文字は塗り足しより上に置く。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label{
+  z-index:1 !important;
+}
+</style>
+<!-- ===== v915: crash history table corner gap fix without mask ===== -->
+<style id="v915-crash-history-table-no-mask-corner-fix">
+/* Scope: 暴落設定プレビューシート内の「暴落の歴史（参考）」テーブルのみ。 */
+
+/*
+  外側の scroll ラッパーに外枠・角丸を持たせると、table セル背景との間に角の抜けが出る。
+  ラッパーはスクロールだけ担当し、外枠・角丸は table 本体と角セルで作る。
+  mask / clip-path / overflow:hidden は使わない。
+*/
+.crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  -webkit-overflow-scrolling:touch !important;
+  clip-path:none !important;
+  -webkit-mask:none !important;
+  mask:none !important;
+  padding:0 !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table{
+  width:100% !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border:1px solid var(--preview-blue-line, #cfd9e5) !important;
+  border-radius:14px !important;
+  margin:0 !important;
+  background:#fff !important;
+  color:#1f3c5a !important;
+  box-shadow:var(--preview-shadow, 0 1px 2px rgba(18,38,63,.035)) !important;
+  overflow:visible !important;
+  clip-path:none !important;
+  -webkit-mask:none !important;
+  mask:none !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table th,
+.crash-preview-sheet #crashHistoryContent .crash-history-table td{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:1px solid var(--preview-blue-line-soft, #e7eef6) !important;
+  border-bottom:1px solid var(--preview-blue-line-soft, #e7eef6) !important;
+  color:#1f3c5a !important;
+  vertical-align:middle !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table th{
+  background:linear-gradient(180deg, #f4f8fe 0%, #ebf2fb 100%) !important;
+  color:#43607b !important;
+  font-weight:700 !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table td{
+  background:#fff !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table tr > *:last-child{
+  border-right:0 !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td{
+  border-bottom:0 !important;
+}
+
+/* 4隅は table と実セルを同じ角丸でつなぐ。 */
+.crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
+  border-top-left-radius:13px !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
+  border-top-right-radius:13px !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
+  border-bottom-left-radius:13px !important;
+}
+
+.crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
+  border-bottom-right-radius:13px !important;
+}
+
+@media (max-width:900px), (pointer:coarse){
+  .crash-preview-sheet #crashHistoryContent .crash-history-table{
+    border-radius:12px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
+    border-top-left-radius:11px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
+    border-top-right-radius:11px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
+    border-bottom-left-radius:11px !important;
+  }
+
+  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
+    border-bottom-right-radius:11px !important;
+  }
+}
+</style>
 </body>
 </html>
