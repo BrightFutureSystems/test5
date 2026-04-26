@@ -69,8 +69,8 @@ document.addEventListener("scroll", (ev)=>{
   }
   .app-logo{
     position:relative;
-    width:54px;
-    height:54px;
+    width:46px;
+    height:46px;
     flex:0 0 auto;
     border-radius:14px;
     background:linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
@@ -4716,18 +4716,22 @@ document.addEventListener("scroll", (ev)=>{
     <div class="app-hero-brand">
       <svg class="app-logo" aria-hidden="true" viewBox="0 0 58 58" focusable="false">
         <defs>
-          <linearGradient id="appLogoGradient" x1="0" y1="0" x2="0" y2="58" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stop-color="#5B7DF8"/>
-            <stop offset="1" stop-color="#6B58F6"/>
+          <linearGradient id="appLogoGradient" x1="0" y1="0" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="rgb(83,137,254)"/>
+            <stop offset="0.48" stop-color="rgb(92,126,252)"/>
+            <stop offset="0.62" stop-color="rgb(105,114,249)"/>
+            <stop offset="1" stop-color="rgb(118,104,247)"/>
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width="58" height="58" rx="16" fill="url(#appLogoGradient)"/>
-        <!-- bars: width and spacing unchanged; slight upward balance after widening line gap -->
-        <rect x="13.1" y="30.6" width="8.4" height="16.0" rx="4.2" fill="#fff"/>
-        <rect x="24.5" y="25.4" width="8.4" height="21.2" rx="4.2" fill="#fff"/>
-        <rect x="36.5" y="19.6" width="8.4" height="27.0" rx="4.2" fill="#fff"/>
-        <!-- slanted line: same slope, slightly higher to widen the gap -->
-        <path d="M14.9 25.6 L43.1 12.3" stroke="#fff" stroke-width="4.7" stroke-linecap="round"/>
+
+        <rect x="0" y="0" width="58" height="58" rx="14" fill="url(#appLogoGradient)"/>
+
+        <g transform="translate(-1.1 -1.45)">
+          <rect x="13.6" y="28.2" width="8.4" height="19.0" rx="4.2" fill="#ffffff"/>
+          <rect x="25.7" y="22.0" width="8.4" height="19.2" rx="4.2" fill="#ffffff"/>
+          <rect x="38.2" y="15.9" width="8.4" height="18.6" rx="4.2" fill="#ffffff"/>
+          <path d="M16.08 21.99 L34.03 10.99" stroke="#ffffff" stroke-width="3.91" stroke-linecap="round"/>
+        </g>
       </svg>
       <div class="app-hero-copy">
         <div class="app-hero-title">資産寿命シミュレータ</div>
@@ -33928,109 +33932,243 @@ body.withdrawal-preview-open #detailStickyNav *{
   z-index:1 !important;
 }
 </style>
-<!-- ===== v915: crash history table corner gap fix without mask ===== -->
-<style id="v915-crash-history-table-no-mask-corner-fix">
-/* Scope: 暴落設定プレビューシート内の「暴落の歴史（参考）」テーブルのみ。 */
+<!-- ===== v915: compare result table corner-gap root fix ===== -->
+<style id="v915-compare-result-corner-gap-root-fix">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
 
 /*
-  外側の scroll ラッパーに外枠・角丸を持たせると、table セル背景との間に角の抜けが出る。
-  ラッパーはスクロールだけ担当し、外枠・角丸は table 本体と角セルで作る。
-  mask / clip-path / overflow:hidden は使わない。
+  Root cause:
+  table 本体に border / border-radius を持たせたまま border-collapse:separate でセル背景を塗ると、
+  rowspan を含む左下角で table 外枠の角丸とセル矩形の噛み合わせがずれて隙間が出る。
+  対策:
+  上の設定表と同じく、角丸と外枠はラッパーが担当し、table 本体は角丸・外枠を持たない。
+  マスク、clip-path、overflow:hidden は使わない。
 */
-.crash-preview-sheet #crashHistoryContent > .withdrawal-compare-table-wrap{
-  border:0 !important;
-  border-radius:0 !important;
-  background:transparent !important;
+
+/* 外側ラッパーが外枠と角丸を担当する。 */
+#withdrawalCompareResultTableWrap,
+#crashCompareResultTableWrap,
+#monteCompareResultTableWrap{
+  display:inline-block !important;
+  border:1px solid #cfd9e5 !important;
+  border-radius:16px !important;
+  background:#fff !important;
   box-shadow:none !important;
-  overflow-x:auto !important;
-  overflow-y:visible !important;
-  -webkit-overflow-scrolling:touch !important;
+  overflow:visible !important;
   clip-path:none !important;
   -webkit-mask:none !important;
   mask:none !important;
   padding:0 !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table{
-  width:100% !important;
+/* table 本体から外枠・角丸を外す。これで左下の角丸ずれを発生させない。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  border:0 !important;
+  border-radius:0 !important;
   border-collapse:separate !important;
   border-spacing:0 !important;
-  border:1px solid var(--preview-blue-line, #cfd9e5) !important;
-  border-radius:14px !important;
-  margin:0 !important;
   background:#fff !important;
-  color:#1f3c5a !important;
-  box-shadow:var(--preview-shadow, 0 1px 2px rgba(18,38,63,.035)) !important;
   overflow:visible !important;
   clip-path:none !important;
   -webkit-mask:none !important;
   mask:none !important;
+  margin:0 !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table th,
-.crash-preview-sheet #crashHistoryContent .crash-history-table td{
+/* セル罫線は内側だけに持たせる。外周はラッパー外枠に任せる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table td,
+#crashCompareResultTableWrap .withdrawal-compare-table th,
+#crashCompareResultTableWrap .withdrawal-compare-table td,
+#monteCompareResultTableWrap .withdrawal-compare-table th,
+#monteCompareResultTableWrap .withdrawal-compare-table td{
   border-top:0 !important;
   border-left:0 !important;
-  border-right:1px solid var(--preview-blue-line-soft, #e7eef6) !important;
-  border-bottom:1px solid var(--preview-blue-line-soft, #e7eef6) !important;
-  color:#1f3c5a !important;
-  vertical-align:middle !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table th{
-  background:linear-gradient(180deg, #f4f8fe 0%, #ebf2fb 100%) !important;
-  color:#43607b !important;
-  font-weight:700 !important;
-}
-
-.crash-preview-sheet #crashHistoryContent .crash-history-table td{
-  background:#fff !important;
-}
-
-.crash-preview-sheet #crashHistoryContent .crash-history-table tr > *:last-child{
+/* 外周側のセル罫線を消す。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:last-child{
   border-right:0 !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td{
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *{
   border-bottom:0 !important;
 }
 
-/* 4隅は table と実セルを同じ角丸でつなぐ。 */
-.crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
-  border-top-left-radius:13px !important;
+/* 左上・右上の見出しセルだけ、ラッパー角丸に沿うよう背景を持たせる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child{
+  border-top-left-radius:15px !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
-  border-top-right-radius:13px !important;
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child{
+  border-top-right-radius:15px !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
-  border-bottom-left-radius:13px !important;
+/* 左下・右下は table 角丸ではなく、最後に触れるセルの背景をラッパー角へ沿わせる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label{
+  border-bottom-left-radius:15px !important;
+  background:#fff !important;
+  background-image:none !important;
 }
 
-.crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
-  border-bottom-right-radius:13px !important;
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child{
+  border-bottom-right-radius:15px !important;
+}
+</style>
+<!-- ===== v916: compare result table plain-cell corner handling like normal tables ===== -->
+<style id="v916-compare-result-plain-cell-corner-handling">
+/* Scope: 取り崩し比較・暴落比較・モンテカルロ比較の結果表のみ。 */
+
+/*
+  原因:
+  左下セル（想定寿命時残高）に border-bottom-left-radius を付けていたため、
+  セル自身の白背景が角で丸く削られ、外側との間に隙間が見えていた。
+  対策:
+  角セルを丸めて埋めるのをやめ、通常テーブルと同じくセルは四角く塗る。
+  外枠と角丸は table 本体に任せる。
+*/
+
+#withdrawalCompareResultTableWrap,
+#crashCompareResultTableWrap,
+#monteCompareResultTableWrap{
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  padding:0 !important;
 }
 
-@media (max-width:900px), (pointer:coarse){
-  .crash-preview-sheet #crashHistoryContent .crash-history-table{
-    border-radius:12px !important;
-  }
+#withdrawalCompareResultTableWrap .withdrawal-compare-table,
+#crashCompareResultTableWrap .withdrawal-compare-table,
+#monteCompareResultTableWrap .withdrawal-compare-table{
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  border:1px solid #cfd9e5 !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  overflow:visible !important;
+  clip-path:none !important;
+  -webkit-mask:none !important;
+  mask:none !important;
+  margin:0 !important;
+}
 
-  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:first-child{
-    border-top-left-radius:11px !important;
-  }
+/* すべてのセル角丸をいったん消す。左下の隙間原因をここで断つ。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table th,
+#withdrawalCompareResultTableWrap .withdrawal-compare-table td,
+#crashCompareResultTableWrap .withdrawal-compare-table th,
+#crashCompareResultTableWrap .withdrawal-compare-table td,
+#monteCompareResultTableWrap .withdrawal-compare-table th,
+#monteCompareResultTableWrap .withdrawal-compare-table td{
+  border-radius:0 !important;
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:1px solid #e9f0f6 !important;
+  border-bottom:1px solid #e9f0f6 !important;
+}
 
-  .crash-preview-sheet #crashHistoryContent .crash-history-table thead tr:first-child > th:last-child{
-    border-top-right-radius:11px !important;
-  }
+/* 外周は table 外枠に任せる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tr > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tr > *:last-child{
+  border-right:0 !important;
+}
 
-  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:first-child{
-    border-bottom-left-radius:11px !important;
-  }
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *{
+  border-bottom:0 !important;
+}
 
-  .crash-preview-sheet #crashHistoryContent .crash-history-table tbody tr:last-child > td:last-child{
-    border-bottom-right-radius:11px !important;
+/* 上の角だけは、見出しセルの背景が外枠角に沿うよう通常テーブルと同じ処理。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:first-child{
+  border-top-left-radius:15px !important;
+}
+
+#withdrawalCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table thead tr:first-child > th:last-child{
+  border-top-right-radius:15px !important;
+}
+
+/* 左下は丸めない。四角いセル背景で最後まで塗る。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label{
+  border-bottom-left-radius:0 !important;
+  background:#fff !important;
+  background-image:none !important;
+}
+
+/* v914 の塗り足し疑似要素を完全に無効化。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label::after,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label::after,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody th.compare-group-label::after{
+  content:none !important;
+  display:none !important;
+}
+
+/* 右下だけは最後の結果セルで角に沿わせる。 */
+#withdrawalCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#crashCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child,
+#monteCompareResultTableWrap .withdrawal-compare-table tbody tr:last-child > *:last-child{
+  border-bottom-right-radius:15px !important;
+}
+</style>
+<!-- ===== v927: app hero logo display size 90 percent ===== -->
+<style id="v927-app-logo-display-size-90-percent">
+/* Scope: title/category left app icon display size only. SVG content is unchanged. */
+#appHero .app-hero-brand > svg.app-logo{
+  width:49px !important;
+  height:49px !important;
+  flex:0 0 49px !important;
+  min-width:49px !important;
+  max-width:49px !important;
+  min-height:49px !important;
+  max-height:49px !important;
+}
+</style>
+<!-- ===== v929: app hero icon transparent corners fix ===== -->
+<style id="v929-app-logo-transparent-corners-fix">
+/* Scope: title/category left app icon only. SVG content and display size are unchanged. */
+#appHero .app-hero-brand > svg.app-logo{
+  background:transparent !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  filter:drop-shadow(0 8px 18px rgba(59,130,246,.14)) !important;
+  display:block !important;
+}
+</style>
+<!-- ===== v930: app hero icon PC size plus 10 percent only ===== -->
+<style id="v930-app-logo-pc-size-plus-10">
+/* Scope: PC title/category left app icon display size only. SVG content and mobile size are unchanged. */
+@media (min-width:901px) and (pointer:fine){
+  #appHero .app-hero-brand > svg.app-logo{
+    width:54px !important;
+    height:54px !important;
+    flex:0 0 54px !important;
+    min-width:54px !important;
+    max-width:54px !important;
+    min-height:54px !important;
+    max-height:54px !important;
   }
 }
 </style>
