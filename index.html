@@ -20295,53 +20295,79 @@ function makeAssetBreakdownOverlayPattern(chart, color, category){
   const ctx = chart?.ctx;
   if(!ctx || typeof document === "undefined") return rgbaFromHexForAssetBreakdown(color, 0.45);
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const key = `${color}|${category}|${Math.round(dpr * 100)}`;
+  const logicalSize = 10;
+  const key = `${color}|${category}|pattern-v1033|${Math.round(dpr * 100)}`;
   chart.$assetBreakdownPatternCache = chart.$assetBreakdownPatternCache || {};
   if(chart.$assetBreakdownPatternCache[key]) return chart.$assetBreakdownPatternCache[key];
 
-  const size = Math.round(8 * dpr);
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = Math.round(logicalSize * dpr);
+  canvas.height = Math.round(logicalSize * dpr);
   const pctx = canvas.getContext("2d");
   if(!pctx) return rgbaFromHexForAssetBreakdown(color, 0.45);
-  pctx.scale(dpr, dpr);
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  pctx.clearRect(0, 0, logicalSize, logicalSize);
 
-  const fillAlpha = category === "deposit" ? 0.20 : (category === "safe" ? 0.34 : (category === "investment" ? 0.58 : 0.34));
+  const fillAlpha = category === "deposit" ? 0.22 : (category === "safe" ? 0.24 : (category === "investment" ? 0.62 : 0.26));
   pctx.fillStyle = rgbaFromHexForAssetBreakdown(color, fillAlpha);
-  pctx.fillRect(0, 0, 8, 8);
+  pctx.fillRect(0, 0, logicalSize, logicalSize);
 
   if(category === "safe"){
     pctx.strokeStyle = rgbaFromHexForAssetBreakdown(color, 0.62);
-    pctx.lineWidth = 1.15;
+    pctx.lineWidth = 1.7;
+    pctx.lineCap = "butt";
     pctx.beginPath();
-    pctx.moveTo(-2, 8); pctx.lineTo(8, -2);
-    pctx.moveTo(2, 10); pctx.lineTo(10, 2);
+    for(let x = -logicalSize; x <= logicalSize * 2; x += 6){
+      pctx.moveTo(x, logicalSize + 1);
+      pctx.lineTo(x + logicalSize + 1, -1);
+    }
     pctx.stroke();
   }else if(category === "investment"){
-    pctx.fillStyle = rgbaFromHexForAssetBreakdown(color, 0.72);
-    pctx.fillRect(0, 0, 8, 8);
+    pctx.fillStyle = rgbaFromHexForAssetBreakdown(color, 0.66);
+    pctx.fillRect(0, 0, logicalSize, logicalSize);
   }else if(category === "shortfall"){
-    pctx.strokeStyle = rgbaFromHexForAssetBreakdown(color, 0.68);
-    pctx.lineWidth = 1.1;
+    pctx.strokeStyle = rgbaFromHexForAssetBreakdown(color, 0.60);
+    pctx.lineWidth = 1.7;
+    pctx.lineCap = "butt";
     pctx.beginPath();
-    pctx.moveTo(-2, -2); pctx.lineTo(10, 10);
-    pctx.moveTo(2, -2); pctx.lineTo(10, 6);
+    for(let x = -logicalSize; x <= logicalSize * 2; x += 6){
+      pctx.moveTo(x, -1);
+      pctx.lineTo(x + logicalSize + 1, logicalSize + 1);
+    }
     pctx.stroke();
   }
 
-  const pattern = ctx.createPattern(canvas, "repeat") || rgbaFromHexForAssetBreakdown(color, fillAlpha);
-  chart.$assetBreakdownPatternCache[key] = pattern;
-  return pattern;
+  const pattern = ctx.createPattern(canvas, "repeat");
+  if(pattern && typeof pattern.setTransform === "function" && typeof DOMMatrix !== "undefined"){
+    const matrix = new DOMMatrix();
+    matrix.a = 1 / dpr;
+    matrix.d = 1 / dpr;
+    pattern.setTransform(matrix);
+  }
+  const result = pattern || rgbaFromHexForAssetBreakdown(color, fillAlpha);
+  chart.$assetBreakdownPatternCache[key] = result;
+  return result;
+}
+function getAssetBreakdownOverlayFillColor(color, category){
+  const alphaByCategory = {
+    deposit:0.34,
+    safe:0.56,
+    investment:0.84,
+    shortfall:0.56
+  };
+  const alpha = alphaByCategory[category] ?? 0.56;
+  return rgbaFromHexForAssetBreakdown(color, alpha);
 }
 function makeAssetBreakdownOverlayBarDataset(label, labels, data, color, category, stackId){
-  return makeBarDataset(label, labels, data, {
-    backgroundColor:(ctx)=>makeAssetBreakdownOverlayPattern(ctx.chart, color, category),
+  const ds = makeBarDataset(label, labels, data, {
+    backgroundColor:getAssetBreakdownOverlayFillColor(color, category),
     borderColor:'rgba(0,0,0,0)',
     borderWidth:0,
-    stack:stackId,
-    _scenarioColor:color
+    stack:stackId
   });
+  ds._scenarioColor = color;
+  ds._assetBreakdownCategory = category;
+  return ds;
 }
 function buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix="", overlayIndex=0){
   if(overlay){
@@ -21009,12 +21035,15 @@ function escapeAttr(value){
   return String(value ?? "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 function getLegendLineStyleFromDataset(ds){
+  const isBar = (ds?.type === "bar");
+  const backgroundColor = Array.isArray(ds?.backgroundColor) ? ds.backgroundColor[0] : ds?.backgroundColor;
   const borderColor = Array.isArray(ds?.borderColor) ? ds.borderColor[0] : ds?.borderColor;
-  const color = typeof borderColor === "string" ? borderColor : "#64748b";
-  const width = Math.max(1, Math.min(6, Number(ds?.borderWidth) || 2));
+  const colorSource = isBar ? backgroundColor : borderColor;
+  const color = typeof colorSource === "string" ? colorSource : (typeof borderColor === "string" ? borderColor : "#64748b");
+  const width = isBar ? 2 : Math.max(1, Math.min(6, Number(ds?.borderWidth) || 2));
   const dash = Array.isArray(ds?.borderDash) ? ds.borderDash : [];
   let style = "solid";
-  if(dash.length){
+  if(!isBar && dash.length){
     const first = Number(dash[0]) || 0;
     style = first <= 2 ? "dotted" : "dashed";
   }
@@ -21036,6 +21065,7 @@ function getAssetBreakdownOverlayLegendDatasets(chartInstance){
     if(ds?.type !== "bar") return;
     const overlayIndex = Number(ds?._overlayIndex);
     if(!Number.isFinite(overlayIndex)) return;
+    if(!shouldShowDatasetInLegend(ds)) return;
     if(map.has(overlayIndex)) return;
     const label = String(ds?.label || "").replace(/\s*(預貯金|安全資産|運用|不足額)\s*$/, "").trim() || `シナリオ${map.size + 1}`;
     const color = typeof ds?._scenarioColor === "string" ? ds._scenarioColor : "#64748b";
@@ -21043,19 +21073,61 @@ function getAssetBreakdownOverlayLegendDatasets(chartInstance){
   });
   return Array.from(map.values()).sort((a,b)=>a.overlayIndex - b.overlayIndex);
 }
-function setAssetBreakdownOverlayScenarioVisibility(chartInstance, overlayIndex, visible){
+function ensureAssetBreakdownOverlayLegendState(chartInstance){
+  if(!chartInstance) return null;
+  if(!(chartInstance.$assetBreakdownOverlayHiddenScenarios instanceof Set)) chartInstance.$assetBreakdownOverlayHiddenScenarios = new Set();
+  if(!(chartInstance.$assetBreakdownOverlayHiddenCategories instanceof Set)) chartInstance.$assetBreakdownOverlayHiddenCategories = new Set();
+  return {
+    hiddenScenarios: chartInstance.$assetBreakdownOverlayHiddenScenarios,
+    hiddenCategories: chartInstance.$assetBreakdownOverlayHiddenCategories
+  };
+}
+function applyAssetBreakdownOverlayLegendVisibility(chartInstance){
+  const state = ensureAssetBreakdownOverlayLegendState(chartInstance);
+  if(!state) return;
   (chartInstance?.data?.datasets || []).forEach((ds, idx)=>{
-    if(Number(ds?._overlayIndex) === Number(overlayIndex)){
-      chartInstance.setDatasetVisibility(idx, visible);
-    }
+    if(ds?.type !== "bar") return;
+    const overlayIndex = Number(ds?._overlayIndex);
+    const category = String(ds?._assetBreakdownCategory || "");
+    if(!Number.isFinite(overlayIndex) || !category) return;
+    const visible = !state.hiddenScenarios.has(overlayIndex) && !state.hiddenCategories.has(category);
+    chartInstance.setDatasetVisibility(idx, visible);
   });
 }
+function setAssetBreakdownOverlayScenarioVisibility(chartInstance, overlayIndex, visible){
+  const state = ensureAssetBreakdownOverlayLegendState(chartInstance);
+  if(!state || !Number.isFinite(Number(overlayIndex))) return;
+  const key = Number(overlayIndex);
+  if(visible) state.hiddenScenarios.delete(key);
+  else state.hiddenScenarios.add(key);
+  applyAssetBreakdownOverlayLegendVisibility(chartInstance);
+}
 function isAssetBreakdownOverlayScenarioVisible(chartInstance, overlayIndex){
-  const indices = [];
-  (chartInstance?.data?.datasets || []).forEach((ds, idx)=>{
-    if(Number(ds?._overlayIndex) === Number(overlayIndex)) indices.push(idx);
+  const state = ensureAssetBreakdownOverlayLegendState(chartInstance);
+  if(!state || !Number.isFinite(Number(overlayIndex))) return true;
+  return !state.hiddenScenarios.has(Number(overlayIndex));
+}
+function setAssetBreakdownOverlayCategoryVisibility(chartInstance, category, visible){
+  const state = ensureAssetBreakdownOverlayLegendState(chartInstance);
+  const key = String(category || "");
+  if(!state || !key) return;
+  if(visible) state.hiddenCategories.delete(key);
+  else state.hiddenCategories.add(key);
+  applyAssetBreakdownOverlayLegendVisibility(chartInstance);
+}
+function isAssetBreakdownOverlayCategoryVisible(chartInstance, category){
+  const state = ensureAssetBreakdownOverlayLegendState(chartInstance);
+  const key = String(category || "");
+  if(!state || !key) return true;
+  return !state.hiddenCategories.has(key);
+}
+function hasAssetBreakdownOverlayCategoryData(chartInstance, category){
+  const key = String(category || "");
+  return (chartInstance?.data?.datasets || []).some(ds=>{
+    if(ds?.type !== "bar") return false;
+    if(String(ds?._assetBreakdownCategory || "") !== key) return false;
+    return shouldShowDatasetInLegend(ds);
   });
-  return indices.length ? indices.some(idx=>chartInstance.isDatasetVisible(idx)) : true;
 }
 function renderAssetBreakdownOverlayLegend(chartInstance, display){
   const legendEl = document.getElementById("chartCustomLegend");
@@ -21065,6 +21137,7 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
     legendEl.innerHTML = "";
     return;
   }
+  ensureAssetBreakdownOverlayLegendState(chartInstance);
   const scenarios = getAssetBreakdownOverlayLegendDatasets(chartInstance);
   if(!scenarios.length){
     legendEl.hidden = true;
@@ -21078,18 +21151,38 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-overlay-index="${item.overlayIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(item.color)};border-color:${escapeAttr(item.color)};"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
   }).join("");
   const categoryItems = [
-    {label:"預貯金", style:"background:rgba(51,65,85,.22);border-color:rgba(51,65,85,.22);"},
-    {label:"安全資産", style:"background:repeating-linear-gradient(135deg, rgba(51,65,85,.20) 0 4px, rgba(51,65,85,.50) 4px 6px);border-color:rgba(51,65,85,.28);"},
-    {label:"運用", style:"background:rgba(51,65,85,.66);border-color:rgba(51,65,85,.66);"}
-  ];
-  const categoryHtml = categoryItems.map(item=>`<span class="chart-line-legend-item chart-legend-static-item"><span class="chart-line-legend-sample chart-bar-legend-sample" style="${item.style}"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></span>`).join("");
-  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div>`;
+    {key:"deposit", label:"預貯金", style:"background:rgba(51,65,85,.26);border-color:rgba(51,65,85,.26);"},
+    {key:"safe", label:"安全資産", style:"background:rgba(51,65,85,.48);border-color:rgba(51,65,85,.48);"},
+    {key:"investment", label:"運用", style:"background:rgba(51,65,85,.72);border-color:rgba(51,65,85,.72);"},
+    {key:"shortfall", label:"不足額", style:"background:rgba(51,65,85,.48);border-color:rgba(51,65,85,.48);"}
+  ].filter(item=>hasAssetBreakdownOverlayCategoryData(chartInstance, item.key));
+  const categoryHtml = categoryItems.map(item=>{
+    const visible = isAssetBreakdownOverlayCategoryVisible(chartInstance, item.key);
+    const hiddenClass = visible ? "" : " is-hidden";
+    const pressed = visible ? "true" : "false";
+    return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-asset-category="${escapeAttr(item.key)}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="${item.style}"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
+  }).join("");
+  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div>` : ""}`;
   legendEl.querySelectorAll("[data-overlay-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const overlayIndex = Number(btn.dataset.overlayIndex);
       if(!Number.isFinite(overlayIndex)) return;
       const nextVisible = !isAssetBreakdownOverlayScenarioVisible(chartInstance, overlayIndex);
       setAssetBreakdownOverlayScenarioVisibility(chartInstance, overlayIndex, nextVisible);
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chartInstance.setActiveElements([]);
+      chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      chartInstance.update("none");
+      renderAssetBreakdownOverlayLegend(chartInstance, display);
+    });
+  });
+  legendEl.querySelectorAll("[data-asset-category]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const category = String(btn.dataset.assetCategory || "");
+      if(!category) return;
+      const nextVisible = !isAssetBreakdownOverlayCategoryVisible(chartInstance, category);
+      setAssetBreakdownOverlayCategoryVisibility(chartInstance, category, nextVisible);
       const tooltipEl = document.getElementById("chartExternalTooltip");
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
@@ -28335,8 +28428,17 @@ function setupChartAxisZoomInteractions(){
         const maxVal = xScale.getValueForPixel(maxPx);
         if(Number.isFinite(minVal) && Number.isFinite(maxVal) && Math.abs(maxVal - minVal) > 1e-9){
           const graphType = document.getElementById("graphType")?.value || "asset";
-          const minAge = Math.max(0, Math.round(Math.min(minVal, maxVal)));
-          const maxAge = Math.min(120, Math.round(Math.max(minVal, maxVal)));
+          const rawMinVal = Math.min(minVal, maxVal);
+          const rawMaxVal = Math.max(minVal, maxVal);
+          let minAge;
+          let maxAge;
+          if(graphType === "assetBreakdown"){
+            minAge = Math.max(0, Math.ceil(rawMinVal - 1e-9));
+            maxAge = Math.min(120, Math.floor(rawMaxVal + 1e-9));
+          }else{
+            minAge = Math.max(0, Math.round(rawMinVal));
+            maxAge = Math.min(120, Math.round(rawMaxVal));
+          }
           const pad = graphType === "assetBreakdown" ? 0.5 : 0;
           chart.options.scales.x.min = minAge - pad;
           chart.options.scales.x.max = maxAge + pad;
@@ -28546,6 +28648,50 @@ function setupChartTouchInteractions(){
     const atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= 0.01 && Math.abs(currMaxY - gestureBounds.yMax) <= 0.01;
     return !(atGestureOuterX && atGestureOuterY);
   };
+  const normalizeMainChartTouchXBounds = (minX, maxX, gestureBounds)=>{
+    let nextMin = Number(minX);
+    let nextMax = Number(maxX);
+    if(!Number.isFinite(nextMin) || !Number.isFinite(nextMax)) return null;
+    if(nextMin > nextMax){ const t = nextMin; nextMin = nextMax; nextMax = t; }
+    const outerMin = Number(gestureBounds?.xMin);
+    const outerMax = Number(gestureBounds?.xMax);
+    if(!Number.isFinite(outerMin) || !Number.isFinite(outerMax) || outerMax <= outerMin) return null;
+    const graphType = document.getElementById("graphType")?.value || "asset";
+    const outerRange = outerMax - outerMin;
+    let range = Math.max(1e-9, nextMax - nextMin);
+    if(range >= outerRange * 0.985){
+      return {min:outerMin, max:outerMax};
+    }
+    if(graphType === "assetBreakdown"){
+      range = Math.max(1, Math.min(outerRange, range));
+    }else{
+      range = Math.max(1e-9, Math.min(outerRange, range));
+    }
+    if(nextMin < outerMin){ nextMax += (outerMin - nextMin); nextMin = outerMin; }
+    if(nextMax > outerMax){ nextMin -= (nextMax - outerMax); nextMax = outerMax; }
+    nextMin = Math.max(outerMin, nextMin);
+    nextMax = Math.min(outerMax, nextMax);
+    if(nextMax - nextMin < range - 1e-9){
+      if(nextMin <= outerMin + 1e-9) nextMax = Math.min(outerMax, nextMin + range);
+      else if(nextMax >= outerMax - 1e-9) nextMin = Math.max(outerMin, nextMax - range);
+    }
+    return {
+      min: Math.round(nextMin * 100) / 100,
+      max: Math.round(nextMax * 100) / 100
+    };
+  };
+  const applyMainChartTouchUpdate = (gestureBounds, nextX, nextY)=>{
+    if(nextX){
+      chart.options.scales.x.min = nextX.min;
+      chart.options.scales.x.max = nextX.max;
+    }
+    if(nextY){
+      chart.options.scales.y.min = nextY.min;
+      chart.options.scales.y.max = nextY.max;
+    }
+    chart.update('none');
+    syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
+  };
   const finishTouchInteraction = (shouldPersist)=>{
     if(!touchState) return;
     const moved = !!touchState.moved;
@@ -28674,17 +28820,9 @@ function setupChartTouchInteractions(){
         newMinY = gestureBounds.yMin;
         newMaxY = gestureBounds.yMax;
       }
-      if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
-        chart.options.scales.x.min = Math.round(newMinX * 100) / 100;
-        chart.options.scales.x.max = Math.round(newMaxX * 100) / 100;
-      }
-      if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
-        chart.options.scales.y.min = Math.min(newMinY, newMaxY);
-        chart.options.scales.y.max = Math.max(newMinY, newMaxY);
-      }
-      applyAdaptiveXAxisTicksToChart(chart);
-      syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
-      chart.update('none');
+      const nextX = normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds);
+      const nextY = (Number.isFinite(newMinY) && Number.isFinite(newMaxY)) ? {min:Math.min(newMinY, newMaxY), max:Math.max(newMinY, newMaxY)} : null;
+      applyMainChartTouchUpdate(gestureBounds, nextX, nextY);
       e.preventDefault();
       return;
     }
@@ -28706,27 +28844,17 @@ function setupChartTouchInteractions(){
       const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
       let newMinY = yScale.getValueForPixel(startMinYPx - dy);
       let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
-      if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
-        const rangeX = newMaxX - newMinX;
-        if(rangeX <= (gestureBounds.xMax - gestureBounds.xMin)){
-          if(newMinX < gestureBounds.xMin){ newMaxX += (gestureBounds.xMin - newMinX); newMinX = gestureBounds.xMin; }
-          if(newMaxX > gestureBounds.xMax){ newMinX -= (newMaxX - gestureBounds.xMax); newMaxX = gestureBounds.xMax; }
-        }
-        chart.options.scales.x.min = Math.max(gestureBounds.xMin, Math.min(gestureBounds.xMax, newMinX));
-        chart.options.scales.x.max = Math.max(gestureBounds.xMin, Math.min(gestureBounds.xMax, newMaxX));
-      }
+      const nextX = normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds);
+      let nextY = null;
       if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
         const rangeY = newMaxY - newMinY;
         if(rangeY <= (gestureBounds.yMax - gestureBounds.yMin)){
           if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
           if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
         }
-        chart.options.scales.y.min = Math.min(newMinY, newMaxY);
-        chart.options.scales.y.max = Math.max(newMinY, newMaxY);
+        nextY = {min:Math.min(newMinY, newMaxY), max:Math.max(newMinY, newMaxY)};
       }
-      applyAdaptiveXAxisTicksToChart(chart);
-      syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
-      chart.update('none');
+      applyMainChartTouchUpdate(gestureBounds, nextX, nextY);
       e.preventDefault();
     }
   }, {passive:false});
