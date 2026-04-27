@@ -20897,7 +20897,7 @@ function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay)
     });
     const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join("");
     const row = (label, key, strong=false)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${escapeAttr(label)}</th>${visibleEntries.map(entry=>`<td>${escapeAttr(formatMainChartTooltipMoney(entry.values[key], unitSpec, 'assetBreakdown'))}</td>`).join("")}</tr>`;
-    return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><table class="chart-external-tooltip-matrix"><thead><tr><th></th>${headerCells}</tr></thead><tbody>${row('総資産','total',true)}${row('預貯金','deposit')}${row('安全資産','safe')}${row('運用','investment')}</tbody></table>`;
+    return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><table class="chart-external-tooltip-matrix"><thead><tr><th></th>${headerCells}</tr></thead><tbody>${row('総資産','total',true)}${row('運用','investment')}${row('安全資産','safe')}${row('預貯金','deposit')}</tbody></table>`;
   }
   const entry = entries[0];
   const idx = getNearestSimIndexByAge(entry.sim, ageValue);
@@ -20906,9 +20906,9 @@ function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay)
   const pct = (value)=> totalForPct > 0 ? `${Math.round((Math.max(0, Number(value) || 0) / totalForPct) * 100)}%` : "-";
   const itemRows = [
     {label:'総資産', value:values.total, pct:'', strong:true, color:'#e2e8f0'},
-    {label:'預貯金', value:values.deposit, pct:pct(values.deposit), color:ASSET_BREAKDOWN_COLORS.deposit},
+    {label:'運用', value:values.investment, pct:pct(values.investment), color:ASSET_BREAKDOWN_COLORS.investment},
     {label:'安全資産', value:values.safe, pct:pct(values.safe), color:ASSET_BREAKDOWN_COLORS.safe},
-    {label:'運用', value:values.investment, pct:pct(values.investment), color:ASSET_BREAKDOWN_COLORS.investment}
+    {label:'預貯金', value:values.deposit, pct:pct(values.deposit), color:ASSET_BREAKDOWN_COLORS.deposit}
   ];
   if(values.shortfall < 0){
     itemRows.push({label:'不足額', value:values.shortfall, pct:'', color:ASSET_BREAKDOWN_COLORS.shortfall});
@@ -21231,7 +21231,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:(graphType === "assetBreakdown" ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(graphType === "assetBreakdown" ? rawXMin : scale.min, graphType === "assetBreakdown" ? rawXMax : scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:(graphType === "assetBreakdown" ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
       y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
@@ -28022,9 +28022,12 @@ function computeChartAxisGestureOuterBounds(){
   const defaults = computeChartAxisAutoDefaults();
   const cfg = getScenarioFromDOM();
   const graphType = document.getElementById("graphType")?.value || "asset";
-  const xMin = defaults.xMin;
-  const xMax = defaults.xMax;
-  const yData = collectVisibleMainChartYValues(xMin, xMax, graphType);
+  const dataXMin = defaults.xMin;
+  const dataXMax = defaults.xMax;
+  const displayPad = graphType === "assetBreakdown" ? 0.5 : 0;
+  const xMin = dataXMin - displayPad;
+  const xMax = dataXMax + displayPad;
+  const yData = collectVisibleMainChartYValues(dataXMin, dataXMax, graphType);
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
@@ -28373,6 +28376,7 @@ function setupChartAxisZoomInteractions(){
     }
     if(!changed) return;
     suppressClickUntil = Date.now() + 250;
+    applyAdaptiveXAxisTicksToChart(chart);
     chart.update("none");
     syncChartAxisStateFromChartInstance(chart, {
       lockYScale: state.axis === "y" ? true : !!document.getElementById("fixedScale")?.checked
@@ -28487,6 +28491,7 @@ function setupChartPanInteractions(){
       chart.options.scales.y.min = Math.min(newMinY, newMaxY);
       chart.options.scales.y.max = Math.max(newMinY, newMaxY);
     }
+    applyAdaptiveXAxisTicksToChart(chart);
     chart.update('none');
     syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
     e.preventDefault();
@@ -28677,6 +28682,7 @@ function setupChartTouchInteractions(){
         chart.options.scales.y.min = Math.min(newMinY, newMaxY);
         chart.options.scales.y.max = Math.max(newMinY, newMaxY);
       }
+      applyAdaptiveXAxisTicksToChart(chart);
       syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
       chart.update('none');
       e.preventDefault();
@@ -28718,6 +28724,7 @@ function setupChartTouchInteractions(){
         chart.options.scales.y.min = Math.min(newMinY, newMaxY);
         chart.options.scales.y.max = Math.max(newMinY, newMaxY);
       }
+      applyAdaptiveXAxisTicksToChart(chart);
       syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
       chart.update('none');
       e.preventDefault();
