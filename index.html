@@ -28070,25 +28070,29 @@ function collectVisibleMainChartYValues(xMin, xMax, graphType){
   if(!chart?.data?.datasets) return yData;
   const stacked = graphType === "incomeExpense" || graphType === "assetBreakdown" || graphType === "education";
   if(stacked){
-    const posByX = new Map();
-    const negByX = new Map();
-    chart.data.datasets.forEach(ds=>{
+    const posByKey = new Map();
+    const negByKey = new Map();
+    chart.data.datasets.forEach((ds, datasetIndex)=>{
       if(ds?.yAxisID && ds.yAxisID !== 'y') return;
+      if(typeof chart.isDatasetVisible === "function" && !chart.isDatasetVisible(datasetIndex)) return;
+      const stackKey = graphType === "assetBreakdown" ? String(ds?.stack || "asset") : "__stacked__";
       (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
         const x = Number(point?.x);
         const y = Number(point?.y);
         if(!Number.isFinite(x) || !Number.isFinite(y)) return;
         if(x < xMin || x > xMax) return;
-        if(y >= 0) posByX.set(x, (posByX.get(x) || 0) + y);
-        else negByX.set(x, (negByX.get(x) || 0) + y);
+        const key = `${stackKey}::${x}`;
+        if(y >= 0) posByKey.set(key, (posByKey.get(key) || 0) + y);
+        else negByKey.set(key, (negByKey.get(key) || 0) + y);
       });
     });
-    posByX.forEach(v=>{ if(Number.isFinite(v)) yData.push(v); });
-    negByX.forEach(v=>{ if(Number.isFinite(v)) yData.push(v); });
+    posByKey.forEach(v=>{ if(Number.isFinite(v)) yData.push(v); });
+    negByKey.forEach(v=>{ if(Number.isFinite(v)) yData.push(v); });
     return yData;
   }
-  chart.data.datasets.forEach(ds=>{
+  chart.data.datasets.forEach((ds, datasetIndex)=>{
     if(ds?.yAxisID && ds.yAxisID !== 'y') return;
+    if(typeof chart.isDatasetVisible === "function" && !chart.isDatasetVisible(datasetIndex)) return;
     (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
       const x = Number(point?.x);
       const y = Number(point?.y);
