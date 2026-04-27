@@ -6855,10 +6855,16 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
       next.borderWidth = lineWidth;
       return next;
     }
-    if(graphType === 'assetBreakdown' && typeof next.label === 'string' && next.label.includes('安全資産')) return next;
     next.borderColor = color;
     next.borderWidth = graphType === 'asset' ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
     next.borderDash = dash.length ? dash.slice() : [];
+    if(graphType === 'assetBreakdown' && next.type === 'bar'){
+      next.borderColor = 'rgba(0,0,0,0)';
+      next.borderWidth = 0;
+      next.borderDash = [];
+      next._scenarioColor = color;
+      return next;
+    }
     if(next.type === 'line'){
       if(graphType === 'asset'){
         if(style?.fillArea === false){
@@ -16164,13 +16170,6 @@ function openCrashPreviewSheet(){
   crashTestPreviewSnapshot = captureCrashPreviewSnapshot();
   crashTestDraft = createCrashPreviewWorkingState();
   crashTestPreviewSourceTab = currentTab;
-  if(workspaceOverlayModeOn){
-    workspaceOverlayModeOn = false;
-    updateOverlayFeatureUI();
-    renderTabs();
-    syncCurrentScenarioFromDOM(false);
-    monteMode ? runMonte() : requestDraw({immediate:true});
-  }
   renderCrashHistoryReference();
   initializeCrashHistorySection();
   renderCrashTestRows();
@@ -20272,21 +20271,94 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix=""){
   });
   return d;
 }
-function buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix=""){
+const ASSET_BREAKDOWN_COLORS = {
+  deposit:"#3f73cf",
+  safe:"#68adc4",
+  investment:"#db953a",
+  shortfall:"#cf616d"
+};
+function hexToRgbForAssetBreakdown(hex){
+  const normalized = String(hex || "").trim().replace(/^#/, "");
+  if(!/^[0-9a-fA-F]{6}$/.test(normalized)) return {r:100, g:116, b:139};
+  return {
+    r:parseInt(normalized.slice(0,2), 16),
+    g:parseInt(normalized.slice(2,4), 16),
+    b:parseInt(normalized.slice(4,6), 16)
+  };
+}
+function rgbaFromHexForAssetBreakdown(hex, alpha){
+  const rgb = hexToRgbForAssetBreakdown(hex);
+  const a = Math.max(0, Math.min(1, Number(alpha)));
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
+}
+function makeAssetBreakdownOverlayPattern(chart, color, category){
+  const ctx = chart?.ctx;
+  if(!ctx || typeof document === "undefined") return rgbaFromHexForAssetBreakdown(color, 0.45);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const key = `${color}|${category}|${Math.round(dpr * 100)}`;
+  chart.$assetBreakdownPatternCache = chart.$assetBreakdownPatternCache || {};
+  if(chart.$assetBreakdownPatternCache[key]) return chart.$assetBreakdownPatternCache[key];
+
+  const size = Math.round(8 * dpr);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const pctx = canvas.getContext("2d");
+  if(!pctx) return rgbaFromHexForAssetBreakdown(color, 0.45);
+  pctx.scale(dpr, dpr);
+
+  const fillAlpha = category === "deposit" ? 0.20 : (category === "safe" ? 0.34 : (category === "investment" ? 0.58 : 0.34));
+  pctx.fillStyle = rgbaFromHexForAssetBreakdown(color, fillAlpha);
+  pctx.fillRect(0, 0, 8, 8);
+
+  if(category === "safe"){
+    pctx.strokeStyle = rgbaFromHexForAssetBreakdown(color, 0.62);
+    pctx.lineWidth = 1.15;
+    pctx.beginPath();
+    pctx.moveTo(-2, 8); pctx.lineTo(8, -2);
+    pctx.moveTo(2, 10); pctx.lineTo(10, 2);
+    pctx.stroke();
+  }else if(category === "investment"){
+    pctx.fillStyle = rgbaFromHexForAssetBreakdown(color, 0.72);
+    pctx.fillRect(0, 0, 8, 8);
+  }else if(category === "shortfall"){
+    pctx.strokeStyle = rgbaFromHexForAssetBreakdown(color, 0.68);
+    pctx.lineWidth = 1.1;
+    pctx.beginPath();
+    pctx.moveTo(-2, -2); pctx.lineTo(10, 10);
+    pctx.moveTo(2, -2); pctx.lineTo(10, 6);
+    pctx.stroke();
+  }
+
+  const pattern = ctx.createPattern(canvas, "repeat") || rgbaFromHexForAssetBreakdown(color, fillAlpha);
+  chart.$assetBreakdownPatternCache[key] = pattern;
+  return pattern;
+}
+function makeAssetBreakdownOverlayBarDataset(label, labels, data, color, category, stackId){
+  return makeBarDataset(label, labels, data, {
+    backgroundColor:(ctx)=>makeAssetBreakdownOverlayPattern(ctx.chart, color, category),
+    borderColor:'rgba(0,0,0,0)',
+    borderWidth:0,
+    stack:stackId,
+    _scenarioColor:color
+  });
+}
+function buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix="", overlayIndex=0){
   if(overlay){
+    const stackId = `assetOverlay${Number.isFinite(Number(overlayIndex)) ? Number(overlayIndex) : 0}`;
     return [
-      makeLineDataset(`${labelPrefix} 預貯金`, sim.labels, sim.totalDeposits, {borderColor:color, borderWidth:2}),
-      makeLineDataset(`${labelPrefix} 安全資産`, sim.labels, sim.totalSafeAssets || sim.labels.map(()=>0), {borderColor:"#0ea5e9", borderDash:[3,3], borderWidth:2}),
-      makeLineDataset(`${labelPrefix} 運用`, sim.labels, sim.totalInvestments, {borderColor:color, borderDash:[6,4], borderWidth:2}),
-      makeLineDataset(`${labelPrefix} 不足額`, sim.labels, sim.totalLiability.map(v=>-v), {borderColor:color, borderDash:[2,3], borderWidth:1.5})
+      makeAssetBreakdownOverlayBarDataset(`${labelPrefix} 預貯金`, sim.labels, sim.totalDeposits, color, "deposit", stackId),
+      makeAssetBreakdownOverlayBarDataset(`${labelPrefix} 安全資産`, sim.labels, sim.totalSafeAssets || sim.labels.map(()=>0), color, "safe", stackId),
+      makeAssetBreakdownOverlayBarDataset(`${labelPrefix} 運用`, sim.labels, sim.totalInvestments, color, "investment", stackId),
+      makeAssetBreakdownOverlayBarDataset(`${labelPrefix} 不足額`, sim.labels, sim.totalLiability.map(v=>-v), color, "shortfall", stackId)
     ];
   }
   const shortfall = sim.totalAssets.map(v=>v<0 ? v : 0);
   return [
-    makeBarDataset("預貯金", sim.labels, sim.totalDeposits, {backgroundColor:"#2563eb", stack:"asset"}),
-    makeBarDataset("安全資産", sim.labels, sim.totalSafeAssets || sim.labels.map(()=>0), {backgroundColor:"#0ea5e9", stack:"asset"}),
-    makeBarDataset("運用", sim.labels, sim.totalInvestments, {backgroundColor:"#f59e0b", stack:"asset"}),
-    makeBarDataset("不足額", sim.labels, shortfall, {backgroundColor:"#dc2626", stack:"short"})
+    makeBarDataset("預貯金", sim.labels, sim.totalDeposits, {backgroundColor:ASSET_BREAKDOWN_COLORS.deposit, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
+    makeBarDataset("安全資産", sim.labels, sim.totalSafeAssets || sim.labels.map(()=>0), {backgroundColor:ASSET_BREAKDOWN_COLORS.safe, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
+    makeBarDataset("運用", sim.labels, sim.totalInvestments, {backgroundColor:ASSET_BREAKDOWN_COLORS.investment, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
+    makeBarDataset("不足額", sim.labels, shortfall, {backgroundColor:ASSET_BREAKDOWN_COLORS.shortfall, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"})
   ];
 }
 function buildInvestmentDatasets(sim, color, overlay, labelPrefix=""){
@@ -20340,12 +20412,12 @@ function requestDraw(options = {}){
   }, DRAW_DEBOUNCE_MS);
 }
 
-function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix="", overlayCount=1){
+function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
   if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix, overlayCount);
   if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix);
   if(graphType === "education") return buildEducationDatasets(sim, color, overlay, labelPrefix);
   if(graphType === "incomeExpense") return buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix);
-  if(graphType === "assetBreakdown") return buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix);
+  if(graphType === "assetBreakdown") return buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix, overlayIndex);
   if(graphType === "investment") return buildInvestmentDatasets(sim, color, overlay, labelPrefix);
   return [];
 }
@@ -20359,7 +20431,7 @@ function pluginLines(cfg, sim, monteInfo=null){
       const y = scales.y;
       if(!x || !y) return;
       ctx.save();
-      if(graphType !== "asset" && Array.isArray(x.ticks) && x.ticks.length){
+      if(graphType !== "asset" && graphType !== "assetBreakdown" && Array.isArray(x.ticks) && x.ticks.length){
         ctx.save();
         ctx.strokeStyle = "rgba(148,163,184,0.22)";
         ctx.lineWidth = 1;
@@ -20791,34 +20863,60 @@ function getDatasetColorForTooltip(dataset){
   const color = Array.isArray(dataset?.borderColor) ? dataset.borderColor[0] : dataset?.borderColor;
   return typeof color === "string" ? color : "#64748b";
 }
-function renderExternalChartTooltip(context, unitSpec, graphType, simRef){
-  const tooltipEl = document.getElementById("chartExternalTooltip");
-  const chartInstance = context?.chart;
-  const tooltip = context?.tooltip;
-  if(!tooltipEl || !chartInstance || !tooltip || tooltip.opacity === 0){
-    if(tooltipEl) tooltipEl.hidden = true;
-    return;
-  }
-  const dataPoints = Array.isArray(tooltip.dataPoints) ? tooltip.dataPoints : [];
-  if(!dataPoints.length){
-    tooltipEl.hidden = true;
-    return;
-  }
-  const title = getCalendarWindowTooltipTitle(simRef, dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label);
-  const rows = dataPoints
-    .filter(dp=>String(dp?.dataset?.label || "").trim())
-    .map(dp=>{
-      const color = getDatasetColorForTooltip(dp.dataset);
-      const label = escapeAttr(dp.dataset.label);
-      const value = escapeAttr(formatMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType));
-      return `<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(color)}"></span><span>${label}</span></span></span><span class="chart-external-tooltip-value">${value}</span></div>`;
+function getNearestSimIndexByAge(sim, ageValue){
+  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+  if(!labels.length) return -1;
+  const target = Number(ageValue);
+  if(!Number.isFinite(target)) return 0;
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  labels.forEach((label, idx)=>{
+    const dist = Math.abs((Number(label) || 0) - target);
+    if(dist < bestDist){ bestDist = dist; bestIdx = idx; }
+  });
+  return bestIdx;
+}
+function getAssetBreakdownValuesAt(sim, idx){
+  const n = (arr)=>Number(Array.isArray(arr) ? arr[idx] : 0) || 0;
+  return {
+    total:n(sim?.totalAssets),
+    deposit:n(sim?.totalDeposits),
+    safe:n(sim?.totalSafeAssets),
+    investment:n(sim?.totalInvestments),
+    shortfall:Math.min(0, n(sim?.totalAssets))
+  };
+}
+function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay){
+  const entries = (simEntries || []).filter(entry=>entry?.sim);
+  if(!entries.length) return "";
+  const title = getCalendarWindowTooltipTitle(entries[0].sim, ageValue);
+  if(overlay){
+    const visibleEntries = entries.slice(0, 5).map(entry=>{
+      const idx = getNearestSimIndexByAge(entry.sim, ageValue);
+      return {...entry, values:getAssetBreakdownValuesAt(entry.sim, idx)};
     });
-  if(!rows.length){
-    tooltipEl.hidden = true;
-    return;
+    const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join("");
+    const row = (label, key, strong=false)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${escapeAttr(label)}</th>${visibleEntries.map(entry=>`<td>${escapeAttr(formatMainChartTooltipMoney(entry.values[key], unitSpec, 'assetBreakdown'))}</td>`).join("")}</tr>`;
+    return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><table class="chart-external-tooltip-matrix"><thead><tr><th></th>${headerCells}</tr></thead><tbody>${row('総資産','total',true)}${row('預貯金','deposit')}${row('安全資産','safe')}${row('運用','investment')}</tbody></table>`;
   }
-  tooltipEl.innerHTML = `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${rows.join("")}</div>`;
-  tooltipEl.hidden = false;
+  const entry = entries[0];
+  const idx = getNearestSimIndexByAge(entry.sim, ageValue);
+  const values = getAssetBreakdownValuesAt(entry.sim, idx);
+  const totalForPct = Math.max(0, values.deposit) + Math.max(0, values.safe) + Math.max(0, values.investment);
+  const pct = (value)=> totalForPct > 0 ? `${Math.round((Math.max(0, Number(value) || 0) / totalForPct) * 100)}%` : "-";
+  const itemRows = [
+    {label:'総資産', value:values.total, pct:'', strong:true, color:'#e2e8f0'},
+    {label:'預貯金', value:values.deposit, pct:pct(values.deposit), color:ASSET_BREAKDOWN_COLORS.deposit},
+    {label:'安全資産', value:values.safe, pct:pct(values.safe), color:ASSET_BREAKDOWN_COLORS.safe},
+    {label:'運用', value:values.investment, pct:pct(values.investment), color:ASSET_BREAKDOWN_COLORS.investment}
+  ];
+  if(values.shortfall < 0){
+    itemRows.push({label:'不足額', value:values.shortfall, pct:'', color:ASSET_BREAKDOWN_COLORS.shortfall});
+  }
+  const rows = itemRows.map(item=>`<div class="chart-external-tooltip-row${item.strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(item.color)}"></span><span>${escapeAttr(item.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(item.value, unitSpec, 'assetBreakdown'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(item.pct)}</span></div>`).join("");
+  return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct">${rows}</div>`;
+}
+function positionExternalChartTooltip(tooltipEl, chartInstance, tooltip){
   const canvas = chartInstance.canvas;
   const parent = canvas?.parentElement;
   if(!canvas || !parent) return;
@@ -20841,17 +20939,47 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef){
   left = Math.max(edgeMargin, Math.min(left, maxX));
   const viewportLeft = parentRect.left + left;
   const viewportRight = viewportLeft + tooltipWidth;
-  if(viewportLeft < edgeMargin){
-    left += edgeMargin - viewportLeft;
-  }
-  if(viewportRight > window.innerWidth - edgeMargin){
-    left -= viewportRight - (window.innerWidth - edgeMargin);
-  }
+  if(viewportLeft < edgeMargin){ left += edgeMargin - viewportLeft; }
+  if(viewportRight > window.innerWidth - edgeMargin){ left -= viewportRight - (window.innerWidth - edgeMargin); }
   left = Math.max(edgeMargin - parentRect.left, left);
   const top = Math.max(edgeMargin, Math.min(preferredY, maxY));
   tooltipEl.style.left = `${left}px`;
   tooltipEl.style.top = `${top}px`;
 }
+function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra={}){
+  const tooltipEl = document.getElementById("chartExternalTooltip");
+  const chartInstance = context?.chart;
+  const tooltip = context?.tooltip;
+  if(!tooltipEl || !chartInstance || !tooltip || tooltip.opacity === 0){
+    if(tooltipEl) tooltipEl.hidden = true;
+    return;
+  }
+  const dataPoints = Array.isArray(tooltip.dataPoints) ? tooltip.dataPoints : [];
+  if(!dataPoints.length){ tooltipEl.hidden = true; return; }
+  if(graphType === "assetBreakdown"){
+    const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
+    const html = buildAssetBreakdownTooltipHtml(unitSpec, extra.assetBreakdownTooltipEntries || [{name:"", sim:simRef, color:ASSET_BREAKDOWN_COLORS.deposit}], ageValue, !!extra.overlay);
+    if(!html){ tooltipEl.hidden = true; return; }
+    tooltipEl.innerHTML = html;
+    tooltipEl.hidden = false;
+    positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
+    return;
+  }
+  const title = getCalendarWindowTooltipTitle(simRef, dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label);
+  const rows = dataPoints
+    .filter(dp=>String(dp?.dataset?.label || "").trim())
+    .map(dp=>{
+      const color = getDatasetColorForTooltip(dp.dataset);
+      const label = escapeAttr(dp.dataset.label);
+      const value = escapeAttr(formatMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType));
+      return `<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(color)}"></span><span>${label}</span></span></span><span class="chart-external-tooltip-value">${value}</span></div>`;
+    });
+  if(!rows.length){ tooltipEl.hidden = true; return; }
+  tooltipEl.innerHTML = `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${rows.join("")}</div>`;
+  tooltipEl.hidden = false;
+  positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
+}
+
 
 function getMainChartBaseYAxisTitle(graphType){
   const titleMap = {
@@ -20901,7 +21029,82 @@ function sortLegendDatasets(a, b){
   if(ia !== ib) return ia - ib;
   return Number(a?._datasetIndex || 0) - Number(b?._datasetIndex || 0);
 }
+function getAssetBreakdownOverlayLegendDatasets(chartInstance){
+  const datasets = chartInstance?.data?.datasets || [];
+  const map = new Map();
+  datasets.forEach((ds, idx)=>{
+    if(ds?.type !== "bar") return;
+    const overlayIndex = Number(ds?._overlayIndex);
+    if(!Number.isFinite(overlayIndex)) return;
+    if(map.has(overlayIndex)) return;
+    const label = String(ds?.label || "").replace(/\s*(預貯金|安全資産|運用|不足額)\s*$/, "").trim() || `シナリオ${map.size + 1}`;
+    const color = typeof ds?._scenarioColor === "string" ? ds._scenarioColor : "#64748b";
+    map.set(overlayIndex, {overlayIndex, datasetIndex:idx, label, color});
+  });
+  return Array.from(map.values()).sort((a,b)=>a.overlayIndex - b.overlayIndex);
+}
+function setAssetBreakdownOverlayScenarioVisibility(chartInstance, overlayIndex, visible){
+  (chartInstance?.data?.datasets || []).forEach((ds, idx)=>{
+    if(Number(ds?._overlayIndex) === Number(overlayIndex)){
+      chartInstance.setDatasetVisibility(idx, visible);
+    }
+  });
+}
+function isAssetBreakdownOverlayScenarioVisible(chartInstance, overlayIndex){
+  const indices = [];
+  (chartInstance?.data?.datasets || []).forEach((ds, idx)=>{
+    if(Number(ds?._overlayIndex) === Number(overlayIndex)) indices.push(idx);
+  });
+  return indices.length ? indices.some(idx=>chartInstance.isDatasetVisible(idx)) : true;
+}
+function renderAssetBreakdownOverlayLegend(chartInstance, display){
+  const legendEl = document.getElementById("chartCustomLegend");
+  if(!legendEl) return;
+  if(!display){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const scenarios = getAssetBreakdownOverlayLegendDatasets(chartInstance);
+  if(!scenarios.length){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const scenarioHtml = scenarios.map(item=>{
+    const visible = isAssetBreakdownOverlayScenarioVisible(chartInstance, item.overlayIndex);
+    const hiddenClass = visible ? "" : " is-hidden";
+    const pressed = visible ? "true" : "false";
+    return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-overlay-index="${item.overlayIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(item.color)};border-color:${escapeAttr(item.color)};"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
+  }).join("");
+  const categoryItems = [
+    {label:"預貯金", style:"background:rgba(51,65,85,.22);border-color:rgba(51,65,85,.22);"},
+    {label:"安全資産", style:"background:repeating-linear-gradient(135deg, rgba(51,65,85,.20) 0 4px, rgba(51,65,85,.50) 4px 6px);border-color:rgba(51,65,85,.28);"},
+    {label:"運用", style:"background:rgba(51,65,85,.66);border-color:rgba(51,65,85,.66);"}
+  ];
+  const categoryHtml = categoryItems.map(item=>`<span class="chart-line-legend-item chart-legend-static-item"><span class="chart-line-legend-sample chart-bar-legend-sample" style="${item.style}"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></span>`).join("");
+  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div>`;
+  legendEl.querySelectorAll("[data-overlay-index]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const overlayIndex = Number(btn.dataset.overlayIndex);
+      if(!Number.isFinite(overlayIndex)) return;
+      const nextVisible = !isAssetBreakdownOverlayScenarioVisible(chartInstance, overlayIndex);
+      setAssetBreakdownOverlayScenarioVisibility(chartInstance, overlayIndex, nextVisible);
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chartInstance.setActiveElements([]);
+      chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      chartInstance.update("none");
+      renderAssetBreakdownOverlayLegend(chartInstance, display);
+    });
+  });
+  legendEl.hidden = false;
+}
 function renderCustomChartLegend(chartInstance, display){
+  if(chartInstance?.$graphType === "assetBreakdown" && chartInstance?.$overlayMode){
+    renderAssetBreakdownOverlayLegend(chartInstance, display);
+    return;
+  }
   const legendEl = document.getElementById("chartCustomLegend");
   if(!legendEl) return;
   if(!display || !chartInstance?.data?.datasets?.length){
@@ -20925,7 +21128,9 @@ function renderCustomChartLegend(chartInstance, display){
     const visible = chartInstance.isDatasetVisible(datasetIndex);
     const hiddenClass = visible ? "" : " is-hidden";
     const pressed = visible ? "true" : "false";
-    return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample" style="color:${escapeAttr(line.color)};border-top-width:${line.width}px;border-top-style:${escapeAttr(line.style)};"></span><span class="chart-line-legend-label">${label}</span></button>`;
+    const sampleClass = (chartInstance.$graphType === "assetBreakdown" && ds.type === "bar") ? "chart-line-legend-sample chart-bar-legend-sample" : "chart-line-legend-sample";
+    const sampleStyle = sampleClass.includes("chart-bar-legend-sample") ? `background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};` : `color:${escapeAttr(line.color)};border-top-width:${line.width}px;border-top-style:${escapeAttr(line.style)};`;
+    return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="${sampleClass}" style="${sampleStyle}"></span><span class="chart-line-legend-label">${label}</span></button>`;
   }).join("");
   legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -20948,8 +21153,11 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const symmetric = ["cashflow","incomeExpense"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, _graphType:graphType}, symmetric);
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
-  const xMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
-  const xMax = cfg.xAxisMax;
+  const rawXMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
+  const rawXMax = cfg.xAxisMax;
+  const xPadding = graphType === "assetBreakdown" ? 0.5 : 0;
+  const xMin = rawXMin - xPadding;
+  const xMax = rawXMax + xPadding;
   const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
   const yUnitSpec = getMainChartYAxisUnitSpec(yData);
   const compactChartLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
@@ -20960,8 +21168,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     responsive:true,
     maintainAspectRatio:false,
     layout:{padding:chartLayoutPadding},
-    interaction:{mode:"nearest", intersect:true},
-    events: graphType === "asset" ? [] : undefined,
+    interaction:{mode:(graphType === "assetBreakdown" ? "index" : "nearest"), intersect:(graphType === "assetBreakdown" ? false : true)},
+    events: (graphType === "asset" || graphType === "assetBreakdown") ? [] : undefined,
     plugins:{
       legend:{display:false, labels:{
         usePointStyle:true,
@@ -20996,8 +21204,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
         return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
       }}},
       tooltip:{
-        enabled:graphType !== "asset",
-        external:graphType === "asset" ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef) : undefined,
+        enabled:!(graphType === "asset" || graphType === "assetBreakdown"),
+        external:(graphType === "asset" || graphType === "assetBreakdown") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
         backgroundColor:"rgba(15,23,42,.94)",
         titleColor:"#f8fafc",
         bodyColor:"#f8fafc",
@@ -21023,11 +21231,11 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:"ticks", grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:(graphType === "assetBreakdown" ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(graphType === "assetBreakdown" ? rawXMin : scale.min, graphType === "assetBreakdown" ? rawXMax : scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
       y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
-  if(graphType === "asset"){
+  if(graphType === "asset" || graphType === "assetBreakdown"){
     options.scales.x.grid.display = false;
     options.scales.x.border.color = "rgba(148,163,184,.18)";
     options.scales.x.ticks.color = "#64748b";
@@ -21107,7 +21315,8 @@ function draw(){
   const graphType = document.getElementById("graphType").value;
   const overlay = !!workspaceOverlayModeOn;
   const currentScenario = scenarios[currentTab];
-  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice().reverse() : [];
+  const overlayEntriesBase = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice() : [];
+  const overlayEntries = overlay ? (graphType === "assetBreakdown" ? overlayEntriesBase : overlayEntriesBase.reverse()) : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true}}];
   const overlayVisibleCount = overlay ? Math.max(1, targets.length) : 1;
 
@@ -21120,6 +21329,7 @@ function draw(){
   let yData = [];
   let firstCfg = null;
   let baseSim = null;
+  const assetBreakdownTooltipEntries = [];
 
   targets.forEach((entry, idx)=>{
     const s = entry.scenario || entry;
@@ -21128,7 +21338,11 @@ function draw(){
       firstCfg = cfg;
       baseSim = sim;
     }
-    const baseDatasets = buildDatasetsByGraphType(sim, graphType, entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx), overlay, s.name, overlayVisibleCount);
+    const scenarioColor = entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx);
+    if(graphType === "assetBreakdown"){
+      assetBreakdownTooltipEntries.push({name:s.name, sim, color:scenarioColor});
+    }
+    const baseDatasets = buildDatasetsByGraphType(sim, graphType, scenarioColor, overlay, s.name, overlayVisibleCount, idx);
     datasets.push(...(overlay ? applyOverlayStyleToDatasets(baseDatasets, {...(entry.style || {}), _overlayIndex:entry.index}, graphType) : baseDatasets));
     const arrays = {
       asset: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
@@ -21148,10 +21362,12 @@ function draw(){
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
-    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
+    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, assetBreakdownTooltipEntries, overlay, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
     plugins:[pluginLines(firstCfg, baseSim)]
   });
-  chart.$useStrictPointTooltip = graphType === "asset";
+  chart.$graphType = graphType;
+  chart.$overlayMode = overlay;
+  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown");
   renderCustomChartLegend(chart, customLegendDisplay);
 }
 
@@ -26063,13 +26279,6 @@ function openWithdrawalRuleModal(){
   updateScenarioScopedModalTitles();
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
   withdrawalRulePreviewSourceTab = currentTab;
-  if(workspaceOverlayModeOn){
-    workspaceOverlayModeOn = false;
-    updateOverlayFeatureUI();
-    renderTabs();
-    syncCurrentScenarioFromDOM(false);
-    monteMode ? runMonte() : requestDraw({immediate:true});
-  }
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
   openPreviewSheet(withdrawalRuleModal);
   const startModeEl = document.getElementById('withdrawalStartConditionMode');
@@ -28052,8 +28261,9 @@ function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   const xMax = Number.isFinite(Number(scales.x?.max)) ? Number(scales.x.max) : Number(activeChart.options.scales.x?.max);
   const yMin = Number.isFinite(Number(scales.y?.min)) ? Number(scales.y.min) : Number(activeChart.options.scales.y?.min);
   const yMax = Number.isFinite(Number(scales.y?.max)) ? Number(scales.y.max) : Number(activeChart.options.scales.y?.max);
-  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
-  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
+  const graphTypeForAxisState = document.getElementById("graphType")?.value || "asset";
+  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String(graphTypeForAxisState === "assetBreakdown" ? Math.ceil(xMin - 1e-9) : Math.round(xMin));
+  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String(graphTypeForAxisState === "assetBreakdown" ? Math.floor(xMax + 1e-9) : Math.round(xMax));
   if(Number.isFinite(yMin) && fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
   if(Number.isFinite(yMax) && fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
   if(fixedScaleEl) fixedScaleEl.checked = !!options.lockYScale;
@@ -28109,7 +28319,7 @@ function setupChartAxisZoomInteractions(){
     const state = zoomState;
     zoomState = null;
     chartAxisSelectionGuide = null;
-    if(chart) chart.update("none");
+    if(chart) chart.draw();
     if(!state.moved || !chart?.scales?.x || !chart?.scales?.y) return;
     const xScale = chart.scales.x;
     const yScale = chart.scales.y;
@@ -28121,9 +28331,13 @@ function setupChartAxisZoomInteractions(){
         const minVal = xScale.getValueForPixel(minPx);
         const maxVal = xScale.getValueForPixel(maxPx);
         if(Number.isFinite(minVal) && Number.isFinite(maxVal) && Math.abs(maxVal - minVal) > 1e-9){
-          chart.options.scales.x.min = Math.max(0, Math.round(Math.min(minVal, maxVal)));
-          chart.options.scales.x.max = Math.min(120, Math.round(Math.max(minVal, maxVal)));
-          changed = chart.options.scales.x.max > chart.options.scales.x.min;
+          const graphType = document.getElementById("graphType")?.value || "asset";
+          const minAge = Math.max(0, Math.round(Math.min(minVal, maxVal)));
+          const maxAge = Math.min(120, Math.round(Math.max(minVal, maxVal)));
+          const pad = graphType === "assetBreakdown" ? 0.5 : 0;
+          chart.options.scales.x.min = minAge - pad;
+          chart.options.scales.x.max = maxAge + pad;
+          changed = maxAge > minAge;
         }
       }
     }else if(state.axis === "y"){
@@ -28182,7 +28396,7 @@ function setupChartAxisZoomInteractions(){
       startPx: axis === "x" ? pt.x : pt.y,
       currentPx: axis === "x" ? pt.x : pt.y
     };
-    if(chart) chart.update("none");
+    if(chart) chart.draw();
     e.preventDefault();
     e.stopPropagation();
   });
@@ -28194,7 +28408,7 @@ function setupChartAxisZoomInteractions(){
     zoomState.moved = true;
     zoomState.currentPx = coord;
     chartAxisSelectionGuide = {axis: zoomState.axis, startPx: zoomState.startPx, currentPx: coord};
-    if(chart) chart.update("none");
+    if(chart) chart.draw();
     e.preventDefault();
   }, {passive:false});
   window.addEventListener("mouseup", ()=>{
@@ -28747,6 +28961,121 @@ window.addEventListener("load", ()=>{
     chart.tooltip?.setActiveElements?.([], {x:0, y:0});
     chart.update("none");
   }
+  function distanceToChartSegment(px, py, ax, ay, bx, by){
+    if(!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(ax) || !Number.isFinite(ay) || !Number.isFinite(bx) || !Number.isFinite(by)) return Infinity;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if(lenSq <= 1e-9){
+      const sx = px - ax;
+      const sy = py - ay;
+      return Math.sqrt(sx * sx + sy * sy);
+    }
+    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+    const cx = ax + t * dx;
+    const cy = ay + t * dy;
+    const ex = px - cx;
+    const ey = py - cy;
+    return Math.sqrt(ex * ex + ey * ey);
+  }
+  function findNearestLinePointIndexForPointer(chartInstance, ds, xScale, yScale, position){
+    const data = Array.isArray(ds?.data) ? ds.data : [];
+    let bestIndex = -1;
+    let bestDist = Infinity;
+    for(let index = 0; index < data.length; index++){
+      const rawX = Number(data[index]?.x);
+      const rawY = Number(data[index]?.y);
+      if(!Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
+      const px = Number(xScale.getPixelForValue(rawX));
+      const py = Number(yScale.getPixelForValue(rawY));
+      if(!Number.isFinite(px) || !Number.isFinite(py)) continue;
+      const dx = px - position.x;
+      const dy = py - position.y;
+      const pointDist = Math.sqrt(dx * dx + dy * dy);
+      if(pointDist < bestDist){
+        bestDist = pointDist;
+        bestIndex = index;
+      }
+      if(index > 0){
+        const prevPoint = data[index - 1];
+        const prevX = Number(prevPoint?.x);
+        const prevY = Number(prevPoint?.y);
+        if(!Number.isFinite(prevX) || !Number.isFinite(prevY)) continue;
+        const prevPx = Number(xScale.getPixelForValue(prevX));
+        const prevPy = Number(yScale.getPixelForValue(prevY));
+        if(!Number.isFinite(prevPx) || !Number.isFinite(prevPy)) continue;
+        const segmentDist = distanceToChartSegment(position.x, position.y, prevPx, prevPy, px, py);
+        if(segmentDist < bestDist){
+          bestDist = segmentDist;
+          bestIndex = Math.abs(position.x - prevPx) <= Math.abs(position.x - px) ? index - 1 : index;
+        }
+      }
+    }
+    return {index:bestIndex, dist:bestDist};
+  }
+  function findNearestRenderedLinePointIndexForPointer(ds, meta, position){
+    const data = Array.isArray(ds?.data) ? ds.data : [];
+    const points = Array.isArray(meta?.data) ? meta.data : [];
+    let bestIndex = -1;
+    let bestDist = Infinity;
+    for(let index = 0; index < data.length && index < points.length; index++){
+      const rawX = Number(data[index]?.x);
+      const rawY = Number(data[index]?.y);
+      if(!Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
+      const el = points[index];
+      if(!el) continue;
+      const props = el.getProps ? el.getProps(["x","y"], true) : el;
+      const px = Number(props.x);
+      const py = Number(props.y);
+      if(!Number.isFinite(px) || !Number.isFinite(py)) continue;
+      const dx = px - position.x;
+      const dy = py - position.y;
+      const pointDist = Math.sqrt(dx * dx + dy * dy);
+      if(pointDist < bestDist){
+        bestDist = pointDist;
+        bestIndex = index;
+      }
+      if(index > 0){
+        const prevPoint = data[index - 1];
+        const prevX = Number(prevPoint?.x);
+        const prevY = Number(prevPoint?.y);
+        if(!Number.isFinite(prevX) || !Number.isFinite(prevY)) continue;
+        const prevEl = points[index - 1];
+        if(!prevEl) continue;
+        const prevProps = prevEl.getProps ? prevEl.getProps(["x","y"], true) : prevEl;
+        const prevPx = Number(prevProps.x);
+        const prevPy = Number(prevProps.y);
+        if(!Number.isFinite(prevPx) || !Number.isFinite(prevPy)) continue;
+        const segmentDist = distanceToChartSegment(position.x, position.y, prevPx, prevPy, px, py);
+        if(segmentDist < bestDist){
+          bestDist = segmentDist;
+          bestIndex = Math.abs(position.x - prevPx) <= Math.abs(position.x - px) ? index - 1 : index;
+        }
+      }
+    }
+    return {index:bestIndex, dist:bestDist};
+  }
+  function findNearestAssetBreakdownOverlayHit(chartInstance, datasets, position){
+    let best = null;
+    let bestDist = Infinity;
+    for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
+      if(!chartInstance.isDatasetVisible(datasetIndex)) continue;
+      const ds = datasets[datasetIndex];
+      const dsType = ds?.type || chartInstance.config?.type || "line";
+      if(dsType !== "line") continue;
+      if(!String(ds?.label || "").trim()) continue;
+      const meta = chartInstance.getDatasetMeta(datasetIndex);
+      if(!meta || meta.hidden === true) continue;
+      const hit = findNearestRenderedLinePointIndexForPointer(ds, meta, position);
+      if(hit.index < 0 || hit.dist >= bestDist) continue;
+      const hitData = Array.isArray(ds?.data) ? ds.data[hit.index] : null;
+      const hitX = Number(hitData?.x);
+      if(!Number.isFinite(hitX)) continue;
+      bestDist = hit.dist;
+      best = {datasetIndex, index:hit.index, xValue:hitX, dist:hit.dist};
+    }
+    return best;
+  }
   function updateChartTooltipFromPointerEvent(e){
     if(!chart || !chart.$useStrictPointTooltip) return;
     const canvas = document.getElementById("chart");
@@ -28762,14 +29091,37 @@ window.addEventListener("load", ()=>{
     let bestDist = Infinity;
     const maxDist = 8;
     const datasets = chart.data?.datasets || [];
-    for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
+    if(chart.$graphType === "assetBreakdown"){
+      const overlayHit = findNearestAssetBreakdownOverlayHit(chart, datasets, position);
+      if(overlayHit && overlayHit.dist <= maxDist){
+        chosen = {datasetIndex:overlayHit.datasetIndex, index:overlayHit.index, xValue:overlayHit.xValue};
+        bestDist = overlayHit.dist;
+      }
+    }
+    if(!chosen) for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
       if(!chart.isDatasetVisible(datasetIndex)) continue;
       const ds = datasets[datasetIndex];
-      if(ds?.type && ds.type !== "line") continue;
+      const dsType = ds?.type || chart.config?.type || "line";
+      if(dsType !== "line" && dsType !== "bar") continue;
       if(!String(ds?.label || "").trim()) continue;
       const meta = chart.getDatasetMeta(datasetIndex);
       if(!meta || meta.hidden === true) continue;
       const points = meta.data || [];
+      const xScale = chart.scales?.[ds?.xAxisID || "x"];
+      const yScale = chart.scales?.[ds?.yAxisID || "y"];
+      if(!xScale || !yScale) continue;
+      if(dsType === "line"){
+        const hit = findNearestLinePointIndexForPointer(chart, ds, xScale, yScale, position);
+        if(hit.index >= 0 && hit.dist < bestDist){
+          const hitData = Array.isArray(ds?.data) ? ds.data[hit.index] : null;
+          const hitX = Number(hitData?.x);
+          if(Number.isFinite(hitX)){
+            bestDist = hit.dist;
+            chosen = {datasetIndex, index:hit.index, xValue:hitX};
+          }
+        }
+        continue;
+      }
       for(let index = 0; index < points.length; index++){
         const rawPoint = Array.isArray(ds?.data) ? ds.data[index] : null;
         const rawX = Number(rawPoint?.x);
@@ -28777,15 +29129,56 @@ window.addEventListener("load", ()=>{
         const xScale = chart.scales?.[ds?.xAxisID || "x"];
         const yScale = chart.scales?.[ds?.yAxisID || "y"];
         if(!xScale || !yScale || !Number.isFinite(rawX) || !Number.isFinite(rawY)) continue;
-        const px = Number(xScale.getPixelForValue(rawX));
-        const py = Number(yScale.getPixelForValue(rawY));
-        if(!Number.isFinite(px) || !Number.isFinite(py)) continue;
-        const dx = px - position.x;
-        const dy = py - position.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const el = points[index];
+        let dist = Infinity;
+        if(dsType === "bar" && el){
+          const props = el.getProps ? el.getProps(["x","y","base","width","height"], true) : el;
+          const cx = Number(props.x);
+          const yA = Number(props.y);
+          const yB = Number(props.base);
+          const width = Math.max(1, Number(props.width) || 1);
+          const left = cx - width / 2;
+          const right = cx + width / 2;
+          const top = Math.min(yA, yB);
+          const bottom = Math.max(yA, yB);
+          if(Number.isFinite(left) && Number.isFinite(right) && Number.isFinite(top) && Number.isFinite(bottom)){
+            const dx = position.x < left ? left - position.x : (position.x > right ? position.x - right : 0);
+            const dy = position.y < top ? top - position.y : (position.y > bottom ? position.y - bottom : 0);
+            dist = Math.sqrt(dx * dx + dy * dy);
+          }
+        }else{
+          const px = Number(xScale.getPixelForValue(rawX));
+          const py = Number(yScale.getPixelForValue(rawY));
+          if(!Number.isFinite(px) || !Number.isFinite(py)) continue;
+          const dx = px - position.x;
+          const dy = py - position.y;
+          dist = Math.sqrt(dx * dx + dy * dy);
+          if(index > 0){
+            const prevPoint = Array.isArray(ds?.data) ? ds.data[index - 1] : null;
+            const prevX = Number(prevPoint?.x);
+            const prevY = Number(prevPoint?.y);
+            if(Number.isFinite(prevX) && Number.isFinite(prevY)){
+              const prevPx = Number(xScale.getPixelForValue(prevX));
+              const prevPy = Number(yScale.getPixelForValue(prevY));
+              const segmentDist = distanceToChartSegment(position.x, position.y, prevPx, prevPy, px, py);
+              if(segmentDist < dist){
+                dist = segmentDist;
+                const nearest = findNearestLinePointIndexForPointer(chart, ds, xScale, yScale, position);
+                if(nearest.index >= 0){
+                  index = nearest.index;
+                  const nearestPoint = ds.data[index];
+                  const nearestX = Number(nearestPoint?.x);
+                  // nearestX is read again from ds.data[index] below.
+                  void nearestX;
+                }
+              }
+            }
+          }
+        }
         if(dist < bestDist){
+          const chosenX = Number(Array.isArray(ds?.data) ? ds.data[index]?.x : rawX);
           bestDist = dist;
-          chosen = {datasetIndex, index, xValue:rawX};
+          chosen = {datasetIndex, index, xValue:chosenX};
         }
       }
     }
@@ -28798,7 +29191,8 @@ window.addEventListener("load", ()=>{
     for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
       if(!chart.isDatasetVisible(datasetIndex)) continue;
       const ds = datasets[datasetIndex];
-      if(ds?.type && ds.type !== "line") continue;
+      const dsType = ds?.type || chart.config?.type || "line";
+      if(dsType !== "line" && dsType !== "bar") continue;
       if(!String(ds?.label || "").trim()) continue;
       const meta = chart.getDatasetMeta(datasetIndex);
       if(!meta || meta.hidden === true) continue;
@@ -35303,6 +35697,13 @@ body.withdrawal-preview-open #detailStickyNav *{
     border-top:2px solid currentColor;
     flex:0 0 72px;
   }
+  .chart-bar-legend-sample{
+    width:18px;
+    height:12px;
+    border:1px solid currentColor;
+    border-radius:4px;
+    flex:0 0 18px;
+  }
   .chart-line-legend-label{
     display:inline-block;
   }
@@ -35312,6 +35713,22 @@ body.withdrawal-preview-open #detailStickyNav *{
   .chart-line-legend-item.is-hidden .chart-line-legend-label{
     text-decoration:line-through;
     text-decoration-thickness:1.5px;
+  }
+  .chart-legend-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 14px;
+    align-items:center;
+    justify-content:center;
+  }
+  .chart-legend-row + .chart-legend-row{
+    margin-top:5px;
+  }
+  .chart-legend-static-item{
+    cursor:default;
+  }
+  .chart-legend-static-item:hover{
+    background:transparent;
   }
   @media (max-width:900px), (pointer:coarse){
     .chart-line-legend{
@@ -35323,6 +35740,11 @@ body.withdrawal-preview-open #detailStickyNav *{
     .chart-line-legend-sample{
       width:52px;
       flex-basis:52px;
+    }
+    .chart-bar-legend-sample{
+      width:16px;
+      height:11px;
+      flex-basis:16px;
     }
   }
 </style>
@@ -35336,7 +35758,7 @@ body.withdrawal-preview-open #detailStickyNav *{
     display:block;
     width:max-content;
     min-width:0;
-    max-width:min(304px, calc(100vw - 36px));
+    max-width:min(520px, calc(100vw - 36px));
     padding:8px 12px;
     border:1px solid rgba(148,163,184,.24);
     border-radius:12px;
@@ -35418,6 +35840,77 @@ body.withdrawal-preview-open #detailStickyNav *{
     line-height:1.45;
     vertical-align:middle;
   }
+  .chart-external-tooltip-body-with-pct .chart-external-tooltip-value{
+    width:72px;
+    min-width:72px;
+  }
+  .chart-external-tooltip-pct{
+    display:table-cell;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    width:34px;
+    min-width:34px;
+    padding-left:7px;
+    color:#cbd5e1;
+    font-weight:600;
+    font-size:12px;
+    line-height:1.45;
+    vertical-align:middle;
+  }
+  .chart-external-tooltip-strong-row .chart-external-tooltip-label,
+  .chart-external-tooltip-strong-row .chart-external-tooltip-value,
+  .chart-external-tooltip-strong-row th,
+  .chart-external-tooltip-strong-row td{
+    font-weight:800;
+    color:#f8fafc;
+  }
+  .chart-external-tooltip-matrix{
+    margin:0 !important;
+    border-collapse:separate;
+    border-spacing:0;
+    color:#f8fafc;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .chart-external-tooltip-matrix th,
+  .chart-external-tooltip-matrix td{
+    border:0;
+    background:transparent;
+    padding:2px 0;
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .chart-external-tooltip-matrix thead th{
+    color:#e2e8f0;
+    font-weight:700;
+    text-align:center;
+    padding-bottom:5px;
+  }
+  .chart-external-tooltip-matrix tbody th{
+    color:#e2e8f0;
+    font-weight:700;
+    text-align:left;
+    padding-right:10px;
+  }
+  .chart-external-tooltip-matrix tbody td{
+    text-align:right;
+    font-weight:700;
+    min-width:76px;
+    padding-left:14px;
+  }
+  .chart-external-tooltip-scenario-head{
+    min-width:76px;
+  }
+  .chart-external-tooltip-scenario-dot{
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    margin-right:5px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.36);
+    vertical-align:1px;
+  }
   @media (max-width:900px), (pointer:coarse){
     .chart-external-tooltip{
       max-width:calc(100vw - 32px);
@@ -35448,6 +35941,25 @@ body.withdrawal-preview-open #detailStickyNav *{
       min-width:62px;
       padding-left:3px;
       font-size:11px;
+    }
+    .chart-external-tooltip-pct{
+      width:30px;
+      min-width:30px;
+      padding-left:5px;
+      font-size:11px;
+    }
+    .chart-external-tooltip-matrix{
+      font-size:11px;
+    }
+    .chart-external-tooltip-matrix tbody th{
+      padding-right:8px;
+    }
+    .chart-external-tooltip-matrix tbody td,
+    .chart-external-tooltip-scenario-head{
+      min-width:66px;
+    }
+    .chart-external-tooltip-matrix tbody td{
+      padding-left:10px;
     }
   }
 </style>
