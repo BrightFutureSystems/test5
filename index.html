@@ -22526,7 +22526,7 @@ function isWithdrawalPreviewSheetOpen(){
 function isCrashPreviewSheetOpen(){
   return isPreviewSheetOpen('crashTestModal');
 }
-const WITHDRAWAL_PREVIEW_HEIGHT_STORAGE_KEY = 'assetLifePreviewSheetHeightPx';
+const WITHDRAWAL_PREVIEW_HEIGHT_STORAGE_KEY = 'assetLifePreviewSheetHeightPxV2';
 function getWithdrawalPreviewHeightBounds(){
   const vh = Math.max(window.innerHeight || 0, 320);
   return {
@@ -22601,32 +22601,28 @@ function stopWithdrawalPreviewDrag(e){
   document.removeEventListener('pointermove', handleWithdrawalPreviewHandleDragMove, true);
   document.removeEventListener('pointerup', stopWithdrawalPreviewDrag, true);
   document.removeEventListener('pointercancel', stopWithdrawalPreviewDrag, true);
-  if(state.mode === 'dismiss'){
-    const pointerY = Number(e?.clientY);
-    const dy = Math.max(0, Number.isFinite(pointerY) ? pointerY - state.startY : (state.currentDy || 0));
-    const elapsed = Math.max(1, performance.now() - state.startTime);
-    const velocity = dy / elapsed;
-    const shouldClose = e?.type !== 'pointercancel' && (dy >= 82 || (dy >= 34 && velocity >= 0.55));
-    if(shouldClose){
-      if(state.sheet){
-        state.sheet.style.transition = 'transform .16s ease-out, opacity .16s ease-out';
-        state.sheet.style.transform = 'translate(-50%, 100%)';
-        state.sheet.style.opacity = '.92';
-      }
-      setTimeout(()=>{
-        resetPreviewSheetSwipeDismissStyle(state.sheet);
-        cancelPreviewSheetByModalId(state.modalId);
-      }, 70);
-    }else{
-      if(state.sheet){
-        state.sheet.style.transition = 'transform .16s ease-out, opacity .16s ease-out';
-        state.sheet.style.transform = 'translate(-50%, 0)';
-        state.sheet.style.opacity = '';
-        setTimeout(()=>resetPreviewSheetSwipeDismissStyle(state.sheet), 170);
-      }
+  const pointerY = Number(e?.clientY);
+  const dyDown = Math.max(0, Number.isFinite(pointerY) ? pointerY - state.startY : (state.currentDyDown || 0));
+  const elapsed = Math.max(1, performance.now() - state.startTime);
+  const velocityDown = dyDown / elapsed;
+  const shouldClose = !!state.dismissEnabled && e?.type !== 'pointercancel' && (dyDown >= 118 || (dyDown >= 48 && velocityDown >= 0.72));
+  if(shouldClose){
+    if(Number.isFinite(state.startHeight) && state.startHeight > 0){
+      applyWithdrawalPreviewHeight(state.startHeight);
+      persistWithdrawalPreviewHeight(state.startHeight);
     }
+    if(state.sheet){
+      state.sheet.style.transition = 'transform .16s ease-out, opacity .16s ease-out';
+      state.sheet.style.transform = 'translate(-50%, 100%)';
+      state.sheet.style.opacity = '.92';
+    }
+    setTimeout(()=>{
+      resetPreviewSheetSwipeDismissStyle(state.sheet);
+      cancelPreviewSheetByModalId(state.modalId);
+    }, 70);
     return;
   }
+  resetPreviewSheetSwipeDismissStyle(state.sheet);
   if(Number.isFinite(withdrawalPreviewCurrentHeightPx) && withdrawalPreviewCurrentHeightPx > 0){
     persistWithdrawalPreviewHeight(withdrawalPreviewCurrentHeightPx);
   }
@@ -22636,17 +22632,9 @@ function handleWithdrawalPreviewHandleDragMove(e){
   if(typeof e.preventDefault === 'function') e.preventDefault();
   const pointerY = Number(e.clientY);
   if(!Number.isFinite(pointerY)) return;
-  if(withdrawalPreviewDragState.mode === 'dismiss'){
-    const dy = Math.max(0, pointerY - withdrawalPreviewDragState.startY);
-    withdrawalPreviewDragState.currentDy = dy;
-    if(withdrawalPreviewDragState.sheet){
-      withdrawalPreviewDragState.sheet.style.transition = 'none';
-      withdrawalPreviewDragState.sheet.style.transform = `translate(-50%, ${Math.min(dy, Math.max(120, (window.innerHeight || 0) * 0.42))}px)`;
-      withdrawalPreviewDragState.sheet.style.opacity = String(Math.max(0.82, 1 - dy / 520));
-    }
-    return;
-  }
-  applyWithdrawalPreviewHeight((window.innerHeight || 0) - pointerY + withdrawalPreviewDragState.offsetY);
+  const state = withdrawalPreviewDragState;
+  state.currentDyDown = Math.max(0, pointerY - state.startY);
+  applyWithdrawalPreviewHeight((window.innerHeight || 0) - pointerY + state.offsetY);
 }
 function startWithdrawalPreviewHandleDrag(e){
   const modalId = activePreviewSheetModalId || (isCrashPreviewSheetOpen() ? 'crashTestModal' : 'withdrawalRuleModal');
@@ -22654,20 +22642,19 @@ function startWithdrawalPreviewHandleDrag(e){
   const sheet = document.querySelector(`#${modalId} .withdrawal-preview-sheet`);
   if(!sheet) return;
   if(typeof e.preventDefault === 'function') e.preventDefault();
-  if(isPreviewSheetSwipeDismissViewport()){
-    resetPreviewSheetSwipeDismissStyle(sheet);
-    withdrawalPreviewDragState = {
-      mode:'dismiss',
-      modalId,
-      sheet,
-      startY:Number(e.clientY) || 0,
-      currentDy:0,
-      startTime:performance.now()
-    };
-  }else{
-    const rect = sheet.getBoundingClientRect();
-    withdrawalPreviewDragState = { mode:'resize', offsetY: Math.max(0, Number(e.clientY) - rect.top || 0) };
-  }
+  resetPreviewSheetSwipeDismissStyle(sheet);
+  const rect = sheet.getBoundingClientRect();
+  withdrawalPreviewDragState = {
+    mode:'resize',
+    modalId,
+    sheet,
+    dismissEnabled:isPreviewSheetSwipeDismissViewport(),
+    startY:Number(e.clientY) || 0,
+    currentDyDown:0,
+    startTime:performance.now(),
+    startHeight:withdrawalPreviewCurrentHeightPx || Math.round(rect.height),
+    offsetY:Math.max(0, Number(e.clientY) - rect.top || 0)
+  };
   document.body.classList.add('withdrawal-preview-dragging');
   document.addEventListener('pointermove', handleWithdrawalPreviewHandleDragMove, true);
   document.addEventListener('pointerup', stopWithdrawalPreviewDrag, true);
@@ -22765,6 +22752,9 @@ function openPreviewSheet(modalEl, _options={}){
 }
 function closePreviewSheet(modalEl, _options={}){
   if(!modalEl) return;
+  if(Number.isFinite(withdrawalPreviewCurrentHeightPx) && withdrawalPreviewCurrentHeightPx > 0){
+    persistWithdrawalPreviewHeight(withdrawalPreviewCurrentHeightPx);
+  }
   if(withdrawalRulePreviewApplyTimer){ clearTimeout(withdrawalRulePreviewApplyTimer); withdrawalRulePreviewApplyTimer = null; }
   modalEl.classList.remove('preview-visible');
   const finalizeClose = ()=>{
