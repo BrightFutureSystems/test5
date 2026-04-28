@@ -2121,7 +2121,7 @@ document.addEventListener("scroll", (ev)=>{
   position:relative;
   background:#fff;
   margin:0 22px;
-  padding:14px 16px 10px;
+  padding:8px 16px 10px;
   border:1px solid #d8e2f0;
   border-radius:18px;
   box-shadow:none;
@@ -2304,6 +2304,7 @@ document.addEventListener("scroll", (ev)=>{
   }
   #chartCanvasStickyWrap{
     margin:0 12px;
+    padding-top:7px;
     background:#fff;
   }
   .graph-row-label{display:none !important;}
@@ -33176,7 +33177,14 @@ body.body-v846-chart-resizing{
     if(isMobile()) return document.getElementById('chartCanvasStickyWrap') || document.getElementById('chartWrap');
     return document.getElementById('chartWrap') || document.getElementById('chartCanvasStickyWrap');
   }
-  function getSafetyOffset(){ return isMobile() ? SAFETY_OFFSET_MOBILE : SAFETY_OFFSET_DESKTOP; }
+  function hasVisibleCustomLegend(){
+    const legend = document.getElementById('chartCustomLegend');
+    return !!(legend && !legend.hidden && legend.offsetParent !== null);
+  }
+  function getSafetyOffset(){
+    if(isMobile()) return SAFETY_OFFSET_MOBILE + (hasVisibleCustomLegend() ? 6 : 0);
+    return SAFETY_OFFSET_DESKTOP;
+  }
   function updateInputsHeight(){
     const root = document.documentElement;
     const inputsEl = document.getElementById('inputs');
@@ -35801,8 +35809,8 @@ body.withdrawal-preview-open #detailStickyNav *{
     justify-content:center;
     flex-wrap:wrap;
     gap:6px 18px;
-    min-height:24px;
-    margin:0 0 1px;
+    min-height:22px;
+    margin:0;
     padding:0 8px 0;
     color:#4b5563;
     font-size:13px;
@@ -35896,10 +35904,11 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
   @media (max-width:900px), (pointer:coarse){
     .chart-line-legend{
-      gap:4px 10px;
+      gap:3px 10px;
       font-size:12px;
-      margin-bottom:1px;
+      margin-bottom:0;
       padding-bottom:0;
+      min-height:20px;
     }
     .chart-line-legend-sample{
       width:52px;
@@ -36575,6 +36584,41 @@ body.withdrawal-preview-open #detailStickyNav *{
       opacity:0 !important;
       background:none !important;
       background-image:none !important;
+    }
+  }
+</style>
+
+<!-- ===== v1045: tighten custom legend-to-chart gap globally ===== -->
+<style>
+  #chartCustomLegend.chart-line-legend:not([hidden]){
+    margin-bottom:-2px !important;
+    padding-bottom:0 !important;
+    min-height:18px !important;
+  }
+  #chartCustomLegend.chart-line-legend:not([hidden]) + #chartCanvasStickyWrap{
+    padding-top:2px !important;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    #chartCustomLegend.chart-line-legend:not([hidden]){
+      margin-bottom:-3px !important;
+      min-height:16px !important;
+    }
+    #chartCustomLegend.chart-line-legend:not([hidden]) + #chartCanvasStickyWrap{
+      padding-top:1px !important;
+    }
+  }
+</style>
+
+<!-- ===== v1046: mobile stop guard when custom legend is visible + shorter line legend samples ===== -->
+<style>
+  #chartCustomLegend .chart-line-legend-sample:not(.chart-bar-legend-sample){
+    width:50px !important;
+    flex-basis:50px !important;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    #chartCustomLegend .chart-line-legend-sample:not(.chart-bar-legend-sample){
+      width:36px !important;
+      flex-basis:36px !important;
     }
   }
 </style>
