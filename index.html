@@ -6744,6 +6744,20 @@ function buildOverlayPreviewSvgDataUrl(color, lineStyle, lineWidth, previewWidth
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="${stroke}" stroke-width="${normalizedWidth}" stroke-linecap="${linecap}"${dashAttr}/></svg>`;
   return `url("data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}")`;
 }
+function buildLegendLineSvgDataUrl(color, lineStyle, lineWidth, previewWidth = 44){
+  const width = Math.max(1, Number(previewWidth) || 44);
+  const height = 12;
+  const stroke = normalizeColorHex(color) || '#2563eb';
+  const normalizedStyle = normalizeOverlayLineStyle(lineStyle);
+  const rawWidth = Number(lineWidth);
+  const normalizedWidth = Math.max(1, Math.min(6, Number.isFinite(rawWidth) ? rawWidth : 2));
+  const y = height / 2;
+  const dash = normalizedStyle === 'dashed' ? '6 4' : (normalizedStyle === 'dotted' ? '1 4' : '');
+  const linecap = normalizedStyle === 'dotted' ? 'round' : 'butt';
+  const dashAttr = dash ? ` stroke-dasharray="${dash}"` : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="${stroke}" stroke-width="${normalizedWidth}" stroke-linecap="${linecap}"${dashAttr}/></svg>`;
+  return `url("data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}")`;
+}
 function applyOverlayPreviewStyle(previewEl, color, lineStyle, lineWidth){
   if(!previewEl) return;
   previewEl.style.backgroundImage = buildOverlayPreviewSvgDataUrl(color, lineStyle, lineWidth);
@@ -21220,8 +21234,11 @@ function renderCustomChartLegend(chartInstance, display){
     const visible = chartInstance.isDatasetVisible(datasetIndex);
     const hiddenClass = visible ? "" : " is-hidden";
     const pressed = visible ? "true" : "false";
-    const sampleClass = (chartInstance.$graphType === "assetBreakdown" && ds.type === "bar") ? "chart-line-legend-sample chart-bar-legend-sample" : "chart-line-legend-sample";
-    const sampleStyle = sampleClass.includes("chart-bar-legend-sample") ? `background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};` : `color:${escapeAttr(line.color)};border-top-width:${line.width}px;border-top-style:${escapeAttr(line.style)};`;
+    const isBarLegend = (chartInstance.$graphType === "assetBreakdown" && ds.type === "bar");
+    const sampleClass = isBarLegend ? "chart-line-legend-sample chart-bar-legend-sample" : "chart-line-legend-sample chart-svg-line-legend-sample";
+    const sampleStyle = isBarLegend
+      ? `background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};`
+      : `background-image:${escapeAttr(buildLegendLineSvgDataUrl(line.color, line.style, line.width, 50))};`;
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="${sampleClass}" style="${sampleStyle}"></span><span class="chart-line-legend-label">${label}</span></button>`;
   }).join("");
   legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>{
@@ -28704,6 +28721,15 @@ function setupChartTouchInteractions(){
       if(shouldPersist) persistState();
     }
   };
+  const updateMainChartTooltipFromTouch = (touch)=>{
+    if(!touch || typeof window.__updateMainChartTooltipFromPointerEvent !== "function") return;
+    window.__updateMainChartTooltipFromPointerEvent({
+      target: canvas,
+      currentTarget: canvas,
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    });
+  };
   canvas.addEventListener('touchstart', (e)=>{
     if(!chart?.scales?.x || !chart?.scales?.y) return;
     if(e.touches.length >= 2){
@@ -28737,8 +28763,10 @@ function setupChartTouchInteractions(){
       return;
     }
     if(e.touches.length === 1 && isZoomedFromDefaults()){
-      const pt = getTouchPoint(e.touches[0]);
+      const touch = e.touches[0];
+      const pt = getTouchPoint(touch);
       if(!isInsideChartArea(pt)) return;
+      updateMainChartTooltipFromTouch(touch);
       touchState = {
         type:'pan',
         startX:pt.x,
@@ -28831,10 +28859,21 @@ function setupChartTouchInteractions(){
     }
     if(touchState.type === 'pan'){
       if(e.touches.length !== 1) return;
-      const pt = getTouchPoint(e.touches[0]);
+      const touch = e.touches[0];
+      const pt = getTouchPoint(touch);
       const dx = pt.x - touchState.startX;
       const dy = pt.y - touchState.startY;
-      if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
+      if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE){
+        updateMainChartTooltipFromTouch(touch);
+        e.preventDefault();
+        return;
+      }
+      if(!touchState.moved){
+        const tooltipEl = document.getElementById("chartExternalTooltip");
+        if(tooltipEl) tooltipEl.hidden = true;
+        chart.setActiveElements([]);
+        chart.tooltip?.setActiveElements?.([], {x:0, y:0});
+      }
       touchState.moved = true;
       const gestureBounds = computeChartAxisGestureOuterBounds();
       const xScale = chart.scales.x;
@@ -29367,6 +29406,7 @@ window.addEventListener("load", ()=>{
     chart.tooltip?.setActiveElements?.(tooltipActiveElements, position);
     chart.update("none");
   }
+  window.__updateMainChartTooltipFromPointerEvent = updateChartTooltipFromPointerEvent;
   document.getElementById("chart")?.addEventListener("pointermove", (e)=>{
     updateChartTooltipFromPointerEvent(e);
   });
@@ -35841,6 +35881,13 @@ body.withdrawal-preview-open #detailStickyNav *{
     height:0;
     border-top:2px solid currentColor;
     flex:0 0 72px;
+  }
+  .chart-svg-line-legend-sample{
+    height:12px;
+    border-top:0 !important;
+    background-repeat:no-repeat;
+    background-position:center;
+    background-size:100% 12px;
   }
   .chart-bar-legend-sample{
     width:18px;
