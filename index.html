@@ -28724,11 +28724,11 @@ function setupChartTouchInteractions(){
   let lastMainChartTooltipTouch = null;
   let keepTouchTooltipUntil = 0;
   const updateMainChartTooltipFromTouch = (touch)=>{
-    if(!touch || typeof window.__updateMainChartTooltipFromPointerEvent !== "function") return;
+    if(!touch || typeof window.__updateMainChartTooltipFromPointerEvent !== "function") return false;
     lastMainChartTooltipTouch = {clientX:touch.clientX, clientY:touch.clientY};
     keepTouchTooltipUntil = Date.now() + 700;
     window.__mainChartTouchTooltipKeepUntil = keepTouchTooltipUntil;
-    window.__updateMainChartTooltipFromPointerEvent({
+    return !!window.__updateMainChartTooltipFromPointerEvent({
       target: canvas,
       currentTarget: canvas,
       clientX: touch.clientX,
@@ -28782,11 +28782,12 @@ function setupChartTouchInteractions(){
       e.preventDefault();
       return;
     }
-    if(e.touches.length === 1 && isZoomedFromDefaults()){
+    if(e.touches.length === 1){
       const touch = e.touches[0];
       const pt = getTouchPoint(touch);
       if(!isInsideChartArea(pt)) return;
-      updateMainChartTooltipFromTouch(touch);
+      const zoomed = isZoomedFromDefaults();
+      const tooltipHit = updateMainChartTooltipFromTouch(touch);
       const now = Date.now();
       touchState = {
         type:'tooltipOrPan',
@@ -28803,7 +28804,9 @@ function setupChartTouchInteractions(){
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
         moved:false,
-        tooltipMoved:false
+        tooltipMoved:false,
+        zoomed,
+        tooltipHit
       };
       e.preventDefault();
     }
@@ -28897,14 +28900,18 @@ function setupChartTouchInteractions(){
       const dt = Math.max(1, now - (touchState.lastMoveTime || now));
       const stepVelocity = Math.hypot(stepDx, stepDy) / dt;
       const totalDist = Math.hypot(dxFromStart, dyFromStart);
-      const fastFlick = totalDist >= 12 && stepVelocity >= 0.42;
-      const quickDrag = totalDist >= 28 && (now - (touchState.startTime || now)) <= 180;
       touchState.lastX = pt.x;
       touchState.lastY = pt.y;
       touchState.lastMoveTime = now;
-      if(!fastFlick && !quickDrag){
+      const zoomed = !!touchState.zoomed;
+      const tooltipHit = !!touchState.tooltipHit;
+      const shouldPanBecauseNoTooltip = zoomed && !tooltipHit && totalDist >= MIN_TOUCH_MOVE;
+      const fastFlick = zoomed && tooltipHit && totalDist >= 12 && stepVelocity >= 0.42;
+      const quickDrag = zoomed && tooltipHit && totalDist >= 28 && (now - (touchState.startTime || now)) <= 180;
+      if(!shouldPanBecauseNoTooltip && !fastFlick && !quickDrag){
         if(totalDist >= 2) touchState.tooltipMoved = true;
-        updateMainChartTooltipFromTouch(touch);
+        const nextHit = updateMainChartTooltipFromTouch(touch);
+        if(nextHit) touchState.tooltipHit = true;
         e.preventDefault();
         return;
       }
@@ -29318,9 +29325,9 @@ window.addEventListener("load", ()=>{
     return best;
   }
   function updateChartTooltipFromPointerEvent(e){
-    if(!chart || !chart.$useStrictPointTooltip) return;
+    if(!chart || !chart.$useStrictPointTooltip) return false;
     const canvas = document.getElementById("chart");
-    if(!canvas || e.target !== canvas) return;
+    if(!canvas || e.target !== canvas) return false;
     const rect = canvas.getBoundingClientRect();
     const clientX = typeof e.clientX === "number" ? e.clientX : (rect.left + rect.width / 2);
     const clientY = typeof e.clientY === "number" ? e.clientY : (rect.top + rect.height / 2);
@@ -29425,7 +29432,7 @@ window.addEventListener("load", ()=>{
     }
     if(!chosen || bestDist > maxDist || !Number.isFinite(Number(chosen.xValue))){
       clearChartTooltipFromPointer();
-      return;
+      return false;
     }
     const activeElements = [];
     const xTolerance = 1e-7;
@@ -29464,11 +29471,12 @@ window.addEventListener("load", ()=>{
     const tooltipActiveElements = activeElements.map(({datasetIndex, index})=>({datasetIndex, index}));
     if(!tooltipActiveElements.length){
       clearChartTooltipFromPointer();
-      return;
+      return false;
     }
     chart.setActiveElements(tooltipActiveElements);
     chart.tooltip?.setActiveElements?.(tooltipActiveElements, position);
     chart.update("none");
+    return true;
   }
   window.__updateMainChartTooltipFromPointerEvent = updateChartTooltipFromPointerEvent;
   document.getElementById("chart")?.addEventListener("pointermove", (e)=>{
