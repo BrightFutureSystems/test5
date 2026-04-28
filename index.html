@@ -21160,7 +21160,7 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
     const pressed = visible ? "true" : "false";
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-asset-category="${escapeAttr(item.key)}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="${item.style}"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
   }).join("");
-  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div>` : ""}`;
+  legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div></div>` : ""}</div>`;
   legendEl.querySelectorAll("[data-overlay-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const overlayIndex = Number(btn.dataset.overlayIndex);
@@ -35800,10 +35800,10 @@ body.withdrawal-preview-open #detailStickyNav *{
     align-items:center;
     justify-content:center;
     flex-wrap:wrap;
-    gap:10px 22px;
+    gap:6px 18px;
     min-height:24px;
-    margin:0 0 4px;
-    padding:0 8px 1px;
+    margin:0 0 1px;
+    padding:0 8px 0;
     color:#4b5563;
     font-size:13px;
     font-weight:600;
@@ -35851,22 +35851,42 @@ body.withdrawal-preview-open #detailStickyNav *{
     text-decoration:line-through;
     text-decoration-thickness:1.5px;
   }
+  .chart-legend-stacked{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    gap:4px 14px;
+  }
   .chart-legend-row{
     display:flex;
     flex-wrap:wrap;
-    gap:10px 14px;
+    gap:8px 14px;
     align-items:center;
     justify-content:center;
   }
-  .chart-legend-row + .chart-legend-row{
-    margin-top:5px;
+  .chart-legend-scenario-row{
+    flex:0 1 auto;
+  }
+  .chart-legend-category-block{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    flex:0 0 auto;
+    max-width:100%;
+  }
+  .chart-legend-category-row{
+    flex:0 1 auto;
   }
   .chart-legend-separator{
-    width:min(420px, 86%);
-    height:1px;
-    margin:6px auto 5px;
-    background:rgba(148,163,184,.32);
+    width:1px;
+    align-self:stretch;
+    min-height:18px;
+    background:rgba(148,163,184,.30);
     border-radius:999px;
+    flex:0 0 1px;
   }
   .chart-legend-static-item{
     cursor:default;
@@ -35876,9 +35896,9 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
   @media (max-width:900px), (pointer:coarse){
     .chart-line-legend{
-      gap:8px 14px;
+      gap:4px 10px;
       font-size:12px;
-      margin-bottom:3px;
+      margin-bottom:1px;
       padding-bottom:0;
     }
     .chart-line-legend-sample{
@@ -35889,6 +35909,25 @@ body.withdrawal-preview-open #detailStickyNav *{
       width:16px;
       height:11px;
       flex-basis:16px;
+    }
+    .chart-legend-stacked{
+      flex-direction:column;
+      align-items:center;
+      gap:2px;
+    }
+    .chart-legend-row{
+      gap:6px 10px;
+    }
+    .chart-legend-category-block{
+      flex-direction:column;
+      gap:2px;
+      width:100%;
+    }
+    .chart-legend-separator{
+      width:min(180px, 62%);
+      height:1px;
+      min-height:1px;
+      align-self:center;
     }
   }
 </style>
