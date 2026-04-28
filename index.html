@@ -36769,5 +36769,15 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 </style>
 
+
+<!-- ===== v1055: keep tab drag ghost above all tabs on touch reorder ===== -->
+<style>
+  .tab-btn-drag-ghost,
+  .tab-btn-drag-ghost.tab-btn,
+  .tab-btn-drag-ghost.tab-btn.active{
+    z-index:20000 !important;
+  }
+</style>
+
 </body>
 </html>
