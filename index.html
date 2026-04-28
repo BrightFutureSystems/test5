@@ -22603,9 +22603,12 @@ function stopWithdrawalPreviewDrag(e){
   document.removeEventListener('pointercancel', stopWithdrawalPreviewDrag, true);
   const pointerY = Number(e?.clientY);
   const dyDown = Math.max(0, Number.isFinite(pointerY) ? pointerY - state.startY : (state.currentDyDown || 0));
-  const elapsed = Math.max(1, performance.now() - state.startTime);
-  const velocityDown = dyDown / elapsed;
-  const shouldClose = !!state.dismissEnabled && e?.type !== 'pointercancel' && (dyDown >= 118 || (dyDown >= 48 && velocityDown >= 0.72));
+  const releaseNow = performance.now();
+  const elapsed = Math.max(1, releaseNow - state.startTime);
+  const averageVelocityDown = dyDown / elapsed;
+  const releaseVelocityDown = Number(state.lastMoveVelocityDown) || 0;
+  const peakVelocityDown = Math.max(Number(state.maxMoveVelocityDown) || 0, averageVelocityDown, releaseVelocityDown);
+  const shouldClose = !!state.dismissEnabled && e?.type !== 'pointercancel' && dyDown >= 36 && peakVelocityDown >= 1.15;
   if(shouldClose){
     if(Number.isFinite(state.startHeight) && state.startHeight > 0){
       applyWithdrawalPreviewHeight(state.startHeight);
@@ -22633,6 +22636,17 @@ function handleWithdrawalPreviewHandleDragMove(e){
   const pointerY = Number(e.clientY);
   if(!Number.isFinite(pointerY)) return;
   const state = withdrawalPreviewDragState;
+  const now = performance.now();
+  const prevY = Number(state.lastY);
+  const prevTime = Number(state.lastTime);
+  if(Number.isFinite(prevY) && Number.isFinite(prevTime)){
+    const dt = Math.max(1, now - prevTime);
+    const velocityDown = Math.max(0, (pointerY - prevY) / dt);
+    state.lastMoveVelocityDown = velocityDown;
+    state.maxMoveVelocityDown = Math.max(Number(state.maxMoveVelocityDown) || 0, velocityDown);
+  }
+  state.lastY = pointerY;
+  state.lastTime = now;
   state.currentDyDown = Math.max(0, pointerY - state.startY);
   applyWithdrawalPreviewHeight((window.innerHeight || 0) - pointerY + state.offsetY);
 }
@@ -22652,6 +22666,10 @@ function startWithdrawalPreviewHandleDrag(e){
     startY:Number(e.clientY) || 0,
     currentDyDown:0,
     startTime:performance.now(),
+    lastY:Number(e.clientY) || 0,
+    lastTime:performance.now(),
+    lastMoveVelocityDown:0,
+    maxMoveVelocityDown:0,
     startHeight:withdrawalPreviewCurrentHeightPx || Math.round(rect.height),
     offsetY:Math.max(0, Number(e.clientY) - rect.top || 0)
   };
