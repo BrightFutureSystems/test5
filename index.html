@@ -28721,14 +28721,34 @@ function setupChartTouchInteractions(){
       if(shouldPersist) persistState();
     }
   };
+  let lastMainChartTooltipTouch = null;
+  let keepTouchTooltipUntil = 0;
   const updateMainChartTooltipFromTouch = (touch)=>{
     if(!touch || typeof window.__updateMainChartTooltipFromPointerEvent !== "function") return;
+    lastMainChartTooltipTouch = {clientX:touch.clientX, clientY:touch.clientY};
+    keepTouchTooltipUntil = Date.now() + 700;
+    window.__mainChartTouchTooltipKeepUntil = keepTouchTooltipUntil;
     window.__updateMainChartTooltipFromPointerEvent({
       target: canvas,
       currentTarget: canvas,
       clientX: touch.clientX,
       clientY: touch.clientY
     });
+  };
+  const restoreLastMainChartTouchTooltipSoon = ()=>{
+    const touch = lastMainChartTooltipTouch;
+    if(!touch || typeof window.__updateMainChartTooltipFromPointerEvent !== "function") return;
+    keepTouchTooltipUntil = Date.now() + 700;
+    window.__mainChartTouchTooltipKeepUntil = keepTouchTooltipUntil;
+    setTimeout(()=>{
+      if(!lastMainChartTooltipTouch || typeof window.__updateMainChartTooltipFromPointerEvent !== "function") return;
+      window.__updateMainChartTooltipFromPointerEvent({
+        target: canvas,
+        currentTarget: canvas,
+        clientX:lastMainChartTooltipTouch.clientX,
+        clientY:lastMainChartTooltipTouch.clientY
+      });
+    }, 0);
   };
   canvas.addEventListener('touchstart', (e)=>{
     if(!chart?.scales?.x || !chart?.scales?.y) return;
@@ -28767,15 +28787,23 @@ function setupChartTouchInteractions(){
       const pt = getTouchPoint(touch);
       if(!isInsideChartArea(pt)) return;
       updateMainChartTooltipFromTouch(touch);
+      const now = Date.now();
       touchState = {
-        type:'pan',
+        type:'tooltipOrPan',
         startX:pt.x,
         startY:pt.y,
+        lastX:pt.x,
+        lastY:pt.y,
+        startClientX:touch.clientX,
+        startClientY:touch.clientY,
+        lastMoveTime:now,
+        startTime:now,
         startMinX:Number(chart.scales.x.min),
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
-        moved:false
+        moved:false,
+        tooltipMoved:false
       };
       e.preventDefault();
     }
@@ -28857,6 +28885,46 @@ function setupChartTouchInteractions(){
       e.preventDefault();
       return;
     }
+    if(touchState.type === 'tooltipOrPan'){
+      if(e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const pt = getTouchPoint(touch);
+      const now = Date.now();
+      const dxFromStart = pt.x - touchState.startX;
+      const dyFromStart = pt.y - touchState.startY;
+      const stepDx = pt.x - touchState.lastX;
+      const stepDy = pt.y - touchState.lastY;
+      const dt = Math.max(1, now - (touchState.lastMoveTime || now));
+      const stepVelocity = Math.hypot(stepDx, stepDy) / dt;
+      const totalDist = Math.hypot(dxFromStart, dyFromStart);
+      const fastFlick = totalDist >= 12 && stepVelocity >= 0.42;
+      const quickDrag = totalDist >= 28 && (now - (touchState.startTime || now)) <= 180;
+      touchState.lastX = pt.x;
+      touchState.lastY = pt.y;
+      touchState.lastMoveTime = now;
+      if(!fastFlick && !quickDrag){
+        if(totalDist >= 2) touchState.tooltipMoved = true;
+        updateMainChartTooltipFromTouch(touch);
+        e.preventDefault();
+        return;
+      }
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chart.setActiveElements([]);
+      chart.tooltip?.setActiveElements?.([], {x:0, y:0});
+      touchState = {
+        type:'pan',
+        startX:pt.x,
+        startY:pt.y,
+        startMinX:Number(chart.scales.x.min),
+        startMaxX:Number(chart.scales.x.max),
+        startMinY:Number(chart.scales.y.min),
+        startMaxY:Number(chart.scales.y.max),
+        moved:false
+      };
+      e.preventDefault();
+      return;
+    }
     if(touchState.type === 'pan'){
       if(e.touches.length !== 1) return;
       const touch = e.touches[0];
@@ -28864,15 +28932,8 @@ function setupChartTouchInteractions(){
       const dx = pt.x - touchState.startX;
       const dy = pt.y - touchState.startY;
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE){
-        updateMainChartTooltipFromTouch(touch);
         e.preventDefault();
         return;
-      }
-      if(!touchState.moved){
-        const tooltipEl = document.getElementById("chartExternalTooltip");
-        if(tooltipEl) tooltipEl.hidden = true;
-        chart.setActiveElements([]);
-        chart.tooltip?.setActiveElements?.([], {x:0, y:0});
       }
       touchState.moved = true;
       const gestureBounds = computeChartAxisGestureOuterBounds();
@@ -28903,7 +28964,10 @@ function setupChartTouchInteractions(){
   const handleTouchEnd = ()=>{
     const endedState = touchState;
     finishTouchInteraction(true);
-    if(endedState && !endedState.moved){
+    if(endedState?.type === 'tooltipOrPan'){
+      restoreLastMainChartTouchTooltipSoon();
+    }
+    if(endedState && !endedState.moved && !endedState.tooltipMoved){
       const now = Date.now();
       const pt = endedState.startCenter ? endedState.startCenter : {x:endedState.startX, y:endedState.startY};
       const closeEnough = !lastCanvasTapPoint || Math.hypot((pt?.x || 0) - (lastCanvasTapPoint.x || 0), (pt?.y || 0) - (lastCanvasTapPoint.y || 0)) <= 28;
@@ -29411,9 +29475,11 @@ window.addEventListener("load", ()=>{
     updateChartTooltipFromPointerEvent(e);
   });
   document.getElementById("chart")?.addEventListener("pointerleave", ()=>{
+    if(Date.now() < (window.__mainChartTouchTooltipKeepUntil || 0)) return;
     clearChartTooltipFromPointer();
   });
   document.getElementById("chart")?.addEventListener("pointercancel", ()=>{
+    if(Date.now() < (window.__mainChartTouchTooltipKeepUntil || 0)) return;
     clearChartTooltipFromPointer();
   });
   document.getElementById("chart")?.addEventListener("click", (e)=>{
