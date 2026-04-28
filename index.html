@@ -22607,8 +22607,13 @@ function stopWithdrawalPreviewDrag(e){
   const elapsed = Math.max(1, releaseNow - state.startTime);
   const averageVelocityDown = dyDown / elapsed;
   const releaseVelocityDown = Number(state.lastMoveVelocityDown) || 0;
-  const peakVelocityDown = Math.max(Number(state.maxMoveVelocityDown) || 0, averageVelocityDown, releaseVelocityDown);
-  const shouldClose = !!state.dismissEnabled && e?.type !== 'pointercancel' && dyDown >= 36 && peakVelocityDown >= 1.15;
+  const releaseGap = releaseNow - (Number(state.lastTime) || releaseNow);
+  const shouldClose = !!state.dismissEnabled
+    && e?.type !== 'pointercancel'
+    && dyDown >= 42
+    && releaseGap <= 140
+    && releaseVelocityDown >= 1.05
+    && averageVelocityDown >= 0.35;
   if(shouldClose){
     if(Number.isFinite(state.startHeight) && state.startHeight > 0){
       applyWithdrawalPreviewHeight(state.startHeight);
@@ -36849,6 +36854,17 @@ body.withdrawal-preview-open #detailStickyNav *{
   .tab-btn-drag-ghost.tab-btn,
   .tab-btn-drag-ghost.tab-btn.active{
     z-index:20000 !important;
+  }
+</style>
+
+
+<!-- ===== v1061: keep preview sheet bottom corners square on touch devices ===== -->
+<style>
+  @media (max-width:900px), (pointer:coarse){
+    .modal-card.withdrawal-preview-sheet,
+    .withdrawal-preview-sheet{
+      border-radius:20px 20px 0 0 !important;
+    }
   }
 </style>
 
