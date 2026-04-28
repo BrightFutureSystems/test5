@@ -22607,13 +22607,23 @@ function stopWithdrawalPreviewDrag(e){
   const elapsed = Math.max(1, releaseNow - state.startTime);
   const averageVelocityDown = dyDown / elapsed;
   const releaseVelocityDown = Number(state.lastMoveVelocityDown) || 0;
-  const releaseGap = releaseNow - (Number(state.lastTime) || releaseNow);
+  const peakVelocityDown = Number(state.maxMoveVelocityDown) || 0;
+  const samples = Array.isArray(state.moveSamples) ? state.moveSamples.slice() : [];
+  if(Number.isFinite(pointerY)) samples.push({time:releaseNow, y:pointerY});
+  const recentStartTime = releaseNow - 140;
+  let recentBase = samples[0] || {time:state.startTime, y:state.startY};
+  for(const sample of samples){
+    if(Number(sample?.time) >= recentStartTime){ recentBase = sample; break; }
+    recentBase = sample;
+  }
+  const recentDt = Math.max(1, releaseNow - (Number(recentBase?.time) || releaseNow));
+  const recentVelocityDown = Math.max(0, (pointerY - (Number(recentBase?.y) || pointerY)) / recentDt);
   const shouldClose = !!state.dismissEnabled
     && e?.type !== 'pointercancel'
-    && dyDown >= 42
-    && releaseGap <= 140
-    && releaseVelocityDown >= 1.05
-    && averageVelocityDown >= 0.35;
+    && dyDown >= 46
+    && recentVelocityDown >= 0.72
+    && Math.max(peakVelocityDown, releaseVelocityDown) >= 1.05
+    && averageVelocityDown >= 0.18;
   if(shouldClose){
     if(Number.isFinite(state.startHeight) && state.startHeight > 0){
       applyWithdrawalPreviewHeight(state.startHeight);
@@ -22653,6 +22663,13 @@ function handleWithdrawalPreviewHandleDragMove(e){
   state.lastY = pointerY;
   state.lastTime = now;
   state.currentDyDown = Math.max(0, pointerY - state.startY);
+  if(Array.isArray(state.moveSamples)){
+    state.moveSamples.push({time:now, y:pointerY});
+    const cutoff = now - 220;
+    while(state.moveSamples.length > 2 && Number(state.moveSamples[0]?.time) < cutoff){
+      state.moveSamples.shift();
+    }
+  }
   applyWithdrawalPreviewHeight((window.innerHeight || 0) - pointerY + state.offsetY);
 }
 function startWithdrawalPreviewHandleDrag(e){
@@ -22675,6 +22692,7 @@ function startWithdrawalPreviewHandleDrag(e){
     lastTime:performance.now(),
     lastMoveVelocityDown:0,
     maxMoveVelocityDown:0,
+    moveSamples:[{time:performance.now(), y:Number(e.clientY) || 0}],
     startHeight:withdrawalPreviewCurrentHeightPx || Math.round(rect.height),
     offsetY:Math.max(0, Number(e.clientY) - rect.top || 0)
   };
