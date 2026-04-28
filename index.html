@@ -22608,7 +22608,17 @@ function stopWithdrawalPreviewDrag(e){
   const averageVelocityDown = dyDown / elapsed;
   const releaseVelocityDown = Number(state.lastMoveVelocityDown) || 0;
   const peakVelocityDown = Math.max(Number(state.maxMoveVelocityDown) || 0, averageVelocityDown, releaseVelocityDown);
-  const shouldClose = !!state.dismissEnabled && e?.type !== 'pointercancel' && dyDown >= 36 && peakVelocityDown >= 1.15;
+  let shouldClose = false;
+  if(!!state.dismissEnabled && e?.type !== 'pointercancel'){
+    const compactPhoneViewport = (()=>{
+      try{ return window.matchMedia('(max-width: 640px)').matches; }catch(_e){ return (window.innerWidth || 0) <= 640; }
+    })();
+    if(compactPhoneViewport){
+      shouldClose = dyDown >= 44 && releaseVelocityDown >= 1.85 && averageVelocityDown >= 0.45;
+    }else{
+      shouldClose = dyDown >= 36 && peakVelocityDown >= 1.15;
+    }
+  }
   if(shouldClose){
     if(Number.isFinite(state.startHeight) && state.startHeight > 0){
       applyWithdrawalPreviewHeight(state.startHeight);
