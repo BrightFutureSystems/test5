@@ -20917,7 +20917,8 @@ function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay)
   if(!entries.length) return "";
   const title = getCalendarWindowTooltipTitle(entries[0].sim, ageValue);
   if(overlay){
-    const visibleEntries = entries.slice(0, 5).map(entry=>{
+    const maxTooltipEntries = (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 3 : 5;
+    const visibleEntries = entries.slice(0, maxTooltipEntries).map(entry=>{
       const idx = getNearestSimIndexByAge(entry.sim, ageValue);
       return {...entry, values:getAssetBreakdownValuesAt(entry.sim, idx)};
     });
@@ -20936,9 +20937,6 @@ function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay)
     {label:'安全資産', value:values.safe, pct:pct(values.safe), color:ASSET_BREAKDOWN_COLORS.safe},
     {label:'預貯金', value:values.deposit, pct:pct(values.deposit), color:ASSET_BREAKDOWN_COLORS.deposit}
   ];
-  if(values.shortfall < 0){
-    itemRows.push({label:'不足額', value:values.shortfall, pct:'', color:ASSET_BREAKDOWN_COLORS.shortfall});
-  }
   const rows = itemRows.map(item=>`<div class="chart-external-tooltip-row${item.strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(item.color)}"></span><span>${escapeAttr(item.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(item.value, unitSpec, 'assetBreakdown'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(item.pct)}</span></div>`).join("");
   return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct">${rows}</div>`;
 }
@@ -21162,7 +21160,7 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
     const pressed = visible ? "true" : "false";
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-asset-category="${escapeAttr(item.key)}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="${item.style}"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
   }).join("");
-  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div>` : ""}`;
+  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div>` : ""}`;
   legendEl.querySelectorAll("[data-overlay-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const overlayIndex = Number(btn.dataset.overlayIndex);
@@ -35862,6 +35860,13 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
   .chart-legend-row + .chart-legend-row{
     margin-top:5px;
+  }
+  .chart-legend-separator{
+    width:min(420px, 86%);
+    height:1px;
+    margin:6px auto 5px;
+    background:rgba(148,163,184,.32);
+    border-radius:999px;
   }
   .chart-legend-static-item{
     cursor:default;
