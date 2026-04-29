@@ -4932,6 +4932,106 @@ document.addEventListener("scroll", (ev)=>{
   }
 </style>
 
+
+<!-- ===== v1063: investment breakdown stacked-bar legend and tooltip ===== -->
+<style>
+  .chart-investment-legend{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:4px 12px;
+    width:100%;
+  }
+  .chart-investment-legend-group{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px 10px;
+    max-width:100%;
+  }
+  .chart-investment-legend-category{
+    color:#334155;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .chart-investment-legend-items{
+    display:inline-flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:6px 12px;
+  }
+  .chart-external-tooltip-category-title{
+    margin:7px 0 2px;
+    padding-top:5px;
+    border-top:1px solid rgba(148,163,184,.22);
+    color:#cbd5e1;
+    font-size:12px;
+    font-weight:700;
+    line-height:1.3;
+  }
+  .chart-external-tooltip-investment-body .chart-external-tooltip-row{
+    grid-template-columns:minmax(132px, 1fr) auto auto;
+  }
+  .chart-investment-reference-legend-group{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px 12px;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    .chart-investment-legend{
+      flex-direction:column;
+      align-items:center;
+      gap:2px;
+    }
+    .chart-investment-legend-group{
+      width:100%;
+      gap:3px 8px;
+    }
+    .chart-investment-legend-items{
+      gap:4px 8px;
+    }
+    .chart-investment-legend-separator{
+      width:min(180px, 62%);
+      height:1px;
+      min-height:1px;
+      align-self:center;
+    }
+  }
+</style>
+
+
+<!-- ===== v1065: investment reference lines and overlay freeze correction ===== -->
+<style>
+  #chartTopBar .split-btn-group.investment-overlay-frozen,
+  #chartTopBar .split-btn-group.investment-overlay-frozen:hover{
+    background:#f3f4f6 !important;
+    border-color:#d1d5db !important;
+    box-shadow:none !important;
+    transform:none !important;
+    cursor:not-allowed !important;
+  }
+  #chartTopBar .split-btn-group.investment-overlay-frozen > button,
+  #chartTopBar .split-btn-group.investment-overlay-frozen > button:hover,
+  #chartTopBar .split-btn-group.investment-overlay-frozen > button:disabled,
+  #chartTopBar .split-btn-group.investment-overlay-frozen > button:disabled:hover{
+    background:#f3f4f6 !important;
+    color:#94a3b8 !important;
+    border-color:#d1d5db !important;
+    box-shadow:none !important;
+    transform:none !important;
+    cursor:not-allowed !important;
+    opacity:1 !important;
+  }
+  #chartTopBar .split-btn-group.investment-overlay-frozen > button + button{
+    border-left-color:#d1d5db !important;
+  }
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -6722,15 +6822,35 @@ function enforceOverlaySafeActiveScenario(preferredIndex = currentTab, opts = {}
   }
   return currentTab;
 }
+function isInvestmentGraphSelected(){
+  return (document.getElementById('graphType')?.value || '') === 'investment';
+}
+function updateInvestmentGraphOverlayExclusionUI(){
+  const graphTypeEl = document.getElementById('graphType');
+  const option = graphTypeEl?.querySelector?.('option[value="investment"]');
+  if(option){
+    option.disabled = !!workspaceOverlayModeOn;
+    option.title = workspaceOverlayModeOn ? '重ね描き中は選択できません' : '';
+  }
+}
 function updateOverlayFeatureUI(){
   const toggleEl = document.getElementById('overlayToggle');
   if(toggleEl) toggleEl.checked = !!workspaceOverlayModeOn;
   const groupEl = document.querySelector('#chartTopBar .split-btn-group');
   groupEl?.classList.toggle('overlay-mode-active', !!workspaceOverlayModeOn);
+  groupEl?.classList.toggle('investment-overlay-frozen', isInvestmentGraphSelected());
   const applyBtn = document.getElementById('overlayApplyBtn');
   const menuBtn = document.getElementById('overlayMenuBtn');
-  if(applyBtn) applyBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length;
-  if(menuBtn) menuBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length;
+  const investmentExcluded = isInvestmentGraphSelected();
+  if(applyBtn){
+    applyBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length || investmentExcluded;
+    applyBtn.title = investmentExcluded ? '運用資産内訳グラフは重ね描き表示に対応していません' : '';
+  }
+  if(menuBtn){
+    menuBtn.disabled = !ENABLE_OVERLAY_FEATURE || !scenarios.length || investmentExcluded;
+    menuBtn.title = investmentExcluded ? '運用資産内訳グラフは重ね描き表示に対応していません' : '';
+  }
+  updateInvestmentGraphOverlayExclusionUI();
 }
 function getLineDashByOverlayStyle(lineStyle){ if(lineStyle === 'dashed') return [6,4]; if(lineStyle === 'dotted') return [2,3]; return []; }
 function buildOverlayPreviewSvgDataUrl(color, lineStyle, lineWidth, previewWidth = 44){
@@ -6898,6 +7018,11 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
   });
 }
 function setOverlayModeEnabled(enabled){
+  if(enabled && isInvestmentGraphSelected()){
+    workspaceOverlayModeOn = false;
+    updateOverlayFeatureUI();
+    return;
+  }
   workspaceOverlayModeOn = !!enabled && ENABLE_OVERLAY_FEATURE && scenarios.length > 0 && hasVisibleOverlaySelection(currentTab);
   if(workspaceOverlayModeOn && scenarios.length && !isScenarioIncludedInOverlayByIndex(currentTab)){
     currentTab = getLeftmostVisibleOverlayIndex();
@@ -19044,6 +19169,19 @@ function activeInvestmentsWithIndex(investments, cfg=null, age=null){
 function isTaxableAccountType(accountType){
   return normalizeAccountType(accountType) === "課税";
 }
+function calculateInvestmentTaxSnapshot(investments){
+  const list = Array.isArray(investments) ? investments : [];
+  return list.reduce((acc, inv)=>{
+    const amount = Math.max(0, Number(inv?.amount || 0) || 0);
+    const cost = Math.max(0, Number(inv?.cost || 0) || 0);
+    const taxableGain = Math.max(0, amount - cost);
+    const tax = inv?.taxOn ? taxableGain * TAX_RATE : 0;
+    acc.total += amount;
+    acc.principal += cost;
+    acc.tax += tax;
+    return acc;
+  }, {total:0, principal:0, tax:0});
+}
 function hasCurrentIdecoAsset(cfg, owner){
   return (cfg?.investments || []).some(inv=>normalizeOwner(inv.owner) === normalizeOwner(owner) && isDcAccountType(inv.accountType) && ((inv.amount || 0) > 0 || (inv.cost || 0) > 0));
 }
@@ -19807,6 +19945,9 @@ function simulate(cfg, random=false, opts={}){
   let finalAtLife = null;
   const totalDeposits = compact ? null : [];
   const totalInvestments = compact ? null : [];
+  const investmentPrincipalTotal = compact ? null : [];
+  const investmentTaxEstimate = compact ? null : [];
+  const investmentAfterTaxValue = compact ? null : [];
   const totalSafeAssets = compact ? null : [];
   const totalLiability = compact ? null : [];
   const annualIncome = compact ? null : [];
@@ -19827,12 +19968,13 @@ function simulate(cfg, random=false, opts={}){
     for(let i=1;i<=dynamicCounts.child;i++) educationByChildSeries[i] = [];
   }
   const invNames = compact ? null : {};
+  const invMeta = compact ? null : {};
   if(!compact){
     for(let i=1;i<=dynamicCounts.dep;i++) depositSeries[i] = [];
     cfg.children.forEach(child=>{ childNames[child.idx] = child.name || `子${child.idx}`; });
-    cfg.investments.forEach((inv, idx)=>{ const key = idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `運用${idx+1}`; });
-    (cfg.futureInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `投資${idx+1}`; });
-    (cfg.sumInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + (cfg.futureInvestments || []).length + idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `積立${idx+1}`; });
+    cfg.investments.forEach((inv, idx)=>{ const key = idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `運用${idx+1}`; invMeta[key] = {category:"current", categoryLabel:"現在の運用資産", sourceIndex:idx, order:idx}; });
+    (cfg.futureInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `投資${idx+1}`; invMeta[key] = {category:"future", categoryLabel:"今後の投資", sourceIndex:idx, order:cfg.investments.length + idx}; });
+    (cfg.sumInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + (cfg.futureInvestments || []).length + idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `積立${idx+1}`; invMeta[key] = {category:"sum", categoryLabel:"積立投資", sourceIndex:idx, order:cfg.investments.length + (cfg.futureInvestments || []).length + idx}; });
   }
   let depletionAge = null;
   let retireAsset = null;
@@ -19965,6 +20107,10 @@ function simulate(cfg, random=false, opts={}){
     if(!compact && !finalOnly){
       totalDeposits.push(depTotal);
       totalInvestments.push(invTotal);
+      const investmentTaxSnapshot = calculateInvestmentTaxSnapshot(investments);
+      investmentPrincipalTotal.push(investmentTaxSnapshot.principal);
+      investmentTaxEstimate.push(investmentTaxSnapshot.tax);
+      investmentAfterTaxValue.push(Math.max(0, investmentTaxSnapshot.total - investmentTaxSnapshot.tax));
       totalSafeAssets.push(safeTotal);
       totalLiability.push(liability);
       annualIncome.push(income);
@@ -20025,11 +20171,11 @@ function simulate(cfg, random=false, opts={}){
     return {labels,totalAssets,depletionAge,retireAsset,totalIncomeSum,totalExpenseSum};
   }
   return {
-    labels,totalAssets,totalDeposits,totalInvestments,totalSafeAssets,totalLiability,
+    labels,totalAssets,totalDeposits,totalInvestments,investmentPrincipalTotal,investmentTaxEstimate,investmentAfterTaxValue,totalSafeAssets,totalLiability,
     annualIncome,annualExpense,annualCashflow,
     annualEducation,annualEducationCum,educationByChildSeries,
     incomePartsSeries,expensePartsSeries,invSeries,principalSeries,depositSeries,
-    childNames,invNames,yearlyRows,calendarYearWindows,
+    childNames,invNames,invMeta,yearlyRows,calendarYearWindows,
     depletionAge,retireAsset,totalIncomeSum,totalExpenseSum
   };
 }
@@ -20427,37 +20573,100 @@ function buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix="", overla
     makeBarDataset("不足額", sim.labels, shortfall, {backgroundColor:ASSET_BREAKDOWN_COLORS.shortfall, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"})
   ];
 }
+const INVESTMENT_BREAKDOWN_CATEGORIES = [
+  {key:"current", label:"現在の運用資産", colors:["#2f6fcf", "#4f8eff", "#5f6fd8", "#7a63f6", "#2a8fab", "#536273"]},
+  {key:"future", label:"今後の投資", colors:["#d88424", "#f1a43a", "#c7781e", "#b98a22", "#e0b15a", "#9a6920"]},
+  {key:"sum", label:"積立投資", colors:["#16835f", "#22a16f", "#1b7a72", "#2a9d8f", "#769726", "#0f766e"]}
+];
+const INVESTMENT_BREAKDOWN_CATEGORY_MAP = Object.fromEntries(INVESTMENT_BREAKDOWN_CATEGORIES.map(c=>[c.key,c]));
+function getInvestmentBreakdownCategoryMeta(meta){
+  const key = String(meta?.category || "current");
+  return INVESTMENT_BREAKDOWN_CATEGORY_MAP[key] || INVESTMENT_BREAKDOWN_CATEGORY_MAP.current;
+}
+function getInvestmentBreakdownColor(meta, categoryOffset){
+  const cat = getInvestmentBreakdownCategoryMeta(meta);
+  const colors = cat.colors || INVESTMENT_COLORS;
+  const idx = Math.max(0, Number(categoryOffset) || 0);
+  return colors[idx % colors.length];
+}
+function getInvestmentBreakdownEntries(sim){
+  const keys = Object.keys(sim?.invSeries || {}).map(Number).sort((a,b)=>a-b);
+  const categoryCounts = {};
+  return keys.map((key, order)=>{
+    const meta = sim?.invMeta?.[key] || {};
+    const cat = getInvestmentBreakdownCategoryMeta(meta);
+    const categoryOffset = categoryCounts[cat.key] || 0;
+    categoryCounts[cat.key] = categoryOffset + 1;
+    return {
+      key,
+      order:Number.isFinite(Number(meta.order)) ? Number(meta.order) : order,
+      sourceIndex:Number.isFinite(Number(meta.sourceIndex)) ? Number(meta.sourceIndex) : categoryOffset,
+      category:cat.key,
+      categoryLabel:meta.categoryLabel || cat.label,
+      categoryOffset,
+      label:sim?.invNames?.[key] || `運用${key}`,
+      series:sim?.invSeries?.[key] || (sim?.labels || []).map(()=>0),
+      color:getInvestmentBreakdownColor(meta, categoryOffset)
+    };
+  }).sort((a,b)=>a.order-b.order);
+}
 function buildInvestmentDatasets(sim, color, overlay, labelPrefix=""){
   if(overlay){
-    const totalInv = sim.totalInvestments;
-    return [makeLineDataset(labelPrefix || "運用合計", sim.labels, totalInv, {borderColor:color, borderWidth:2})];
+    return [];
   }
-  const ds = [];
-  let cumulative = sim.labels.map(()=>0);
-  let visibleCount = 0;
-  const keys = Object.keys(sim.invSeries || {}).map(Number).sort((a,b)=>a-b);
-  for(const i of keys){
-    const currentSeries = sim.invSeries[i] || sim.labels.map(()=>0);
-    cumulative = cumulative.map((v,idx)=>v + (currentSeries[idx] || 0));
-    if(!hasAnyVisibleValue(currentSeries)) continue;
-    visibleCount += 1;
-    ds.push(makeLineDataset(sim.invNames?.[i] || `運用${i}`, sim.labels, cumulative, {
-      borderColor:INVESTMENT_COLORS[(i-1)%INVESTMENT_COLORS.length],
-      backgroundColor:INVESTMENT_COLORS[(i-1)%INVESTMENT_COLORS.length]+"33",
-      borderWidth:2,
-      fill:visibleCount===1?{target:"origin"}:{target:"-1"},
-      order:5+i
-    }));
-  }
-  const principalTotal = sim.labels.map((_,idx)=>{
-    let s = 0;
-    Object.keys(sim.principalSeries || {}).forEach(key=>{ s += (sim.principalSeries[key]?.[idx] || 0); });
-    return s;
+  const entries = getInvestmentBreakdownEntries(sim).filter(entry=>hasAnyVisibleValue(entry.series));
+  const barDatasets = entries.slice().reverse().map((entry, renderIdx)=>{
+    const ds = makeBarDataset(entry.label, sim.labels, entry.series, {
+      backgroundColor:entry.color,
+      borderColor:"rgba(0,0,0,0)",
+      borderWidth:0,
+      stack:"investmentDetail",
+      order:10 + renderIdx
+    });
+    ds._investmentDetail = true;
+    ds._investmentKey = entry.key;
+    ds._investmentOrder = entry.order;
+    ds._investmentCategory = entry.category;
+    ds._investmentCategoryLabel = entry.categoryLabel;
+    ds._investmentCategoryOffset = entry.categoryOffset;
+    return ds;
   });
-  if(hasAnyVisibleValue(principalTotal)){
-    ds.push(makeLineDataset("元本合計", sim.labels, principalTotal, {borderColor:"#111827", borderWidth:2.5, order:20}));
+  const lineDatasets = [];
+  if(Array.isArray(sim?.investmentPrincipalTotal) && hasAnyVisibleValue(sim.investmentPrincipalTotal)){
+    const principal = makeLineDataset("元本合計", sim.labels, sim.investmentPrincipalTotal, {
+      borderColor:"#334155",
+      backgroundColor:"#334155",
+      borderWidth:1.8,
+      borderDash:[6,4],
+      pointRadius:0,
+      pointHoverRadius:3,
+      fill:false,
+      yAxisID:"investmentRefY",
+      order:0
+    });
+    principal._investmentReferenceLine = true;
+    principal._investmentReferenceOrder = 1;
+    principal._legendLineStyle = "dashed";
+    lineDatasets.push(principal);
   }
-  return ds;
+  if(Array.isArray(sim?.investmentAfterTaxValue) && hasAnyVisibleValue(sim.investmentAfterTaxValue)){
+    const afterTax = makeLineDataset("概算税引後価値", sim.labels, sim.investmentAfterTaxValue, {
+      borderColor:"#9b2c6f",
+      backgroundColor:"#9b2c6f",
+      borderWidth:2,
+      borderDash:[],
+      pointRadius:0,
+      pointHoverRadius:3,
+      fill:false,
+      yAxisID:"investmentRefY",
+      order:0
+    });
+    afterTax._investmentReferenceLine = true;
+    afterTax._investmentReferenceOrder = 2;
+    afterTax._legendLineStyle = "solid";
+    lineDatasets.push(afterTax);
+  }
+  return [...barDatasets, ...lineDatasets];
 }
 function clearScheduledDraw(){
   if(drawDebounceTimer){
@@ -20925,6 +21134,12 @@ function formatMainChartTooltipMoney(value, unitSpec, graphType){
   }
   return `${scaled.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}${label}`;
 }
+function formatSignedMainChartTooltipMoney(value, unitSpec, graphType){
+  const raw = Number(value) || 0;
+  const formatted = formatMainChartTooltipMoney(Math.abs(raw), unitSpec, graphType);
+  if(Math.abs(raw) < 1e-9) return formatted;
+  return `${raw > 0 ? '+' : '-'}${formatted}`;
+}
 function getDatasetColorForTooltip(dataset){
   const color = Array.isArray(dataset?.borderColor) ? dataset.borderColor[0] : dataset?.borderColor;
   return typeof color === "string" ? color : "#64748b";
@@ -20980,6 +21195,59 @@ function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay)
   const rows = itemRows.map(item=>`<div class="chart-external-tooltip-row${item.strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(item.color)}"></span><span>${escapeAttr(item.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(item.value, unitSpec, 'assetBreakdown'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(item.pct)}</span></div>`).join("");
   return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct">${rows}</div>`;
 }
+function getInvestmentBreakdownValuesAt(sim, idx){
+  return getInvestmentBreakdownEntries(sim).map(entry=>({
+    ...entry,
+    value:Number(Array.isArray(entry.series) ? entry.series[idx] : 0) || 0
+  }));
+}
+function buildInvestmentBreakdownTooltipHtml(unitSpec, sim, ageValue, chartInstance=null){
+  if(!sim) return "";
+  const idx = getNearestSimIndexByAge(sim, ageValue);
+  if(idx < 0) return "";
+  const title = getCalendarWindowTooltipTitle(sim, ageValue);
+  const total = Number(Array.isArray(sim.totalInvestments) ? sim.totalInvestments[idx] : 0) || 0;
+  const principalTotal = Number(Array.isArray(sim.investmentPrincipalTotal) ? sim.investmentPrincipalTotal[idx] : 0) || 0;
+  const estimatedTax = Number(Array.isArray(sim.investmentTaxEstimate) ? sim.investmentTaxEstimate[idx] : 0) || 0;
+  const afterTaxValue = Number(Array.isArray(sim.investmentAfterTaxValue) ? sim.investmentAfterTaxValue[idx] : (total - estimatedTax)) || 0;
+  const preTaxGain = total - principalTotal;
+  const afterTaxGain = afterTaxValue - principalTotal;
+  const visibleKeys = new Set();
+  if(chartInstance?.data?.datasets){
+    chartInstance.data.datasets.forEach((ds, datasetIndex)=>{
+      if(!ds?._investmentDetail) return;
+      if(typeof chartInstance.isDatasetVisible === "function" && !chartInstance.isDatasetVisible(datasetIndex)) return;
+      visibleKeys.add(Number(ds._investmentKey));
+    });
+  }
+  const pct = (value)=> total > 0 ? `${((Math.max(0, Number(value) || 0) / total) * 100).toFixed(1)}%` : "";
+  const rows = [];
+  const summaryRow = (label, value, opts={})=>{
+    const color = opts.color || '#e2e8f0';
+    const strongClass = opts.strong ? ' chart-external-tooltip-strong-row' : '';
+    const formatted = opts.signed ? formatSignedMainChartTooltipMoney(value, unitSpec, 'investment') : formatMainChartTooltipMoney(value, unitSpec, 'investment');
+    rows.push(`<div class="chart-external-tooltip-row${strongClass}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(color)}"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatted)}</span><span class="chart-external-tooltip-pct"></span></div>`);
+  };
+  summaryRow('運用資産合計', total, {strong:true, color:'#ffffff'});
+  summaryRow('概算税引後価値', afterTaxValue, {strong:true, color:'#9b2c6f'});
+  summaryRow('概算税額', estimatedTax, {color:'#ffffff'});
+  summaryRow('元本合計', principalTotal, {color:'#334155'});
+  summaryRow('評価損益（税引前）', preTaxGain, {signed:true, color:'#ffffff'});
+  summaryRow('評価損益（税引後）', afterTaxGain, {signed:true, color:'#ffffff'});
+  const entries = getInvestmentBreakdownValuesAt(sim, idx).filter(entry=>{
+    if(visibleKeys.size && !visibleKeys.has(Number(entry.key))) return false;
+    return Math.abs(Number(entry.value) || 0) > 1e-6;
+  });
+  INVESTMENT_BREAKDOWN_CATEGORIES.forEach(cat=>{
+    const catEntries = entries.filter(entry=>entry.category === cat.key);
+    if(!catEntries.length) return;
+    rows.push(`<div class="chart-external-tooltip-category-title">${escapeAttr(cat.label)}</div>`);
+    catEntries.forEach(entry=>{
+      rows.push(`<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch" style="background:${escapeAttr(entry.color)}"></span><span>${escapeAttr(entry.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(entry.value, unitSpec, 'investment'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(pct(entry.value))}</span></div>`);
+    });
+  });
+  return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct chart-external-tooltip-investment-body">${rows.join("")}</div>`;
+}
 function positionExternalChartTooltip(tooltipEl, chartInstance, tooltip){
   const canvas = chartInstance.canvas;
   const parent = canvas?.parentElement;
@@ -21023,6 +21291,15 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
   if(graphType === "assetBreakdown"){
     const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
     const html = buildAssetBreakdownTooltipHtml(unitSpec, extra.assetBreakdownTooltipEntries || [{name:"", sim:simRef, color:ASSET_BREAKDOWN_COLORS.deposit}], ageValue, !!extra.overlay);
+    if(!html){ tooltipEl.hidden = true; return; }
+    tooltipEl.innerHTML = html;
+    tooltipEl.hidden = false;
+    positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
+    return;
+  }
+  if(graphType === "investment"){
+    const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
+    const html = buildInvestmentBreakdownTooltipHtml(unitSpec, simRef, ageValue, chartInstance);
     if(!html){ tooltipEl.hidden = true; return; }
     tooltipEl.innerHTML = html;
     tooltipEl.hidden = false;
@@ -21231,7 +21508,72 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
   });
   legendEl.hidden = false;
 }
+function renderInvestmentBreakdownLegend(chartInstance, display){
+  const legendEl = document.getElementById("chartCustomLegend");
+  if(!legendEl) return;
+  if(!display){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const allDatasets = (chartInstance?.data?.datasets || []).map((ds, idx)=>({...ds, _datasetIndex:idx}));
+  const datasets = allDatasets
+    .filter(ds=>ds?._investmentDetail && shouldShowDatasetInLegend(ds))
+    .sort((a,b)=>(Number(a._investmentOrder)||0)-(Number(b._investmentOrder)||0));
+  const referenceDatasets = allDatasets
+    .filter(ds=>ds?._investmentReferenceLine && shouldShowDatasetInLegend(ds))
+    .sort((a,b)=>(Number(a._investmentReferenceOrder)||0)-(Number(b._investmentReferenceOrder)||0));
+  if(!datasets.length && !referenceDatasets.length){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const groups = INVESTMENT_BREAKDOWN_CATEGORIES.map(cat=>({
+    ...cat,
+    datasets:datasets.filter(ds=>String(ds._investmentCategory || "") === cat.key)
+  })).filter(group=>group.datasets.length);
+  const groupHtml = groups.map((group, groupIdx)=>{
+    const items = group.datasets.map(ds=>{
+      const line = getLegendLineStyleFromDataset(ds);
+      const datasetIndex = Number(ds._datasetIndex);
+      const visible = chartInstance.isDatasetVisible(datasetIndex);
+      const hiddenClass = visible ? "" : " is-hidden";
+      const pressed = visible ? "true" : "false";
+      return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};"></span><span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`;
+    }).join("");
+    const separator = groupIdx > 0 ? `<div class="chart-legend-separator chart-investment-legend-separator" aria-hidden="true"></div>` : "";
+    return `${separator}<div class="chart-investment-legend-group"><span class="chart-investment-legend-category">${escapeAttr(group.label)}</span><div class="chart-legend-row chart-investment-legend-items">${items}</div></div>`;
+  }).join("");
+  const referenceHtml = referenceDatasets.length ? `${groups.length ? `<div class="chart-legend-separator chart-investment-legend-separator" aria-hidden="true"></div>` : ""}<div class="chart-investment-reference-legend-group">${referenceDatasets.map(ds=>{
+    const line = getLegendLineStyleFromDataset(ds);
+    const datasetIndex = Number(ds._datasetIndex);
+    const visible = chartInstance.isDatasetVisible(datasetIndex);
+    const hiddenClass = visible ? "" : " is-hidden";
+    const pressed = visible ? "true" : "false";
+    return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-svg-line-legend-sample" style="background-image:${escapeAttr(buildLegendLineSvgDataUrl(line.color, line.style, line.width, 50))};"></span><span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`;
+  }).join("")}</div>` : "";
+  legendEl.innerHTML = `<div class="chart-investment-legend">${groupHtml}${referenceHtml}</div>`;
+  legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const datasetIndex = Number(btn.dataset.datasetIndex);
+      if(!Number.isFinite(datasetIndex)) return;
+      const nextVisible = !chartInstance.isDatasetVisible(datasetIndex);
+      chartInstance.setDatasetVisibility(datasetIndex, nextVisible);
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chartInstance.setActiveElements([]);
+      chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      chartInstance.update("none");
+      renderInvestmentBreakdownLegend(chartInstance, display);
+    });
+  });
+  legendEl.hidden = false;
+}
 function renderCustomChartLegend(chartInstance, display){
+  if(chartInstance?.$graphType === "investment"){
+    renderInvestmentBreakdownLegend(chartInstance, display);
+    return;
+  }
   if(chartInstance?.$graphType === "assetBreakdown" && chartInstance?.$overlayMode){
     renderAssetBreakdownOverlayLegend(chartInstance, display);
     return;
@@ -21289,7 +21631,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   const rawXMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
   const rawXMax = cfg.xAxisMax;
-  const xPadding = graphType === "assetBreakdown" ? 0.5 : 0;
+  const xPadding = (graphType === "assetBreakdown" || graphType === "investment") ? 0.5 : 0;
   const xMin = rawXMin - xPadding;
   const xMax = rawXMax + xPadding;
   const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
@@ -21302,8 +21644,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     responsive:true,
     maintainAspectRatio:false,
     layout:{padding:chartLayoutPadding},
-    interaction:{mode:(graphType === "assetBreakdown" ? "index" : "nearest"), intersect:(graphType === "assetBreakdown" ? false : true)},
-    events: (graphType === "asset" || graphType === "assetBreakdown") ? [] : undefined,
+    interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment") ? false : true)},
+    events: (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment") ? [] : undefined,
     plugins:{
       legend:{display:false, labels:{
         usePointStyle:true,
@@ -21338,8 +21680,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
         return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
       }}},
       tooltip:{
-        enabled:!(graphType === "asset" || graphType === "assetBreakdown"),
-        external:(graphType === "asset" || graphType === "assetBreakdown") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
+        enabled:!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment"),
+        external:(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
         backgroundColor:"rgba(15,23,42,.94)",
         titleColor:"#f8fafc",
         bodyColor:"#f8fafc",
@@ -21365,11 +21707,11 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:(graphType === "assetBreakdown" ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
-      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:((graphType === "assetBreakdown" || graphType === "investment") ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown" || graphType==="investment"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
-  if(graphType === "asset" || graphType === "assetBreakdown"){
+  if(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment"){
     options.scales.x.grid.display = false;
     options.scales.x.border.color = "rgba(148,163,184,.18)";
     options.scales.x.ticks.color = "#64748b";
@@ -21384,6 +21726,19 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     options.scales.y.ticks.color = "#64748b";
     options.scales.y.ticks.padding = yTickPadding;
     options.scales.y.title.color = "#475569";
+  }
+  if(graphType === "investment"){
+    options.scales.investmentRefY = {
+      type:"linear",
+      position:"right",
+      display:false,
+      min:axis.min,
+      max:axis.max,
+      stacked:false,
+      grid:{display:false, drawOnChartArea:false, drawTicks:false},
+      border:{display:false},
+      ticks:{display:false}
+    };
   }
   if(graphType === "education"){
     options.scales.y.stacked = true;
@@ -21447,7 +21802,7 @@ function draw(){
   monteMode = false;
   ensureScenarioSaved();
   const graphType = document.getElementById("graphType").value;
-  const overlay = !!workspaceOverlayModeOn;
+  const overlay = !!workspaceOverlayModeOn && graphType !== "investment";
   const currentScenario = scenarios[currentTab];
   const overlayEntriesBase = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice() : [];
   const overlayEntries = overlay ? (graphType === "assetBreakdown" ? overlayEntriesBase : overlayEntriesBase.reverse()) : [];
@@ -21473,7 +21828,7 @@ function draw(){
       baseSim = sim;
     }
     const scenarioColor = entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx);
-    if(graphType === "assetBreakdown"){
+    if(graphType === "assetBreakdown" || graphType === "investment"){
       assetBreakdownTooltipEntries.push({name:s.name, sim, color:scenarioColor});
     }
     const baseDatasets = buildDatasetsByGraphType(sim, graphType, scenarioColor, overlay, s.name, overlayVisibleCount, idx);
@@ -21484,7 +21839,7 @@ function draw(){
       education: getVisibleSeriesValues(sim.labels, sim.annualEducation, cfg.xAxisMax),
       incomeExpense: [...getVisibleSeriesValues(sim.labels, sim.annualIncome, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualExpense.map(v=>-v), cfg.xAxisMax)],
       assetBreakdown: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
-      investment: [...getVisibleSeriesValues(sim.labels, sim.totalInvestments, cfg.xAxisMax), ...Object.values(sim.invSeries).flatMap(series => getVisibleSeriesValues(sim.labels, series, cfg.xAxisMax))]
+      investment: getVisibleSeriesValues(sim.labels, sim.totalInvestments, cfg.xAxisMax)
     };
     yData.push(...(arrays[graphType] || [0]));
   });
@@ -21501,7 +21856,7 @@ function draw(){
   });
   chart.$graphType = graphType;
   chart.$overlayMode = overlay;
-  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown");
+  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment");
   renderCustomChartLegend(chart, customLegendDisplay);
 }
 
@@ -25218,7 +25573,7 @@ function buildWithdrawalOrderItemsFromDOM(){
     const currency = document.getElementById(`inv${i}_cur`)?.value || '万円';
     const rate = numInput(`inv${i}_rate`, 0) || 0;
     const dividendRate = numInput(`inv${i}_dividendRate`, 0) || 0;
-    items.push({rowId, sourceType:'current', statusNote:'', name, owner, accountType, currency, principal, amount, rate, dividendRate});
+    items.push({rowId, sourceType:'current', sourceIndex:i-1, statusNote:'', name, owner, accountType, currency, principal, amount, rate, dividendRate});
   }
   for(let i=1;i<=dynamicCounts.futureInv;i++){
     const rowId = `futureInv_row_${i}`;
@@ -25232,7 +25587,7 @@ function buildWithdrawalOrderItemsFromDOM(){
     const dividendRate = numInput(`futureInv${i}_dividendRate`, 0) || 0;
     const startAge = numInput(`futureInv${i}_age`, 0) || 0;
     if(principal <= 0) continue;
-    items.push({rowId, sourceType:'future', statusNote:'開始前は売却不可', startAge, name, owner, accountType, currency, principal, amount, rate, dividendRate});
+    items.push({rowId, sourceType:'future', sourceIndex:i-1, statusNote:'開始前は売却不可', startAge, name, owner, accountType, currency, principal, amount, rate, dividendRate});
   }
   for(let i=1;i<=dynamicCounts.sumInv;i++){
     const rowId = `sumInv_row_${i}`;
@@ -25248,7 +25603,7 @@ function buildWithdrawalOrderItemsFromDOM(){
     const toAge = numInput(`sumInv${i}_toAge`, 0) || 0;
     const amountMonth = numInput(`sumInv${i}_amount`, 0) || 0;
     if(amountMonth <= 0) continue;
-    items.push({rowId, sourceType:'sum', statusNote:'形成済み残高のみ売却対象', fromAge, toAge, amountMonth, name, owner, accountType, currency, principal, amount, rate, dividendRate});
+    items.push({rowId, sourceType:'sum', sourceIndex:i-1, statusNote:'形成済み残高のみ売却対象', fromAge, toAge, amountMonth, name, owner, accountType, currency, principal, amount, rate, dividendRate});
   }
   return items;
 }
@@ -25262,6 +25617,12 @@ function writeWithdrawalOrderManualJson(arr){
   const normalized = Array.isArray(arr) ? arr.map(v=>String(v)) : [];
   const el = document.getElementById('withdrawalOrderManualJson');
   if(el) el.value = JSON.stringify(normalized);
+}
+function getWithdrawalOrderInvestmentColor(item){
+  const sourceType = String(item?.sourceType || 'current');
+  const category = sourceType === 'future' ? 'future' : (sourceType === 'sum' ? 'sum' : 'current');
+  const sourceIndex = Math.max(0, Number(item?.sourceIndex) || 0);
+  return getInvestmentBreakdownColor({category}, sourceIndex);
 }
 function normalizeWithdrawalOrderManualIds(){
   const items = buildWithdrawalOrderItemsFromDOM();
@@ -25293,12 +25654,14 @@ function renderWithdrawalOrderManualEditor(){
       const currencyLabel = (String(item?.currency || '円') === 'ドル') ? 'ドル' : '万円';
       const sourceLabel = item?.sourceType === 'future' ? '今後の投資' : (item?.sourceType === 'sum' ? '積立投資' : '現在の運用資産');
       const sourceClass = item?.sourceType === 'future' ? 'source-future' : (item?.sourceType === 'sum' ? 'source-sum' : 'source-current');
+      const itemColor = getWithdrawalOrderInvestmentColor(item);
+      const itemColorStyle = `color:${escapeAttr(itemColor)};`;
       const details = [
         `区分 ${escapeHtml(sourceLabel)}`,
         `名義 ${escapeHtml(item?.owner ?? '')}`,
         `口座 ${escapeHtml(item?.accountType ?? '')}`,
         `元本 ${escapeHtml(formatNumberJP(item?.principal ?? 0, 1))}${currencyLabel}`,
-        `現在額 <span class="withdrawal-order-amount ${sourceClass}">${escapeHtml(formatNumberJP(item?.amount ?? 0, 1))}${currencyLabel}</span>`,
+        `現在額 <span class="withdrawal-order-amount ${sourceClass}" style="${itemColorStyle}">${escapeHtml(formatNumberJP(item?.amount ?? 0, 1))}${currencyLabel}</span>`,
         `利回り ${escapeHtml(formatNumberJP(item?.rate ?? 0, 1))}%`,
         `配当率 ${escapeHtml(formatNumberJP(item?.dividendRate ?? 0, 1))}%`
       ].join(' / ');
@@ -25307,7 +25670,7 @@ function renderWithdrawalOrderManualEditor(){
         : (item?.sourceType === 'sum'
           ? `積立期間 ${escapeHtml(formatNumberJP(item?.fromAge ?? 0, 0))}〜${escapeHtml(formatNumberJP(item?.toAge ?? 0, 0))}歳 / ${escapeHtml(item?.statusNote ?? '')}`
           : '');
-      html += `<tr class="withdrawal-order-row" data-withdrawal-order-row="${escapeAttr(id)}"><td><div class="withdrawal-order-rank"><button type="button" class="withdrawal-order-drag-handle" data-withdrawal-order-drag-handle="1" data-row-id="${escapeAttr(id)}" aria-label="売却順をドラッグして並べ替え">⋮⋮</button><span>${idx + 1}</span></div></td><td style="text-align:left;"><span class="withdrawal-order-name ${sourceClass}">${escapeHtml(item?.name ?? `運用${idx+1}`)}</span><div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td></tr>`;
+      html += `<tr class="withdrawal-order-row" data-withdrawal-order-row="${escapeAttr(id)}"><td><div class="withdrawal-order-rank"><button type="button" class="withdrawal-order-drag-handle" data-withdrawal-order-drag-handle="1" data-row-id="${escapeAttr(id)}" aria-label="売却順をドラッグして並べ替え">⋮⋮</button><span>${idx + 1}</span></div></td><td style="text-align:left;"><span class="withdrawal-order-name ${sourceClass}" style="${itemColorStyle}">${escapeHtml(item?.name ?? `運用${idx+1}`)}</span><div class="small muted">${details}</div>${note ? `<div class="small muted">${note}</div>` : ''}</td></tr>`;
     });
     body.innerHTML = html || `<tr><td colspan="2">現在の運用資産がありません。</td></tr>`;
   }catch(_e){
@@ -27026,7 +27389,12 @@ document.addEventListener("wheel", (e)=>{
 }, {capture:true, passive:false});
 document.getElementById("copyUrlBtn").addEventListener("click", copyURL);
 updateOverlayFeatureUI();
-document.getElementById("graphType").addEventListener("change", ()=>{
+document.getElementById("graphType").addEventListener("change", (e)=>{
+  const graphTypeEl = document.getElementById("graphType");
+  if(workspaceOverlayModeOn && graphTypeEl?.value === "investment"){
+    graphTypeEl.value = "asset";
+  }
+  updateOverlayFeatureUI();
   const currentAge = numInput("age", 0);
   const xAxisMinEl = document.getElementById("xAxisMin");
   const xAxisMaxEl = document.getElementById("xAxisMax");
@@ -27048,7 +27416,7 @@ document.getElementById("overlayToggle").addEventListener("change", ()=>{
   persistState();
 });
 document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
-  if(!ENABLE_OVERLAY_FEATURE || !scenarios.length) return;
+  if(!ENABLE_OVERLAY_FEATURE || !scenarios.length || isInvestmentGraphSelected()) return;
   ensureScenarioSaved();
   ensureWorkspaceOverlayState();
   const nextEnabled = !workspaceOverlayModeOn;
@@ -27058,7 +27426,7 @@ document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
   persistState();
 });
 document.getElementById("overlayMenuBtn")?.addEventListener("click", (e)=>{
-  if(!ENABLE_OVERLAY_FEATURE) return;
+  if(!ENABLE_OVERLAY_FEATURE || isInvestmentGraphSelected()) return;
   e.preventDefault();
   e.stopPropagation();
   openOverlaySettingsModal();
@@ -28205,14 +28573,14 @@ function setChartAxisModalLabelMode(mode){
 function collectVisibleMainChartYValues(xMin, xMax, graphType){
   const yData = [];
   if(!chart?.data?.datasets) return yData;
-  const stacked = graphType === "incomeExpense" || graphType === "assetBreakdown" || graphType === "education";
+  const stacked = graphType === "incomeExpense" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "education";
   if(stacked){
     const posByKey = new Map();
     const negByKey = new Map();
     chart.data.datasets.forEach((ds, datasetIndex)=>{
       if(ds?.yAxisID && ds.yAxisID !== 'y') return;
       if(typeof chart.isDatasetVisible === "function" && !chart.isDatasetVisible(datasetIndex)) return;
-      const stackKey = graphType === "assetBreakdown" ? String(ds?.stack || "asset") : "__stacked__";
+      const stackKey = (graphType === "assetBreakdown" || graphType === "investment") ? String(ds?.stack || "asset") : "__stacked__";
       (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
         const x = Number(point?.x);
         const y = Number(point?.y);
@@ -28258,7 +28626,7 @@ function computeChartAxisGestureOuterBounds(){
   const graphType = document.getElementById("graphType")?.value || "asset";
   const dataXMin = defaults.xMin;
   const dataXMax = defaults.xMax;
-  const displayPad = graphType === "assetBreakdown" ? 0.5 : 0;
+  const displayPad = (graphType === "assetBreakdown" || graphType === "investment") ? 0.5 : 0;
   const xMin = dataXMin - displayPad;
   const xMax = dataXMax + displayPad;
   const yData = collectVisibleMainChartYValues(dataXMin, dataXMax, graphType);
@@ -28573,14 +28941,14 @@ function setupChartAxisZoomInteractions(){
           const rawMaxVal = Math.max(minVal, maxVal);
           let minAge;
           let maxAge;
-          if(graphType === "assetBreakdown"){
+          if(graphType === "assetBreakdown" || graphType === "investment"){
             minAge = Math.max(0, Math.ceil(rawMinVal - 1e-9));
             maxAge = Math.min(120, Math.floor(rawMaxVal + 1e-9));
           }else{
             minAge = Math.max(0, Math.round(rawMinVal));
             maxAge = Math.min(120, Math.round(rawMaxVal));
           }
-          const pad = graphType === "assetBreakdown" ? 0.5 : 0;
+          const pad = (graphType === "assetBreakdown" || graphType === "investment") ? 0.5 : 0;
           chart.options.scales.x.min = minAge - pad;
           chart.options.scales.x.max = maxAge + pad;
           changed = maxAge > minAge;
@@ -28803,7 +29171,7 @@ function setupChartTouchInteractions(){
     if(range >= outerRange * 0.985){
       return {min:outerMin, max:outerMax};
     }
-    if(graphType === "assetBreakdown"){
+    if(graphType === "assetBreakdown" || graphType === "investment"){
       range = Math.max(1, Math.min(outerRange, range));
     }else{
       range = Math.max(1e-9, Math.min(outerRange, range));
