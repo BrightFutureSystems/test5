@@ -6648,7 +6648,7 @@ const IDECO_UNLOCK_AGE = 60;
 const IDECO_POST60_FIRST_JOIN_WAIT_YEARS = 5;
 const IDECO_CATEGORY_OPTIONS = ["","自営業・フリーランス（第1号）","会社員（企業年金なし）","会社員（企業型DCのみ）","会社員（DB等あり）","公務員","専業主婦・主夫（第3号）"];
 const TAB_COLORS = ["#2563eb","#15803d","#dc2626","#7c3aed","#d97706","#0f766e","#db2777","#a16207","#374151"];
-const GRAPH_REFERENCE_COLOR = "#8e99a8";
+const GRAPH_REFERENCE_COLOR = "#334155";
 const GRAPH_OVERLAY_COLORS = [
   "#cf616d", // 赤（セットA寄りに少し落ち着かせる）
   "#3f73cf", // 青（少し深めにして紫と差をつける）
@@ -6660,7 +6660,7 @@ const GRAPH_OVERLAY_COLORS = [
   "#2a8fab", // シアン
   "#769726", // オリーブ
   "#9a6920", // ブラウン
-  "#536273"  // スレート
+  "#4338ca"  // インディゴ（1本目のチャコール・0ラインと区別）
 ];
 const GRADE_OPTIONS = ["年少未満","年少相当","年中相当","年長相当","小1","小2","小3","小4","小5","小6","中1","中2","中3","高1","高2","高3","短大1","短大2","大1","大2","大3","大4","修士1","修士2","博士1","博士2","博士3","卒業後"];
 const PRESCHOOL_DETAIL_AGE_OPTIONS = [0,1,2,3,4,5];
@@ -18255,17 +18255,10 @@ function renderNormalFireTerminalChart(result){
       if(!yScale || !xScale) return;
       const left = xScale.left;
       const right = xScale.right;
-      const zeroY = yScale.getPixelForValue(0);
       const thresholdY = yScale.getPixelForValue(threshold);
       const ctx = chart.ctx;
+      drawCommonZeroLine(ctx, xScale, yScale);
       ctx.save();
-      ctx.beginPath();
-      ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([]);
-      ctx.moveTo(left, zeroY);
-      ctx.lineTo(right, zeroY);
-      ctx.stroke();
       ctx.beginPath();
       ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 2;
@@ -18298,6 +18291,7 @@ function renderNormalFireTerminalChart(result){
         y:{
           min:axisRange.min,
           max:axisRange.max,
+          grid:makeGridWithoutZeroLine({}),
           title:{display:true,text:`寿命時残高（${normalFireYAxisUnitSpec.label}）`},
           ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / (Number(normalFireYAxisUnitSpec?.divisor) || 1)); }}
         },
@@ -20891,6 +20885,45 @@ function requestDraw(options = {}){
   }, DRAW_DEBOUNCE_MS);
 }
 
+const COMMON_ZERO_LINE_COLOR = "#9aa8b8";
+const COMMON_ZERO_LINE_WIDTH = 1.5;
+const COMMON_MAIN_GRID_LINE_COLOR = "rgba(148,163,184,.16)";
+function isZeroGridTick(ctx){
+  const v = Number(ctx?.tick?.value);
+  return Number.isFinite(v) && Math.abs(v) < 1e-9;
+}
+function makeGridWithoutZeroLine(baseGrid = {}, fallbackColor = COMMON_MAIN_GRID_LINE_COLOR){
+  const originalColor = baseGrid?.color;
+  const originalLineWidth = baseGrid?.lineWidth;
+  return {
+    ...baseGrid,
+    color(ctx){
+      if(isZeroGridTick(ctx)) return "rgba(0,0,0,0)";
+      if(typeof originalColor === "function") return originalColor(ctx);
+      return originalColor || fallbackColor;
+    },
+    lineWidth(ctx){
+      if(isZeroGridTick(ctx)) return 0;
+      if(typeof originalLineWidth === "function") return originalLineWidth(ctx);
+      return Number.isFinite(Number(originalLineWidth)) ? Number(originalLineWidth) : 1;
+    }
+  };
+}
+function drawCommonZeroLine(ctx, xScale, yScale){
+  if(!ctx || !xScale || !yScale) return;
+  if(!(yScale.min <= 0 && yScale.max >= 0)) return;
+  const y0 = yScale.getPixelForValue(0);
+  if(!Number.isFinite(y0)) return;
+  ctx.save();
+  ctx.lineWidth = COMMON_ZERO_LINE_WIDTH;
+  ctx.strokeStyle = COMMON_ZERO_LINE_COLOR;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(xScale.left, y0);
+  ctx.lineTo(xScale.right, y0);
+  ctx.stroke();
+  ctx.restore();
+}
 function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
   if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix, overlayCount);
   if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix);
@@ -20927,12 +20960,7 @@ function pluginLines(cfg, sim, monteInfo=null){
         }
         ctx.restore();
       }
-      if(y.min <= 0 && y.max >= 0){
-        const y0 = y.getPixelForValue(0);
-        ctx.lineWidth = graphType === "asset" ? 1.25 : 1.5;
-        ctx.strokeStyle = graphType === "asset" ? "#475569" : (graphType === "investment" ? "#9aa8b8" : "#111827");
-        ctx.beginPath(); ctx.moveTo(x.left,y0); ctx.lineTo(x.right,y0); ctx.stroke();
-      }
+      drawCommonZeroLine(ctx, x, y);
       if(graphType === "asset"){
         const area = chart.chartArea;
         const pxLife = x.getPixelForValue(cfg.lifeExpect);
@@ -21601,6 +21629,101 @@ function sortLegendDatasets(a, b){
   if(ia !== ib) return ia - ib;
   return Number(a?._datasetIndex || 0) - Number(b?._datasetIndex || 0);
 }
+
+const chartLegendVisibilityState = new Map();
+let chartLegendLastContextKey = null;
+function buildChartLegendContextKey({mode='normal', graphType='', overlay=false, targets=[]} = {}){
+  const targetSignature = (targets || []).map((entry, idx)=>{
+    const scenario = entry?.scenario || entry || {};
+    const id = scenario?.id || scenario?.name || entry?.index || idx;
+    return `${entry?.index ?? idx}:${id}`;
+  }).join('|');
+  return [mode, currentTab, graphType || '', overlay ? 'overlay' : 'single', targetSignature].join('::');
+}
+function prepareChartLegendContext(contextKey){
+  const key = String(contextKey || '');
+  if(chartLegendLastContextKey !== key){
+    chartLegendVisibilityState.clear();
+    chartLegendLastContextKey = key;
+  }
+  return key;
+}
+function getChartLegendDatasetKey(ds, datasetIndex){
+  if(!ds || !shouldShowDatasetInLegend(ds)) return '';
+  const label = String(ds.label || '').trim();
+  if(!label) return '';
+  if(ds._investmentDetail){
+    return `investment-detail:${ds._investmentCategory || ''}:${ds._investmentKey ?? label}`;
+  }
+  if(ds._investmentReferenceLine){
+    return `investment-reference:${label}`;
+  }
+  if(ds._assetBreakdownCategory && Number.isFinite(Number(ds._overlayIndex))){
+    return `asset-breakdown-overlay:${Number(ds._overlayIndex)}:${ds._assetBreakdownCategory}`;
+  }
+  if(Number.isFinite(Number(ds._overlayIndex))){
+    return `overlay:${Number(ds._overlayIndex)}:${label}`;
+  }
+  return `${ds.type || 'dataset'}:${label}`;
+}
+function getChartLegendState(contextKey){
+  const key = String(contextKey || chartLegendLastContextKey || '');
+  if(!key) return null;
+  if(!chartLegendVisibilityState.has(key)){
+    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null});
+  }
+  return chartLegendVisibilityState.get(key);
+}
+function saveCurrentChartLegendVisibilityState(chartInstance){
+  const contextKey = chartInstance?.$legendContextKey;
+  const state = getChartLegendState(contextKey);
+  if(!state || !chartInstance) return;
+  state.datasets = {};
+  (chartInstance.data?.datasets || []).forEach((ds, idx)=>{
+    const key = getChartLegendDatasetKey(ds, idx);
+    if(!key) return;
+    state.datasets[key] = chartInstance.isDatasetVisible(idx);
+  });
+  if(chartInstance.$graphType === 'assetBreakdown' && chartInstance.$overlayMode){
+    state.assetBreakdownOverlay = {
+      hiddenScenarios:Array.from(chartInstance.$assetBreakdownOverlayHiddenScenarios || []),
+      hiddenCategories:Array.from(chartInstance.$assetBreakdownOverlayHiddenCategories || [])
+    };
+  }
+}
+function rememberChartLegendDatasetVisibility(chartInstance, datasetIndex, visible){
+  const contextKey = chartInstance?.$legendContextKey;
+  const state = getChartLegendState(contextKey);
+  if(!state || !chartInstance) return;
+  const ds = chartInstance.data?.datasets?.[datasetIndex];
+  const key = getChartLegendDatasetKey(ds, datasetIndex);
+  if(!key) return;
+  state.datasets[key] = !!visible;
+}
+function restoreChartLegendVisibilityState(chartInstance){
+  const contextKey = chartInstance?.$legendContextKey;
+  const state = chartLegendVisibilityState.get(String(contextKey || ''));
+  if(!state || !chartInstance) return;
+  if(chartInstance.$graphType === 'assetBreakdown' && chartInstance.$overlayMode && state.assetBreakdownOverlay){
+    chartInstance.$assetBreakdownOverlayHiddenScenarios = new Set((state.assetBreakdownOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
+    chartInstance.$assetBreakdownOverlayHiddenCategories = new Set((state.assetBreakdownOverlay.hiddenCategories || []).map(v=>String(v || '')).filter(Boolean));
+    applyAssetBreakdownOverlayLegendVisibility(chartInstance);
+    chartInstance.update('none');
+    return;
+  }
+  const datasets = chartInstance.data?.datasets || [];
+  let changed = false;
+  datasets.forEach((ds, idx)=>{
+    const key = getChartLegendDatasetKey(ds, idx);
+    if(!key || !(key in (state.datasets || {}))) return;
+    const visible = !!state.datasets[key];
+    if(chartInstance.isDatasetVisible(idx) !== visible){
+      chartInstance.setDatasetVisibility(idx, visible);
+      changed = true;
+    }
+  });
+  if(changed) chartInstance.update('none');
+}
 function getAssetBreakdownOverlayLegendDatasets(chartInstance){
   const datasets = chartInstance?.data?.datasets || [];
   const map = new Map();
@@ -21712,6 +21835,7 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
       if(!Number.isFinite(overlayIndex)) return;
       const nextVisible = !isAssetBreakdownOverlayScenarioVisible(chartInstance, overlayIndex);
       setAssetBreakdownOverlayScenarioVisibility(chartInstance, overlayIndex, nextVisible);
+      saveCurrentChartLegendVisibilityState(chartInstance);
       const tooltipEl = document.getElementById("chartExternalTooltip");
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
@@ -21726,6 +21850,7 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
       if(!category) return;
       const nextVisible = !isAssetBreakdownOverlayCategoryVisible(chartInstance, category);
       setAssetBreakdownOverlayCategoryVisibility(chartInstance, category, nextVisible);
+      saveCurrentChartLegendVisibilityState(chartInstance);
       const tooltipEl = document.getElementById("chartExternalTooltip");
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
@@ -21787,6 +21912,7 @@ function renderInvestmentBreakdownLegend(chartInstance, display){
       if(!Number.isFinite(datasetIndex)) return;
       const nextVisible = !chartInstance.isDatasetVisible(datasetIndex);
       chartInstance.setDatasetVisibility(datasetIndex, nextVisible);
+      rememberChartLegendDatasetVisibility(chartInstance, datasetIndex, nextVisible);
       const tooltipEl = document.getElementById("chartExternalTooltip");
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
@@ -21843,6 +21969,7 @@ function renderCustomChartLegend(chartInstance, display){
       if(!Number.isFinite(datasetIndex)) return;
       const nextVisible = !chartInstance.isDatasetVisible(datasetIndex);
       chartInstance.setDatasetVisibility(datasetIndex, nextVisible);
+      rememberChartLegendDatasetVisibility(chartInstance, datasetIndex, nextVisible);
       const tooltipEl = document.getElementById("chartExternalTooltip");
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
@@ -21945,12 +22072,12 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     options.scales.x.border.color = "rgba(148,163,184,.18)";
     options.scales.x.ticks.color = "#64748b";
     options.scales.x.title.color = "#475569";
-    options.scales.y.grid = {
+    options.scales.y.grid = makeGridWithoutZeroLine({
       ...options.scales.y.grid,
       color:"rgba(148,163,184,.16)",
       lineWidth:1,
       drawTicks:false
-    };
+    });
     options.scales.y.border.color = "rgba(148,163,184,.18)";
     options.scales.y.ticks.color = "#64748b";
     options.scales.y.ticks.padding = yTickPadding;
@@ -21968,6 +22095,9 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       border:{display:false},
       ticks:{display:false}
     };
+  }
+  if(!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment")){
+    options.scales.y.grid = makeGridWithoutZeroLine(options.scales.y.grid);
   }
   if(graphType === "education"){
     options.scales.y.stacked = true;
@@ -22075,6 +22205,7 @@ function draw(){
 
   updateResultCards(currentCfg, currentSim);
 
+  const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'normal', graphType, overlay, targets}));
   if(chart) chart.destroy();
   const customLegendDisplay = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
@@ -22085,7 +22216,9 @@ function draw(){
   });
   chart.$graphType = graphType;
   chart.$overlayMode = overlay;
+  chart.$legendContextKey = legendContextKey;
   chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment");
+  restoreChartLegendVisibilityState(chart);
   renderCustomChartLegend(chart, customLegendDisplay);
 }
 
@@ -22173,6 +22306,7 @@ function runMonte(settingsOverride=null){
   const currentSim = currentBaseSim;
   updateResultCards(currentCfg, currentSim);
 
+  const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'monte', graphType:'monteCarlo', overlay, targets}));
   const monteYAxisUnitSpec = getMainChartYAxisUnitSpec(yData);
   const compactMonteChartLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
   const monteChartLayoutPadding = compactMonteChartLayout ? {left:10, right:12} : {left:6, right:22};
@@ -22252,7 +22386,11 @@ function runMonte(settingsOverride=null){
     },
     plugins:[pluginLines(firstCfg, baseSim, monteInfo)]
   });
+  chart.$graphType = 'monteCarlo';
+  chart.$overlayMode = overlay;
+  chart.$legendContextKey = legendContextKey;
   chart.$useStrictPointTooltip = true;
+  restoreChartLegendVisibilityState(chart);
   renderCustomChartLegend(chart, overlay);
 }
 
@@ -37509,5 +37647,6 @@ body.withdrawal-preview-open #detailStickyNav *{
   }
 </style>
 
+<!-- ===== v1081: common zero line style and draw order across zero-line charts ===== -->
 </body>
 </html>
