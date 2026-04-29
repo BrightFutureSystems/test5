@@ -28853,9 +28853,21 @@ function resetChartAxesToAuto(options = {}){
     requestAnimationFrame(()=>syncChartAxisModalFromState());
   }
 }
+function syncInvestmentReferenceYAxisFromMain(activeChart){
+  const graphType = document.getElementById("graphType")?.value || "asset";
+  if(graphType !== "investment") return;
+  if(!activeChart?.options?.scales?.y || !activeChart.options.scales.investmentRefY) return;
+  const yOptions = activeChart.options.scales.y || {};
+  const yScale = activeChart.scales?.y || {};
+  const nextMin = Number.isFinite(Number(yOptions.min)) ? Number(yOptions.min) : Number(yScale.min);
+  const nextMax = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(yScale.max);
+  if(Number.isFinite(nextMin)) activeChart.options.scales.investmentRefY.min = nextMin;
+  if(Number.isFinite(nextMax)) activeChart.options.scales.investmentRefY.max = nextMax;
+}
 function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   if(!activeChart?.options?.scales) return;
   applyAdaptiveXAxisTicksToChart(activeChart);
+  syncInvestmentReferenceYAxisFromMain(activeChart);
   const scales = activeChart.scales || {};
   const xAxisMinEl = document.getElementById("xAxisMin");
   const xAxisMaxEl = document.getElementById("xAxisMax");
@@ -28988,6 +29000,7 @@ function setupChartAxisZoomInteractions(){
     if(!changed) return;
     suppressClickUntil = Date.now() + 250;
     applyAdaptiveXAxisTicksToChart(chart);
+    syncInvestmentReferenceYAxisFromMain(chart);
     chart.update("none");
     syncChartAxisStateFromChartInstance(chart, {
       lockYScale: state.axis === "y" ? true : !!document.getElementById("fixedScale")?.checked
@@ -29103,6 +29116,7 @@ function setupChartPanInteractions(){
       chart.options.scales.y.max = Math.max(newMinY, newMaxY);
     }
     applyAdaptiveXAxisTicksToChart(chart);
+    syncInvestmentReferenceYAxisFromMain(chart);
     chart.update('none');
     syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
     e.preventDefault();
@@ -29198,6 +29212,7 @@ function setupChartTouchInteractions(){
       chart.options.scales.y.min = nextY.min;
       chart.options.scales.y.max = nextY.max;
     }
+    syncInvestmentReferenceYAxisFromMain(chart);
     chart.update('none');
     syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
   };
