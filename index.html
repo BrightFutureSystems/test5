@@ -5224,6 +5224,7 @@ document.addEventListener("scroll", (ev)=>{
 
 <!-- ===== v1084: income/expense grouped tooltip and legend ===== -->
 <style>
+  .chart-external-tooltip-income-body .chart-external-tooltip-income-section-gap{height:10px;}
   .chart-external-tooltip-income-body .chart-external-tooltip-section-title{color:#cbd5e1;font-weight:800;}
   .chart-external-tooltip-income-body .chart-external-tooltip-section-title .chart-external-tooltip-label-cell,
   .chart-external-tooltip-income-body .chart-external-tooltip-section-title .chart-external-tooltip-value,
@@ -7225,7 +7226,7 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
       return next;
     }
     next.borderColor = color;
-    next.borderWidth = graphType === 'asset' ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
+    next.borderWidth = (graphType === 'asset' || graphType === 'incomeExpense') ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
     next.borderDash = dash.length ? dash.slice() : [];
     if(graphType === 'assetBreakdown' && next.type === 'bar'){
       next.borderColor = 'rgba(0,0,0,0)';
@@ -21672,7 +21673,7 @@ function buildIncomeExpenseTooltipRow({label, value, pct='', color='#e2e8f0', sw
 }
 function buildIncomeExpenseSectionTitle(label, kind=''){
   const modifier = kind ? ` is-${escapeAttr(kind)}` : '';
-  return `<div class="chart-external-tooltip-row chart-external-tooltip-section-title${modifier}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value"></span><span class="chart-external-tooltip-pct"></span></div>`;
+  return `<div class="chart-external-tooltip-income-section-gap" aria-hidden="true"></div><div class="chart-external-tooltip-row chart-external-tooltip-section-title${modifier}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value"></span><span class="chart-external-tooltip-pct"></span></div>`;
 }
 function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, chartInstance=null){
   const entries = (simEntries || []).filter(entry=>entry?.sim);
@@ -22192,6 +22193,12 @@ function getIncomeExpenseOverlayLegendDatasets(chartInstance){
   });
   return Array.from(map.values()).sort((a,b)=>a.overlayIndex-b.overlayIndex);
 }
+function getIncomeExpenseOverlayCashflowLegendLineWidth(chartInstance){
+  const datasets = Array.isArray(chartInstance?.data?.datasets) ? chartInstance.data.datasets : [];
+  const cashflow = datasets.find((ds, idx)=>ds?._incomeExpenseOverlayKind === 'cashflow' && (typeof chartInstance.isDatasetVisible !== 'function' || chartInstance.isDatasetVisible(idx)));
+  const width = Number(cashflow?.borderWidth);
+  return Number.isFinite(width) && width > 0 ? width : resolveAssetOverlayLineWidth(DEFAULT_OVERLAY_LINE_WIDTH);
+}
 function ensureIncomeExpenseOverlayLegendState(chartInstance){
   if(!(chartInstance.$incomeExpenseOverlayHiddenScenarios instanceof Set)) chartInstance.$incomeExpenseOverlayHiddenScenarios = new Set();
   if(!(chartInstance.$incomeExpenseOverlayHiddenKinds instanceof Set)) chartInstance.$incomeExpenseOverlayHiddenKinds = new Set();
@@ -22222,7 +22229,7 @@ function renderIncomeExpenseLegend(chartInstance, display){
     const kindItems = [
       {key:'income', label:'総収入', sample:`<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(51,65,85,.30);border-color:rgba(51,65,85,.30);"></span>`},
       {key:'expense', label:'総支出', sample:`<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(51,65,85,.52);border-color:rgba(51,65,85,.52);"></span>`},
-      {key:'cashflow', label:'年間収支', sample:`<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155', 'solid', 2.5, 50, [])}</span>`}
+      {key:'cashflow', label:'年間収支', sample:`<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155', 'solid', getIncomeExpenseOverlayCashflowLegendLineWidth(chartInstance), 50, [])}</span>`}
     ];
     const kindHtml = kindItems.map(item=>{ const visible = isIncomeExpenseOverlayKindVisible(chartInstance, item.key); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-income-expense-kind="${escapeAttr(item.key)}" aria-pressed="${visible ? 'true' : 'false'}">${item.sample}<span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`; }).join("");
     legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div><div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${kindHtml}</div></div></div>`;
@@ -29867,10 +29874,16 @@ function setupChartTouchInteractions(){
     const currMaxY = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(chart.scales.y.max);
     const graphType = document.getElementById("graphType")?.value || "asset";
     const xTol = Math.max(0.02, (Number(gestureBounds.xMax) - Number(gestureBounds.xMin)) * 0.001);
-    const yRange = Math.max(1, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
-    const yTol = graphType === "incomeExpense" ? Math.max(5, yRange * 0.08) : Math.max(1, yRange * 0.02);
+    const yOuterRange = Math.max(1, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
+    const yCurrentRange = Math.abs(currMaxY - currMinY);
+    const yTol = Math.max(1, yOuterRange * 0.02);
     const atGestureOuterX = Math.abs(currMinX - gestureBounds.xMin) <= xTol && Math.abs(currMaxX - gestureBounds.xMax) <= xTol;
-    const atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= yTol && Math.abs(currMaxY - gestureBounds.yMax) <= yTol;
+    let atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= yTol && Math.abs(currMaxY - gestureBounds.yMax) <= yTol;
+    if(graphType === "incomeExpense"){
+      // 収入／支出グラフは自動スケールが上下非対称になり得るため、初期表示相当で
+      // y軸位置だけが微妙にずれてもズーム扱いにしない。レンジが実際に縮んだ時だけyズーム扱いにする。
+      atGestureOuterY = yCurrentRange >= yOuterRange * 0.985;
+    }
     return !(atGestureOuterX && atGestureOuterY);
   };
   const normalizeMainChartTouchXBounds = (minX, maxX, gestureBounds)=>{
