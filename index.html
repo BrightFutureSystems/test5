@@ -5252,6 +5252,15 @@ document.addEventListener("scroll", (ev)=>{
   .chart-external-tooltip-income-body .chart-external-tooltip-detail-row .chart-external-tooltip-value,.chart-external-tooltip-income-body .chart-external-tooltip-detail-row .chart-external-tooltip-pct{color:#cbd5e1;}
 </style>
 
+
+<!-- ===== v1116: test 16px font-size only for deposit amount/rate inputs ===== -->
+<style>
+  .deposit-table input[id^="dep"][id$="_amount"],
+  .deposit-table input[id^="dep"][id$="_rate"]{
+    font-size:16px !important;
+  }
+</style>
+
 </head>
 <body>
 <div class="page">
