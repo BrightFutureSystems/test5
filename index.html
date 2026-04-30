@@ -186,12 +186,12 @@ document.addEventListener("scroll", (ev)=>{
   #rightTopControls{margin-left:auto;}
   #chartCanvasStickyWrap{
     position:relative;
-    background:linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+    background:#fff;
     margin:0 18px;
     padding:14px 16px 10px;
-    border:1px solid #d8e2f0;
+    border:1px solid transparent;
     border-radius:18px;
-    box-shadow:0 1px 2px rgba(15,23,42,.04);
+    box-shadow:none;
   }
   #chartAxisBtn{
     position:absolute;
@@ -235,28 +235,24 @@ document.addEventListener("scroll", (ev)=>{
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:10px 0 12px;
+    padding:0;
+    background:transparent;
+    border:0;
+    box-shadow:none;
   }
   .chart-resize-handle{
-    width:74px;
-    height:16px;
-    border:1px solid #d2dbe6;
+    width:52px;
+    height:5px;
+    border:0;
     border-radius:999px;
-    background:#fff;
-    box-shadow:0 1px 2px rgba(15,23,42,.04);
+    background:#cbd5e1;
+    box-shadow:none;
     position:relative;
     pointer-events:none;
   }
   .chart-resize-handle::before{
-    content:"";
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:24px;
-    height:4px;
-    border-radius:999px;
-    background:#b9c8d8;
-    transform:translate(-50%, -50%);
+    content:none;
+    display:none;
   }
   .chart-axis-modal{width:min(560px, calc(100vw - 20px));max-height:min(92vh, 760px);overflow:auto;}
   .chart-axis-preview-sheet{width:min(640px, calc(100vw - 16px));max-width:calc(100vw - 16px);}
@@ -2122,7 +2118,7 @@ document.addEventListener("scroll", (ev)=>{
   background:#fff;
   margin:0 22px;
   padding:8px 16px 10px;
-  border:1px solid #d8e2f0;
+  border:1px solid transparent;
   border-radius:18px;
   box-shadow:none;
 }
@@ -32851,7 +32847,8 @@ body.body-v844-chart-resizing{
   border-bottom:none !important;
 }
 #chartCanvasStickyWrap{
-  border-color:#cfd9e5 !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
 }
 .chart-resize-handle{
   border-color:#bccbda !important;
@@ -38162,13 +38159,13 @@ body.withdrawal-preview-open #detailStickyNav *{
 <!-- ===== v1081: common zero line style and draw order across zero-line charts ===== -->
 
 
-<!-- ===== v1113: mobile touch hit area expansion for resize handles only ===== -->
-<style id="v1113-mobile-resize-handle-touch-hit-area">
+<!-- ===== v1114: mobile transparent touch hit area expansion for resize handles only ===== -->
+<style id="v1114-mobile-resize-handle-touch-hit-area">
 /*
   Scope: mobile/coarse-pointer hit testing only.
-  - Chart resize handle: expand the invisible touch area upward/sideways only, not downward toward the scenario tabs.
-  - Preview sheet resize handles: keep the visible grip unchanged, but make the top handle row taller on mobile.
-  No graph data, tab behavior, drag logic, or desktop layout changes.
+  - Chart resize handle: expand the invisible touch area upward/sideways only, not downward toward scenario tabs.
+  - Preview sheet handles: keep the visible handle row height/style unchanged; add only a transparent lower hit zone.
+  No graph data, tab behavior, drag logic, desktop layout, or preview-sheet visual height changes.
 */
 @media (max-width:900px), (pointer:coarse){
   #chartCanvasStickyWrap > .chart-resize-handle-slot{
@@ -38194,10 +38191,26 @@ body.withdrawal-preview-open #detailStickyNav *{
   #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-handle,
   #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle,
   #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle{
-    min-height:42px !important;
-    height:42px !important;
-    padding:18px 0 16px !important;
-    box-sizing:border-box !important;
+    position:relative !important;
+    overflow:visible !important;
+  }
+  #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-handle::after,
+  #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-handle::after,
+  #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle::after,
+  #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle::after{
+    content:"" !important;
+    position:absolute !important;
+    left:50% !important;
+    top:100% !important;
+    width:min(72vw, 240px) !important;
+    height:26px !important;
+    transform:translateX(-50%) !important;
+    background:transparent !important;
+    border:0 !important;
+    pointer-events:auto !important;
+    cursor:ns-resize !important;
+    touch-action:none !important;
+    z-index:4 !important;
   }
 
   #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
