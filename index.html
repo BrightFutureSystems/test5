@@ -5219,6 +5219,12 @@ document.addEventListener("scroll", (ev)=>{
   .chart-external-tooltip-investment-body .chart-external-tooltip-category-title.is-sum .chart-external-tooltip-pct{
     color:#8ddfba;
   }
+  .chart-external-tooltip-investment-body .chart-external-tooltip-category-title .chart-external-tooltip-label-cell,
+  .chart-external-tooltip-investment-body .chart-external-tooltip-category-title .chart-external-tooltip-value,
+  .chart-external-tooltip-investment-body .chart-external-tooltip-category-title .chart-external-tooltip-pct{
+    padding-top:15px !important;
+    border-top:1px solid rgba(148,163,184,.24);
+  }
 </style>
 
 
@@ -5232,8 +5238,15 @@ document.addEventListener("scroll", (ev)=>{
     padding-top:15px !important;
     border-top:1px solid rgba(148,163,184,.24);
   }
-  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income{color:#93c5fd;}
-  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense{color:#fca5a5;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income .chart-external-tooltip-label-cell,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income .chart-external-tooltip-value,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income .chart-external-tooltip-pct{color:#93c5fd;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense .chart-external-tooltip-label-cell,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense .chart-external-tooltip-value,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense .chart-external-tooltip-pct{color:#fca5a5;}
+  .chart-external-tooltip-investment-body .chart-external-tooltip-income-section-gap{height:10px;}
   .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-label-cell,
   .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-value,
   .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-pct{color:var(--income-expense-tooltip-category-color, #cbd5e1);}
@@ -9998,9 +10011,14 @@ function formatNumericInputDisplay(el, finalize = false){
   const valueBefore = String(el.value ?? "");
   const start = typeof el.selectionStart === "number" ? el.selectionStart : valueBefore.length;
   const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
-  const shouldPreserveFullSelection = shouldForceFullSelectionForInput(el);
-  const shouldSuppressFullSelectionFallback = !finalize && isLoanTabSelectSensitiveInput(el);
-  const hadFullSelection = shouldPreserveFullSelection || (!shouldSuppressFullSelectionFallback && wasActive && start === 0 && end === valueBefore.length && valueBefore.length > 0);
+  const shouldPreserveFullSelection = isLoanDetailTabSelectNoLockInput(el) ? false : shouldForceFullSelectionForInput(el);
+  /*
+  数値入力中の全選択維持ルール（再発防止）
+  - Tab移動直後の全選択は、selectionLock/pendingSelectAll が有効な間だけ維持する。
+  - ユーザーが数字入力を開始した後に、"現在の選択範囲が全選択に見える"という理由だけで再全選択しない。
+  - これを行うと、1文字目入力後もその1文字が再選択され、2文字目で置換されて「1桁しか入力できない」再発原因になる。
+  */
+  const hadFullSelection = shouldPreserveFullSelection;
   const rawIndex = getNumericRawIndex(el.value, start);
   const formatted = formatNumericText(el.value, finalize, {useGrouping: shouldUseGroupingForInput(el)});
   el.value = formatted;
@@ -10554,6 +10572,7 @@ let pendingSelectAllTarget = null;
 let lastPointerDownAt = 0;
 let lastFocusedEditableForAutoSelect = null;
 let selectAllRetryTimers = new WeakMap();
+let selectAllScheduleTokens = new WeakMap();
 let selectionLockTarget = null;
 let selectionLockUntil = 0;
 let lastHandledTabMoveAt = 0;
@@ -10567,6 +10586,8 @@ function requestSelectAllOnNextFocus(el){
   pendingSelectAllTarget = el || null;
 }
 function clearSelectAllRetryTimers(el){
+  if(!el) return;
+  selectAllScheduleTokens.set(el, (selectAllScheduleTokens.get(el) || 0) + 1);
   const timers = selectAllRetryTimers.get(el);
   if(timers){
     timers.forEach(id=>clearTimeout(id));
@@ -10606,11 +10627,17 @@ function selectAllIfActive(el){
 function scheduleSelectAllForElement(el, opts = {}){
   if(!shouldSelectAllOnTabFocus(el)) return;
   clearSelectAllRetryTimers(el);
+  if(isLoanDetailTabSelectNoLockInput(el)){
+    selectAllIfActive(el);
+    return;
+  }
+  const token = selectAllScheduleTokens.get(el) || 0;
   const isSensitive = isLoanTabSelectSensitiveInput(el);
   const useLock = !isSensitive && opts.lock !== false;
   if(useLock) lockFullSelection(el, opts.lockDurationMs || 700);
   const timers = [];
   const run = ()=>{
+    if(selectAllScheduleTokens.get(el) !== token) return;
     if(!selectAllIfActive(el)) clearSelectAllRetryTimers(el);
   };
   requestAnimationFrame(()=>{
@@ -10624,6 +10651,18 @@ function scheduleSelectAllForElement(el, opts = {}){
     selectAllRetryTimers.set(el, timers);
   }
 }
+/*
+数値入力のTab移動全選択仕様（再発防止メモ）
+- Tab移動で数値入力へ入った場合は、入力値を全選択して上書き入力しやすくする。
+- 編集開始キー、beforeinput、input、compositionstart が来たら、selectionLock と遅延selectを即解除する。
+- timeoutだけでなくrequestAnimationFrame経由の遅延selectも token で必ず無効化する。
+- 入力中整形では、selectionLock/pendingSelectAll が有効な場合だけ全選択を維持する。
+- 「現在の選択範囲が全選択に見える」だけで入力後に再全選択すると、1文字目入力後もその1文字が再選択され、2文字目で置換されて「1桁しか入力できない」状態になるため禁止。
+- 住宅ローン詳細モーダルの入力欄は、Tab時に1回だけ全選択する。selectionLock、複数timeout、requestAnimationFrameの遅延再selectは使わない。入力中カンマ整形は行う。
+- 住宅ローン詳細モーダルの入力欄では、formatNumericInputDisplay内のpendingSelectAllOnTabFocus由来の全選択維持も使わない。Tab後の全選択はscheduleSelectAllForElementの1回だけに限定する。
+- 繰上返済計画テーブルの金額入力欄も、住宅ローン詳細モーダル内の主要4入力と同じく、Tab時の1回全選択のみでロック・複数遅延select・pending由来の全選択維持を使わない。
+- 今回は住宅ローン詳細モーダルのみ統一対象。簡単設定や他モーダルへ横展開する場合は別途確認してから行う。
+*/
 function isVisibleForTab(el){
   if(!el || !el.getClientRects || !el.getClientRects().length) return false;
   const style = window.getComputedStyle(el);
@@ -10646,17 +10685,25 @@ function shouldSelectAllOnTabFocus(el){
   if(el.disabled || el.readOnly) return false;
   return el.matches('input[type="text"], input[type="search"], input[type="url"], input[type="tel"], input[type="email"], input[type="number"], input[data-numeric-ready="1"], textarea');
 }
+function isLoanDetailTabSelectNoLockInput(el){
+  if(!(el instanceof HTMLInputElement)) return false;
+  if(!el.closest('#loanDetailModal')) return false;
+  if([
+    'loanDetailDown','loanDetailLoanAmountInput','loanDetailRateInput','loanDetailYears'
+  ].includes(el.id)) return true;
+  return !!el.closest('#loanDetailPrepayRows') && el.dataset.loanPrepayField === 'amount';
+}
 function isLoanTabSelectSensitiveInput(el){
   if(!(el instanceof HTMLInputElement)) return false;
   return [
     'homeDown','homePayMonth','homeYears',
     'loanDetailDown','loanDetailLoanAmountInput','loanDetailRateInput','loanDetailYears'
-  ].includes(el.id);
+  ].includes(el.id) || (!!el.closest('#loanDetailModal #loanDetailPrepayRows') && el.dataset.loanPrepayField === 'amount');
 }
 function shouldDeferLiveNumericFormatting(el){
   if(!(el instanceof HTMLInputElement)) return false;
   if(el.id === "fixedScaleMin" || el.id === "fixedScaleMax") return false;
-  return !!el.closest("#simpleModePanel, #loanDetailModal, #loanDetailConflictModal, #incomeCurveModal, #pensionHelperModal, #educationDetailModal, #educationCopyModal, #insuranceAssistModal, #withdrawalRuleModal, #crashTestModal, #fireDiagnosisModal, #monteCarloSettingsModal, #cashflowModal");
+  return !!el.closest("#simpleModePanel, #loanDetailConflictModal, #incomeCurveModal, #pensionHelperModal, #educationDetailModal, #educationCopyModal, #insuranceAssistModal, #withdrawalRuleModal, #crashTestModal, #fireDiagnosisModal, #monteCarloSettingsModal, #cashflowModal");
 }
 function getOpenModal(){
   return document.querySelector('#deleteRowModal.show, #deleteTabModal.show, #resetDefaultsConfirmModal.show, #loanDetailModal.show, #loanDetailConflictModal.show, #incomeCurveModal.show, #pensionHelperModal.show, #educationDetailModal.show, #educationCopyModal.show, #insuranceAssistModal.show, #withdrawalRuleModal.show, #crashTestModal.show, #fireDiagnosisModal.show, #monteCarloSettingsModal.show, #chartAxisModal.show, #cashflowModal.show, #overlaySettingsModal.show');
@@ -14195,17 +14242,17 @@ function getScenarioFromDOM(){
     periodRows:rangeRows("period"),
     extraRows:pointRows("extra"),
     home:(()=>{
-      const effectiveLoanDetail = buildLoanDetailFromDOM();
-      const useDetailForCalc = !!document.getElementById("homeDetailOn")?.checked || (hasLoanDetailSavedOnce() && !isHomeSimpleEditedAfterDetailSave());
+      const homeDetailOn = !!document.getElementById("homeDetailOn")?.checked;
+      const effectiveLoanDetail = homeDetailOn ? buildLoanDetailFromDOM() : buildLoanDetailFromSimpleInputs();
       return {
-      age:(useDetailForCalc ? effectiveLoanDetail.buyAge : numInput("homeAge", 0)),
-      buyYear:(useDetailForCalc ? effectiveLoanDetail.buyYear : Number(document.getElementById("homeBuyYear")?.value || 0)),
-      buyMonth:(useDetailForCalc ? effectiveLoanDetail.buyMonth : Number(document.getElementById("homeBuyMonth")?.value || 1)),
-      down:(useDetailForCalc ? effectiveLoanDetail.down : numInput("homeDown", 0)),
+      age:effectiveLoanDetail.buyAge,
+      buyYear:effectiveLoanDetail.buyYear,
+      buyMonth:effectiveLoanDetail.buyMonth,
+      down:effectiveLoanDetail.down,
       payMonth:numInput("homePayMonth", 0),
       years:numInput("homeYears", 0),
       detail:{
-        enabled: useDetailForCalc,
+        enabled: homeDetailOn,
         buyAge:effectiveLoanDetail.buyAge,
         buyYear:effectiveLoanDetail.buyYear,
         buyMonth:effectiveLoanDetail.buyMonth,
@@ -20451,6 +20498,24 @@ function getAxisBounds(arr, cfg, symmetric=false){
     return {min:-limit, max:limit};
   }
 
+  if(cfg?._graphType === "incomeExpense"){
+    // v1112: 収入／支出グラフは単一表示・重ね書きとも同じオートスケール経路を使う。
+    // データ上下端から最低10%の余白を確保したうえで、最寄りのniceなy軸補助線に丸める。
+    const dataMin = Math.min(minVal, 0);
+    const dataMax = Math.max(maxVal, 0);
+    const dataSpan = Math.max(dataMax - dataMin, Math.max(Math.abs(dataMin), Math.abs(dataMax), 1));
+    const targetMin = dataMin - dataSpan * 0.10;
+    const targetMax = dataMax + dataSpan * 0.10;
+    const targetSpan = Math.max(targetMax - targetMin, 1);
+    const step = niceNumber(targetSpan / 6);
+    let min = Math.floor(targetMin / step) * step;
+    let max = Math.ceil(targetMax / step) * step;
+    if(min > 0) min = 0;
+    if(max < 0) max = 0;
+    if(min === max){ min -= step; max += step; }
+    return {min, max};
+  }
+
   if(minVal === maxVal){
     if(minVal === 0) return {min:0, max:1};
     const mag = Math.abs(minVal);
@@ -20681,6 +20746,7 @@ const INCOME_EXPENSE_CATEGORY_GROUPS = {
 };
 const INCOME_EXPENSE_CASHFLOW_COLOR = "#2b8b5f";
 const INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR = "#cf616d";
+const INCOME_EXPENSE_CASHFLOW_AXIS_ID = "incomeExpenseCashflowY";
 const INCOME_EXPENSE_SINGLE_BAR_ALPHA = 0.38;
 function getIncomeExpenseCashflowLineWidth(){
   try{
@@ -20718,6 +20784,23 @@ function getIncomeExpenseCategorySeries(sim, group, category){
   }
   return sumSeriesByKeys(sim.expensePartsSeries, detailKeys);
 }
+function getIncomeExpenseTotalSeries(sim, group){
+  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+  const categories = INCOME_EXPENSE_CATEGORY_GROUPS[group] || [];
+  const categorySeries = categories.map(cat=>getIncomeExpenseCategorySeries(sim, group, cat));
+  const maxLen = Math.max(labels.length, 0, ...categorySeries.map(arr=>Array.isArray(arr) ? arr.length : 0));
+  return Array.from({length:maxLen}, (_,idx)=>categorySeries.reduce((sum, arr)=>sum + (Number(arr?.[idx]) || 0), 0));
+}
+function getIncomeExpenseDerivedSeries(sim){
+  const totalIncome = getIncomeExpenseTotalSeries(sim, "income");
+  const totalExpense = getIncomeExpenseTotalSeries(sim, "expense");
+  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+  const maxLen = Math.max(labels.length, totalIncome.length, totalExpense.length);
+  const income = Array.from({length:maxLen}, (_,idx)=>Number(totalIncome[idx]) || 0);
+  const expense = Array.from({length:maxLen}, (_,idx)=>Number(totalExpense[idx]) || 0);
+  const cashflow = Array.from({length:maxLen}, (_,idx)=>income[idx] - expense[idx]);
+  return {income, expense, cashflow};
+}
 function shiftSeriesXPoints(labels, data, xOffset){
   return labels.map((x,i)=>({x:(Number(x) || 0) + (Number(xOffset) || 0), y:data[i]}));
 }
@@ -20735,12 +20818,13 @@ function makeIncomeExpenseOverlayBarDataset(label, labels, data, color, kind, st
   return ds;
 }
 function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
+  const incomeExpenseDerived = getIncomeExpenseDerivedSeries(sim);
   if(overlay){
     const stackId = `incomeExpenseOverlay${Number.isFinite(Number(overlayIndex)) ? Number(overlayIndex) : 0}`;
     const xOffset = getIncomeExpenseOverlayXOffset(overlayIndex, overlayCount);
-    const incomeBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総収入`, sim.labels, sim.annualIncome, color, "income", stackId, xOffset);
-    const expenseBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総支出`, sim.labels, sim.annualExpense.map(v=>-v), color, "expense", stackId, xOffset);
-    const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, sim.annualCashflow, {borderColor:color, backgroundColor:color, borderWidth:getIncomeExpenseCashflowLineWidth(), order:0, pointHoverRadius:4});
+    const incomeBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総収入`, sim.labels, incomeExpenseDerived.income, color, "income", stackId, xOffset);
+    const expenseBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総支出`, sim.labels, incomeExpenseDerived.expense.map(v=>-v), color, "expense", stackId, xOffset);
+    const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, incomeExpenseDerived.cashflow, {borderColor:color, backgroundColor:color, borderWidth:getIncomeExpenseCashflowLineWidth(), order:0, pointHoverRadius:4, yAxisID:INCOME_EXPENSE_CASHFLOW_AXIS_ID});
     cashflowLine._incomeExpenseOverlayKind = "cashflow";
     cashflowLine._scenarioColor = color;
     return [incomeBar, expenseBar, cashflowLine];
@@ -20762,18 +20846,19 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlay
     ds._incomeExpenseCategory = cat.key;
     d.push(ds);
   });
-  if(hasAnyVisibleValue(sim.annualCashflow || [])){
-    const cashflow = makeLineDataset("年間収支", sim.labels, sim.annualCashflow, {
+  if(hasAnyVisibleValue(incomeExpenseDerived.cashflow || [])){
+    const cashflow = makeLineDataset("年間収支", sim.labels, incomeExpenseDerived.cashflow, {
       borderColor:INCOME_EXPENSE_CASHFLOW_COLOR,
       backgroundColor:INCOME_EXPENSE_CASHFLOW_COLOR,
       borderWidth:getIncomeExpenseCashflowLineWidth(),
+      yAxisID:INCOME_EXPENSE_CASHFLOW_AXIS_ID,
       order:0,
       pointHoverRadius:4,
       pointBackgroundColor:ctx=>{ const y=Number(ctx.parsed?.y ?? ctx.raw?.y); return y < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR; },
       pointHoverBackgroundColor:ctx=>{ const y=Number(ctx.parsed?.y ?? ctx.raw?.y); return y < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR; },
       segment:{borderColor:ctx=>{const y0=Number(ctx.p0.parsed.y), y1=Number(ctx.p1.parsed.y); return (y0 < 0 || y1 < 0) ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR;}}
     });
-    cashflow.data = buildLinePointsWithZeroCrossings(sim.labels, sim.annualCashflow);
+    cashflow.data = buildLinePointsWithZeroCrossings(sim.labels, incomeExpenseDerived.cashflow);
     cashflow._incomeExpenseGroup = "line";
     cashflow._incomeExpenseCategory = "cashflow";
     d.push(cashflow);
@@ -21619,7 +21704,7 @@ function buildInvestmentBreakdownTooltipHtml(unitSpec, sim, ageValue, chartInsta
     if(!catEntries.length) return;
     const catTotal = catEntries.reduce((sum, entry)=>sum + (Number(entry.value) || 0), 0);
     if(!isTooltipDisplayNonZero(catTotal)) return;
-    rows.push(`<div class="chart-external-tooltip-row chart-external-tooltip-category-title is-${escapeAttr(cat.key)}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(cat.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(catTotal, unitSpec, 'investment'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(pct(catTotal))}</span></div>`);
+    rows.push(`<div class="chart-external-tooltip-income-section-gap" aria-hidden="true"></div><div class="chart-external-tooltip-row chart-external-tooltip-category-title is-${escapeAttr(cat.key)}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(cat.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(catTotal, unitSpec, 'investment'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(pct(catTotal))}</span></div>`);
     catEntries.forEach(entry=>{
       rows.push(`<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(entry.color, true)}<span>${escapeAttr(entry.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(entry.value, unitSpec, 'investment'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(pct(entry.value))}</span></div>`);
     });
@@ -21639,8 +21724,9 @@ function getIncomeExpenseVisibleCategorySet(chartInstance){
   return hasCategoryDataset ? visible : null;
 }
 function getIncomeExpenseValuesAt(sim, idx){
+  const derived = getIncomeExpenseDerivedSeries(sim);
   const n = (arr)=>Number(Array.isArray(arr) ? arr[idx] : 0) || 0;
-  return {totalIncome:n(sim?.annualIncome), totalExpense:n(sim?.annualExpense), annualCashflow:n(sim?.annualCashflow)};
+  return {totalIncome:n(derived.income), totalExpense:n(derived.expense), annualCashflow:n(derived.cashflow)};
 }
 function getIncomeExpenseDetailValue(sim, key, idx){
   if(key === "pensionSelf") return Number(Array.isArray(sim?.incomePensionPartsSeries?.self) ? sim.incomePensionPartsSeries.self[idx] : 0) || 0;
@@ -21671,9 +21757,12 @@ function buildIncomeExpenseTooltipRow({label, value, pct='', color='#e2e8f0', sw
   const styleAttr = titleColor ? ` style="--income-expense-tooltip-category-color:${escapeAttr(titleColor)}"` : '';
   return `<div class="${classes.map(escapeAttr).join(' ')}"${styleAttr}><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${swatch ? buildTooltipSwatch(color, true) : buildTooltipSwatch(color, false)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatted)}</span><span class="chart-external-tooltip-pct">${escapeAttr(pct)}</span></div>`;
 }
-function buildIncomeExpenseSectionTitle(label, kind=''){
+function buildIncomeExpenseSectionTitle(label, kind='', totalValue=null, unitSpec=null){
   const modifier = kind ? ` is-${escapeAttr(kind)}` : '';
-  return `<div class="chart-external-tooltip-income-section-gap" aria-hidden="true"></div><div class="chart-external-tooltip-row chart-external-tooltip-section-title${modifier}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value"></span><span class="chart-external-tooltip-pct"></span></div>`;
+  const hasTotal = Number.isFinite(Number(totalValue)) && unitSpec;
+  const valueHtml = hasTotal ? escapeAttr(formatMainChartTooltipMoney(totalValue, unitSpec, 'incomeExpense')) : '';
+  const pctHtml = hasTotal && Math.abs(Number(totalValue) || 0) > 1e-9 ? '100%' : '';
+  return `<div class="chart-external-tooltip-income-section-gap" aria-hidden="true"></div><div class="chart-external-tooltip-row chart-external-tooltip-section-title${modifier}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${valueHtml}</span><span class="chart-external-tooltip-pct">${escapeAttr(pctHtml)}</span></div>`;
 }
 function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, chartInstance=null){
   const entries = (simEntries || []).filter(entry=>entry?.sim);
@@ -21704,7 +21793,7 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
   rows.push(buildIncomeExpenseTooltipRow({label:'総収入', value:values.totalIncome, swatch:false, strong:true}, unitSpec));
   rows.push(buildIncomeExpenseTooltipRow({label:'総支出', value:values.totalExpense, swatch:false, strong:true}, unitSpec));
   rows.push(buildIncomeExpenseTooltipRow({label:'年間収支', value:values.annualCashflow, color:(values.annualCashflow < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR), swatch:true, strong:true, signed:true}, unitSpec));
-  rows.push(buildIncomeExpenseSectionTitle('収入', 'income'));
+  rows.push(buildIncomeExpenseSectionTitle('収入', 'income', values.totalIncome, unitSpec));
   INCOME_EXPENSE_CATEGORY_GROUPS.income.forEach(cat=>{
     if(visibleCategories && !visibleCategories.has(cat.key)) return;
     const catValue = getIncomeExpenseCategorySeries(sim, 'income', cat)[idx] || 0;
@@ -21718,7 +21807,7 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
       rows.push(buildIncomeExpenseTooltipRow({label:detail.label, value, pct:formatIncomeExpensePct(value, values.totalIncome), swatch:false, detail:true}, unitSpec));
     });
   });
-  rows.push(buildIncomeExpenseSectionTitle('支出', 'expense'));
+  rows.push(buildIncomeExpenseSectionTitle('支出', 'expense', values.totalExpense, unitSpec));
   INCOME_EXPENSE_CATEGORY_GROUPS.expense.forEach(cat=>{
     if(visibleCategories && !visibleCategories.has(cat.key)) return;
     const catValue = getIncomeExpenseCategorySeries(sim, 'expense', cat)[idx] || 0;
@@ -22430,6 +22519,19 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       ticks:{display:false}
     };
   }
+  if(graphType === "incomeExpense"){
+    options.scales[INCOME_EXPENSE_CASHFLOW_AXIS_ID] = {
+      type:"linear",
+      position:"right",
+      display:false,
+      min:axis.min,
+      max:axis.max,
+      stacked:false,
+      grid:{display:false, drawOnChartArea:false, drawTicks:false},
+      border:{display:false},
+      ticks:{display:false}
+    };
+  }
   if(!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment")){
     options.scales.y.grid = makeGridWithoutZeroLine(options.scales.y.grid);
   }
@@ -22534,7 +22636,7 @@ function draw(){
       asset: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
       cashflow: [...getVisibleSeriesValues(sim.labels, sim.annualCashflow, cfg.xAxisMax)],
       education: getVisibleSeriesValues(sim.labels, sim.annualEducation, cfg.xAxisMax),
-      incomeExpense: [...getVisibleSeriesValues(sim.labels, sim.annualIncome, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualExpense.map(v=>-v), cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualCashflow, cfg.xAxisMax)],
+      incomeExpense: (()=>{ const ie = getIncomeExpenseDerivedSeries(sim); return [...getVisibleSeriesValues(sim.labels, ie.income, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, ie.expense.map(v=>-v), cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, ie.cashflow, cfg.xAxisMax)]; })(),
       assetBreakdown: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
       investment: getVisibleSeriesValues(sim.labels, sim.totalInvestments, cfg.xAxisMax)
     };
@@ -27809,8 +27911,18 @@ Object.entries(STANDARD_MODAL_BACKDROP_CLOSE_HANDLERS).forEach(([modalId, closeH
   const modal = document.getElementById(modalId);
   if(!modal || modal.dataset.standardBackdropUnified === '1') return;
   modal.dataset.standardBackdropUnified = '1';
+  let backdropPointerDown = false;
+  const rememberBackdropPointerDown = (e)=>{
+    backdropPointerDown = e.target === modal;
+  };
+  modal.addEventListener('mousedown', rememberBackdropPointerDown, true);
+  modal.addEventListener('touchstart', rememberBackdropPointerDown, {capture:true, passive:true});
   modal.addEventListener('click', (e)=>{
-    if(e.target !== modal || typeof closeHandler !== 'function') return;
+    if(e.target !== modal || !backdropPointerDown || typeof closeHandler !== 'function'){
+      backdropPointerDown = false;
+      return;
+    }
+    backdropPointerDown = false;
     closeHandler();
   });
 });
@@ -28407,8 +28519,12 @@ document.addEventListener("selectionchange", ()=>{
 document.addEventListener("keydown", (e)=>{
   const el = document.activeElement;
   if(!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-  if(!shouldKeepFullSelection(el)) return;
+  if(!shouldSelectAllOnTabFocus(el)) return;
   if(e.key === "Tab") return;
+  if(e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End"){
+    unlockSelectionForEditing(el);
+    return;
+  }
   if(e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
   unlockSelectionForEditing(el);
 }, true);
@@ -29563,14 +29679,15 @@ function resetChartAxesToAuto(options = {}){
 }
 function syncInvestmentReferenceYAxisFromMain(activeChart){
   const graphType = document.getElementById("graphType")?.value || "asset";
-  if(graphType !== "investment") return;
-  if(!activeChart?.options?.scales?.y || !activeChart.options.scales.investmentRefY) return;
+  const referenceAxisId = graphType === "investment" ? "investmentRefY" : (graphType === "incomeExpense" ? INCOME_EXPENSE_CASHFLOW_AXIS_ID : "");
+  if(!referenceAxisId) return;
+  if(!activeChart?.options?.scales?.y || !activeChart.options.scales[referenceAxisId]) return;
   const yOptions = activeChart.options.scales.y || {};
   const yScale = activeChart.scales?.y || {};
   const nextMin = Number.isFinite(Number(yOptions.min)) ? Number(yOptions.min) : Number(yScale.min);
   const nextMax = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(yScale.max);
-  if(Number.isFinite(nextMin)) activeChart.options.scales.investmentRefY.min = nextMin;
-  if(Number.isFinite(nextMax)) activeChart.options.scales.investmentRefY.max = nextMax;
+  if(Number.isFinite(nextMin)) activeChart.options.scales[referenceAxisId].min = nextMin;
+  if(Number.isFinite(nextMax)) activeChart.options.scales[referenceAxisId].max = nextMax;
 }
 function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   if(!activeChart?.options?.scales) return;
@@ -38043,5 +38160,54 @@ body.withdrawal-preview-open #detailStickyNav *{
 </style>
 
 <!-- ===== v1081: common zero line style and draw order across zero-line charts ===== -->
+
+
+<!-- ===== v1113: mobile touch hit area expansion for resize handles only ===== -->
+<style id="v1113-mobile-resize-handle-touch-hit-area">
+/*
+  Scope: mobile/coarse-pointer hit testing only.
+  - Chart resize handle: expand the invisible touch area upward/sideways only, not downward toward the scenario tabs.
+  - Preview sheet resize handles: keep the visible grip unchanged, but make the top handle row taller on mobile.
+  No graph data, tab behavior, drag logic, or desktop layout changes.
+*/
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap > .chart-resize-handle-slot{
+    overflow:visible !important;
+  }
+  #chartCanvasStickyWrap > .chart-resize-handle-slot::before{
+    content:"" !important;
+    position:absolute !important;
+    left:50% !important;
+    top:-34px !important;
+    bottom:0 !important;
+    width:min(72vw, 240px) !important;
+    transform:translateX(-50%) !important;
+    background:transparent !important;
+    border:0 !important;
+    pointer-events:auto !important;
+    cursor:ns-resize !important;
+    touch-action:none !important;
+    z-index:4 !important;
+  }
+
+  #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-handle,
+  #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-handle,
+  #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle,
+  #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle{
+    min-height:42px !important;
+    height:42px !important;
+    padding:18px 0 16px !important;
+    box-sizing:border-box !important;
+  }
+
+  #withdrawalRuleModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
+  #crashTestModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
+  #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
+  #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle span{
+    pointer-events:none !important;
+  }
+}
+</style>
+
 </body>
 </html>
