@@ -5224,7 +5224,13 @@ document.addEventListener("scroll", (ev)=>{
 
 <!-- ===== v1084: income/expense grouped tooltip and legend ===== -->
 <style>
-  .chart-external-tooltip-income-body .chart-external-tooltip-section-title{margin-top:20px !important;padding-top:13px !important;border-top:1px solid rgba(148,163,184,.22);color:#cbd5e1;font-weight:800;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title{color:#cbd5e1;font-weight:800;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title .chart-external-tooltip-label-cell,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title .chart-external-tooltip-value,
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title .chart-external-tooltip-pct{
+    padding-top:15px !important;
+    border-top:1px solid rgba(148,163,184,.24);
+  }
   .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income{color:#93c5fd;}
   .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense{color:#fca5a5;}
   .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-label-cell,
@@ -20675,6 +20681,13 @@ const INCOME_EXPENSE_CATEGORY_GROUPS = {
 const INCOME_EXPENSE_CASHFLOW_COLOR = "#2b8b5f";
 const INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR = "#cf616d";
 const INCOME_EXPENSE_SINGLE_BAR_ALPHA = 0.38;
+function getIncomeExpenseCashflowLineWidth(){
+  try{
+    return (window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 1.8 : 2.4;
+  }catch(_e){
+    return 2.4;
+  }
+}
 function getIncomeExpenseCategoryByKey(key){
   const all = [...INCOME_EXPENSE_CATEGORY_GROUPS.income, ...INCOME_EXPENSE_CATEGORY_GROUPS.expense];
   return all.find(cat=>cat.key === key) || null;
@@ -20726,7 +20739,7 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlay
     const xOffset = getIncomeExpenseOverlayXOffset(overlayIndex, overlayCount);
     const incomeBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総収入`, sim.labels, sim.annualIncome, color, "income", stackId, xOffset);
     const expenseBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総支出`, sim.labels, sim.annualExpense.map(v=>-v), color, "expense", stackId, xOffset);
-    const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, sim.annualCashflow, {borderColor:color, backgroundColor:color, borderWidth:2.4, order:0, pointHoverRadius:4});
+    const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, sim.annualCashflow, {borderColor:color, backgroundColor:color, borderWidth:getIncomeExpenseCashflowLineWidth(), order:0, pointHoverRadius:4});
     cashflowLine._incomeExpenseOverlayKind = "cashflow";
     cashflowLine._scenarioColor = color;
     return [incomeBar, expenseBar, cashflowLine];
@@ -20752,7 +20765,7 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlay
     const cashflow = makeLineDataset("年間収支", sim.labels, sim.annualCashflow, {
       borderColor:INCOME_EXPENSE_CASHFLOW_COLOR,
       backgroundColor:INCOME_EXPENSE_CASHFLOW_COLOR,
-      borderWidth:2.4,
+      borderWidth:getIncomeExpenseCashflowLineWidth(),
       order:0,
       pointHoverRadius:4,
       pointBackgroundColor:ctx=>{ const y=Number(ctx.parsed?.y ?? ctx.raw?.y); return y < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR; },
@@ -22219,7 +22232,7 @@ function renderIncomeExpenseLegend(chartInstance, display){
     return;
   }
   const allDatasets = (chartInstance.data.datasets || []).map((ds, idx)=>({...ds, _datasetIndex:idx}));
-  const makeItem = (ds, forceLine=false)=>{ const line=getLegendLineStyleFromDataset(ds); const datasetIndex=Number(ds._datasetIndex); const visible=chartInstance.isDatasetVisible(datasetIndex); const isLine=forceLine || ds.type === 'line'; const isIncomeExpenseCashflow = ds?._incomeExpenseCategory === 'cashflow'; const lineMarkup = isIncomeExpenseCashflow ? buildIncomeExpenseCashflowLegendSvgMarkup(50, line.width) : buildLegendLineSvgMarkup(line.color, line.style, line.width, 50, line.dash); const sample=isLine ? `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${lineMarkup}</span>` : `<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};"></span>`; return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-dataset-index="${datasetIndex}" aria-pressed="${visible ? 'true' : 'false'}">${sample}<span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`; };
+  const makeItem = (ds, forceLine=false)=>{ const line=getLegendLineStyleFromDataset(ds); const datasetIndex=Number(ds._datasetIndex); const visible=chartInstance.isDatasetVisible(datasetIndex); const isLine=forceLine || ds.type === 'line'; const isIncomeExpenseCashflow = ds?._incomeExpenseCategory === 'cashflow'; const lineMarkup = isIncomeExpenseCashflow ? buildIncomeExpenseCashflowLegendSvgMarkup(50, getIncomeExpenseCashflowLineWidth()) : buildLegendLineSvgMarkup(line.color, line.style, line.width, 50, line.dash); const sample=isLine ? `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${lineMarkup}</span>` : `<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};"></span>`; return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-dataset-index="${datasetIndex}" aria-pressed="${visible ? 'true' : 'false'}">${sample}<span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`; };
   const incomeDatasets=allDatasets.filter(ds=>ds._incomeExpenseGroup === 'income' && shouldShowDatasetInLegend(ds));
   const expenseDatasets=allDatasets.filter(ds=>ds._incomeExpenseGroup === 'expense' && shouldShowDatasetInLegend(ds));
   const lineDatasets=allDatasets.filter(ds=>ds._incomeExpenseGroup === 'line' && shouldShowDatasetInLegend(ds));
@@ -29852,9 +29865,10 @@ function setupChartTouchInteractions(){
     const currMaxX = Number.isFinite(Number(xOptions.max)) ? Number(xOptions.max) : Number(chart.scales.x.max);
     const currMinY = Number.isFinite(Number(yOptions.min)) ? Number(yOptions.min) : Number(chart.scales.y.min);
     const currMaxY = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(chart.scales.y.max);
+    const graphType = document.getElementById("graphType")?.value || "asset";
     const xTol = Math.max(0.02, (Number(gestureBounds.xMax) - Number(gestureBounds.xMin)) * 0.001);
     const yRange = Math.max(1, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
-    const yTol = Math.max(1, yRange * 0.02);
+    const yTol = graphType === "incomeExpense" ? Math.max(5, yRange * 0.08) : Math.max(1, yRange * 0.02);
     const atGestureOuterX = Math.abs(currMinX - gestureBounds.xMin) <= xTol && Math.abs(currMaxX - gestureBounds.xMax) <= xTol;
     const atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= yTol && Math.abs(currMaxY - gestureBounds.yMax) <= yTol;
     return !(atGestureOuterX && atGestureOuterY);
@@ -29977,7 +29991,14 @@ function setupChartTouchInteractions(){
     if(e.touches.length === 1){
       const touch = e.touches[0];
       const pt = getTouchPoint(touch);
-      if(!isInsideChartArea(pt)) return;
+      if(!isInsideChartArea(pt)){
+        const tooltipEl = document.getElementById("chartExternalTooltip");
+        if(tooltipEl) tooltipEl.hidden = true;
+        chart.setActiveElements([]);
+        chart.tooltip?.setActiveElements?.([], {x:0, y:0});
+        chart.update("none");
+        return;
+      }
       const zoomed = isZoomedFromDefaults();
       const tooltipHit = updateMainChartTooltipFromTouch(touch);
       const now = Date.now();
@@ -30537,11 +30558,13 @@ window.addEventListener("load", ()=>{
     let chosen = null;
     let bestDist = Infinity;
     const maxDist = 8;
+    const lineMaxDist = chart.$graphType === "incomeExpense" ? 14 : maxDist;
+    const barMaxDist = maxDist;
     const datasets = chart.data?.datasets || [];
     if(chart.$graphType === "assetBreakdown"){
       const overlayHit = findNearestAssetBreakdownOverlayHit(chart, datasets, position);
-      if(overlayHit && overlayHit.dist <= maxDist){
-        chosen = {datasetIndex:overlayHit.datasetIndex, index:overlayHit.index, xValue:overlayHit.xValue};
+      if(overlayHit && overlayHit.dist <= lineMaxDist){
+        chosen = {datasetIndex:overlayHit.datasetIndex, index:overlayHit.index, xValue:overlayHit.xValue, _maxDist:lineMaxDist};
         bestDist = overlayHit.dist;
       }
     }
@@ -30559,12 +30582,12 @@ window.addEventListener("load", ()=>{
       if(!xScale || !yScale) continue;
       if(dsType === "line"){
         const hit = findNearestLinePointIndexForPointer(chart, ds, xScale, yScale, position);
-        if(hit.index >= 0 && hit.dist < bestDist){
+        if(hit.index >= 0 && hit.dist < bestDist && hit.dist <= lineMaxDist){
           const hitData = Array.isArray(ds?.data) ? ds.data[hit.index] : null;
           const hitX = Number(hitData?.x);
           if(Number.isFinite(hitX)){
             bestDist = hit.dist;
-            chosen = {datasetIndex, index:hit.index, xValue:hitX};
+            chosen = {datasetIndex, index:hit.index, xValue:hitX, _maxDist:lineMaxDist};
           }
         }
         continue;
@@ -30622,14 +30645,15 @@ window.addEventListener("load", ()=>{
             }
           }
         }
-        if(dist < bestDist){
+        const allowedDist = dsType === "line" ? lineMaxDist : barMaxDist;
+        if(dist < bestDist && dist <= allowedDist){
           const chosenX = Number(Array.isArray(ds?.data) ? ds.data[index]?.x : rawX);
           bestDist = dist;
-          chosen = {datasetIndex, index, xValue:chosenX};
+          chosen = {datasetIndex, index, xValue:chosenX, _maxDist:allowedDist};
         }
       }
     }
-    if(!chosen || bestDist > maxDist || !Number.isFinite(Number(chosen.xValue))){
+    if(!chosen || bestDist > (Number(chosen._maxDist) || maxDist) || !Number.isFinite(Number(chosen.xValue))){
       clearChartTooltipFromPointer();
       return false;
     }
@@ -30692,6 +30716,14 @@ window.addEventListener("load", ()=>{
   document.getElementById("chart")?.addEventListener("click", (e)=>{
     updateChartTooltipFromPointerEvent(e);
   });
+  document.addEventListener("pointerdown", (e)=>{
+    const chartCanvas = document.getElementById("chart");
+    if(chartCanvas && e.target !== chartCanvas) clearChartTooltipFromPointer();
+  }, true);
+  document.addEventListener("touchstart", (e)=>{
+    const chartCanvas = document.getElementById("chart");
+    if(chartCanvas && e.target !== chartCanvas) clearChartTooltipFromPointer();
+  }, {capture:true, passive:true});
   document.getElementById("chart")?.addEventListener("dblclick", (e)=>{
     if(e.target !== e.currentTarget) return;
     e.preventDefault();
