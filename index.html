@@ -5253,16 +5253,86 @@ document.addEventListener("scroll", (ev)=>{
 </style>
 
 
-<!-- ===== v1116: test 16px font-size only for deposit amount/rate inputs ===== -->
+
+
+<!-- ===== v1117: mobile custom numeric keypad trial for deposit amount/rate only ===== -->
 <style>
-  .deposit-table input[id^="dep"][id$="_amount"],
-  .deposit-table input[id^="dep"][id$="_rate"]{
-    font-size:16px !important;
+  .custom-numeric-keypad{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:1600;
+    display:none;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+    background:rgba(248,250,252,.98);
+    border-top:1px solid #cbd5e1;
+    box-shadow:0 -6px 18px rgba(15,23,42,.14);
+    -webkit-user-select:none;
+    user-select:none;
+    touch-action:manipulation;
+  }
+  .custom-numeric-keypad.show{display:block;}
+  .custom-numeric-keypad-grid{
+    display:grid;
+    grid-template-columns:repeat(8, minmax(0, 1fr));
+    gap:4px;
+    max-width:720px;
+    margin:0 auto;
+  }
+  .custom-numeric-keypad button{
+    min-width:0;
+    height:38px;
+    padding:0;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    background:#fff;
+    color:#0f172a;
+    font-size:16px;
+    font-weight:700;
+    line-height:1;
+    box-shadow:0 1px 2px rgba(15,23,42,.06);
+    touch-action:manipulation;
+  }
+  .custom-numeric-keypad button:active{background:#eaf2ff;}
+  .custom-numeric-keypad button[data-keypad-action="done"]{
+    font-size:13px;
+    color:#1d4ed8;
+  }
+  .custom-numeric-keypad button:disabled{
+    opacity:.42;
+    background:#f1f5f9;
+    color:#94a3b8;
+    box-shadow:none;
+  }
+  @media (min-width:901px) and (pointer:fine){
+    .custom-numeric-keypad{display:none !important;}
   }
 </style>
 
 </head>
 <body>
+<div id="customNumericKeypad" class="custom-numeric-keypad" aria-hidden="true">
+  <div class="custom-numeric-keypad-grid">
+    <button type="button" data-keypad-action="prev" aria-label="前の入力欄へ">&lt;</button>
+    <button type="button" data-keypad-value="1">1</button>
+    <button type="button" data-keypad-value="2">2</button>
+    <button type="button" data-keypad-value="3">3</button>
+    <button type="button" data-keypad-value="4">4</button>
+    <button type="button" data-keypad-value="5">5</button>
+    <button type="button" data-keypad-action="sign">±</button>
+    <button type="button" data-keypad-action="backspace" aria-label="1文字削除">←</button>
+    <button type="button" data-keypad-action="next" aria-label="次の入力欄へ">&gt;</button>
+    <button type="button" data-keypad-value="6">6</button>
+    <button type="button" data-keypad-value="7">7</button>
+    <button type="button" data-keypad-value="8">8</button>
+    <button type="button" data-keypad-value="9">9</button>
+    <button type="button" data-keypad-value="0">0</button>
+    <button type="button" data-keypad-value=".">.</button>
+    <button type="button" data-keypad-action="done">完了</button>
+  </div>
+</div>
+
 <div class="page">
   <div id="appHero">
     <div class="app-hero-brand">
@@ -11102,7 +11172,178 @@ function setAllInputs(data){
   refreshRowLabelTexts();
   syncAllBirthDateDerivedFields();
   syncLoanBuyFieldsFromYearMonth();
+
+
+/* ===== v1117: mobile custom numeric keypad trial for deposit amount/rate only ===== */
+const CUSTOM_NUMERIC_KEYPAD_DEPOSIT_SELECTOR = '.deposit-table input[id^="dep"][id$="_amount"], .deposit-table input[id^="dep"][id$="_rate"]';
+let customNumericKeypadTarget = null;
+function isTouchCustomNumericKeypadMode(){
+  return !!(window.matchMedia && window.matchMedia('(max-width:900px), (pointer:coarse)').matches);
+}
+function isCustomNumericKeypadDepositInput(el){
+  return !!(el instanceof HTMLInputElement && el.matches(CUSTOM_NUMERIC_KEYPAD_DEPOSIT_SELECTOR));
+}
+function getCustomNumericKeypad(){
+  return document.getElementById('customNumericKeypad');
+}
+function getCustomNumericKeypadInputs(){
+  return Array.from(document.querySelectorAll(CUSTOM_NUMERIC_KEYPAD_DEPOSIT_SELECTOR)).filter(el=>!el.disabled && el.offsetParent !== null);
+}
+function setCustomNumericInputReadonlyState(){
+  document.querySelectorAll(CUSTOM_NUMERIC_KEYPAD_DEPOSIT_SELECTOR).forEach(el=>{
+    if(!(el instanceof HTMLInputElement)) return;
+    if(isTouchCustomNumericKeypadMode()){
+      el.readOnly = true;
+      el.setAttribute('aria-readonly', 'false');
+    }else if(el.dataset.customKeypadReadonly === '1'){
+      el.readOnly = false;
+      delete el.dataset.customKeypadReadonly;
+      el.removeAttribute('aria-readonly');
+    }
+  });
+}
+function openCustomNumericKeypadFor(el){
+  if(!isTouchCustomNumericKeypadMode() || !isCustomNumericKeypadDepositInput(el)) return false;
+  setCustomNumericInputReadonlyState();
+  el.readOnly = true;
+  el.dataset.customKeypadReadonly = '1';
+  customNumericKeypadTarget = el;
+  activeNumericInput = el;
+  const keypad = getCustomNumericKeypad();
+  if(keypad){
+    keypad.classList.add('show');
+    keypad.setAttribute('aria-hidden', 'false');
+  }
+  try{ el.focus({preventScroll:true}); }catch(_e){ try{ el.focus(); }catch(_e2){} }
+  try{ selectAllIfActive(el); }catch(_e){}
+  updateCustomNumericKeypadButtonState();
+  return true;
+}
+function closeCustomNumericKeypad(){
+  const el = customNumericKeypadTarget;
+  if(el instanceof HTMLInputElement){
+    formatNumericInputDisplay(el, true);
+    el.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+  customNumericKeypadTarget = null;
+  const keypad = getCustomNumericKeypad();
+  if(keypad){
+    keypad.classList.remove('show');
+    keypad.setAttribute('aria-hidden', 'true');
+  }
+}
+function customKeypadRawSelection(el){
+  const value = String(el.value ?? '');
+  const start = typeof el.selectionStart === 'number' ? el.selectionStart : value.length;
+  const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : start;
+  return {
+    startRaw:getNumericRawIndex(value, Math.min(start, end)),
+    endRaw:getNumericRawIndex(value, Math.max(start, end))
+  };
+}
+function setCustomKeypadRawValue(el, raw, caretRaw){
+  const oldDisplay = String(el.value ?? '');
+  el.value = raw;
+  formatNumericInputDisplay(el, false);
+  const caret = getFormattedCaretPos(String(el.value ?? ''), Math.max(0, caretRaw));
+  try{ el.setSelectionRange(caret, caret); }catch(_e){}
+  if(String(el.value ?? '') !== oldDisplay || raw === ''){
+    el.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+}
+function pressCustomNumericKeypadValue(value){
+  const el = customNumericKeypadTarget;
+  if(!isCustomNumericKeypadDepositInput(el)) return;
+  const isRate = /_rate$/.test(el.id || '');
+  const allowDecimal = isRate;
+  const allowSign = false;
+  let raw = sanitizeNumericText(el.value, true);
+  const sel = customKeypadRawSelection(el);
+  if(value === '.' && (!allowDecimal || raw.includes('.'))) return;
+  if(value === '-' && !allowSign) return;
+  const before = raw.slice(0, sel.startRaw);
+  const after = raw.slice(sel.endRaw);
+  let next = before + value + after;
+  if(!allowDecimal) next = next.replace(/\./g, '');
+  if(!allowSign) next = next.replace(/-/g, '');
+  setCustomKeypadRawValue(el, next, before.length + value.length);
+}
+function pressCustomNumericKeypadBackspace(){
+  const el = customNumericKeypadTarget;
+  if(!isCustomNumericKeypadDepositInput(el)) return;
+  const raw = sanitizeNumericText(el.value, true);
+  const sel = customKeypadRawSelection(el);
+  if(sel.startRaw !== sel.endRaw){
+    setCustomKeypadRawValue(el, raw.slice(0, sel.startRaw) + raw.slice(sel.endRaw), sel.startRaw);
+    return;
+  }
+  if(sel.startRaw <= 0) return;
+  setCustomKeypadRawValue(el, raw.slice(0, sel.startRaw - 1) + raw.slice(sel.startRaw), sel.startRaw - 1);
+}
+function moveCustomNumericKeypadTarget(dir){
+  const list = getCustomNumericKeypadInputs();
+  if(!list.length) return;
+  const current = customNumericKeypadTarget;
+  const idx = Math.max(0, list.indexOf(current));
+  const nextIdx = Math.min(list.length - 1, Math.max(0, idx + dir));
+  const next = list[nextIdx];
+  if(next && next !== current){
+    if(current instanceof HTMLInputElement){
+      formatNumericInputDisplay(current, true);
+      current.dispatchEvent(new Event('change', {bubbles:true}));
+    }
+    openCustomNumericKeypadFor(next);
+  }
+}
+function updateCustomNumericKeypadButtonState(){
+  const keypad = getCustomNumericKeypad();
+  if(!keypad) return;
+  const target = customNumericKeypadTarget;
+  const isRate = !!(target && /_rate$/.test(target.id || ''));
+  keypad.querySelector('[data-keypad-value="."]')?.toggleAttribute('disabled', !isRate);
+  keypad.querySelector('[data-keypad-action="sign"]')?.toggleAttribute('disabled', true);
+}
+function handleCustomNumericKeypadPointer(e){
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const value = btn.dataset.keypadValue;
+  const action = btn.dataset.keypadAction;
+  if(value != null){ pressCustomNumericKeypadValue(value); return; }
+  if(action === 'backspace'){ pressCustomNumericKeypadBackspace(); return; }
+  if(action === 'prev'){ moveCustomNumericKeypadTarget(-1); return; }
+  if(action === 'next'){ moveCustomNumericKeypadTarget(1); return; }
+  if(action === 'done'){ closeCustomNumericKeypad(); return; }
+}
+function initCustomNumericKeypadTrial(){
+  setCustomNumericInputReadonlyState();
+  const keypad = getCustomNumericKeypad();
+  keypad?.addEventListener('pointerdown', handleCustomNumericKeypadPointer, {passive:false});
+  keypad?.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
+  document.addEventListener('pointerdown', (e)=>{
+    const target = e.target;
+    if(isCustomNumericKeypadDepositInput(target) && isTouchCustomNumericKeypadMode()){
+      e.preventDefault();
+      e.stopPropagation();
+      openCustomNumericKeypadFor(target);
+      return;
+    }
+    if(customNumericKeypadTarget && !target.closest?.('#customNumericKeypad') && !isCustomNumericKeypadDepositInput(target)){
+      closeCustomNumericKeypad();
+    }
+  }, true);
+  document.addEventListener('focusin', (e)=>{
+    const el = e.target;
+    if(isCustomNumericKeypadDepositInput(el) && isTouchCustomNumericKeypadMode()){
+      openCustomNumericKeypadFor(el);
+    }
+  });
+  window.addEventListener('resize', setCustomNumericInputReadonlyState);
+}
+
   enhanceNumericInputs(document);
+  initCustomNumericKeypadTrial();
   formatAllNumericInputs(document, true);
   const nextContext = {currentAge: currentAgeValue(migrated), baseYear: currentBaseYearValue(migrated)};
   refreshAllTimeDisplays(nextContext, nextContext);
