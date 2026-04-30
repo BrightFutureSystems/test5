@@ -1618,7 +1618,9 @@ document.addEventListener("scroll", (ev)=>{
     .insurance-assist-fields{grid-template-columns:1fr;}
     .monte-settings-fields{grid-template-columns:1fr;}
     .chart-axis-fields{grid-template-columns:1fr;}
-    .chart-axis-fields-3{grid-template-columns:1fr;}
+    .chart-axis-fields-3{grid-template-columns:repeat(2, minmax(0, 1fr));}
+    .chart-axis-fields-3 .chart-axis-spacer{display:none !important;}
+    .chart-axis-fields-3 .chart-axis-auto-field{grid-column:1 / -1;}
 
     .income-curve-modal{width:min(100vw - 12px, 980px);padding:14px 10px 12px;}
     .loan-detail-modal{width:min(100vw - 12px, 920px);padding:14px 10px 12px;}
@@ -6167,7 +6169,7 @@ document.addEventListener("scroll", (ev)=>{
               <div class="chart-axis-field chart-axis-spacer" aria-hidden="true"><label>&nbsp;</label><div class="input-unit"><span class="suffix"> </span></div></div>
               <div class="chart-axis-field"><label for="chartAxisYMin">Y軸 最小</label><div class="input-unit"><input id="chartAxisYMin" type="text" class="moneybox" spellcheck="false" autocomplete="off"><span class="suffix">万円</span></div></div>
               <div class="chart-axis-field"><label for="chartAxisYMax">Y軸 最大</label><div class="input-unit"><input id="chartAxisYMax" type="text" class="moneybox" spellcheck="false" autocomplete="off"><span class="suffix">万円</span></div></div>
-              <div class="chart-axis-field"><label for="chartAxisAutoBtn">&nbsp;</label><button type="button" id="chartAxisAutoBtn">オートスケール</button></div>
+              <div class="chart-axis-field chart-axis-auto-field"><label for="chartAxisAutoBtn">&nbsp;</label><button type="button" id="chartAxisAutoBtn">オートスケール</button></div>
             </div>
           </div>
           <div class="chart-axis-section">
