@@ -5221,6 +5221,19 @@ document.addEventListener("scroll", (ev)=>{
   }
 </style>
 
+
+<!-- ===== v1084: income/expense grouped tooltip and legend ===== -->
+<style>
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title{margin-top:20px !important;padding-top:13px !important;border-top:1px solid rgba(148,163,184,.22);color:#cbd5e1;font-weight:800;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-income{color:#93c5fd;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-section-title.is-expense{color:#fca5a5;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-label-cell,
+  .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-value,
+  .chart-external-tooltip-income-body .chart-external-tooltip-category-title .chart-external-tooltip-pct{color:var(--income-expense-tooltip-category-color, #cbd5e1);}
+  .chart-external-tooltip-income-body .chart-external-tooltip-detail-row .chart-external-tooltip-label-cell{color:#dbe4ef;}
+  .chart-external-tooltip-income-body .chart-external-tooltip-detail-row .chart-external-tooltip-value,.chart-external-tooltip-income-body .chart-external-tooltip-detail-row .chart-external-tooltip-pct{color:#cbd5e1;}
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -7084,6 +7097,14 @@ function buildLegendLineSvgMarkup(color, lineStyle, lineWidth, previewWidth = 50
   const dashAttr = dash ? ` stroke-dasharray="${escapeAttr(dash)}"` : '';
   return `<svg class="chart-line-legend-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true" focusable="false"><line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="${escapeAttr(stroke)}" stroke-width="${normalizedWidth}" stroke-linecap="${linecap}" vector-effect="non-scaling-stroke"${dashAttr}/></svg>`;
 }
+function buildIncomeExpenseCashflowLegendSvgMarkup(previewWidth = 50, lineWidth = 2.5){
+  const width = Math.max(1, Number(previewWidth) || 50);
+  const height = 12;
+  const normalizedWidth = Math.max(1, Math.min(6, Number(lineWidth) || 2.5));
+  const y = height / 2;
+  const mid = width / 2;
+  return `<svg class="chart-line-legend-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true" focusable="false"><line x1="0" y1="${y}" x2="${mid}" y2="${y}" stroke="${escapeAttr(INCOME_EXPENSE_CASHFLOW_COLOR || '#2b8b5f')}" stroke-width="${normalizedWidth}" stroke-linecap="butt" vector-effect="non-scaling-stroke"/><line x1="${mid}" y1="${y}" x2="${width}" y2="${y}" stroke="${escapeAttr(INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR || '#cf616d')}" stroke-width="${normalizedWidth}" stroke-linecap="butt" vector-effect="non-scaling-stroke"/></svg>`;
+}
 function applyOverlayPreviewStyle(previewEl, color, lineStyle, lineWidth){
   if(!previewEl) return;
   previewEl.style.backgroundImage = buildOverlayPreviewSvgDataUrl(color, lineStyle, lineWidth);
@@ -7190,10 +7211,11 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
   return (datasets || []).map(ds=>{
     const next = {...ds};
     if(Number.isFinite(Number(style?._overlayIndex))) next._overlayIndex = Number(style._overlayIndex);
-    if(graphType === 'incomeExpense' && typeof next.label === 'string' && next.label.includes('支出')){
-      next.borderDash = dash.length ? dash.slice() : [6,4];
-      next.borderColor = color;
-      next.borderWidth = lineWidth;
+    if(graphType === 'incomeExpense' && next.type === 'bar'){
+      next.borderColor = 'rgba(0,0,0,0)';
+      next.borderWidth = 0;
+      next.borderDash = [];
+      next._scenarioColor = color;
       return next;
     }
     next.borderColor = color;
@@ -16024,11 +16046,15 @@ function getIncomeForYear(cfg, age, yearIndex, investments, receiptState){
 
   const selfWorkedMonths = getWorkedMonthsForYear(cfg, "self", yearIndex);
   if(selfWorkedMonths > 0) parts.self += selfIncomeCurve.salaryMonth * selfWorkedMonths + selfIncomeCurve.bonusYear * (selfWorkedMonths / 12);
-  parts.pension += getPensionAnnualAmountForYear(cfg, "self", yearIndex);
+  const selfPensionAnnual = getPensionAnnualAmountForYear(cfg, "self", yearIndex);
+  parts.pension += selfPensionAnnual;
+  parts.pensionSelf = (parts.pensionSelf || 0) + selfPensionAnnual;
 
   const spWorkedMonths = getWorkedMonthsForYear(cfg, "sp", yearIndex);
   if(spWorkedMonths > 0) parts.spouse += spIncomeCurve.salaryMonth * spWorkedMonths + spIncomeCurve.bonusYear * (spWorkedMonths / 12);
-  parts.pension += getPensionAnnualAmountForYear(cfg, "sp", yearIndex);
+  const spousePensionAnnual = getPensionAnnualAmountForYear(cfg, "sp", yearIndex);
+  parts.pension += spousePensionAnnual;
+  parts.pensionSpouse = (parts.pensionSpouse || 0) + spousePensionAnnual;
 
   parts.regular = getRegularIncomeForYear(cfg, age, yearIndex);
   parts.extra = getInflatedPointValueForSimulationYear(cfg, cfg.extraIncome, age, cfg.inflRate, yearIndex);
@@ -16067,7 +16093,7 @@ function getExpenseForYear(cfg, age, yearIndex){
       const inflYears = Math.max(0, yearInflYears - buyInflOffset);
       loan = applyInflation(baseAnnual, cfg.infl.loan, cfg.inflRate, inflYears);
     }
-  }else if(h.age > 0 && h.years > 0){
+  }else if(h.age > 0 && (h.years > 0 || h.down > 0)){
     const yearInflYears = getInflationElapsedYears(cfg, yearIndex, age - cfg.age);
     const buyInflOffset = cfg.age <= h.age ? getElapsedYearsBeforeDateParts(cfg, {year:Number(h.buyYear) || 0, month:Number(h.buyMonth) || 1, day:1}, h.age - cfg.age) : 0;
     if(cfg.age <= h.age && age === h.age) down = h.down;
@@ -20155,6 +20181,7 @@ function simulate(cfg, random=false, opts={}){
   const annualEducationCum = compact ? null : [];
   const educationByChildSeries = compact ? null : {};
   const incomePartsSeries = compact ? null : {self:[],spouse:[],pension:[],regular:[],extra:[],childAllowance:[],insurance:[],retirePay:[],interest:[],dividend:[]};
+  const incomePensionPartsSeries = compact ? null : {self:[],spouse:[]};
   const expensePartsSeries = compact ? null : {life:[],rent:[],homeMaint:[],insurance:[],education:[],loan:[],periodic:[],extra:[],social:[],tax:[]};
   const invSeries = compact ? null : {};
   const principalSeries = compact ? null : {};
@@ -20319,6 +20346,8 @@ function simulate(cfg, random=false, opts={}){
       annualEducationCum.push(eduCum);
 
       Object.keys(incomePartsSeries).forEach(k=>incomePartsSeries[k].push(incomeObj.parts[k] || 0));
+      incomePensionPartsSeries.self.push(incomeObj.parts.pensionSelf || 0);
+      incomePensionPartsSeries.spouse.push(incomeObj.parts.pensionSpouse || 0);
       expensePartsSeries.life.push(expenseObj.parts.life || 0);
       expensePartsSeries.rent.push(expenseObj.parts.rent || 0);
       expensePartsSeries.homeMaint.push(expenseObj.parts.homeMaint || 0);
@@ -20372,7 +20401,7 @@ function simulate(cfg, random=false, opts={}){
     labels,totalAssets,totalDeposits,totalInvestments,investmentPrincipalTotal,investmentTaxEstimate,investmentAfterTaxValue,totalSafeAssets,totalLiability,
     annualIncome,annualExpense,annualCashflow,
     annualEducation,annualEducationCum,educationByChildSeries,
-    incomePartsSeries,expensePartsSeries,invSeries,principalSeries,depositSeries,
+    incomePartsSeries,incomePensionPartsSeries,expensePartsSeries,invSeries,principalSeries,depositSeries,
     childNames,invNames,invMeta,yearlyRows,calendarYearWindows,
     depletionAge,retireAsset,totalIncomeSum,totalExpenseSum
   };
@@ -20544,8 +20573,10 @@ function makeBarDataset(label, labels, data, opts={}){
     yAxisID:opts.yAxisID,
     order:opts.order ?? 1,
     borderSkipped:false,
-    barPercentage:0.8,
-    categoryPercentage:0.9
+    barPercentage:opts.barPercentage ?? 0.8,
+    categoryPercentage:opts.categoryPercentage ?? 0.9,
+    barThickness:opts.barThickness,
+    maxBarThickness:opts.maxBarThickness
   };
 }
 
@@ -20626,33 +20657,113 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix=""){
   }
   return datasets;
 }
-function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix=""){
+const INCOME_EXPENSE_CATEGORY_GROUPS = {
+  income:[
+    {key:"work", label:"勤労", color:"#4f8eff", tooltipColor:"#93c5fd", detail:[{key:"self", label:"本人収入"},{key:"spouse", label:"配偶者収入"}]},
+    {key:"pension", label:"年金", color:"#14b8a6", tooltipColor:"#5eead4", detail:[{key:"pensionSelf", label:"本人年金"},{key:"pensionSpouse", label:"配偶者年金"}]},
+    {key:"oneTime", label:"一時", color:"#7a63f6", tooltipColor:"#c4b5fd", detail:[{key:"retirePay", label:"退職金"},{key:"insurance", label:"保険受取"},{key:"extra", label:"臨時収入"}]},
+    {key:"otherIncome", label:"その他", color:"#22a16f", tooltipColor:"#86efac", detail:[{key:"regular", label:"定期収入"},{key:"childAllowance", label:"児童手当"},{key:"interest", label:"利息収入"},{key:"dividend", label:"配当収入"}]}
+  ],
+  expense:[
+    {key:"life", label:"生活", color:"#d95b6a", tooltipColor:"#fca5a5", detail:[{key:"life", label:"生活費"}]},
+    {key:"housing", label:"住宅", color:"#f97316", tooltipColor:"#fdba74", detail:[{key:"rent", label:"家賃"},{key:"homeMaint", label:"持ち家維持費"},{key:"loan", label:"住宅ローン返済・頭金"}]},
+    {key:"education", label:"教育", color:"#f1a43a", tooltipColor:"#facc15", detail:[{key:"education", label:"教育費"}]},
+    {key:"otherExpense", label:"保険・他", color:"#b45309", tooltipColor:"#fbbf24", detail:[{key:"insurance", label:"保険料"},{key:"periodic", label:"定期支出"},{key:"extra", label:"臨時支出"}]},
+    {key:"taxSocial", label:"税・社保", color:"#dc2626", tooltipColor:"#fb7185", detail:[{key:"social", label:"社会保険料"},{key:"tax", label:"税金"}]}
+  ]
+};
+const INCOME_EXPENSE_CASHFLOW_COLOR = "#2b8b5f";
+const INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR = "#cf616d";
+const INCOME_EXPENSE_SINGLE_BAR_ALPHA = 0.38;
+function getIncomeExpenseCategoryByKey(key){
+  const all = [...INCOME_EXPENSE_CATEGORY_GROUPS.income, ...INCOME_EXPENSE_CATEGORY_GROUPS.expense];
+  return all.find(cat=>cat.key === key) || null;
+}
+function getIncomeExpenseCategoryTooltipColor(key){
+  const cat = getIncomeExpenseCategoryByKey(key);
+  return cat?.tooltipColor || cat?.color || "#cbd5e1";
+}
+function getIncomeExpenseCategoryColor(key){
+  const cat = getIncomeExpenseCategoryByKey(key);
+  return cat?.color || "#cbd5e1";
+}
+function sumSeriesByKeys(seriesObj, keys){
+  const source = seriesObj || {};
+  const maxLen = Math.max(0, ...(keys || []).map(k=>Array.isArray(source[k]) ? source[k].length : 0));
+  return Array.from({length:maxLen}, (_,idx)=>(keys || []).reduce((sum,key)=>sum + (Number(source[key]?.[idx]) || 0), 0));
+}
+function getIncomeExpenseCategorySeries(sim, group, category){
+  if(!sim || !category) return [];
+  const detailKeys = (category.detail || []).map(item=>item.key);
+  if(group === "income"){
+    if(category.key === "pension"){
+      if(sim.incomePensionPartsSeries?.self || sim.incomePensionPartsSeries?.spouse) return sumSeriesByKeys(sim.incomePensionPartsSeries, ["self", "spouse"]);
+      return sumSeriesByKeys(sim.incomePartsSeries, ["pension"]);
+    }
+    return sumSeriesByKeys(sim.incomePartsSeries, detailKeys);
+  }
+  return sumSeriesByKeys(sim.expensePartsSeries, detailKeys);
+}
+function shiftSeriesXPoints(labels, data, xOffset){
+  return labels.map((x,i)=>({x:(Number(x) || 0) + (Number(xOffset) || 0), y:data[i]}));
+}
+function getIncomeExpenseOverlayXOffset(overlayIndex, overlayCount){
+  const count = Math.max(1, Number(overlayCount) || 1);
+  if(count <= 1) return 0;
+  const idx = Math.max(0, Number(overlayIndex) || 0);
+  const span = Math.min(0.72, 0.18 * count);
+  return ((idx - (count - 1) / 2) / Math.max(1, count - 1)) * span;
+}
+function makeIncomeExpenseOverlayBarDataset(label, labels, data, color, kind, stackId, xOffset){
+  const ds = makeBarDataset(label, labels, data, {backgroundColor:colorToRgba(color, kind === "income" ? 0.30 : 0.52), borderColor:'rgba(0,0,0,0)', borderWidth:0, stack:stackId, order:1});
+  ds._incomeExpenseOverlayKind = kind;
+  ds._scenarioColor = color;
+  return ds;
+}
+function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
   if(overlay){
-    return [
-      makeLineDataset(`${labelPrefix} 収入`, sim.labels, sim.annualIncome, {borderColor:color, borderWidth:2}),
-      makeLineDataset(`${labelPrefix} 支出`, sim.labels, sim.annualExpense.map(v=>-v), {borderColor:color, borderDash:[6,4], borderWidth:2})
-    ];
+    const stackId = `incomeExpenseOverlay${Number.isFinite(Number(overlayIndex)) ? Number(overlayIndex) : 0}`;
+    const xOffset = getIncomeExpenseOverlayXOffset(overlayIndex, overlayCount);
+    const incomeBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総収入`, sim.labels, sim.annualIncome, color, "income", stackId, xOffset);
+    const expenseBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総支出`, sim.labels, sim.annualExpense.map(v=>-v), color, "expense", stackId, xOffset);
+    const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, sim.annualCashflow, {borderColor:color, backgroundColor:color, borderWidth:2.4, order:0, pointHoverRadius:4});
+    cashflowLine._incomeExpenseOverlayKind = "cashflow";
+    cashflowLine._scenarioColor = color;
+    return [incomeBar, expenseBar, cashflowLine];
   }
   const d = [];
-  Object.entries(INCOME_COLORS).forEach(([k,c])=>{
-    if(!hasAnyVisibleValue(sim.incomePartsSeries[k])) return;
-    d.push(makeBarDataset(
-      {self:"本人給与",spouse:"配偶者給与",pension:"年金",regular:"定期収入",extra:"臨時収入",childAllowance:"児童手当",insurance:"保険受取",retirePay:"退職金",interest:"利息収入",dividend:"配当収入"}[k],
-      sim.labels,
-      sim.incomePartsSeries[k],
-      {backgroundColor:c, stack:"income"}
-    ));
+  INCOME_EXPENSE_CATEGORY_GROUPS.income.forEach(cat=>{
+    const series = getIncomeExpenseCategorySeries(sim, "income", cat);
+    if(!hasAnyVisibleValue(series)) return;
+    const ds = makeBarDataset(cat.label, sim.labels, series, {backgroundColor:colorToRgba(cat.color, INCOME_EXPENSE_SINGLE_BAR_ALPHA), borderColor:'rgba(0,0,0,0)', borderWidth:0, stack:"incomeExpense", order:1});
+    ds._incomeExpenseGroup = "income";
+    ds._incomeExpenseCategory = cat.key;
+    d.push(ds);
   });
-  Object.entries(EXPENSE_COLORS).forEach(([k,c])=>{
-    const expenseSeries = (sim.expensePartsSeries[k] || []).map(v=>-v);
-    if(!hasAnyVisibleValue(expenseSeries)) return;
-    d.push(makeBarDataset(
-      {life:"生活費",rent:"家賃",homeMaint:"持ち家維持費",insurance:"保険料",education:"教育費",loan:"住宅ローン",periodic:"定期支出",extra:"臨時支出",social:"社会保険料",tax:"税金"}[k],
-      sim.labels,
-      expenseSeries,
-      {backgroundColor:c, stack:"expense"}
-    ));
+  INCOME_EXPENSE_CATEGORY_GROUPS.expense.forEach(cat=>{
+    const series = getIncomeExpenseCategorySeries(sim, "expense", cat).map(v=>-v);
+    if(!hasAnyVisibleValue(series)) return;
+    const ds = makeBarDataset(cat.label, sim.labels, series, {backgroundColor:colorToRgba(cat.color, INCOME_EXPENSE_SINGLE_BAR_ALPHA), borderColor:'rgba(0,0,0,0)', borderWidth:0, stack:"incomeExpense", order:1});
+    ds._incomeExpenseGroup = "expense";
+    ds._incomeExpenseCategory = cat.key;
+    d.push(ds);
   });
+  if(hasAnyVisibleValue(sim.annualCashflow || [])){
+    const cashflow = makeLineDataset("年間収支", sim.labels, sim.annualCashflow, {
+      borderColor:INCOME_EXPENSE_CASHFLOW_COLOR,
+      backgroundColor:INCOME_EXPENSE_CASHFLOW_COLOR,
+      borderWidth:2.4,
+      order:0,
+      pointHoverRadius:4,
+      pointBackgroundColor:ctx=>{ const y=Number(ctx.parsed?.y ?? ctx.raw?.y); return y < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR; },
+      pointHoverBackgroundColor:ctx=>{ const y=Number(ctx.parsed?.y ?? ctx.raw?.y); return y < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR; },
+      segment:{borderColor:ctx=>{const y0=Number(ctx.p0.parsed.y), y1=Number(ctx.p1.parsed.y); return (y0 < 0 || y1 < 0) ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR;}}
+    });
+    cashflow.data = buildLinePointsWithZeroCrossings(sim.labels, sim.annualCashflow);
+    cashflow._incomeExpenseGroup = "line";
+    cashflow._incomeExpenseCategory = "cashflow";
+    d.push(cashflow);
+  }
   return d;
 }
 const ASSET_BREAKDOWN_COLORS = {
@@ -20928,7 +21039,7 @@ function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix=""
   if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix, overlayCount);
   if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix);
   if(graphType === "education") return buildEducationDatasets(sim, color, overlay, labelPrefix);
-  if(graphType === "incomeExpense") return buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix);
+  if(graphType === "incomeExpense") return buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix, overlayCount, overlayIndex);
   if(graphType === "assetBreakdown") return buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix, overlayIndex);
   if(graphType === "investment") return buildInvestmentDatasets(sim, color, overlay, labelPrefix);
   return [];
@@ -20943,7 +21054,7 @@ function pluginLines(cfg, sim, monteInfo=null){
       const y = scales.y;
       if(!x || !y) return;
       ctx.save();
-      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && Array.isArray(x.ticks) && x.ticks.length){
+      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && Array.isArray(x.ticks) && x.ticks.length){
         ctx.save();
         ctx.strokeStyle = "rgba(148,163,184,0.22)";
         ctx.lineWidth = 1;
@@ -21501,6 +21612,113 @@ function buildInvestmentBreakdownTooltipHtml(unitSpec, sim, ageValue, chartInsta
   });
   return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct chart-external-tooltip-investment-body">${rows.join("")}</div>`;
 }
+
+function getIncomeExpenseVisibleCategorySet(chartInstance){
+  const visible = new Set();
+  let hasCategoryDataset = false;
+  (chartInstance?.data?.datasets || []).forEach((ds, datasetIndex)=>{
+    if(!ds?._incomeExpenseCategory || !ds?._incomeExpenseGroup || ds._incomeExpenseGroup === "line") return;
+    hasCategoryDataset = true;
+    if(typeof chartInstance.isDatasetVisible === "function" && !chartInstance.isDatasetVisible(datasetIndex)) return;
+    visible.add(String(ds._incomeExpenseCategory));
+  });
+  return hasCategoryDataset ? visible : null;
+}
+function getIncomeExpenseValuesAt(sim, idx){
+  const n = (arr)=>Number(Array.isArray(arr) ? arr[idx] : 0) || 0;
+  return {totalIncome:n(sim?.annualIncome), totalExpense:n(sim?.annualExpense), annualCashflow:n(sim?.annualCashflow)};
+}
+function getIncomeExpenseDetailValue(sim, key, idx){
+  if(key === "pensionSelf") return Number(Array.isArray(sim?.incomePensionPartsSeries?.self) ? sim.incomePensionPartsSeries.self[idx] : 0) || 0;
+  if(key === "pensionSpouse") return Number(Array.isArray(sim?.incomePensionPartsSeries?.spouse) ? sim.incomePensionPartsSeries.spouse[idx] : 0) || 0;
+  if(Object.prototype.hasOwnProperty.call(sim?.incomePartsSeries || {}, key)) return Number(sim.incomePartsSeries[key]?.[idx]) || 0;
+  if(Object.prototype.hasOwnProperty.call(sim?.expensePartsSeries || {}, key)) return Number(sim.expensePartsSeries[key]?.[idx]) || 0;
+  return 0;
+}
+function formatIncomeExpensePct(value, denominator){
+  const den = Math.abs(Number(denominator) || 0);
+  if(den <= 1e-9) return "";
+  const rounded = Math.round((Math.max(0, Math.abs(Number(value) || 0)) / den * 100) * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded.toFixed(0)}%` : `${rounded.toFixed(1)}%`;
+}
+function isIncomeExpenseTooltipNonZero(value, unitSpec){
+  const raw = Math.abs(Number(value) || 0);
+  const divisor = Math.max(1e-9, Number(unitSpec?.divisor) || 1);
+  const scaled = raw / divisor;
+  return (unitSpec?.label || "万円") === "万円" ? Math.round(scaled) !== 0 : Number(scaled.toFixed(2)) !== 0;
+}
+function buildIncomeExpenseTooltipRow({label, value, pct='', color='#e2e8f0', swatch=true, strong=false, categoryKey='', detail=false, signed=false}, unitSpec){
+  const classes = ['chart-external-tooltip-row'];
+  if(strong) classes.push('chart-external-tooltip-strong-row');
+  if(categoryKey) classes.push('chart-external-tooltip-category-title', `is-${categoryKey}`);
+  if(detail) classes.push('chart-external-tooltip-detail-row');
+  const formatted = signed ? formatSignedMainChartTooltipMoney(value, unitSpec, 'incomeExpense') : formatMainChartTooltipMoney(value, unitSpec, 'incomeExpense');
+  const titleColor = categoryKey ? getIncomeExpenseCategoryTooltipColor(categoryKey) : '';
+  const styleAttr = titleColor ? ` style="--income-expense-tooltip-category-color:${escapeAttr(titleColor)}"` : '';
+  return `<div class="${classes.map(escapeAttr).join(' ')}"${styleAttr}><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${swatch ? buildTooltipSwatch(color, true) : buildTooltipSwatch(color, false)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatted)}</span><span class="chart-external-tooltip-pct">${escapeAttr(pct)}</span></div>`;
+}
+function buildIncomeExpenseSectionTitle(label, kind=''){
+  const modifier = kind ? ` is-${escapeAttr(kind)}` : '';
+  return `<div class="chart-external-tooltip-row chart-external-tooltip-section-title${modifier}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value"></span><span class="chart-external-tooltip-pct"></span></div>`;
+}
+function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, chartInstance=null){
+  const entries = (simEntries || []).filter(entry=>entry?.sim);
+  if(!entries.length) return "";
+  const title = getCalendarWindowTooltipTitle(entries[0].sim, ageValue);
+  if(overlay){
+    const maxTooltipEntries = (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 3 : 5;
+    const hiddenScenarios = chartInstance?.$incomeExpenseOverlayHiddenScenarios instanceof Set ? chartInstance.$incomeExpenseOverlayHiddenScenarios : new Set();
+    const hiddenKinds = chartInstance?.$incomeExpenseOverlayHiddenKinds instanceof Set ? chartInstance.$incomeExpenseOverlayHiddenKinds : new Set();
+    const visibleEntries = entries.filter(entry=>!hiddenScenarios.has(Number(entry.overlayIndex))).slice(0, maxTooltipEntries).map(entry=>{ const idx = getNearestSimIndexByAge(entry.sim, ageValue); return {...entry, values:getIncomeExpenseValuesAt(entry.sim, idx)}; });
+    if(!visibleEntries.length) return "";
+    const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join("");
+    const row = (label, key, strong=false, signed=false)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${escapeAttr(label)}</th>${visibleEntries.map(entry=>`<td>${escapeAttr(signed ? formatSignedMainChartTooltipMoney(entry.values[key], unitSpec, 'incomeExpense') : formatMainChartTooltipMoney(entry.values[key], unitSpec, 'incomeExpense'))}</td>`).join("")}</tr>`;
+    const bodyRows = [
+      hiddenKinds.has('income') ? '' : row('総収入','totalIncome',true),
+      hiddenKinds.has('expense') ? '' : row('総支出','totalExpense',true),
+      hiddenKinds.has('cashflow') ? '' : row('年間収支','annualCashflow',true,true)
+    ].join("");
+    if(!bodyRows) return "";
+    return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><table class="chart-external-tooltip-matrix"><thead><tr><th></th>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+  }
+  const sim = entries[0].sim;
+  const idx = getNearestSimIndexByAge(sim, ageValue);
+  if(idx < 0) return "";
+  const values = getIncomeExpenseValuesAt(sim, idx);
+  const visibleCategories = getIncomeExpenseVisibleCategorySet(chartInstance);
+  const rows = [];
+  rows.push(buildIncomeExpenseTooltipRow({label:'総収入', value:values.totalIncome, swatch:false, strong:true}, unitSpec));
+  rows.push(buildIncomeExpenseTooltipRow({label:'総支出', value:values.totalExpense, swatch:false, strong:true}, unitSpec));
+  rows.push(buildIncomeExpenseTooltipRow({label:'年間収支', value:values.annualCashflow, color:(values.annualCashflow < 0 ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR), swatch:true, strong:true, signed:true}, unitSpec));
+  rows.push(buildIncomeExpenseSectionTitle('収入', 'income'));
+  INCOME_EXPENSE_CATEGORY_GROUPS.income.forEach(cat=>{
+    if(visibleCategories && !visibleCategories.has(cat.key)) return;
+    const catValue = getIncomeExpenseCategorySeries(sim, 'income', cat)[idx] || 0;
+    if(!isIncomeExpenseTooltipNonZero(catValue, unitSpec)) return;
+    rows.push(buildIncomeExpenseTooltipRow({label:cat.label, value:catValue, pct:formatIncomeExpensePct(catValue, values.totalIncome), color:cat.color, swatch:true, categoryKey:cat.key}, unitSpec));
+    (cat.detail || []).forEach(detail=>{
+      let value = getIncomeExpenseDetailValue(sim, detail.key, idx);
+      if(cat.key === 'pension' && detail.key === 'pensionSelf' && !sim?.incomePensionPartsSeries) value = catValue;
+      if(cat.key === 'pension' && detail.key === 'pensionSpouse' && !sim?.incomePensionPartsSeries) value = 0;
+      if(!isIncomeExpenseTooltipNonZero(value, unitSpec)) return;
+      rows.push(buildIncomeExpenseTooltipRow({label:detail.label, value, pct:formatIncomeExpensePct(value, values.totalIncome), swatch:false, detail:true}, unitSpec));
+    });
+  });
+  rows.push(buildIncomeExpenseSectionTitle('支出', 'expense'));
+  INCOME_EXPENSE_CATEGORY_GROUPS.expense.forEach(cat=>{
+    if(visibleCategories && !visibleCategories.has(cat.key)) return;
+    const catValue = getIncomeExpenseCategorySeries(sim, 'expense', cat)[idx] || 0;
+    if(!isIncomeExpenseTooltipNonZero(catValue, unitSpec)) return;
+    rows.push(buildIncomeExpenseTooltipRow({label:cat.label, value:catValue, pct:formatIncomeExpensePct(catValue, values.totalExpense), color:cat.color, swatch:true, categoryKey:cat.key}, unitSpec));
+    (cat.detail || []).forEach(detail=>{
+      const value = getIncomeExpenseDetailValue(sim, detail.key, idx);
+      if(!isIncomeExpenseTooltipNonZero(value, unitSpec)) return;
+      rows.push(buildIncomeExpenseTooltipRow({label:detail.label, value, pct:formatIncomeExpensePct(value, values.totalExpense), swatch:false, detail:true}, unitSpec));
+    });
+  });
+  return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct chart-external-tooltip-income-body">${rows.join("")}</div>`;
+}
+
 function positionExternalChartTooltip(tooltipEl, chartInstance, tooltip){
   const canvas = chartInstance.canvas;
   const parent = canvas?.parentElement;
@@ -21555,6 +21773,18 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
     const html = buildInvestmentBreakdownTooltipHtml(unitSpec, simRef, ageValue, chartInstance);
     if(!html){ tooltipEl.hidden = true; return; }
     tooltipEl.innerHTML = html;
+    tooltipEl.hidden = false;
+    positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
+    return;
+  }
+  if(graphType === "incomeExpense"){
+    const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
+    const html = buildIncomeExpenseTooltipHtml(unitSpec, extra.incomeExpenseTooltipEntries || [{name:"", sim:simRef, color:INCOME_EXPENSE_CASHFLOW_COLOR}], ageValue, !!extra.overlay, chartInstance);
+    if(!html){ tooltipEl.hidden = true; tooltipEl.__lastIncomeExpenseTooltipHtml = ''; return; }
+    if(tooltipEl.__lastIncomeExpenseTooltipHtml !== html){
+      tooltipEl.innerHTML = html;
+      tooltipEl.__lastIncomeExpenseTooltipHtml = html;
+    }
     tooltipEl.hidden = false;
     positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
     return;
@@ -21670,7 +21900,7 @@ function getChartLegendState(contextKey){
   const key = String(contextKey || chartLegendLastContextKey || '');
   if(!key) return null;
   if(!chartLegendVisibilityState.has(key)){
-    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null});
+    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null});
   }
   return chartLegendVisibilityState.get(key);
 }
@@ -21688,6 +21918,12 @@ function saveCurrentChartLegendVisibilityState(chartInstance){
     state.assetBreakdownOverlay = {
       hiddenScenarios:Array.from(chartInstance.$assetBreakdownOverlayHiddenScenarios || []),
       hiddenCategories:Array.from(chartInstance.$assetBreakdownOverlayHiddenCategories || [])
+    };
+  }
+  if(chartInstance.$graphType === 'incomeExpense' && chartInstance.$overlayMode){
+    state.incomeExpenseOverlay = {
+      hiddenScenarios:Array.from(chartInstance.$incomeExpenseOverlayHiddenScenarios || []),
+      hiddenKinds:Array.from(chartInstance.$incomeExpenseOverlayHiddenKinds || [])
     };
   }
 }
@@ -21708,6 +21944,13 @@ function restoreChartLegendVisibilityState(chartInstance){
     chartInstance.$assetBreakdownOverlayHiddenScenarios = new Set((state.assetBreakdownOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
     chartInstance.$assetBreakdownOverlayHiddenCategories = new Set((state.assetBreakdownOverlay.hiddenCategories || []).map(v=>String(v || '')).filter(Boolean));
     applyAssetBreakdownOverlayLegendVisibility(chartInstance);
+    chartInstance.update('none');
+    return;
+  }
+  if(chartInstance.$graphType === 'incomeExpense' && chartInstance.$overlayMode && state.incomeExpenseOverlay){
+    chartInstance.$incomeExpenseOverlayHiddenScenarios = new Set((state.incomeExpenseOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
+    chartInstance.$incomeExpenseOverlayHiddenKinds = new Set((state.incomeExpenseOverlay.hiddenKinds || []).map(v=>String(v || '')).filter(Boolean));
+    applyIncomeExpenseOverlayLegendVisibility(chartInstance);
     chartInstance.update('none');
     return;
   }
@@ -21923,9 +22166,80 @@ function renderInvestmentBreakdownLegend(chartInstance, display){
   });
   legendEl.hidden = false;
 }
+
+function getIncomeExpenseOverlayLegendDatasets(chartInstance){
+  const map = new Map();
+  (chartInstance?.data?.datasets || []).forEach(ds=>{
+    if(!Number.isFinite(Number(ds?._overlayIndex))) return;
+    const key = Number(ds._overlayIndex);
+    if(!map.has(key)){
+      const label = String(ds.label || '').replace(/\s+(総収入|総支出|年間収支)$/, '') || `シナリオ${key + 1}`;
+      map.set(key, {overlayIndex:key, label, color:ds._scenarioColor || ds.borderColor || '#64748b'});
+    }
+  });
+  return Array.from(map.values()).sort((a,b)=>a.overlayIndex-b.overlayIndex);
+}
+function ensureIncomeExpenseOverlayLegendState(chartInstance){
+  if(!(chartInstance.$incomeExpenseOverlayHiddenScenarios instanceof Set)) chartInstance.$incomeExpenseOverlayHiddenScenarios = new Set();
+  if(!(chartInstance.$incomeExpenseOverlayHiddenKinds instanceof Set)) chartInstance.$incomeExpenseOverlayHiddenKinds = new Set();
+  return {hiddenScenarios:chartInstance.$incomeExpenseOverlayHiddenScenarios, hiddenKinds:chartInstance.$incomeExpenseOverlayHiddenKinds};
+}
+function applyIncomeExpenseOverlayLegendVisibility(chartInstance){
+  const state = ensureIncomeExpenseOverlayLegendState(chartInstance);
+  (chartInstance?.data?.datasets || []).forEach((ds, datasetIndex)=>{
+    const overlayIndex = Number(ds?._overlayIndex);
+    const kind = String(ds?._incomeExpenseOverlayKind || '');
+    if(!Number.isFinite(overlayIndex) || !kind) return;
+    chartInstance.setDatasetVisibility(datasetIndex, !state.hiddenScenarios.has(overlayIndex) && !state.hiddenKinds.has(kind));
+  });
+}
+function setIncomeExpenseOverlayScenarioVisibility(chartInstance, overlayIndex, visible){ const state=ensureIncomeExpenseOverlayLegendState(chartInstance); visible ? state.hiddenScenarios.delete(Number(overlayIndex)) : state.hiddenScenarios.add(Number(overlayIndex)); applyIncomeExpenseOverlayLegendVisibility(chartInstance); }
+function isIncomeExpenseOverlayScenarioVisible(chartInstance, overlayIndex){ return !ensureIncomeExpenseOverlayLegendState(chartInstance).hiddenScenarios.has(Number(overlayIndex)); }
+function setIncomeExpenseOverlayKindVisibility(chartInstance, kind, visible){ const state=ensureIncomeExpenseOverlayLegendState(chartInstance); visible ? state.hiddenKinds.delete(String(kind)) : state.hiddenKinds.add(String(kind)); applyIncomeExpenseOverlayLegendVisibility(chartInstance); }
+function isIncomeExpenseOverlayKindVisible(chartInstance, kind){ return !ensureIncomeExpenseOverlayLegendState(chartInstance).hiddenKinds.has(String(kind)); }
+function renderIncomeExpenseLegend(chartInstance, display){
+  const legendEl = document.getElementById("chartCustomLegend");
+  if(!legendEl) return;
+  if(!display || !chartInstance?.data?.datasets?.length){ legendEl.hidden = true; legendEl.innerHTML = ""; return; }
+  if(chartInstance?.$overlayMode){
+    ensureIncomeExpenseOverlayLegendState(chartInstance);
+    const scenarioItems = getIncomeExpenseOverlayLegendDatasets(chartInstance);
+    if(!scenarioItems.length){ legendEl.hidden = true; legendEl.innerHTML = ""; return; }
+    const scenarioHtml = scenarioItems.map(item=>{ const visible = isIncomeExpenseOverlayScenarioVisible(chartInstance, item.overlayIndex); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-income-expense-scenario="${item.overlayIndex}" aria-pressed="${visible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(item.color)};border-color:${escapeAttr(item.color)};"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`; }).join("");
+    const kindItems = [
+      {key:'income', label:'総収入', sample:`<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(51,65,85,.30);border-color:rgba(51,65,85,.30);"></span>`},
+      {key:'expense', label:'総支出', sample:`<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(51,65,85,.52);border-color:rgba(51,65,85,.52);"></span>`},
+      {key:'cashflow', label:'年間収支', sample:`<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155', 'solid', 2.5, 50, [])}</span>`}
+    ];
+    const kindHtml = kindItems.map(item=>{ const visible = isIncomeExpenseOverlayKindVisible(chartInstance, item.key); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-income-expense-kind="${escapeAttr(item.key)}" aria-pressed="${visible ? 'true' : 'false'}">${item.sample}<span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`; }).join("");
+    legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div><div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${kindHtml}</div></div></div>`;
+    legendEl.querySelectorAll('[data-income-expense-scenario]').forEach(btn=>btn.addEventListener('click', ()=>{ const overlayIndex=Number(btn.dataset.incomeExpenseScenario); if(!Number.isFinite(overlayIndex)) return; setIncomeExpenseOverlayScenarioVisibility(chartInstance, overlayIndex, !isIncomeExpenseOverlayScenarioVisible(chartInstance, overlayIndex)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance, display); }));
+    legendEl.querySelectorAll('[data-income-expense-kind]').forEach(btn=>btn.addEventListener('click', ()=>{ const kind=String(btn.dataset.incomeExpenseKind || ''); if(!kind) return; setIncomeExpenseOverlayKindVisibility(chartInstance, kind, !isIncomeExpenseOverlayKindVisible(chartInstance, kind)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance, display); }));
+    legendEl.hidden = false;
+    return;
+  }
+  const allDatasets = (chartInstance.data.datasets || []).map((ds, idx)=>({...ds, _datasetIndex:idx}));
+  const makeItem = (ds, forceLine=false)=>{ const line=getLegendLineStyleFromDataset(ds); const datasetIndex=Number(ds._datasetIndex); const visible=chartInstance.isDatasetVisible(datasetIndex); const isLine=forceLine || ds.type === 'line'; const isIncomeExpenseCashflow = ds?._incomeExpenseCategory === 'cashflow'; const lineMarkup = isIncomeExpenseCashflow ? buildIncomeExpenseCashflowLegendSvgMarkup(50, line.width) : buildLegendLineSvgMarkup(line.color, line.style, line.width, 50, line.dash); const sample=isLine ? `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${lineMarkup}</span>` : `<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};"></span>`; return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-dataset-index="${datasetIndex}" aria-pressed="${visible ? 'true' : 'false'}">${sample}<span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`; };
+  const incomeDatasets=allDatasets.filter(ds=>ds._incomeExpenseGroup === 'income' && shouldShowDatasetInLegend(ds));
+  const expenseDatasets=allDatasets.filter(ds=>ds._incomeExpenseGroup === 'expense' && shouldShowDatasetInLegend(ds));
+  const lineDatasets=allDatasets.filter(ds=>ds._incomeExpenseGroup === 'line' && shouldShowDatasetInLegend(ds));
+  const sections=[];
+  if(incomeDatasets.length) sections.push(`<div class="chart-investment-legend-group"><span class="chart-investment-legend-category is-current">収入</span><div class="chart-legend-row chart-investment-legend-items">${incomeDatasets.map(ds=>makeItem(ds)).join('')}</div></div>`);
+  if(expenseDatasets.length) sections.push(`<div class="chart-legend-separator chart-investment-legend-separator" aria-hidden="true"></div><div class="chart-investment-legend-group"><span class="chart-investment-legend-category is-future">支出</span><div class="chart-legend-row chart-investment-legend-items">${expenseDatasets.map(ds=>makeItem(ds)).join('')}</div></div>`);
+  if(lineDatasets.length) sections.push(`<div class="chart-legend-separator chart-investment-legend-separator" aria-hidden="true"></div><div class="chart-investment-reference-legend-group">${lineDatasets.map(ds=>makeItem(ds, true)).join('')}</div>`);
+  if(!sections.length){ legendEl.hidden = true; legendEl.innerHTML = ""; return; }
+  legendEl.innerHTML = `<div class="chart-investment-legend">${sections.join('')}</div>`;
+  legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>btn.addEventListener("click", ()=>{ const datasetIndex=Number(btn.dataset.datasetIndex); if(!Number.isFinite(datasetIndex)) return; const nextVisible=!chartInstance.isDatasetVisible(datasetIndex); chartInstance.setDatasetVisibility(datasetIndex,nextVisible); rememberChartLegendDatasetVisibility(chartInstance,datasetIndex,nextVisible); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance,display); }));
+  legendEl.hidden = false;
+}
+
 function renderCustomChartLegend(chartInstance, display){
   if(chartInstance?.$graphType === "investment"){
     renderInvestmentBreakdownLegend(chartInstance, display);
+    return;
+  }
+  if(chartInstance?.$graphType === "incomeExpense"){
+    renderIncomeExpenseLegend(chartInstance, display);
     return;
   }
   if(chartInstance?.$graphType === "assetBreakdown" && chartInstance?.$overlayMode){
@@ -21982,12 +22296,12 @@ function renderCustomChartLegend(chartInstance, display){
 }
 
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
-  const symmetric = ["cashflow","incomeExpense"].includes(graphType);
+  const symmetric = ["cashflow"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, _graphType:graphType}, symmetric);
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   const rawXMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
   const rawXMax = cfg.xAxisMax;
-  const xPadding = (graphType === "assetBreakdown" || graphType === "investment") ? 0.5 : 0;
+  const xPadding = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? 0.5 : 0;
   const xMin = rawXMin - xPadding;
   const xMax = rawXMax + xPadding;
   const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
@@ -22000,8 +22314,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     responsive:true,
     maintainAspectRatio:false,
     layout:{padding:chartLayoutPadding},
-    interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment") ? false : true)},
-    events: (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment") ? [] : undefined,
+    interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? false : true)},
+    events: (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? [] : undefined,
     plugins:{
       legend:{display:false, labels:{
         usePointStyle:true,
@@ -22036,8 +22350,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
         return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
       }}},
       tooltip:{
-        enabled:!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment"),
-        external:(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
+        enabled:!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"),
+        external:(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
         backgroundColor:"rgba(15,23,42,.94)",
         titleColor:"#f8fafc",
         bodyColor:"#f8fafc",
@@ -22063,7 +22377,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:((graphType === "assetBreakdown" || graphType === "investment") ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
       y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown" || graphType==="investment"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
@@ -22164,7 +22478,7 @@ function draw(){
   const overlay = !!workspaceOverlayModeOn && graphType !== "investment";
   const currentScenario = scenarios[currentTab];
   const overlayEntriesBase = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice() : [];
-  const overlayEntries = overlay ? (graphType === "assetBreakdown" ? overlayEntriesBase : overlayEntriesBase.reverse()) : [];
+  const overlayEntries = overlay ? ((graphType === "assetBreakdown" || graphType === "incomeExpense") ? overlayEntriesBase : overlayEntriesBase.reverse()) : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true}}];
   const overlayVisibleCount = overlay ? Math.max(1, targets.length) : 1;
 
@@ -22178,6 +22492,7 @@ function draw(){
   let firstCfg = null;
   let baseSim = null;
   const assetBreakdownTooltipEntries = [];
+  const incomeExpenseTooltipEntries = [];
 
   targets.forEach((entry, idx)=>{
     const s = entry.scenario || entry;
@@ -22190,13 +22505,16 @@ function draw(){
     if(graphType === "assetBreakdown" || graphType === "investment"){
       assetBreakdownTooltipEntries.push({name:s.name, sim, color:scenarioColor});
     }
+    if(graphType === "incomeExpense"){
+      incomeExpenseTooltipEntries.push({name:s.name, sim, color:scenarioColor, overlayIndex:entry.index ?? idx});
+    }
     const baseDatasets = buildDatasetsByGraphType(sim, graphType, scenarioColor, overlay, s.name, overlayVisibleCount, idx);
     datasets.push(...(overlay ? applyOverlayStyleToDatasets(baseDatasets, {...(entry.style || {}), _overlayIndex:entry.index}, graphType) : baseDatasets));
     const arrays = {
       asset: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
       cashflow: [...getVisibleSeriesValues(sim.labels, sim.annualCashflow, cfg.xAxisMax)],
       education: getVisibleSeriesValues(sim.labels, sim.annualEducation, cfg.xAxisMax),
-      incomeExpense: [...getVisibleSeriesValues(sim.labels, sim.annualIncome, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualExpense.map(v=>-v), cfg.xAxisMax)],
+      incomeExpense: [...getVisibleSeriesValues(sim.labels, sim.annualIncome, cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualExpense.map(v=>-v), cfg.xAxisMax), ...getVisibleSeriesValues(sim.labels, sim.annualCashflow, cfg.xAxisMax)],
       assetBreakdown: getVisibleSeriesValues(sim.labels, sim.totalAssets, cfg.xAxisMax),
       investment: getVisibleSeriesValues(sim.labels, sim.totalInvestments, cfg.xAxisMax)
     };
@@ -22211,13 +22529,13 @@ function draw(){
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
-    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, assetBreakdownTooltipEntries, overlay, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
+    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, assetBreakdownTooltipEntries, incomeExpenseTooltipEntries, overlay, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
     plugins:[pluginLines(firstCfg, baseSim)]
   });
   chart.$graphType = graphType;
   chart.$overlayMode = overlay;
   chart.$legendContextKey = legendContextKey;
-  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment");
+  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense");
   restoreChartLegendVisibilityState(chart);
   renderCustomChartLegend(chart, customLegendDisplay);
 }
@@ -28983,7 +29301,7 @@ function computeChartAxisAutoDefaults(){
   const xMin = Math.max(0, Math.min(120, currentAge));
   const xMax = Math.max(xMin, Math.min(120, Math.max(100, currentAge)));
   const yData = collectVisibleMainChartYValues(xMin, xMax, graphType);
-  const symmetric = ["cashflow","incomeExpense"].includes(graphType);
+  const symmetric = ["cashflow"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
@@ -28993,11 +29311,11 @@ function computeChartAxisGestureOuterBounds(){
   const graphType = document.getElementById("graphType")?.value || "asset";
   const dataXMin = defaults.xMin;
   const dataXMax = defaults.xMax;
-  const displayPad = (graphType === "assetBreakdown" || graphType === "investment") ? 0.5 : 0;
+  const displayPad = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? 0.5 : 0;
   const xMin = dataXMin - displayPad;
   const xMax = dataXMax + displayPad;
   const yData = collectVisibleMainChartYValues(dataXMin, dataXMax, graphType);
-  const symmetric = ["cashflow","incomeExpense"].includes(graphType);
+  const symmetric = ["cashflow"].includes(graphType);
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
@@ -29246,8 +29564,8 @@ function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   const yMin = Number.isFinite(Number(scales.y?.min)) ? Number(scales.y.min) : Number(activeChart.options.scales.y?.min);
   const yMax = Number.isFinite(Number(scales.y?.max)) ? Number(scales.y.max) : Number(activeChart.options.scales.y?.max);
   const graphTypeForAxisState = document.getElementById("graphType")?.value || "asset";
-  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String(graphTypeForAxisState === "assetBreakdown" ? Math.ceil(xMin - 1e-9) : Math.round(xMin));
-  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String(graphTypeForAxisState === "assetBreakdown" ? Math.floor(xMax + 1e-9) : Math.round(xMax));
+  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String((graphTypeForAxisState === "assetBreakdown" || graphTypeForAxisState === "investment" || graphTypeForAxisState === "incomeExpense") ? Math.ceil(xMin - 1e-9) : Math.round(xMin));
+  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String((graphTypeForAxisState === "assetBreakdown" || graphTypeForAxisState === "investment" || graphTypeForAxisState === "incomeExpense") ? Math.floor(xMax + 1e-9) : Math.round(xMax));
   if(Number.isFinite(yMin) && fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
   if(Number.isFinite(yMax) && fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
   if(fixedScaleEl) fixedScaleEl.checked = !!options.lockYScale;
@@ -29320,14 +29638,14 @@ function setupChartAxisZoomInteractions(){
           const rawMaxVal = Math.max(minVal, maxVal);
           let minAge;
           let maxAge;
-          if(graphType === "assetBreakdown" || graphType === "investment"){
+          if(graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"){
             minAge = Math.max(0, Math.ceil(rawMinVal - 1e-9));
             maxAge = Math.min(120, Math.floor(rawMaxVal + 1e-9));
           }else{
             minAge = Math.max(0, Math.round(rawMinVal));
             maxAge = Math.min(120, Math.round(rawMaxVal));
           }
-          const pad = (graphType === "assetBreakdown" || graphType === "investment") ? 0.5 : 0;
+          const pad = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? 0.5 : 0;
           chart.options.scales.x.min = minAge - pad;
           chart.options.scales.x.max = maxAge + pad;
           changed = maxAge > minAge;
@@ -29534,8 +29852,11 @@ function setupChartTouchInteractions(){
     const currMaxX = Number.isFinite(Number(xOptions.max)) ? Number(xOptions.max) : Number(chart.scales.x.max);
     const currMinY = Number.isFinite(Number(yOptions.min)) ? Number(yOptions.min) : Number(chart.scales.y.min);
     const currMaxY = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(chart.scales.y.max);
-    const atGestureOuterX = Math.abs(currMinX - gestureBounds.xMin) <= 0.01 && Math.abs(currMaxX - gestureBounds.xMax) <= 0.01;
-    const atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= 0.01 && Math.abs(currMaxY - gestureBounds.yMax) <= 0.01;
+    const xTol = Math.max(0.02, (Number(gestureBounds.xMax) - Number(gestureBounds.xMin)) * 0.001);
+    const yRange = Math.max(1, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
+    const yTol = Math.max(1, yRange * 0.02);
+    const atGestureOuterX = Math.abs(currMinX - gestureBounds.xMin) <= xTol && Math.abs(currMaxX - gestureBounds.xMax) <= xTol;
+    const atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= yTol && Math.abs(currMaxY - gestureBounds.yMax) <= yTol;
     return !(atGestureOuterX && atGestureOuterY);
   };
   const normalizeMainChartTouchXBounds = (minX, maxX, gestureBounds)=>{
@@ -29552,7 +29873,7 @@ function setupChartTouchInteractions(){
     if(range >= outerRange * 0.985){
       return {min:outerMin, max:outerMax};
     }
-    if(graphType === "assetBreakdown" || graphType === "investment"){
+    if(graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"){
       range = Math.max(1, Math.min(outerRange, range));
     }else{
       range = Math.max(1e-9, Math.min(outerRange, range));
@@ -29776,6 +30097,13 @@ function setupChartTouchInteractions(){
       touchState.lastMoveTime = now;
       const zoomed = !!touchState.zoomed;
       const tooltipHit = !!touchState.tooltipHit;
+      if(!zoomed){
+        if(totalDist >= 2) touchState.tooltipMoved = true;
+        const nextHit = updateMainChartTooltipFromTouch(touch);
+        if(nextHit) touchState.tooltipHit = true;
+        e.preventDefault();
+        return;
+      }
       const shouldPanBecauseNoTooltip = zoomed && !tooltipHit && totalDist >= MIN_TOUCH_MOVE;
       const fastFlick = zoomed && tooltipHit && totalDist >= 12 && stepVelocity >= 0.42;
       const quickDrag = zoomed && tooltipHit && totalDist >= 28 && (now - (touchState.startTime || now)) <= 180;
