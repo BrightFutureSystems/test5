@@ -29537,6 +29537,9 @@ function resetChartAxesToAuto(options = {}){
   const redraw = options.redraw !== false;
   const defaults = computeChartAxisAutoDefaults();
   educationRightAxisOverride = null;
+  if(chart && (document.getElementById("graphType")?.value || "asset") === "incomeExpense"){
+    chart.$incomeExpenseTouchYZoomed = false;
+  }
   const fixedScaleEl = document.getElementById("fixedScale");
   const fixedScaleMinEl = document.getElementById("fixedScaleMin");
   const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
@@ -29884,9 +29887,10 @@ function setupChartTouchInteractions(){
     const yRangeZoomed = yCurrentRange < yOuterRange * 0.985;
     const yPositionZoomed = Math.abs(currMinY - gestureBounds.yMin) > yTol || Math.abs(currMaxY - gestureBounds.yMax) > yTol;
     const xZoomed = xRangeZoomed || xPositionZoomed;
-    // 収入／支出グラフは上下非対称オートスケールのため、y軸の表示位置差だけではズーム扱いにしない。
-    // yレンジそのものが縮んだ場合だけ、スマホドラッグでyパン可能にする。
-    const yZoomed = graphType === "incomeExpense" ? yRangeZoomed : (yRangeZoomed || yPositionZoomed);
+    // 収入／支出グラフは上下非対称オートスケールのため、y軸の数値範囲比較だけでは
+    // 非ズーム状態をyズーム中と誤判定しやすい。スマホのyパンは、ピンチ等で明示的に
+    // y方向のズーム状態に入った記録がある場合だけ許可する。
+    const yZoomed = graphType === "incomeExpense" ? (chart?.$incomeExpenseTouchYZoomed === true && yRangeZoomed) : (yRangeZoomed || yPositionZoomed);
     return {x:xZoomed, y:yZoomed, any:xZoomed || yZoomed};
   };
   const isZoomedFromDefaults = ()=>getTouchZoomAxesFromDefaults().any;
@@ -29930,6 +29934,11 @@ function setupChartTouchInteractions(){
     if(nextY){
       chart.options.scales.y.min = nextY.min;
       chart.options.scales.y.max = nextY.max;
+      if((document.getElementById("graphType")?.value || "asset") === "incomeExpense"){
+        const outerRangeY = Math.max(1e-9, Number(gestureBounds?.yMax) - Number(gestureBounds?.yMin));
+        const nextRangeY = Math.abs(Number(nextY.max) - Number(nextY.min));
+        chart.$incomeExpenseTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
+      }
     }
     syncInvestmentReferenceYAxisFromMain(chart);
     chart.update('none');
