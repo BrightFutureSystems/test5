@@ -29863,8 +29863,8 @@ function setupChartTouchInteractions(){
     if(!area) return false;
     return pt.x >= area.left && pt.x <= area.right && pt.y >= area.top && pt.y <= area.bottom;
   };
-  const isZoomedFromDefaults = ()=>{
-    if(!chart?.scales?.x || !chart?.scales?.y) return false;
+  const getTouchZoomAxesFromDefaults = ()=>{
+    if(!chart?.scales?.x || !chart?.scales?.y) return {x:false, y:false, any:false};
     const gestureBounds = computeChartAxisGestureOuterBounds();
     const xOptions = chart.options?.scales?.x || {};
     const yOptions = chart.options?.scales?.y || {};
@@ -29873,19 +29873,23 @@ function setupChartTouchInteractions(){
     const currMinY = Number.isFinite(Number(yOptions.min)) ? Number(yOptions.min) : Number(chart.scales.y.min);
     const currMaxY = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(chart.scales.y.max);
     const graphType = document.getElementById("graphType")?.value || "asset";
-    const xTol = Math.max(0.02, (Number(gestureBounds.xMax) - Number(gestureBounds.xMin)) * 0.001);
-    const yOuterRange = Math.max(1, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
+    const xOuterRange = Math.max(1e-9, Math.abs(Number(gestureBounds.xMax) - Number(gestureBounds.xMin)) || 1);
+    const yOuterRange = Math.max(1e-9, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
+    const xCurrentRange = Math.abs(currMaxX - currMinX);
     const yCurrentRange = Math.abs(currMaxY - currMinY);
+    const xTol = Math.max(0.02, xOuterRange * 0.001);
     const yTol = Math.max(1, yOuterRange * 0.02);
-    const atGestureOuterX = Math.abs(currMinX - gestureBounds.xMin) <= xTol && Math.abs(currMaxX - gestureBounds.xMax) <= xTol;
-    let atGestureOuterY = Math.abs(currMinY - gestureBounds.yMin) <= yTol && Math.abs(currMaxY - gestureBounds.yMax) <= yTol;
-    if(graphType === "incomeExpense"){
-      // 収入／支出グラフは自動スケールが上下非対称になり得るため、初期表示相当で
-      // y軸位置だけが微妙にずれてもズーム扱いにしない。レンジが実際に縮んだ時だけyズーム扱いにする。
-      atGestureOuterY = yCurrentRange >= yOuterRange * 0.985;
-    }
-    return !(atGestureOuterX && atGestureOuterY);
+    const xRangeZoomed = xCurrentRange < xOuterRange * 0.985;
+    const xPositionZoomed = Math.abs(currMinX - gestureBounds.xMin) > xTol || Math.abs(currMaxX - gestureBounds.xMax) > xTol;
+    const yRangeZoomed = yCurrentRange < yOuterRange * 0.985;
+    const yPositionZoomed = Math.abs(currMinY - gestureBounds.yMin) > yTol || Math.abs(currMaxY - gestureBounds.yMax) > yTol;
+    const xZoomed = xRangeZoomed || xPositionZoomed;
+    // 収入／支出グラフは上下非対称オートスケールのため、y軸の表示位置差だけではズーム扱いにしない。
+    // yレンジそのものが縮んだ場合だけ、スマホドラッグでyパン可能にする。
+    const yZoomed = graphType === "incomeExpense" ? yRangeZoomed : (yRangeZoomed || yPositionZoomed);
+    return {x:xZoomed, y:yZoomed, any:xZoomed || yZoomed};
   };
+  const isZoomedFromDefaults = ()=>getTouchZoomAxesFromDefaults().any;
   const normalizeMainChartTouchXBounds = (minX, maxX, gestureBounds)=>{
     let nextMin = Number(minX);
     let nextMax = Number(maxX);
@@ -30012,7 +30016,8 @@ function setupChartTouchInteractions(){
         chart.update("none");
         return;
       }
-      const zoomed = isZoomedFromDefaults();
+      const zoomAxes = getTouchZoomAxesFromDefaults();
+      const zoomed = !!zoomAxes.any;
       const tooltipHit = updateMainChartTooltipFromTouch(touch);
       const now = Date.now();
       touchState = {
@@ -30032,6 +30037,8 @@ function setupChartTouchInteractions(){
         moved:false,
         tooltipMoved:false,
         zoomed,
+        xZoomed: !!zoomAxes.x,
+        yZoomed: !!zoomAxes.y,
         tooltipHit
       };
       e.preventDefault();
@@ -30160,6 +30167,8 @@ function setupChartTouchInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        xZoomed: !!touchState.xZoomed,
+        yZoomed: !!touchState.yZoomed,
         moved:false
       };
       e.preventDefault();
@@ -30187,15 +30196,19 @@ function setupChartTouchInteractions(){
       const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
       let newMinY = yScale.getValueForPixel(startMinYPx - dy);
       let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
-      const nextX = normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds);
+      const nextX = touchState.xZoomed ? normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds) : null;
       let nextY = null;
-      if(Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
+      if(touchState.yZoomed && Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
         const rangeY = newMaxY - newMinY;
         if(rangeY <= (gestureBounds.yMax - gestureBounds.yMin)){
           if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
           if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
         }
         nextY = {min:Math.min(newMinY, newMaxY), max:Math.max(newMinY, newMaxY)};
+      }
+      if(!nextX && !nextY){
+        e.preventDefault();
+        return;
       }
       applyMainChartTouchUpdate(gestureBounds, nextX, nextY);
       e.preventDefault();
