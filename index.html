@@ -7239,10 +7239,12 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
   return (datasets || []).map(ds=>{
     const next = {...ds};
     if(Number.isFinite(Number(style?._overlayIndex))) next._overlayIndex = Number(style._overlayIndex);
-    if(graphType === 'incomeExpense' && next.type === 'bar'){
+    if((graphType === 'incomeExpense' || graphType === 'education') && next.type === 'bar'){
       next.borderColor = 'rgba(0,0,0,0)';
       next.borderWidth = 0;
       next.borderDash = [];
+      next.hoverBorderColor = 'rgba(0,0,0,0)';
+      next.hoverBorderWidth = 0;
       next._scenarioColor = color;
       return next;
     }
@@ -7257,6 +7259,12 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
       return next;
     }
     if(next.type === 'line'){
+      if(graphType === 'education' && next._educationCumLine){
+        next.pointBorderColor = '#fff';
+        next.pointHoverBorderColor = '#fff';
+        next.pointBorderWidth = 1.5;
+        next.pointHoverBorderWidth = 2;
+      }
       if(graphType === 'asset' || graphType === 'cashflow'){
         if(style?.fillArea === false){
           next.backgroundColor = 'rgba(0,0,0,0)';
@@ -20795,27 +20803,121 @@ function buildCashflowDatasets(sim, color, overlay, labelPrefix="", overlayCount
     }
   }];
 }
-function buildEducationDatasets(sim, color, overlay, labelPrefix=""){
-  if(overlay){
-    return [makeLineDataset(labelPrefix || "教育費", sim.labels, sim.annualEducation, {
-      borderColor:color, borderWidth:2, backgroundColor:color+"22"
-    })];
+const EDUCATION_SINGLE_CHILD_ALPHA = 0.44;
+const EDUCATION_OVERLAY_CHILD_ALPHA = [0.24, 0.38, 0.54, 0.68, 0.80];
+function getEducationChildAlpha(childIndex, overlay=false){
+  const idx = Math.max(0, Number(childIndex || 1) - 1);
+  if(overlay) return EDUCATION_OVERLAY_CHILD_ALPHA[idx % EDUCATION_OVERLAY_CHILD_ALPHA.length];
+  return Math.max(0.26, Math.min(0.62, EDUCATION_SINGLE_CHILD_ALPHA + idx * 0.045));
+}
+function getEducationChildDisplayName(sim, childIndex){
+  return sim?.childNames?.[childIndex] || `子供${childIndex}`;
+}
+function getEducationTooltipGradeLabel(cfg, childIndex, yearIndex){
+  const child = (cfg?.children || []).find(c=>Number(c?.idx) === Number(childIndex));
+  if(!child) return '';
+  const childEdu = cfg?.educationMatrix?.[childIndex] || {};
+  const detail = normalizeEducationDetail(childEdu.detail || null);
+  const simStartParts = getSimulationYearStartParts(cfg, yearIndex);
+  const simEndExclusiveParts = getSimulationYearEndExclusiveParts(cfg, yearIndex);
+  if(!simStartParts || !simEndExclusiveParts) return '';
+  for(let grade=-5; grade<=30; grade++){
+    const period = getSchoolYearPeriodForGrade(child, grade);
+    if(!period) continue;
+    const overlap = getOverlapPeriodParts(simStartParts, simEndExclusiveParts, period.start, period.endExclusive);
+    if(!overlap) continue;
+    const labels = getEducationStageLabelsForGrade(grade, childEdu, detail).filter(Boolean);
+    if(labels.length) return labels[0];
+    const fallback = getGradeLabelFromValue(grade);
+    if(fallback) return fallback;
   }
-  const bars = Array.from({length:dynamicCounts.child}, (_,i)=>i+1)
-    .filter((idx)=>hasAnyVisibleValue(sim.educationByChildSeries[idx] || []))
-    .map((idx)=>makeBarDataset(sim.childNames?.[idx] || `子${idx}`, sim.labels, sim.educationByChildSeries[idx], {
-      backgroundColor:TAB_COLORS[(idx-1)%TAB_COLORS.length],
-      stack:"edu",
-      order:1
-    }));
+  return '';
+}
+function buildEducationChildLabelForTooltip(entry, childIndex, yearIndex){
+  const name = getEducationChildDisplayName(entry?.sim, childIndex);
+  const grade = getEducationTooltipGradeLabel(entry?.cfg, childIndex, yearIndex);
+  return grade ? `${name}（${grade}）` : name;
+}
+function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
+  const childIndices = Array.from({length:dynamicCounts.child}, (_,i)=>i+1)
+    .filter((idx)=>hasAnyVisibleValue(sim.educationByChildSeries?.[idx] || []));
+  if(overlay){
+    const scenarioKey = Number.isFinite(Number(overlayIndex)) ? Number(overlayIndex) : 0;
+    const datasets = childIndices.map((idx)=>{
+      const alpha = getEducationChildAlpha(idx, true);
+      const childLabel = getEducationChildDisplayName(sim, idx);
+      const ds = makeBarDataset(`${labelPrefix || 'シナリオ'} ${childLabel}`, sim.labels, sim.educationByChildSeries[idx], {
+        backgroundColor:colorToRgba(color, alpha),
+        borderColor:'rgba(0,0,0,0)',
+        borderWidth:0,
+        stack:`edu-overlay-${scenarioKey}`,
+        order:12
+      });
+      ds._overlayIndex = scenarioKey;
+      ds._scenarioColor = color;
+      ds._educationChildIndex = idx;
+      ds._educationSeriesKind = 'child';
+      return ds;
+    });
+    if(hasAnyVisibleValue(sim.annualEducationCum)){
+      const line = makeLineDataset(`${labelPrefix || 'シナリオ'} 教育費累計`, sim.labels, sim.annualEducationCum, {
+        borderColor:color,
+        backgroundColor:color,
+        borderWidth:2,
+        yAxisID:'y1',
+        order:0,
+        pointRadius:0,
+        pointHoverRadius:4,
+        pointBackgroundColor:color,
+        pointBorderColor:'#fff',
+        pointBorderWidth:1.5,
+        pointHoverBackgroundColor:color,
+        pointHoverBorderColor:'#fff',
+        pointHoverBorderWidth:2
+      });
+      line._overlayIndex = scenarioKey;
+      line._scenarioColor = color;
+      line._educationCumLine = true;
+      line._educationSeriesKind = 'cum';
+      datasets.push(line);
+    }
+    return datasets;
+  }
+  const bars = childIndices
+    .map((idx)=>makeBarDataset(getEducationChildDisplayName(sim, idx), sim.labels, sim.educationByChildSeries[idx], {
+      backgroundColor:colorToRgba(TAB_COLORS[(idx-1)%TAB_COLORS.length], getEducationChildAlpha(idx, false)),
+      borderColor:'rgba(0,0,0,0)',
+      borderWidth:0,
+      stack:'edu',
+      order:12,
+      barPercentage:0.8,
+      categoryPercentage:0.9
+    }))
+    .map((ds, i)=>({...ds, _educationChildIndex:childIndices[i], _educationSeriesKind:'child'}));
   const datasets = [...bars];
   if(hasAnyVisibleValue(sim.annualEducationCum)){
-    datasets.push(makeLineDataset("教育費累計", sim.labels, sim.annualEducationCum, {
-      borderColor:"#111827", borderWidth:2, yAxisID:"y1", order:20
-    }));
+    const line = makeLineDataset('教育費累計', sim.labels, sim.annualEducationCum, {
+      borderColor:'#334155',
+      backgroundColor:'#334155',
+      borderWidth:2.2,
+      yAxisID:'y1',
+      order:0,
+      pointRadius:0,
+      pointHoverRadius:4,
+      pointBackgroundColor:'#334155',
+      pointBorderColor:'#fff',
+      pointBorderWidth:1.5,
+      pointHoverBackgroundColor:'#334155',
+      pointHoverBorderColor:'#fff',
+      pointHoverBorderWidth:2
+    });
+    line._educationCumLine = true;
+    line._educationSeriesKind = 'cum';
+    datasets.push(line);
   }
   return datasets;
 }
+
 const INCOME_EXPENSE_CATEGORY_GROUPS = {
   income:[
     {key:"work", label:"勤労", color:"#4f8eff", tooltipColor:"#93c5fd", detail:[{key:"self", label:"本人収入"},{key:"spouse", label:"配偶者収入"}]},
@@ -21225,7 +21327,7 @@ function drawCommonZeroLine(ctx, xScale, yScale){
 function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
   if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix, overlayCount);
   if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix, overlayCount);
-  if(graphType === "education") return buildEducationDatasets(sim, color, overlay, labelPrefix);
+  if(graphType === "education") return buildEducationDatasets(sim, color, overlay, labelPrefix, overlayCount, overlayIndex);
   if(graphType === "incomeExpense") return buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix, overlayCount, overlayIndex);
   if(graphType === "assetBreakdown") return buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix, overlayIndex);
   if(graphType === "investment") return buildInvestmentDatasets(sim, color, overlay, labelPrefix);
@@ -21309,10 +21411,7 @@ function isCompactLifeGuideLabel(){
   }
 }
 function formatLifeGuideLabelForChart(type, age, overlay=false){
-  const ageText = `${age}歳`;
-  if(isCompactLifeGuideLabel()) return ageText;
-  if(type === "expected") return `想定寿命：${ageText}`;
-  return `資産寿命：${ageText}`;
+  return `${age}歳`;
 }
 function buildLifeGuideLegendSample(key, overlay=false){
   const color = key === "expected" ? "#5b7c99" : (overlay ? colorToRgba("#1f2937", 0.55) : "#1f2937");
@@ -21323,6 +21422,12 @@ function buildLifeGuideLegendSample(key, overlay=false){
 function buildLifeGuideLegendHtml(chartInstance){
   if(!shouldShowLifeGuideLegend(chartInstance)) return "";
   const overlay = !!chartInstance?.$overlayMode;
+  const graphType = chartInstance?.$graphType || document.getElementById("graphType")?.value || "";
+  const hasDatasetLegendItems = !!(chartInstance?.data?.datasets || [])
+    .map((ds, idx)=>({...ds, _datasetIndex:idx}))
+    .filter(shouldShowDatasetInLegend)
+    .length;
+  const suppressSeparator = !overlay && (graphType === "asset" || graphType === "cashflow" || (graphType === "education" && !hasDatasetLegendItems));
   const items = overlay
     ? [{key:"asset", label:"資産寿命"}]
     : [{key:"expected", label:"想定寿命"}, {key:"asset", label:"資産寿命"}];
@@ -21330,7 +21435,8 @@ function buildLifeGuideLegendHtml(chartInstance){
     const visible = isLifeGuideVisible(chartInstance, item.key);
     return `<button type="button" class="chart-line-legend-item${visible ? "" : " is-hidden"}" data-life-guide="${escapeAttr(item.key)}" aria-pressed="${visible ? "true" : "false"}">${buildLifeGuideLegendSample(item.key, overlay)}<span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
   }).join("");
-  return `<div class="chart-legend-category-block chart-life-guide-legend-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row chart-life-guide-legend-row">${buttons}</div></div>`;
+  const separator = suppressSeparator ? "" : `<div class="chart-legend-separator" aria-hidden="true"></div>`;
+  return `<div class="chart-legend-category-block chart-life-guide-legend-block">${separator}<div class="chart-legend-row chart-legend-category-row chart-life-guide-legend-row">${buttons}</div></div>`;
 }
 function attachLifeGuideLegendHandlers(chartInstance, display){
   const legendEl = document.getElementById("chartCustomLegend");
@@ -21486,7 +21592,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
               ctx.stroke();
               ctx.restore();
             }
-            drawVerticalGuideLabel(pxAssetLife, formatLifeGuideLabelForChart("asset", assetLifeLabelAge, true), labelColor, "top", {
+            drawVerticalGuideLabel(pxAssetLife, formatLifeGuideLabelForChart("asset", assetLifeLabelAge, true), labelColor, "bottom", {
               labelStroke: colorToRgba(rawColor, 0.24),
               stackIndex: idx
             });
@@ -21510,14 +21616,8 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
           }
         }
 
-        const pxLife = x.getPixelForValue(cfg.lifeExpect);
-        if(isLifeGuideVisible(chart, "expected")){
-          drawVerticalGuideLabel(pxLife, formatLifeGuideLabelForChart("expected", cfg.lifeExpect, false), "#5b7c99", "bottom", {
-            labelStroke: "rgba(91,124,153,0.30)"
-          });
-        }
         if(isLifeGuideVisible(chart, "asset") && pxD != null && assetLifeLabelAge != null){
-          drawVerticalGuideLabel(pxD, formatLifeGuideLabelForChart("asset", assetLifeLabelAge, false), "#1f2937", "top", {
+          drawVerticalGuideLabel(pxD, formatLifeGuideLabelForChart("asset", assetLifeLabelAge, false), "#1f2937", "bottom", {
             labelStroke: "rgba(31,41,55,0.22)"
           });
         }
@@ -21793,11 +21893,12 @@ function hideRightEdgeTickLabelAtSource(scale){
 function formatMainChartXAxisTick(scale, sim, value, index, ticks){
   return getCalendarWindowTickLabel(sim, value);
 }
-function getMainChartYAxisUnitSpec(values){
+function getMainChartYAxisUnitSpec(values, opts={}){
   const nums = (values || []).filter(v=>Number.isFinite(v));
   const absMax = nums.length ? Math.max(...nums.map(v=>Math.abs(Number(v) || 0))) : 0;
   if(absMax >= 100000000) return {threshold:100000000, divisor:100000000, label:"兆円"};
   if(absMax >= 10000) return {threshold:10000, divisor:10000, label:"億円"};
+  if(opts && opts.includeSenman && absMax >= 1000) return {threshold:1000, divisor:1000, label:"千万円"};
   return {threshold:0, divisor:1, label:"万円"};
 }
 function formatScaledAxisNumber(value){
@@ -22168,6 +22269,15 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
     positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
     return;
   }
+  if(graphType === "education"){
+    const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
+    const html = buildEducationTooltipHtml(unitSpec, extra.educationTooltipEntries || [{name:"", sim:simRef, cfg:extra.cfgRef, color:'#334155'}], ageValue, !!extra.overlay, chartInstance);
+    if(!html){ tooltipEl.hidden = true; return; }
+    tooltipEl.innerHTML = html;
+    tooltipEl.hidden = false;
+    positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
+    return;
+  }
   if(graphType === "incomeExpense"){
     const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
     const ageNum = Number(ageValue);
@@ -22240,6 +22350,192 @@ function getEducationRightAxisBounds(rightAxisData, cfg){
 function escapeAttr(value){
   return String(value ?? "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
+function getEducationSimIndexByExactAge(sim, ageValue){
+  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+  const target = Number(ageValue);
+  if(!Number.isFinite(target)) return null;
+  for(let i = 0; i < labels.length; i++){
+    const label = Number(labels[i]);
+    if(Number.isFinite(label) && Math.abs(label - target) < 1e-7) return i;
+  }
+  return null;
+}
+function getEducationValuesAt(entry, idx, visibleChildSet=null){
+  const sim = entry?.sim || {};
+  const childValues = {};
+  let visibleAnnualTotal = 0;
+  const allAnnualTotal = Number(Array.isArray(sim.annualEducation) ? sim.annualEducation[idx] : 0) || 0;
+  const childSeries = sim.educationByChildSeries || {};
+  Object.keys(childSeries).forEach(key=>{
+    const childIndex = Number(key);
+    if(!Number.isFinite(childIndex)) return;
+    const value = Number(Array.isArray(childSeries[key]) ? childSeries[key][idx] : 0) || 0;
+    childValues[childIndex] = value;
+    if(!visibleChildSet || visibleChildSet.has(childIndex)) visibleAnnualTotal += value;
+  });
+  if(!visibleChildSet) visibleAnnualTotal = allAnnualTotal;
+  return {annualTotal:visibleAnnualTotal, annualTotalAll:allAnnualTotal, cumulative:Number(Array.isArray(sim.annualEducationCum) ? sim.annualEducationCum[idx] : 0) || 0, childValues};
+}
+function getEducationVisibleChildSet(chartInstance){
+  const visible = new Set();
+  let hasChildDataset = false;
+  (chartInstance?.data?.datasets || []).forEach((ds, datasetIndex)=>{
+    const childIndex = Number(ds?._educationChildIndex);
+    if(!Number.isFinite(childIndex)) return;
+    hasChildDataset = true;
+    if(typeof chartInstance.isDatasetVisible === 'function' && !chartInstance.isDatasetVisible(datasetIndex)) return;
+    visible.add(childIndex);
+  });
+  return hasChildDataset ? visible : null;
+}
+function getEducationActiveScenarioEntries(entries, chartInstance){
+  const hidden = ensureEducationOverlayLegendState(chartInstance)?.hiddenScenarios || new Set();
+  return (entries || []).filter(entry=>{
+    const idx = Number(entry?.overlayIndex);
+    return !Number.isFinite(idx) || !hidden.has(idx);
+  }).sort((a,b)=>{
+    const ai = Number(a?.overlayIndex);
+    const bi = Number(b?.overlayIndex);
+    if(Number.isFinite(ai) && Number.isFinite(bi)) return ai - bi;
+    if(Number.isFinite(ai)) return -1;
+    if(Number.isFinite(bi)) return 1;
+    return 0;
+  });
+}
+function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartInstance){
+  const sourceEntries = (entries || []).filter(entry=>entry?.sim);
+  if(!sourceEntries.length) return '';
+  const titleAge = Number(ageValue);
+  const title = getCalendarWindowTooltipTitle(sourceEntries[0].sim, Number.isFinite(titleAge) ? titleAge : ageValue);
+  const visibleChildSet = getEducationVisibleChildSet(chartInstance);
+  const rightUnitSpec = getMainChartYAxisUnitSpec(sourceEntries.flatMap(entry=>Array.isArray(entry?.sim?.annualEducationCum) ? entry.sim.annualEducationCum : []), {includeSenman:true});
+  const hasHiddenChild = (()=>{
+    const all = new Set();
+    (chartInstance?.data?.datasets || []).forEach(ds=>{ const c=Number(ds?._educationChildIndex); if(Number.isFinite(c)) all.add(c); });
+    return visibleChildSet && all.size > visibleChildSet.size;
+  })();
+  if(overlay){
+    const maxTooltipEntries = (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width:900px), (pointer:coarse)').matches) ? 3 : 5;
+    const activeEntries = getEducationActiveScenarioEntries(sourceEntries, chartInstance);
+    const visibleEntries = activeEntries.slice(0, maxTooltipEntries).map(entry=>{
+      const idx = getEducationSimIndexByExactAge(entry.sim, ageValue);
+      return {...entry, idx, values:getEducationValuesAt(entry, idx, visibleChildSet)};
+    });
+    if(!visibleEntries.length) return '';
+    const allChildIndices = Array.from(new Set(visibleEntries.flatMap(entry=>Object.keys(entry.values.childValues || {}).map(Number).filter(Number.isFinite)))).sort((a,b)=>a-b);
+    const childRows = allChildIndices.filter(childIndex=>{
+      if(visibleChildSet && !visibleChildSet.has(childIndex)) return false;
+      return visibleEntries.some(entry=>Math.abs(Number(entry.values.childValues[childIndex]) || 0) > 1e-6);
+    });
+    const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join('');
+    const moneyCell = (value, spec)=>Math.abs(Number(value)||0) > 1e-9 ? escapeAttr(formatMainChartTooltipMoney(value, spec, 'education')) : '—';
+    const row = (label, getter, strong=false, spec=unitSpec, labelHtml=null)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${labelHtml || escapeAttr(label)}</th>${visibleEntries.map(entry=>`<td>${moneyCell(getter(entry), spec)}</td>`).join('')}</tr>`;
+    const cumulativeLabel = hasHiddenChild ? '教育費累計（全子供）' : '教育費累計';
+    const rows = [row('年間教育費合計', entry=>entry.values.annualTotal, true, unitSpec), row(cumulativeLabel, entry=>entry.values.cumulative, true, rightUnitSpec)];
+    if(childRows.length){
+      childRows.forEach(childIndex=>{
+        const labelEntry = visibleEntries.find(entry=>entry.idx != null && Math.abs(Number(entry.values.childValues[childIndex]) || 0) > 1e-6) || visibleEntries[0];
+        rows.push(row(buildEducationChildLabelForTooltip(labelEntry, childIndex, labelEntry.idx), entry=>entry.values.childValues[childIndex], false, unitSpec));
+      });
+    }else{
+      rows.push(`<tr><th>${escapeAttr('教育費なし')}</th>${visibleEntries.map(()=>'<td>—</td>').join('')}</tr>`);
+    }
+    const omitted = Math.max(0, activeEntries.length - visibleEntries.length);
+    const omittedHtml = omitted ? `<div class="chart-external-tooltip-note">ほか${omitted}シナリオ</div>` : '';
+    return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><table class="chart-external-tooltip-matrix chart-external-tooltip-education-matrix"><thead><tr><th></th>${headerCells}</tr></thead><tbody>${rows.join('')}</tbody></table>${omittedHtml}`;
+  }
+  const entry = sourceEntries[0];
+  const idx = getNearestSimIndexByAge(entry.sim, ageValue);
+  const values = getEducationValuesAt(entry, idx, visibleChildSet);
+  const rows = [];
+  const summaryRow = (label, value, spec, strong=false, color='#94a3b8', swatchVisible=false)=>{
+    rows.push(`<div class="chart-external-tooltip-row${strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, swatchVisible)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(value, spec, 'education'))}</span></div>`);
+  };
+  summaryRow('年間教育費合計', values.annualTotal, unitSpec, true);
+  summaryRow(hasHiddenChild ? '教育費累計（全子供）' : '教育費累計', values.cumulative, rightUnitSpec, true, '#334155', true);
+  const childIndices = Object.keys(values.childValues || {}).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
+  let childCount = 0;
+  childIndices.forEach(childIndex=>{
+    if(visibleChildSet && !visibleChildSet.has(childIndex)) return;
+    const value = Number(values.childValues[childIndex]) || 0;
+    if(Math.abs(value) <= 1e-6) return;
+    childCount += 1;
+    const label = buildEducationChildLabelForTooltip(entry, childIndex, idx);
+    const color = colorToRgba(TAB_COLORS[(childIndex-1)%TAB_COLORS.length], Math.max(0.62, getEducationChildAlpha(childIndex, false)));
+    rows.push(`<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, true)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(value, unitSpec, 'education'))}</span></div>`);
+  });
+  if(!childCount){
+    rows.push(`<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch('#94a3b8', false)}<span>教育費なし</span></span></span><span class="chart-external-tooltip-value"></span></div>`);
+  }
+  return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-education-body">${rows.join('')}</div>`;
+}
+function getEducationOverlayLegendDatasets(chartInstance){
+  const map = new Map();
+  (chartInstance?.data?.datasets || []).forEach((ds, idx)=>{
+    const overlayIndex = Number(ds?._overlayIndex);
+    if(!Number.isFinite(overlayIndex)) return;
+    if(map.has(overlayIndex)) return;
+    const label = String(ds?.label || '').replace(/\s+(教育費累計|子供?\d+|子\d+)\s*$/, '').trim() || `シナリオ${map.size + 1}`;
+    map.set(overlayIndex, {overlayIndex, datasetIndex:idx, label, color:ds?._scenarioColor || '#64748b'});
+  });
+  return Array.from(map.values()).sort((a,b)=>a.overlayIndex-b.overlayIndex);
+}
+function ensureEducationOverlayLegendState(chartInstance){
+  if(!chartInstance) return null;
+  if(!(chartInstance.$educationOverlayHiddenScenarios instanceof Set)) chartInstance.$educationOverlayHiddenScenarios = new Set();
+  if(!(chartInstance.$educationOverlayHiddenChildren instanceof Set)) chartInstance.$educationOverlayHiddenChildren = new Set();
+  if(typeof chartInstance.$educationOverlayCumVisible !== 'boolean') chartInstance.$educationOverlayCumVisible = true;
+  return {hiddenScenarios:chartInstance.$educationOverlayHiddenScenarios, hiddenChildren:chartInstance.$educationOverlayHiddenChildren, cumVisible:chartInstance.$educationOverlayCumVisible};
+}
+function applyEducationOverlayLegendVisibility(chartInstance){
+  const state = ensureEducationOverlayLegendState(chartInstance);
+  if(!state) return;
+  (chartInstance?.data?.datasets || []).forEach((ds, idx)=>{
+    const overlayIndex = Number(ds?._overlayIndex);
+    if(!Number.isFinite(overlayIndex)) return;
+    let visible = !state.hiddenScenarios.has(overlayIndex);
+    if(ds?._educationChildIndex != null) visible = visible && !state.hiddenChildren.has(Number(ds._educationChildIndex));
+    if(ds?._educationCumLine) visible = visible && chartInstance.$educationOverlayCumVisible !== false;
+    chartInstance.setDatasetVisibility(idx, visible);
+  });
+}
+function isEducationOverlayScenarioVisible(chartInstance, overlayIndex){ const state = ensureEducationOverlayLegendState(chartInstance); return !state || !state.hiddenScenarios.has(Number(overlayIndex)); }
+function setEducationOverlayScenarioVisibility(chartInstance, overlayIndex, visible){ const state = ensureEducationOverlayLegendState(chartInstance); if(!state || !Number.isFinite(Number(overlayIndex))) return; if(visible) state.hiddenScenarios.delete(Number(overlayIndex)); else state.hiddenScenarios.add(Number(overlayIndex)); applyEducationOverlayLegendVisibility(chartInstance); }
+function isEducationOverlayChildVisible(chartInstance, childIndex){ const state = ensureEducationOverlayLegendState(chartInstance); return !state || !state.hiddenChildren.has(Number(childIndex)); }
+function setEducationOverlayChildVisibility(chartInstance, childIndex, visible){ const state = ensureEducationOverlayLegendState(chartInstance); if(!state || !Number.isFinite(Number(childIndex))) return; if(visible) state.hiddenChildren.delete(Number(childIndex)); else state.hiddenChildren.add(Number(childIndex)); applyEducationOverlayLegendVisibility(chartInstance); }
+function hasEducationOverlayChildData(chartInstance, childIndex){ const key = Number(childIndex); return (chartInstance?.data?.datasets || []).some(ds=>Number(ds?._educationChildIndex) === key && shouldShowDatasetInLegend(ds)); }
+function renderEducationLegend(chartInstance, display){
+  const legendEl = document.getElementById('chartCustomLegend');
+  if(!legendEl) return;
+  if(chartInstance?.$overlayMode){
+    ensureEducationOverlayLegendState(chartInstance);
+    const scenarios = getEducationOverlayLegendDatasets(chartInstance);
+    if(!display || !scenarios.length){ legendEl.hidden = true; legendEl.innerHTML = ''; return; }
+    const scenarioHtml = scenarios.map(item=>{ const visible = isEducationOverlayScenarioVisible(chartInstance, item.overlayIndex); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-education-scenario="${item.overlayIndex}" aria-pressed="${visible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(item.color)};border-color:${escapeAttr(item.color)};"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`; }).join('');
+    const maxChild = Math.max(0, ...((chartInstance.data?.datasets || []).map(ds=>Number(ds?._educationChildIndex)).filter(Number.isFinite)));
+    const childItems = Array.from({length:maxChild}, (_,i)=>i+1).filter(idx=>hasEducationOverlayChildData(chartInstance, idx));
+    const childHtml = childItems.map(idx=>{ const visible = isEducationOverlayChildVisible(chartInstance, idx); const alpha = getEducationChildAlpha(idx, true); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-education-child="${idx}" aria-pressed="${visible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(51,65,85,${alpha});border-color:rgba(51,65,85,${alpha});"></span><span class="chart-line-legend-label">${escapeAttr(getEducationChildDisplayName(chartInstance.$educationTooltipEntries?.[0]?.sim, idx))}</span></button>`; }).join('');
+    const hasCum = (chartInstance.data?.datasets || []).some(ds=>ds?._educationCumLine && shouldShowDatasetInLegend(ds));
+    const cumVisible = chartInstance.$educationOverlayCumVisible !== false;
+    const cumHtml = hasCum ? `<button type="button" class="chart-line-legend-item${cumVisible ? '' : ' is-hidden'}" data-education-cum="1" aria-pressed="${cumVisible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155','solid',2,50,[])}</span><span class="chart-line-legend-label">教育費累計</span></button>` : '';
+    legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${(childHtml || cumHtml) ? `<div class="chart-legend-category-block"><div class="chart-legend-row chart-legend-category-row">${childHtml}${cumHtml}</div></div>` : ''}${buildLifeGuideLegendHtml(chartInstance)}</div>`;
+    legendEl.querySelectorAll('[data-education-scenario]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.educationScenario); setEducationOverlayScenarioVisibility(chartInstance, idx, !isEducationOverlayScenarioVisible(chartInstance, idx)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
+    legendEl.querySelectorAll('[data-education-child]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.educationChild); setEducationOverlayChildVisibility(chartInstance, idx, !isEducationOverlayChildVisible(chartInstance, idx)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
+    legendEl.querySelectorAll('[data-education-cum]').forEach(btn=>btn.addEventListener('click',()=>{ chartInstance.$educationOverlayCumVisible = !(chartInstance.$educationOverlayCumVisible !== false); applyEducationOverlayLegendVisibility(chartInstance); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
+    attachLifeGuideLegendHandlers(chartInstance, display);
+    legendEl.hidden = false;
+    return;
+  }
+  const lifeGuideHtml = buildLifeGuideLegendHtml(chartInstance);
+  const datasets = (chartInstance.data?.datasets || []).map((ds, idx)=>({...ds, _datasetIndex:idx})).filter(shouldShowDatasetInLegend).sort(sortLegendDatasets);
+  if((!display || !datasets.length) && !lifeGuideHtml){ legendEl.hidden = true; legendEl.innerHTML = ''; return; }
+  const datasetLegendHtml = datasets.map(ds=>{ const line=getLegendLineStyleFromDataset(ds); const datasetIndex=Number(ds._datasetIndex); const visible=chartInstance.isDatasetVisible(datasetIndex); const isBar=ds.type === 'bar'; const sample = isBar ? `<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};"></span>` : `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup(line.color,line.style,line.width,50,line.dash)}</span>`; return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-dataset-index="${datasetIndex}" aria-pressed="${visible ? 'true' : 'false'}">${sample}<span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`; }).join('');
+  legendEl.innerHTML = `<div class="chart-legend-stacked">${datasetLegendHtml ? `<div class="chart-legend-row chart-legend-category-row">${datasetLegendHtml}</div>` : ''}${lifeGuideHtml}</div>`;
+  legendEl.querySelectorAll('[data-dataset-index]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.datasetIndex); if(!Number.isFinite(idx)) return; const next=!chartInstance.isDatasetVisible(idx); chartInstance.setDatasetVisibility(idx,next); rememberChartLegendDatasetVisibility(chartInstance,idx,next); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
+  attachLifeGuideLegendHandlers(chartInstance, display);
+  legendEl.hidden = false;
+}
+
 function getLegendLineStyleFromDataset(ds){
   const isBar = (ds?.type === "bar");
   const backgroundColor = Array.isArray(ds?.backgroundColor) ? ds.backgroundColor[0] : ds?.backgroundColor;
@@ -22305,7 +22601,7 @@ function getChartLegendState(contextKey){
   const key = String(contextKey || chartLegendLastContextKey || '');
   if(!key) return null;
   if(!chartLegendVisibilityState.has(key)){
-    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null});
+    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null, educationOverlay:null});
   }
   return chartLegendVisibilityState.get(key);
 }
@@ -22323,6 +22619,13 @@ function saveCurrentChartLegendVisibilityState(chartInstance){
     state.assetBreakdownOverlay = {
       hiddenScenarios:Array.from(chartInstance.$assetBreakdownOverlayHiddenScenarios || []),
       hiddenCategories:Array.from(chartInstance.$assetBreakdownOverlayHiddenCategories || [])
+    };
+  }
+  if(chartInstance.$graphType === 'education' && chartInstance.$overlayMode){
+    state.educationOverlay = {
+      hiddenScenarios:Array.from(chartInstance.$educationOverlayHiddenScenarios || []),
+      hiddenChildren:Array.from(chartInstance.$educationOverlayHiddenChildren || []),
+      cumVisible:chartInstance.$educationOverlayCumVisible !== false
     };
   }
   if(chartInstance.$graphType === 'incomeExpense' && chartInstance.$overlayMode){
@@ -22349,6 +22652,14 @@ function restoreChartLegendVisibilityState(chartInstance){
     chartInstance.$assetBreakdownOverlayHiddenScenarios = new Set((state.assetBreakdownOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
     chartInstance.$assetBreakdownOverlayHiddenCategories = new Set((state.assetBreakdownOverlay.hiddenCategories || []).map(v=>String(v || '')).filter(Boolean));
     applyAssetBreakdownOverlayLegendVisibility(chartInstance);
+    chartInstance.update('none');
+    return;
+  }
+  if(chartInstance.$graphType === 'education' && chartInstance.$overlayMode && state.educationOverlay){
+    chartInstance.$educationOverlayHiddenScenarios = new Set((state.educationOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
+    chartInstance.$educationOverlayHiddenChildren = new Set((state.educationOverlay.hiddenChildren || []).map(Number).filter(v=>Number.isFinite(v)));
+    chartInstance.$educationOverlayCumVisible = state.educationOverlay.cumVisible !== false;
+    applyEducationOverlayLegendVisibility(chartInstance);
     chartInstance.update('none');
     return;
   }
@@ -22659,6 +22970,10 @@ function renderCustomChartLegend(chartInstance, display){
     renderIncomeExpenseLegend(chartInstance, display);
     return;
   }
+  if(chartInstance?.$graphType === "education"){
+    renderEducationLegend(chartInstance, display);
+    return;
+  }
   if(chartInstance?.$graphType === "assetBreakdown" && chartInstance?.$overlayMode){
     renderAssetBreakdownOverlayLegend(chartInstance, display);
     return;
@@ -22722,7 +23037,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   const rawXMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
   const rawXMax = cfg.xAxisMax;
-  const xPadding = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? 0.5 : 0;
+  const xPadding = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? 0.5 : 0;
   const xMin = rawXMin - xPadding;
   const xMax = rawXMax + xPadding;
   const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
@@ -22735,8 +23050,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     responsive:true,
     maintainAspectRatio:false,
     layout:{padding:chartLayoutPadding},
-    interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? false : true)},
-    events: (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? [] : undefined,
+    interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? false : true)},
+    events: (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? [] : undefined,
     plugins:{
       legend:{display:false, labels:{
         usePointStyle:true,
@@ -22771,8 +23086,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
         return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
       }}},
       tooltip:{
-        enabled:!(graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"),
-        external:(graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
+        enabled:!(graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education"),
+        external:(graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
         backgroundColor:"rgba(15,23,42,.94)",
         titleColor:"#f8fafc",
         bodyColor:"#f8fafc",
@@ -22851,9 +23166,10 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     options.scales.y.stacked = true;
     const rightAxisData = extra.educationCumData || [0];
     const rightAxis = getEducationRightAxisBounds(rightAxisData, cfg);
-    const rightAxisUnitSpec = getMainChartYAxisUnitSpec(rightAxisData);
+    const rightAxisUnitSpec = getMainChartYAxisUnitSpec(rightAxisData, {includeSenman:true});
     options.scales.y1 = {
       position:"right",
+      stacked:false,
       min:rightAxis.min,
       max:rightAxis.max,
       grid:{drawOnChartArea:false, z:-1}, border:{z:-1},
@@ -22912,7 +23228,7 @@ function draw(){
   const overlay = !!workspaceOverlayModeOn && graphType !== "investment";
   const currentScenario = scenarios[currentTab];
   const overlayEntriesBase = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice() : [];
-  const overlayEntries = overlay ? ((graphType === "assetBreakdown" || graphType === "incomeExpense") ? overlayEntriesBase : overlayEntriesBase.reverse()) : [];
+  const overlayEntries = overlay ? ((graphType === "assetBreakdown" || graphType === "incomeExpense" || graphType === "education") ? overlayEntriesBase : overlayEntriesBase.reverse()) : [];
   const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true}}];
   const overlayVisibleCount = overlay ? Math.max(1, targets.length) : 1;
 
@@ -22927,7 +23243,9 @@ function draw(){
   let baseSim = null;
   const assetBreakdownTooltipEntries = [];
   const incomeExpenseTooltipEntries = [];
+  const educationTooltipEntries = [];
   const lifeGuideEntries = [];
+  const educationCumAxisData = [];
 
   targets.forEach((entry, idx)=>{
     const s = entry.scenario || entry;
@@ -22943,6 +23261,10 @@ function draw(){
     }
     if(graphType === "incomeExpense"){
       incomeExpenseTooltipEntries.push({name:s.name, sim, color:scenarioColor, overlayIndex:entry.index ?? idx});
+    }
+    if(graphType === "education"){
+      educationTooltipEntries.push({name:s.name, sim, cfg, color:scenarioColor, overlayIndex:entry.index ?? idx});
+      educationCumAxisData.push(...getVisibleSeriesValues(sim.labels, sim.annualEducationCum || [], cfg.xAxisMax));
     }
     const baseDatasets = buildDatasetsByGraphType(sim, graphType, scenarioColor, overlay, s.name, overlayVisibleCount, idx);
     datasets.push(...(overlay ? applyOverlayStyleToDatasets(baseDatasets, {...(entry.style || {}), _overlayIndex:entry.index}, graphType) : baseDatasets));
@@ -22965,14 +23287,15 @@ function draw(){
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
-    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, assetBreakdownTooltipEntries, incomeExpenseTooltipEntries, overlay, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
+    options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, cfgRef:firstCfg, assetBreakdownTooltipEntries, incomeExpenseTooltipEntries, educationTooltipEntries, overlay, educationCumData:(graphType === "education" && educationCumAxisData.length ? educationCumAxisData : getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120))}),
     plugins:[pluginLines(firstCfg, baseSim, null, overlay ? lifeGuideEntries.slice() : null)]
   });
   chart.$lifeGuideEntries = overlay ? lifeGuideEntries.slice() : null;
   chart.$graphType = graphType;
   chart.$overlayMode = overlay;
   chart.$legendContextKey = legendContextKey;
-  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense");
+  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education");
+  chart.$educationTooltipEntries = educationTooltipEntries;
   restoreChartLegendVisibilityState(chart);
   renderCustomChartLegend(chart, customLegendDisplay);
 }
@@ -29762,7 +30085,7 @@ function computeChartAxisGestureOuterBounds(){
   const graphType = document.getElementById("graphType")?.value || "asset";
   const dataXMin = defaults.xMin;
   const dataXMax = defaults.xMax;
-  const displayPad = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? 0.5 : 0;
+  const displayPad = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? 0.5 : 0;
   const xMin = dataXMin - displayPad;
   const xMax = dataXMax + displayPad;
   const yData = collectVisibleMainChartYValues(dataXMin, dataXMax, graphType);
@@ -29971,6 +30294,9 @@ function resetChartAxesToAuto(options = {}){
   if(chart && (document.getElementById("graphType")?.value || "asset") === "incomeExpense"){
     chart.$incomeExpenseTouchYZoomed = false;
   }
+  if(chart && (document.getElementById("graphType")?.value || "asset") === "education" && chart.$overlayMode){
+    chart.$educationOverlayTouchYZoomed = false;
+  }
   const fixedScaleEl = document.getElementById("fixedScale");
   const fixedScaleMinEl = document.getElementById("fixedScaleMin");
   const fixedScaleMaxEl = document.getElementById("fixedScaleMax");
@@ -30019,8 +30345,8 @@ function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   const yMin = Number.isFinite(Number(scales.y?.min)) ? Number(scales.y.min) : Number(activeChart.options.scales.y?.min);
   const yMax = Number.isFinite(Number(scales.y?.max)) ? Number(scales.y.max) : Number(activeChart.options.scales.y?.max);
   const graphTypeForAxisState = document.getElementById("graphType")?.value || "asset";
-  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String((graphTypeForAxisState === "assetBreakdown" || graphTypeForAxisState === "investment" || graphTypeForAxisState === "incomeExpense") ? Math.ceil(xMin - 1e-9) : Math.round(xMin));
-  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String((graphTypeForAxisState === "assetBreakdown" || graphTypeForAxisState === "investment" || graphTypeForAxisState === "incomeExpense") ? Math.floor(xMax + 1e-9) : Math.round(xMax));
+  if(Number.isFinite(xMin) && xAxisMinEl) xAxisMinEl.value = String((graphTypeForAxisState === "assetBreakdown" || graphTypeForAxisState === "investment" || graphTypeForAxisState === "incomeExpense" || graphTypeForAxisState === "education") ? Math.ceil(xMin - 1e-9) : Math.round(xMin));
+  if(Number.isFinite(xMax) && xAxisMaxEl) xAxisMaxEl.value = String((graphTypeForAxisState === "assetBreakdown" || graphTypeForAxisState === "investment" || graphTypeForAxisState === "incomeExpense" || graphTypeForAxisState === "education") ? Math.floor(xMax + 1e-9) : Math.round(xMax));
   if(Number.isFinite(yMin) && fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(yMin));
   if(Number.isFinite(yMax) && fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
   if(fixedScaleEl) fixedScaleEl.checked = !!options.lockYScale;
@@ -30093,14 +30419,14 @@ function setupChartAxisZoomInteractions(){
           const rawMaxVal = Math.max(minVal, maxVal);
           let minAge;
           let maxAge;
-          if(graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"){
+          if(graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education"){
             minAge = Math.max(0, Math.ceil(rawMinVal - 1e-9));
             maxAge = Math.min(120, Math.floor(rawMaxVal + 1e-9));
           }else{
             minAge = Math.max(0, Math.round(rawMinVal));
             maxAge = Math.min(120, Math.round(rawMaxVal));
           }
-          const pad = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? 0.5 : 0;
+          const pad = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? 0.5 : 0;
           chart.options.scales.x.min = minAge - pad;
           chart.options.scales.x.max = maxAge + pad;
           changed = maxAge > minAge;
@@ -30322,7 +30648,9 @@ function setupChartTouchInteractions(){
     // 収入／支出グラフは上下非対称オートスケールのため、y軸の数値範囲比較だけでは
     // 非ズーム状態をyズーム中と誤判定しやすい。スマホのyパンは、ピンチ等で明示的に
     // y方向のズーム状態に入った記録がある場合だけ許可する。
-    const yZoomed = graphType === "incomeExpense" ? (chart?.$incomeExpenseTouchYZoomed === true && yRangeZoomed) : (yRangeZoomed || yPositionZoomed);
+    const yZoomed = graphType === "incomeExpense"
+      ? (chart?.$incomeExpenseTouchYZoomed === true && yRangeZoomed)
+      : ((graphType === "education" && chart?.$overlayMode) ? (chart?.$educationOverlayTouchYZoomed === true && yRangeZoomed) : (yRangeZoomed || yPositionZoomed));
     return {x:xZoomed, y:yZoomed, any:xZoomed || yZoomed};
   };
   const isZoomedFromDefaults = ()=>getTouchZoomAxesFromDefaults().any;
@@ -30366,10 +30694,14 @@ function setupChartTouchInteractions(){
     if(nextY){
       chart.options.scales.y.min = nextY.min;
       chart.options.scales.y.max = nextY.max;
-      if((document.getElementById("graphType")?.value || "asset") === "incomeExpense"){
-        const outerRangeY = Math.max(1e-9, Number(gestureBounds?.yMax) - Number(gestureBounds?.yMin));
-        const nextRangeY = Math.abs(Number(nextY.max) - Number(nextY.min));
+      const graphType = document.getElementById("graphType")?.value || "asset";
+      const outerRangeY = Math.max(1e-9, Number(gestureBounds?.yMax) - Number(gestureBounds?.yMin));
+      const nextRangeY = Math.abs(Number(nextY.max) - Number(nextY.min));
+      if(graphType === "incomeExpense"){
         chart.$incomeExpenseTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
+      }
+      if(graphType === "education" && chart.$overlayMode){
+        chart.$educationOverlayTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
       }
     }
     syncInvestmentReferenceYAxisFromMain(chart);
@@ -31025,7 +31357,7 @@ window.addEventListener("load", ()=>{
     let chosen = null;
     let bestDist = Infinity;
     const maxDist = 8;
-    const lineMaxDist = (chart.$graphType === "incomeExpense" || chart.$graphType === "cashflow") ? 14 : maxDist;
+    const lineMaxDist = (chart.$graphType === "incomeExpense" || chart.$graphType === "cashflow" || chart.$graphType === "education") ? 14 : maxDist;
     const barMaxDist = maxDist;
     const datasets = chart.data?.datasets || [];
     if(chart.$graphType === "assetBreakdown"){
@@ -37787,6 +38119,9 @@ body.withdrawal-preview-open #detailStickyNav *{
     backdrop-filter:blur(6px);
     -webkit-backdrop-filter:blur(6px);
   }
+  .chart-external-tooltip-note{margin-top:8px;color:#cbd5e1;font-size:12px;line-height:1.4;text-align:right;}
+  .chart-external-tooltip-education-matrix tbody tr:nth-child(2) th,
+  .chart-external-tooltip-education-matrix tbody tr:nth-child(2) td{border-bottom-color:rgba(148,163,184,.30);}
   .chart-external-tooltip[hidden]{display:none !important;}
   .chart-external-tooltip-title{
     font-size:12px;
@@ -37915,6 +38250,12 @@ body.withdrawal-preview-open #detailStickyNav *{
     font-weight:700;
     text-align:left;
     padding-right:10px;
+  }
+  .chart-external-tooltip-matrix-label{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    min-width:0;
   }
   .chart-external-tooltip-matrix tbody td{
     text-align:right;
