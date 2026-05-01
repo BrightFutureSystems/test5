@@ -20948,9 +20948,9 @@ const INCOME_EXPENSE_CASHFLOW_AXIS_ID = "incomeExpenseCashflowY";
 const INCOME_EXPENSE_SINGLE_BAR_ALPHA = 0.38;
 function getIncomeExpenseCashflowLineWidth(){
   try{
-    return (window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 1.8 : 2.4;
+    return (window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 1.8 : 2.0;
   }catch(_e){
-    return 2.4;
+    return 2.0;
   }
 }
 function getIncomeExpenseCategoryByKey(key){
@@ -21487,7 +21487,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
       const y = scales.y;
       if(!x || !y) return;
       ctx.save();
-      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && graphType !== "cashflow" && Array.isArray(x.ticks) && x.ticks.length){
+      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && graphType !== "cashflow" && graphType !== "education" && Array.isArray(x.ticks) && x.ticks.length){
         ctx.save();
         ctx.strokeStyle = "rgba(148,163,184,0.22)";
         ctx.lineWidth = 1;
@@ -23411,7 +23411,7 @@ function runMonte(settingsOverride=null){
     const color = entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx);
     const overlayDash = getLineDashByOverlayStyle(entry.style?.lineStyle);
     const overlayLegendIndex = Number.isFinite(Number(entry.index)) ? Number(entry.index) : idx;
-    const overlayWidth = normalizeOverlayLineWidth(entry.style?.lineWidth);
+    const overlayWidth = resolveAssetOverlayLineWidth(entry.style?.lineWidth);
     const allSame = !!displayBundle.allSame;
     const plotLabels = Array.isArray(base.labels) ? base.labels.slice() : [];
     const basePlot = buildMontePlotSeries(cfg, plotLabels, base.totalAssets);
@@ -23428,7 +23428,7 @@ function runMonte(settingsOverride=null){
       });
       datasets.push(makeLineDataset(`${s.name} ワースト`, worstPlot.labels, worstPlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [5,4], borderWidth:overlayWidth, order:4, _overlayIndex:overlayLegendIndex}));
       datasets.push(makeLineDataset(`${s.name} ベスト`, bestPlot.labels, bestPlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:overlayWidth, order:3, _overlayIndex:overlayLegendIndex}));
-      datasets.push(makeLineDataset(`${s.name} 一定利率`, basePlot.labels, basePlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:Math.max(overlayWidth, 2), order:2, _overlayIndex:overlayLegendIndex}));
+      datasets.push(makeLineDataset(`${s.name} 一定利率`, basePlot.labels, basePlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:overlayWidth, order:2, _overlayIndex:overlayLegendIndex}));
     }else{
       displayPlots.forEach(plot=>{
         datasets.push(makeLineDataset("", plot.labels, plot.values, {
