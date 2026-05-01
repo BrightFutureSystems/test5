@@ -20267,9 +20267,9 @@ function simulate(cfg, random=false, opts={}){
   if(!compact){
     for(let i=1;i<=dynamicCounts.dep;i++) depositSeries[i] = [];
     cfg.children.forEach(child=>{ childNames[child.idx] = child.name || `子${child.idx}`; });
-    cfg.investments.forEach((inv, idx)=>{ const key = idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `運用${idx+1}`; invMeta[key] = {category:"current", categoryLabel:"現在の運用資産", sourceIndex:idx, order:idx}; });
-    (cfg.futureInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `投資${idx+1}`; invMeta[key] = {category:"future", categoryLabel:"今後の投資", sourceIndex:idx, order:cfg.investments.length + idx}; });
-    (cfg.sumInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + (cfg.futureInvestments || []).length + idx + 1; invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `積立${idx+1}`; invMeta[key] = {category:"sum", categoryLabel:"積立投資", sourceIndex:idx, order:cfg.investments.length + (cfg.futureInvestments || []).length + idx}; });
+    cfg.investments.forEach((inv, idx)=>{ const key = idx + 1; const accountType = normalizeAccountType(inv.accountType || "課税"); invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `運用${idx+1}`; invMeta[key] = {category:"current", categoryLabel:"現在の運用資産", sourceIndex:idx, order:idx, accountType, taxOn:isTaxableAccountType(accountType)}; });
+    (cfg.futureInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + idx + 1; const accountType = normalizeAccountType(inv.accountType || "課税"); invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `投資${idx+1}`; invMeta[key] = {category:"future", categoryLabel:"今後の投資", sourceIndex:idx, order:cfg.investments.length + idx, accountType, taxOn:isTaxableAccountType(accountType)}; });
+    (cfg.sumInvestments || []).forEach((inv, idx)=>{ const key = cfg.investments.length + (cfg.futureInvestments || []).length + idx + 1; const accountType = normalizeAccountType(inv.accountType || "課税"); invSeries[key] = []; principalSeries[key] = []; invNames[key] = inv.name || `積立${idx+1}`; invMeta[key] = {category:"sum", categoryLabel:"積立投資", sourceIndex:idx, order:cfg.investments.length + (cfg.futureInvestments || []).length + idx, accountType, taxOn:isTaxableAccountType(accountType)}; });
   }
   let depletionAge = null;
   let retireAsset = null;
@@ -20804,7 +20804,7 @@ function buildCashflowDatasets(sim, color, overlay, labelPrefix="", overlayCount
   }];
 }
 const EDUCATION_SINGLE_CHILD_ALPHA = 0.44;
-const EDUCATION_OVERLAY_CHILD_ALPHA = [0.24, 0.38, 0.54, 0.68, 0.80];
+const EDUCATION_OVERLAY_CHILD_ALPHA = [0.16, 0.40, 0.68, 0.82, 0.90];
 function getEducationChildAlpha(childIndex, overlay=false){
   const idx = Math.max(0, Number(childIndex || 1) - 1);
   if(overlay) return EDUCATION_OVERLAY_CHILD_ALPHA[idx % EDUCATION_OVERLAY_CHILD_ALPHA.length];
@@ -21009,8 +21009,13 @@ function getIncomeExpenseOverlayXOffset(overlayIndex, overlayCount){
   const span = Math.min(0.72, 0.18 * count);
   return ((idx - (count - 1) / 2) / Math.max(1, count - 1)) * span;
 }
+const INCOME_EXPENSE_OVERLAY_BAR_ALPHA = {
+  income:0.22,
+  expense:0.64
+};
 function makeIncomeExpenseOverlayBarDataset(label, labels, data, color, kind, stackId, xOffset){
-  const ds = makeBarDataset(label, labels, data, {backgroundColor:colorToRgba(color, kind === "income" ? 0.30 : 0.52), borderColor:'rgba(0,0,0,0)', borderWidth:0, stack:stackId, order:1});
+  const alpha = kind === "income" ? INCOME_EXPENSE_OVERLAY_BAR_ALPHA.income : INCOME_EXPENSE_OVERLAY_BAR_ALPHA.expense;
+  const ds = makeBarDataset(label, labels, data, {backgroundColor:colorToRgba(color, alpha), borderColor:'rgba(0,0,0,0)', borderWidth:0, stack:stackId, order:1});
   ds._incomeExpenseOverlayKind = kind;
   ds._scenarioColor = color;
   return ds;
@@ -21070,6 +21075,7 @@ const ASSET_BREAKDOWN_COLORS = {
   investment:"#db953a",
   shortfall:"#cf616d"
 };
+const BREAKDOWN_SINGLE_BAR_ALPHA = 0.68;
 function hexToRgbForAssetBreakdown(hex){
   const normalized = String(hex || "").trim().replace(/^#/, "");
   if(!/^[0-9a-fA-F]{6}$/.test(normalized)) return {r:100, g:116, b:139};
@@ -21174,10 +21180,10 @@ function buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix="", overla
   }
   const shortfall = sim.totalAssets.map(v=>v<0 ? v : 0);
   return [
-    makeBarDataset("預貯金", sim.labels, sim.totalDeposits, {backgroundColor:ASSET_BREAKDOWN_COLORS.deposit, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
-    makeBarDataset("安全資産", sim.labels, sim.totalSafeAssets || sim.labels.map(()=>0), {backgroundColor:ASSET_BREAKDOWN_COLORS.safe, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
-    makeBarDataset("運用", sim.labels, sim.totalInvestments, {backgroundColor:ASSET_BREAKDOWN_COLORS.investment, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
-    makeBarDataset("不足額", sim.labels, shortfall, {backgroundColor:ASSET_BREAKDOWN_COLORS.shortfall, borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"})
+    makeBarDataset("預貯金", sim.labels, sim.totalDeposits, {backgroundColor:rgbaFromHexForAssetBreakdown(ASSET_BREAKDOWN_COLORS.deposit, BREAKDOWN_SINGLE_BAR_ALPHA), borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
+    makeBarDataset("安全資産", sim.labels, sim.totalSafeAssets || sim.labels.map(()=>0), {backgroundColor:rgbaFromHexForAssetBreakdown(ASSET_BREAKDOWN_COLORS.safe, BREAKDOWN_SINGLE_BAR_ALPHA), borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
+    makeBarDataset("運用", sim.labels, sim.totalInvestments, {backgroundColor:rgbaFromHexForAssetBreakdown(ASSET_BREAKDOWN_COLORS.investment, BREAKDOWN_SINGLE_BAR_ALPHA), borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"}),
+    makeBarDataset("不足額", sim.labels, shortfall, {backgroundColor:rgbaFromHexForAssetBreakdown(ASSET_BREAKDOWN_COLORS.shortfall, BREAKDOWN_SINGLE_BAR_ALPHA), borderColor:"rgba(0,0,0,0)", borderWidth:0, stack:"asset"})
   ];
 }
 const INVESTMENT_BREAKDOWN_CATEGORIES = [
@@ -21213,6 +21219,8 @@ function getInvestmentBreakdownEntries(sim){
       categoryOffset,
       label:sim?.invNames?.[key] || `運用${key}`,
       series:sim?.invSeries?.[key] || (sim?.labels || []).map(()=>0),
+      principalSeries:sim?.principalSeries?.[key] || (sim?.labels || []).map(()=>0),
+      taxOn:meta?.taxOn === true,
       color:getInvestmentBreakdownColor(meta, categoryOffset)
     };
   }).sort((a,b)=>a.order-b.order);
@@ -21224,7 +21232,7 @@ function buildInvestmentDatasets(sim, color, overlay, labelPrefix=""){
   const entries = getInvestmentBreakdownEntries(sim).filter(entry=>hasAnyVisibleValue(entry.series));
   const barDatasets = entries.slice().reverse().map((entry, renderIdx)=>{
     const ds = makeBarDataset(entry.label, sim.labels, entry.series, {
-      backgroundColor:entry.color,
+      backgroundColor:rgbaFromHexForAssetBreakdown(entry.color, BREAKDOWN_SINGLE_BAR_ALPHA),
       borderColor:"rgba(0,0,0,0)",
       borderWidth:0,
       stack:"investmentDetail",
@@ -21236,6 +21244,8 @@ function buildInvestmentDatasets(sim, color, overlay, labelPrefix=""){
     ds._investmentCategory = entry.category;
     ds._investmentCategoryLabel = entry.categoryLabel;
     ds._investmentCategoryOffset = entry.categoryOffset;
+    ds._investmentPrincipalSeries = Array.isArray(entry.principalSeries) ? entry.principalSeries.slice() : [];
+    ds._investmentTaxOn = entry.taxOn === true;
     return ds;
   });
   const lineDatasets = [];
@@ -21252,6 +21262,7 @@ function buildInvestmentDatasets(sim, color, overlay, labelPrefix=""){
       order:0
     });
     principal._investmentReferenceLine = true;
+    principal._investmentReferenceKind = "principal";
     principal._investmentReferenceOrder = 1;
     principal._legendLineStyle = "dashed";
     lineDatasets.push(principal);
@@ -21269,6 +21280,7 @@ function buildInvestmentDatasets(sim, color, overlay, labelPrefix=""){
       order:0
     });
     afterTax._investmentReferenceLine = true;
+    afterTax._investmentReferenceKind = "afterTax";
     afterTax._investmentReferenceOrder = 2;
     afterTax._legendLineStyle = "solid";
     lineDatasets.push(afterTax);
@@ -21455,6 +21467,7 @@ function attachLifeGuideLegendHandlers(chartInstance, display){
       const key = String(btn.dataset.lifeGuide || "");
       if(!key) return;
       setLifeGuideVisibility(chartInstance, key, !isLifeGuideVisible(chartInstance, key));
+      saveCurrentChartLegendVisibilityState(chartInstance);
       const tooltipEl = document.getElementById("chartExternalTooltip");
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
@@ -21465,8 +21478,13 @@ function attachLifeGuideLegendHandlers(chartInstance, display){
   });
 }
 
-function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
+function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLifeGuideState=null){
   const configuredLifeGuideEntries = Array.isArray(lifeGuideEntries) ? lifeGuideEntries.slice() : null;
+  const configuredLifeGuideState = initialLifeGuideState ? {expected:initialLifeGuideState.expected !== false, asset:initialLifeGuideState.asset !== false} : null;
+  const seedConfiguredLifeGuideState = (chart)=>{
+    if(!chart || !configuredLifeGuideState || chart.$lifeGuideLegendState) return;
+    chart.$lifeGuideLegendState = {...configuredLifeGuideState};
+  };
   const getConfiguredLifeGuideEntries = (chart)=>{
     const entries = Array.isArray(chart?.$lifeGuideEntries) ? chart.$lifeGuideEntries : configuredLifeGuideEntries;
     return Array.isArray(entries) ? entries.slice().sort((a,b)=>{
@@ -21481,6 +21499,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
   return {
     id:"customLines",
     beforeDatasetsDraw(chart){
+      seedConfiguredLifeGuideState(chart);
       const graphType = document.getElementById("graphType")?.value || "";
       const {ctx,scales} = chart;
       const x = scales.x;
@@ -21533,6 +21552,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
       ctx.restore();
     },
     afterDatasetsDraw(chart){
+      seedConfiguredLifeGuideState(chart);
       const graphType = document.getElementById("graphType")?.value || "";
       const shouldDrawLifeGuidesHere = shouldDrawMainChartLifeGuides(graphType) && (!monteInfo || graphType === "asset");
       if(!shouldDrawLifeGuidesHere) return;
@@ -21684,6 +21704,24 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
             ctx.fillText(medianMarker.label || "中央値", labelX, labelY);
             ctx.restore();
           }
+        }
+      }
+      if(graphType === "education" && scales.y1){
+        const y1 = scales.y1;
+        const titleText = chart?.options?.scales?.y1?._educationRightTitleText || chart?.options?.scales?.y1?.title?.text || "";
+        const area = chart.chartArea;
+        if(titleText && area){
+          ctx.save();
+          ctx.font = "12px Arial";
+          ctx.fillStyle = "#475569";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const titleX = Math.min(chart.width - 8, Math.max(area.right + 28, y1.right - 8));
+          const titleY = (area.top + area.bottom) / 2;
+          ctx.translate(titleX, titleY);
+          ctx.rotate(-Math.PI / 2);
+          ctx.fillText(titleText, 0, 0);
+          ctx.restore();
         }
       }
       if(chartAxisSelectionGuide && chartAxisSelectionGuide.axis){
@@ -22005,6 +22043,50 @@ function buildAssetBreakdownTooltipHtml(unitSpec, simEntries, ageValue, overlay)
   const rows = itemRows.map(item=>`<div class="chart-external-tooltip-row${item.strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(item.color, item.swatch !== false)}<span>${escapeAttr(item.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(item.value, unitSpec, 'assetBreakdown'))}</span><span class="chart-external-tooltip-pct">${escapeAttr(item.pct)}</span></div>`).join("");
   return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct">${rows}</div>`;
 }
+function getVisibleInvestmentBreakdownSummaryAt(chartInstance, idx, fallbackSim=null){
+  const datasets = Array.isArray(chartInstance?.data?.datasets) ? chartInstance.data.datasets : [];
+  let hasDetail = false;
+  const summary = datasets.reduce((acc, ds, datasetIndex)=>{
+    if(!ds?._investmentDetail) return acc;
+    hasDetail = true;
+    if(typeof chartInstance.isDatasetVisible === "function" && !chartInstance.isDatasetVisible(datasetIndex)) return acc;
+    const point = Array.isArray(ds.data) ? ds.data[idx] : null;
+    const amount = Math.max(0, Number(point?.y) || 0);
+    const principalSeries = Array.isArray(ds._investmentPrincipalSeries) ? ds._investmentPrincipalSeries : [];
+    const principal = Math.max(0, Number(principalSeries[idx]) || 0);
+    const taxableGain = Math.max(0, amount - principal);
+    const tax = ds._investmentTaxOn ? taxableGain * TAX_RATE : 0;
+    acc.total += amount;
+    acc.principal += principal;
+    acc.tax += tax;
+    return acc;
+  }, {total:0, principal:0, tax:0});
+  if(hasDetail){
+    summary.afterTax = Math.max(0, summary.total - summary.tax);
+    return summary;
+  }
+  const total = Number(Array.isArray(fallbackSim?.totalInvestments) ? fallbackSim.totalInvestments[idx] : 0) || 0;
+  const principal = Number(Array.isArray(fallbackSim?.investmentPrincipalTotal) ? fallbackSim.investmentPrincipalTotal[idx] : 0) || 0;
+  const tax = Number(Array.isArray(fallbackSim?.investmentTaxEstimate) ? fallbackSim.investmentTaxEstimate[idx] : 0) || 0;
+  const afterTax = Number(Array.isArray(fallbackSim?.investmentAfterTaxValue) ? fallbackSim.investmentAfterTaxValue[idx] : (total - tax)) || 0;
+  return {total, principal, tax, afterTax};
+}
+function updateInvestmentReferenceDatasets(chartInstance){
+  if(!chartInstance || chartInstance.$graphType !== 'investment') return;
+  const datasets = Array.isArray(chartInstance.data?.datasets) ? chartInstance.data.datasets : [];
+  const referenceDatasets = datasets.filter(ds=>ds?._investmentReferenceLine);
+  if(!referenceDatasets.length) return;
+  const detailDatasets = datasets.filter(ds=>ds?._investmentDetail);
+  const labels = (referenceDatasets[0]?.data || detailDatasets[0]?.data || []).map(point=>Number(point?.x));
+  const summaries = labels.map((_, idx)=>getVisibleInvestmentBreakdownSummaryAt(chartInstance, idx, null));
+  referenceDatasets.forEach(ds=>{
+    if(ds._investmentReferenceKind === 'principal'){
+      ds.data = labels.map((x, idx)=>({x, y:Number(summaries[idx]?.principal) || 0}));
+    }else if(ds._investmentReferenceKind === 'afterTax'){
+      ds.data = labels.map((x, idx)=>({x, y:Number(summaries[idx]?.afterTax) || 0}));
+    }
+  });
+}
 function getInvestmentBreakdownValuesAt(sim, idx){
   return getInvestmentBreakdownEntries(sim).map(entry=>({
     ...entry,
@@ -22016,13 +22098,15 @@ function buildInvestmentBreakdownTooltipHtml(unitSpec, sim, ageValue, chartInsta
   const idx = getNearestSimIndexByAge(sim, ageValue);
   if(idx < 0) return "";
   const title = getCalendarWindowTooltipTitle(sim, ageValue);
-  const total = Number(Array.isArray(sim.totalInvestments) ? sim.totalInvestments[idx] : 0) || 0;
-  const principalTotal = Number(Array.isArray(sim.investmentPrincipalTotal) ? sim.investmentPrincipalTotal[idx] : 0) || 0;
-  const estimatedTax = Number(Array.isArray(sim.investmentTaxEstimate) ? sim.investmentTaxEstimate[idx] : 0) || 0;
-  const afterTaxValue = Number(Array.isArray(sim.investmentAfterTaxValue) ? sim.investmentAfterTaxValue[idx] : (total - estimatedTax)) || 0;
+  const visibleSummary = getVisibleInvestmentBreakdownSummaryAt(chartInstance, idx, sim);
+  const total = Number(visibleSummary.total) || 0;
+  const principalTotal = Number(visibleSummary.principal) || 0;
+  const estimatedTax = Number(visibleSummary.tax) || 0;
+  const afterTaxValue = Number(visibleSummary.afterTax) || 0;
   const preTaxGain = total - principalTotal;
   const afterTaxGain = afterTaxValue - principalTotal;
   const visibleKeys = new Set();
+  const hasInvestmentVisibilityFilter = !!(chartInstance?.data?.datasets || []).some(ds=>ds?._investmentDetail);
   if(chartInstance?.data?.datasets){
     chartInstance.data.datasets.forEach((ds, datasetIndex)=>{
       if(!ds?._investmentDetail) return;
@@ -22053,7 +22137,7 @@ function buildInvestmentBreakdownTooltipHtml(unitSpec, sim, ageValue, chartInsta
   summaryRow('評価損益（税引前）', preTaxGain, {signed:true, swatch:false});
   summaryRow('評価損益（税引後）', afterTaxGain, {signed:true, swatch:false});
   const entries = getInvestmentBreakdownValuesAt(sim, idx).filter(entry=>{
-    if(visibleKeys.size && !visibleKeys.has(Number(entry.key))) return false;
+    if(hasInvestmentVisibilityFilter && !visibleKeys.has(Number(entry.key))) return false;
     return isTooltipDisplayNonZero(entry.value);
   });
   INVESTMENT_BREAKDOWN_CATEGORIES.forEach(cat=>{
@@ -22472,6 +22556,7 @@ function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartIn
   const title = getCalendarWindowTooltipTitle(sourceEntries[0].sim, Number.isFinite(titleAge) ? titleAge : ageValue);
   const visibleChildSet = getEducationVisibleChildSet(chartInstance);
   const rightUnitSpec = getMainChartYAxisUnitSpec(sourceEntries.flatMap(entry=>getEducationCumulativeSeriesForVisibleChildren(entry?.sim, visibleChildSet)), {includeSenman:true});
+  const educationTooltipCumUnitSpec = {threshold:0, divisor:1, label:'万円'};
   const hasHiddenChild = (()=>{
     const all = new Set();
     (chartInstance?.data?.datasets || []).forEach(ds=>{ const c=Number(ds?._educationChildIndex); if(Number.isFinite(c)) all.add(c); });
@@ -22493,7 +22578,7 @@ function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartIn
     const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join('');
     const moneyCell = (value, spec)=>Math.abs(Number(value)||0) > 1e-9 ? escapeAttr(formatMainChartTooltipMoney(value, spec, 'education')) : '—';
     const row = (label, getter, strong=false, spec=unitSpec, labelHtml=null)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${labelHtml || escapeAttr(label)}</th>${visibleEntries.map(entry=>`<td>${moneyCell(getter(entry), spec)}</td>`).join('')}</tr>`;
-    const rows = [row('年間教育費合計', entry=>entry.values.annualTotal, true, unitSpec), row('教育費累計', entry=>entry.values.cumulative, true, rightUnitSpec)];
+    const rows = [row('年間教育費合計', entry=>entry.values.annualTotal, true, unitSpec), row('教育費累計', entry=>entry.values.cumulative, true, educationTooltipCumUnitSpec)];
     if(childRows.length){
       childRows.forEach(childIndex=>{
         const labelEntry = visibleEntries.find(entry=>entry.idx != null && Math.abs(Number(entry.values.childValues[childIndex]) || 0) > 1e-6) || visibleEntries[0];
@@ -22514,7 +22599,7 @@ function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartIn
     rows.push(`<div class="chart-external-tooltip-row${strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, swatchVisible)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(value, spec, 'education'))}</span></div>`);
   };
   summaryRow('年間教育費合計', values.annualTotal, unitSpec, true);
-  summaryRow('教育費累計', values.cumulative, rightUnitSpec, true, '#334155', true);
+  summaryRow('教育費累計', values.cumulative, educationTooltipCumUnitSpec, true, '#334155', true);
   const childIndices = Object.keys(values.childValues || {}).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
   let childCount = 0;
   childIndices.forEach(childIndex=>{
@@ -22666,7 +22751,7 @@ function getChartLegendState(contextKey){
   const key = String(contextKey || chartLegendLastContextKey || '');
   if(!key) return null;
   if(!chartLegendVisibilityState.has(key)){
-    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null, educationOverlay:null});
+    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null, educationOverlay:null, lifeGuide:null});
   }
   return chartLegendVisibilityState.get(key);
 }
@@ -22674,6 +22759,10 @@ function saveCurrentChartLegendVisibilityState(chartInstance){
   const contextKey = chartInstance?.$legendContextKey;
   const state = getChartLegendState(contextKey);
   if(!state || !chartInstance) return;
+  if(shouldShowLifeGuideLegend(chartInstance)){
+    const lifeState = ensureLifeGuideLegendState(chartInstance);
+    state.lifeGuide = {expected:lifeState.expected !== false, asset:lifeState.asset !== false};
+  }
   state.datasets = {};
   (chartInstance.data?.datasets || []).forEach((ds, idx)=>{
     const key = getChartLegendDatasetKey(ds, idx);
@@ -22713,6 +22802,11 @@ function restoreChartLegendVisibilityState(chartInstance){
   const contextKey = chartInstance?.$legendContextKey;
   const state = chartLegendVisibilityState.get(String(contextKey || ''));
   if(!state || !chartInstance) return;
+  if(shouldShowLifeGuideLegend(chartInstance) && state.lifeGuide){
+    const lifeState = ensureLifeGuideLegendState(chartInstance);
+    if(typeof state.lifeGuide.expected === 'boolean') lifeState.expected = state.lifeGuide.expected;
+    if(typeof state.lifeGuide.asset === 'boolean') lifeState.asset = state.lifeGuide.asset;
+  }
   if(chartInstance.$graphType === 'assetBreakdown' && chartInstance.$overlayMode && state.assetBreakdownOverlay){
     chartInstance.$assetBreakdownOverlayHiddenScenarios = new Set((state.assetBreakdownOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
     chartInstance.$assetBreakdownOverlayHiddenCategories = new Set((state.assetBreakdownOverlay.hiddenCategories || []).map(v=>String(v || '')).filter(Boolean));
@@ -22747,7 +22841,8 @@ function restoreChartLegendVisibilityState(chartInstance){
     }
   });
   if(chartInstance.$graphType === 'education') updateEducationCumulativeDatasets(chartInstance);
-  if(changed) chartInstance.update('none');
+  if(chartInstance.$graphType === 'investment') updateInvestmentReferenceDatasets(chartInstance);
+  if(changed || chartInstance.$graphType === 'investment') chartInstance.update('none');
 }
 function getAssetBreakdownOverlayLegendDatasets(chartInstance){
   const datasets = chartInstance?.data?.datasets || [];
@@ -22944,6 +23039,7 @@ function renderInvestmentBreakdownLegend(chartInstance, display){
       if(tooltipEl) tooltipEl.hidden = true;
       chartInstance.setActiveElements([]);
       chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      updateInvestmentReferenceDatasets(chartInstance);
       chartInstance.update("none");
       renderInvestmentBreakdownLegend(chartInstance, display);
     });
@@ -23240,7 +23336,9 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       min:rightAxis.min,
       max:rightAxis.max,
       grid:{drawOnChartArea:false, z:-1}, border:{z:-1},
-      title:{display:true,text:`教育費累計（${rightAxisUnitSpec.label}）`},
+      title:{display:false,text:`教育費累計（${rightAxisUnitSpec.label}）`},
+      _educationRightTitleText:`教育費累計（${rightAxisUnitSpec.label}）`,
+      afterFit(scale){ scale.width += 18; },
       ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
     };
   }
@@ -23349,13 +23447,15 @@ function draw(){
   updateResultCards(currentCfg, currentSim);
 
   const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'normal', graphType, overlay, targets}));
+  const pendingLegendState = chartLegendVisibilityState.get(String(legendContextKey || '')) || null;
+  const pendingLifeGuideState = pendingLegendState?.lifeGuide ? {...pendingLegendState.lifeGuide} : null;
   if(chart) chart.destroy();
   const customLegendDisplay = overlay || monteMode || shouldDrawMainChartLifeGuides(graphType) || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
     options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, cfgRef:firstCfg, assetBreakdownTooltipEntries, incomeExpenseTooltipEntries, educationTooltipEntries, overlay, educationCumData:(graphType === "education" && educationCumAxisData.length ? educationCumAxisData : getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120))}),
-    plugins:[pluginLines(firstCfg, baseSim, null, overlay ? lifeGuideEntries.slice() : null)]
+    plugins:[pluginLines(firstCfg, baseSim, null, overlay ? lifeGuideEntries.slice() : null, pendingLifeGuideState)]
   });
   chart.$lifeGuideEntries = overlay ? lifeGuideEntries.slice() : null;
   chart.$graphType = graphType;
