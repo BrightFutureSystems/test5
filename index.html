@@ -5258,7 +5258,9 @@ document.addEventListener("scroll", (ev)=>{
   .chart-external-tooltip-income-body .chart-external-tooltip-matrix td.chart-external-tooltip-value-negative,
   .chart-external-tooltip-matrix td.chart-external-tooltip-value-negative,
   .chart-external-tooltip-income-body .chart-external-tooltip-strong-row .chart-external-tooltip-value.chart-external-tooltip-value-negative{color:#dc2626;}
-</style>
+.chart-external-tooltip-body .chart-external-tooltip-value.chart-external-tooltip-value-positive{color:#15803d;}
+  .chart-external-tooltip-body .chart-external-tooltip-value.chart-external-tooltip-value-negative{color:#dc2626;}
+  </style>
 
 </head>
 <body>
@@ -7245,7 +7247,7 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
       return next;
     }
     next.borderColor = color;
-    next.borderWidth = (graphType === 'asset' || graphType === 'incomeExpense') ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
+    next.borderWidth = (graphType === 'asset' || graphType === 'cashflow' || graphType === 'incomeExpense') ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
     next.borderDash = dash.length ? dash.slice() : [];
     if(graphType === 'assetBreakdown' && next.type === 'bar'){
       next.borderColor = 'rgba(0,0,0,0)';
@@ -7255,7 +7257,7 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
       return next;
     }
     if(next.type === 'line'){
-      if(graphType === 'asset'){
+      if(graphType === 'asset' || graphType === 'cashflow'){
         if(style?.fillArea === false){
           next.backgroundColor = 'rgba(0,0,0,0)';
           next.fill = false;
@@ -20504,8 +20506,8 @@ function getAxisBounds(arr, cfg, symmetric=false){
     return {min:-limit, max:limit};
   }
 
-  if(cfg?._graphType === "incomeExpense"){
-    // v1112: 収入／支出グラフは単一表示・重ね書きとも同じオートスケール経路を使う。
+  if(cfg?._graphType === "incomeExpense" || cfg?._graphType === "cashflow"){
+    // v1112/v1120: 収入／支出グラフと年間収支グラフは単一表示・重ね書きとも同じオートスケール経路を使う。
     // データ上下端から最低10%の余白を確保したうえで、最寄りのniceなy軸補助線に丸める。
     const dataMin = Math.min(minVal, 0);
     const dataMax = Math.max(maxVal, 0);
@@ -20667,9 +20669,11 @@ function getOverlayAssetFillAlphaSpec(overlayCount){
 function buildAssetDatasets(sim, color, overlay, labelPrefix="", overlayCount=1){
   if(overlay){
     const fillAlpha = getOverlayAssetFillAlphaSpec(overlayCount);
-    return [makeLineDataset(labelPrefix || "総資産", sim.labels, sim.totalAssets, {
+    const ds = makeLineDataset(labelPrefix || "総資産", sim.labels, sim.totalAssets, {
       borderColor:color, backgroundColor:(ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", fillAlpha.strong, fillAlpha.weak), borderWidth:1.6, fill:{target:"origin"}, order:10
-    })];
+    });
+    ds.data = buildLinePointsWithZeroCrossings(sim.labels, sim.totalAssets);
+    return [ds];
   }
   return [{
     type:"line",
@@ -20708,11 +20712,58 @@ function buildAssetDatasets(sim, color, overlay, labelPrefix="", overlayCount=1)
     }
   }];
 }
-function buildCashflowDatasets(sim, color, overlay, labelPrefix=""){
+function buildCashflowDatasets(sim, color, overlay, labelPrefix="", overlayCount=1){
   const cashflowLabel = overlay ? (labelPrefix || "年間収支") : "年間収支";
-  return [makeLineDataset(cashflowLabel, sim.labels, sim.annualCashflow, {
-    borderColor:overlay ? color : "#111827", borderWidth:2.5
-  })];
+  if(overlay){
+    const fillAlpha = getOverlayAssetFillAlphaSpec(overlayCount);
+    const ds = makeLineDataset(cashflowLabel, sim.labels, sim.annualCashflow, {
+      borderColor:color,
+      backgroundColor:(ctx)=>makeAssetFillGradientFromZero(ctx.chart, color, "both", fillAlpha.strong, fillAlpha.weak),
+      borderWidth:1.6,
+      fill:{target:"origin"},
+      order:10,
+      pointHoverRadius:4
+    });
+    ds.data = buildLinePointsWithZeroCrossings(sim.labels, sim.annualCashflow);
+    return [ds];
+  }
+  return [{
+    type:"line",
+    label:"年間収支",
+    data:buildLinePointsWithZeroCrossings(sim.labels, sim.annualCashflow),
+    parsing:false,
+    pointRadius:0,
+    pointHoverRadius:4,
+    pointHitRadius:4,
+    pointBackgroundColor:ctx=>{
+      const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
+      return y < 0 ? "#cf616d" : "#2b8b5f";
+    },
+    pointBorderColor:"#fff",
+    pointBorderWidth:1.5,
+    pointHoverBackgroundColor:ctx=>{
+      const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
+      return y < 0 ? "#cf616d" : "#2b8b5f";
+    },
+    pointHoverBorderColor:"#fff",
+    pointHoverBorderWidth:2,
+    borderWidth:1.65,
+    fill:{target:"origin"},
+    spanGaps:true,
+    order:10,
+    segment:{
+      borderColor:ctx=>{
+        const y0 = Number(ctx.p0.parsed.y), y1 = Number(ctx.p1.parsed.y);
+        return (y0 < 0 || y1 < 0) ? "#cf616d" : "#2b8b5f";
+      },
+      backgroundColor:ctx=>{
+        const y0 = Number(ctx.p0.parsed.y), y1 = Number(ctx.p1.parsed.y);
+        return (y0 < 0 || y1 < 0)
+          ? makeAssetFillGradientFromZero(ctx.chart, "#cf616d", "negative", 0.12, 0.014)
+          : makeAssetFillGradientFromZero(ctx.chart, "#2b8b5f", "positive", 0.11, 0.012);
+      }
+    }
+  }];
 }
 function buildEducationDatasets(sim, color, overlay, labelPrefix=""){
   if(overlay){
@@ -20831,6 +20882,7 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlay
     const incomeBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総収入`, sim.labels, incomeExpenseDerived.income, color, "income", stackId, xOffset);
     const expenseBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総支出`, sim.labels, incomeExpenseDerived.expense.map(v=>-v), color, "expense", stackId, xOffset);
     const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, incomeExpenseDerived.cashflow, {borderColor:color, backgroundColor:color, borderWidth:getIncomeExpenseCashflowLineWidth(), order:0, pointHoverRadius:4, yAxisID:INCOME_EXPENSE_CASHFLOW_AXIS_ID});
+    cashflowLine.data = buildLinePointsWithZeroCrossings(sim.labels, incomeExpenseDerived.cashflow);
     cashflowLine._incomeExpenseOverlayKind = "cashflow";
     cashflowLine._scenarioColor = color;
     return [incomeBar, expenseBar, cashflowLine];
@@ -21142,14 +21194,73 @@ function drawCommonZeroLine(ctx, xScale, yScale){
 }
 function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix="", overlayCount=1, overlayIndex=0){
   if(graphType === "asset") return buildAssetDatasets(sim, color, overlay, labelPrefix, overlayCount);
-  if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix);
+  if(graphType === "cashflow") return buildCashflowDatasets(sim, color, overlay, labelPrefix, overlayCount);
   if(graphType === "education") return buildEducationDatasets(sim, color, overlay, labelPrefix);
   if(graphType === "incomeExpense") return buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix, overlayCount, overlayIndex);
   if(graphType === "assetBreakdown") return buildAssetBreakdownDatasets(sim, color, overlay, labelPrefix, overlayIndex);
   if(graphType === "investment") return buildInvestmentDatasets(sim, color, overlay, labelPrefix);
   return [];
 }
-function pluginLines(cfg, sim, monteInfo=null){
+function shouldDrawMainChartLifeGuides(graphType){
+  return ["asset", "assetBreakdown", "investment", "incomeExpense", "cashflow", "education"].includes(graphType);
+}
+function getAssetZeroCrossAgeForGuide(sim){
+  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+  const values = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+  if(labels.length === 0 || values.length === 0) return null;
+  for(let i = 0; i < Math.min(labels.length, values.length); i++){
+    const age = Number(labels[i]);
+    const value = Number(values[i]);
+    if(!Number.isFinite(age) || !Number.isFinite(value)) continue;
+    if(value <= 0){
+      if(value === 0 || i === 0) return age;
+      const prevAge = Number(labels[i - 1]);
+      const prevValue = Number(values[i - 1]);
+      if(!Number.isFinite(prevAge) || !Number.isFinite(prevValue)) return age;
+      if(prevValue <= 0) return age;
+      const denom = prevValue - value;
+      if(!Number.isFinite(denom) || Math.abs(denom) < 1e-9) return age;
+      return prevAge + (age - prevAge) * (prevValue / denom);
+    }
+  }
+  return null;
+}
+function formatAssetLifeLabelAge(crossAge){
+  const EPS = 1e-9;
+  const age = Math.ceil(Number(crossAge) - EPS);
+  return Number.isFinite(age) ? age : null;
+}
+function resolveLifeGuideOverlayLineWidth(style, graphType){
+  return (graphType === 'asset' || graphType === 'cashflow' || graphType === 'incomeExpense')
+    ? resolveAssetOverlayLineWidth(style?.lineWidth)
+    : normalizeOverlayLineWidth(style?.lineWidth);
+}
+function isOverlayGuideEntryVisible(chart, overlayIndex){
+  if(!chart || !Number.isFinite(Number(overlayIndex))) return true;
+  const target = Number(overlayIndex);
+  const datasets = chart.data?.datasets || [];
+  let found = false;
+  for(let datasetIndex = 0; datasetIndex < datasets.length; datasetIndex++){
+    const ds = datasets[datasetIndex];
+    if(Number(ds?._overlayIndex) !== target) continue;
+    found = true;
+    if(typeof chart.isDatasetVisible !== 'function' || chart.isDatasetVisible(datasetIndex)) return true;
+  }
+  return !found;
+}
+function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
+  const configuredLifeGuideEntries = Array.isArray(lifeGuideEntries) ? lifeGuideEntries.slice() : null;
+  const getConfiguredLifeGuideEntries = (chart)=>{
+    const entries = Array.isArray(chart?.$lifeGuideEntries) ? chart.$lifeGuideEntries : configuredLifeGuideEntries;
+    return Array.isArray(entries) ? entries.slice().sort((a,b)=>{
+      const ai = Number(a?.overlayIndex);
+      const bi = Number(b?.overlayIndex);
+      if(Number.isFinite(ai) && Number.isFinite(bi) && ai !== bi) return ai - bi;
+      if(Number.isFinite(ai) && !Number.isFinite(bi)) return -1;
+      if(!Number.isFinite(ai) && Number.isFinite(bi)) return 1;
+      return 0;
+    }) : null;
+  };
   return {
     id:"customLines",
     beforeDatasetsDraw(chart){
@@ -21159,7 +21270,7 @@ function pluginLines(cfg, sim, monteInfo=null){
       const y = scales.y;
       if(!x || !y) return;
       ctx.save();
-      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && Array.isArray(x.ticks) && x.ticks.length){
+      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && graphType !== "cashflow" && Array.isArray(x.ticks) && x.ticks.length){
         ctx.save();
         ctx.strokeStyle = "rgba(148,163,184,0.22)";
         ctx.lineWidth = 1;
@@ -21177,64 +21288,47 @@ function pluginLines(cfg, sim, monteInfo=null){
         ctx.restore();
       }
       drawCommonZeroLine(ctx, x, y);
-      if(graphType === "asset"){
+      const shouldDrawLifeGuidesHere = shouldDrawMainChartLifeGuides(graphType) && (!monteInfo || graphType === "asset");
+      if(shouldDrawLifeGuidesHere){
         const area = chart.chartArea;
-        const pxLife = x.getPixelForValue(cfg.lifeExpect);
-        if(Number.isFinite(pxLife) && pxLife >= area.left && pxLife <= area.right){
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
-          ctx.clip();
-          ctx.strokeStyle = "#5b7c99";
-          ctx.lineWidth = 1.25;
-          ctx.setLineDash([7,5]);
-          ctx.beginPath();
-          ctx.moveTo(Math.round(pxLife) + 0.5, y.top);
-          ctx.lineTo(Math.round(pxLife) + 0.5, y.bottom);
-          ctx.stroke();
-          ctx.restore();
+        const allOverlayGuideEntries = getConfiguredLifeGuideEntries(chart);
+        const overlayGuideEntries = allOverlayGuideEntries ? allOverlayGuideEntries.filter(entry=>entry && isOverlayGuideEntryVisible(chart, entry.overlayIndex)) : null;
+        if(allOverlayGuideEntries){
+          // 重ね書き時の寿命線は、datasets描画後に資産寿命線だけを描く。
+        }else{
+          const pxLife = x.getPixelForValue(cfg.lifeExpect);
+          if(Number.isFinite(pxLife) && pxLife >= area.left && pxLife <= area.right){
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+            ctx.clip();
+            ctx.strokeStyle = "#5b7c99";
+            ctx.lineWidth = 1.25;
+            ctx.setLineDash([7,5]);
+            ctx.beginPath();
+            ctx.moveTo(Math.round(pxLife) + 0.5, y.top);
+            ctx.lineTo(Math.round(pxLife) + 0.5, y.bottom);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
       }
       ctx.restore();
     },
     afterDatasetsDraw(chart){
       const graphType = document.getElementById("graphType")?.value || "";
-      if(graphType !== "asset") return;
+      const shouldDrawLifeGuidesHere = shouldDrawMainChartLifeGuides(graphType) && (!monteInfo || graphType === "asset");
+      if(!shouldDrawLifeGuidesHere) return;
       const {ctx,scales} = chart;
       const x = scales.x;
       const y = scales.y;
       const area = chart.chartArea;
       if(!x || !y || !area) return;
 
-      function getAssetZeroCrossAgeForGuide(sim){
-        const labels = Array.isArray(sim?.labels) ? sim.labels : [];
-        const values = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
-        if(labels.length === 0 || values.length === 0) return null;
-        for(let i = 0; i < Math.min(labels.length, values.length); i++){
-          const age = Number(labels[i]);
-          const value = Number(values[i]);
-          if(!Number.isFinite(age) || !Number.isFinite(value)) continue;
-          if(value <= 0){
-            if(value === 0 || i === 0) return age;
-            const prevAge = Number(labels[i - 1]);
-            const prevValue = Number(values[i - 1]);
-            if(!Number.isFinite(prevAge) || !Number.isFinite(prevValue)) return age;
-            if(prevValue <= 0) return age;
-            const denom = prevValue - value;
-            if(!Number.isFinite(denom) || Math.abs(denom) < 1e-9) return age;
-            return prevAge + (age - prevAge) * (prevValue / denom);
-          }
-        }
-        return null;
-      }
-      function formatAssetLifeLabelAge(crossAge){
-        const EPS = 1e-9;
-        const age = Math.ceil(Number(crossAge) - EPS);
-        return Number.isFinite(age) ? age : null;
-      }
       function drawVerticalGuideLabel(px, label, color, yPos, opts={}){
         if(!Number.isFinite(px) || px < area.left || px > area.right) return;
         const labelStroke = opts.labelStroke || "rgba(148,163,184,0.34)";
+        const stackIndex = Math.max(0, Number(opts.stackIndex) || 0);
         ctx.save();
         ctx.font = "12px Arial";
         ctx.textAlign = "left";
@@ -21243,7 +21337,10 @@ function pluginLines(cfg, sim, monteInfo=null){
         const labelW = ctx.measureText(label).width + padX * 2;
         const labelH = 20;
         const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
-        const labelY = yPos === "bottom" ? y.bottom - 14 : y.top + 14;
+        const offsetStep = 24;
+        const labelY = yPos === "bottom"
+          ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14 - stackIndex * offsetStep)
+          : Math.min(y.bottom - labelH / 2 - 4, y.top + 14 + stackIndex * offsetStep);
         ctx.fillStyle = "rgba(255,255,255,0.90)";
         ctx.strokeStyle = labelStroke;
         ctx.lineWidth = 1;
@@ -21261,30 +21358,63 @@ function pluginLines(cfg, sim, monteInfo=null){
       ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
       ctx.clip();
 
-      const assetZeroCrossAge = getAssetZeroCrossAgeForGuide(sim);
-      const assetLifeLabelAge = formatAssetLifeLabelAge(assetZeroCrossAge);
-      let pxD = null;
-      if(assetZeroCrossAge != null && assetLifeLabelAge != null){
-        pxD = x.getPixelForValue(assetZeroCrossAge);
-        if(Number.isFinite(pxD) && pxD >= area.left && pxD <= area.right){
-          ctx.strokeStyle = "#1f2937";
-          ctx.lineWidth = 1.6;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(Math.round(pxD) + 0.5, y.top);
-          ctx.lineTo(Math.round(pxD) + 0.5, y.bottom);
-          ctx.stroke();
-        }
-      }
-
-      const pxLife = x.getPixelForValue(cfg.lifeExpect);
-      drawVerticalGuideLabel(pxLife, `想定寿命：${cfg.lifeExpect}歳`, "#5b7c99", "bottom", {
-        labelStroke: "rgba(91,124,153,0.30)"
-      });
-      if(pxD != null && assetLifeLabelAge != null){
-        drawVerticalGuideLabel(pxD, `資産寿命：${assetLifeLabelAge}歳`, "#1f2937", "top", {
-          labelStroke: "rgba(31,41,55,0.22)"
+      const allOverlayGuideEntries = getConfiguredLifeGuideEntries(chart);
+      const overlayGuideEntries = allOverlayGuideEntries ? allOverlayGuideEntries.filter(entry=>entry && isOverlayGuideEntryVisible(chart, entry.overlayIndex)) : null;
+      if(allOverlayGuideEntries){
+        overlayGuideEntries.forEach((entry, idx)=>{
+          const entrySim = entry.sim || sim;
+          const rawColor = entry.color || '#64748b';
+          const lineColor = colorToRgba(rawColor, 0.55);
+          const labelColor = colorToRgba(rawColor, 0.78);
+          const crossAge = getAssetZeroCrossAgeForGuide(entrySim);
+          const assetLifeLabelAge = formatAssetLifeLabelAge(crossAge);
+          const pxAssetLife = crossAge != null ? x.getPixelForValue(crossAge) : null;
+          if(pxAssetLife != null && assetLifeLabelAge != null){
+            const lineWidth = resolveLifeGuideOverlayLineWidth(entry.style, graphType);
+            const lineDash = getLineDashByOverlayStyle(entry.style?.lineStyle);
+            if(Number.isFinite(pxAssetLife) && pxAssetLife >= area.left && pxAssetLife <= area.right){
+              ctx.save();
+              ctx.strokeStyle = lineColor;
+              ctx.lineWidth = lineWidth;
+              ctx.setLineDash(lineDash.length ? lineDash : []);
+              ctx.beginPath();
+              ctx.moveTo(Math.round(pxAssetLife) + 0.5, y.top);
+              ctx.lineTo(Math.round(pxAssetLife) + 0.5, y.bottom);
+              ctx.stroke();
+              ctx.restore();
+            }
+            drawVerticalGuideLabel(pxAssetLife, `資産寿命：${assetLifeLabelAge}歳`, labelColor, "top", {
+              labelStroke: colorToRgba(rawColor, 0.24),
+              stackIndex: idx
+            });
+          }
         });
+      }else{
+        const assetZeroCrossAge = getAssetZeroCrossAgeForGuide(sim);
+        const assetLifeLabelAge = formatAssetLifeLabelAge(assetZeroCrossAge);
+        let pxD = null;
+        if(assetZeroCrossAge != null && assetLifeLabelAge != null){
+          pxD = x.getPixelForValue(assetZeroCrossAge);
+          if(Number.isFinite(pxD) && pxD >= area.left && pxD <= area.right){
+            ctx.strokeStyle = "#1f2937";
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(Math.round(pxD) + 0.5, y.top);
+            ctx.lineTo(Math.round(pxD) + 0.5, y.bottom);
+            ctx.stroke();
+          }
+        }
+
+        const pxLife = x.getPixelForValue(cfg.lifeExpect);
+        drawVerticalGuideLabel(pxLife, `想定寿命：${cfg.lifeExpect}歳`, "#5b7c99", "bottom", {
+          labelStroke: "rgba(91,124,153,0.30)"
+        });
+        if(pxD != null && assetLifeLabelAge != null){
+          drawVerticalGuideLabel(pxD, `資産寿命：${assetLifeLabelAge}歳`, "#1f2937", "top", {
+            labelStroke: "rgba(31,41,55,0.22)"
+          });
+        }
       }
 
       ctx.restore();
@@ -21480,14 +21610,19 @@ function formatXAxisCalendarYearShort(year){
   if(y < 2100) return String(((y % 100) + 100) % 100).padStart(2, '0');
   return String(y - 2000);
 }
+function formatTooltipAgeLabel(value){
+  const num = Number(value);
+  if(!Number.isFinite(num)) return `${value}`;
+  return `${num.toFixed(1)}歳`;
+}
 function getCalendarWindowTooltipTitle(sim, xValue){
   const mode = getXAxisLabelMode();
   const target = Number(xValue);
   if(!Number.isFinite(target)) return `${xValue}`;
-  const ageLabel = `${target}歳`;
+  const ageLabel = formatTooltipAgeLabel(target);
   const win = getCalendarWindowForXAxisValue(sim, target);
   if(mode === "calendar"){
-    return win ? `${win.year}年` : `${target}年`;
+    return win ? `${win.year}年` : `${target.toFixed(1)}年`;
   }
   if(mode === "both"){
     return win ? `${ageLabel} / ${win.year}年` : ageLabel;
@@ -21729,6 +21864,31 @@ function getIncomeExpenseVisibleCategorySet(chartInstance){
   });
   return hasCategoryDataset ? visible : null;
 }
+function getInterpolatedSeriesValueAtAge(labels, series, ageValue){
+  const target = Number(ageValue);
+  if(!Number.isFinite(target)) return null;
+  const xs = Array.isArray(labels) ? labels : [];
+  const ys = Array.isArray(series) ? series : [];
+  const len = Math.min(xs.length, ys.length);
+  if(!len) return null;
+  for(let i = 0; i < len; i++){
+    const x = Number(xs[i]);
+    const y = Number(ys[i]);
+    if(!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    if(Math.abs(x - target) <= 1e-7) return y;
+    if(i === 0) continue;
+    const px = Number(xs[i - 1]);
+    const py = Number(ys[i - 1]);
+    if(!Number.isFinite(px) || !Number.isFinite(py)) continue;
+    if(target < Math.min(px, x) - 1e-7 || target > Math.max(px, x) + 1e-7) continue;
+    const dx = x - px;
+    if(Math.abs(dx) <= 1e-9) return y;
+    const t = (target - px) / dx;
+    const interpolated = py + (y - py) * t;
+    return Math.abs(interpolated) < 1e-9 ? 0 : interpolated;
+  }
+  return null;
+}
 function getIncomeExpenseValuesAt(sim, idx){
   const derived = getIncomeExpenseDerivedSeries(sim);
   const n = (arr)=>Number(Array.isArray(arr) ? arr[idx] : 0) || 0;
@@ -21775,7 +21935,7 @@ function buildIncomeExpenseSectionTitle(label, kind='', totalValue=null, unitSpe
   const pctHtml = hasTotal && Math.abs(Number(totalValue) || 0) > 1e-9 ? '100%' : '';
   return `<div class="chart-external-tooltip-income-section-gap" aria-hidden="true"></div><div class="chart-external-tooltip-row chart-external-tooltip-section-title${modifier}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label"><span class="chart-external-tooltip-swatch chart-external-tooltip-swatch-empty"></span><span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${valueHtml}</span><span class="chart-external-tooltip-pct">${escapeAttr(pctHtml)}</span></div>`;
 }
-function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, chartInstance=null){
+function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, chartInstance=null, activeOverlayIndices=null){
   const entries = (simEntries || []).filter(entry=>entry?.sim);
   if(!entries.length) return "";
   const title = getCalendarWindowTooltipTitle(entries[0].sim, ageValue);
@@ -21783,7 +21943,10 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
     const maxTooltipEntries = (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 3 : 5;
     const hiddenScenarios = chartInstance?.$incomeExpenseOverlayHiddenScenarios instanceof Set ? chartInstance.$incomeExpenseOverlayHiddenScenarios : new Set();
     const hiddenKinds = chartInstance?.$incomeExpenseOverlayHiddenKinds instanceof Set ? chartInstance.$incomeExpenseOverlayHiddenKinds : new Set();
-    const visibleEntries = entries.filter(entry=>!hiddenScenarios.has(Number(entry.overlayIndex))).slice(0, maxTooltipEntries).map(entry=>{ const idx = getNearestSimIndexByAge(entry.sim, ageValue); return {...entry, values:getIncomeExpenseValuesAt(entry.sim, idx)}; });
+    const constrainedEntries = (activeOverlayIndices instanceof Set && activeOverlayIndices.size)
+      ? entries.filter(entry=>activeOverlayIndices.has(Number(entry.overlayIndex)))
+      : entries;
+    const visibleEntries = constrainedEntries.filter(entry=>!hiddenScenarios.has(Number(entry.overlayIndex))).slice(0, maxTooltipEntries).map(entry=>{ const idx = getNearestSimIndexByAge(entry.sim, ageValue); const values = getIncomeExpenseValuesAt(entry.sim, idx); const derived = getIncomeExpenseDerivedSeries(entry.sim); const interpolatedCashflow = getInterpolatedSeriesValueAtAge(entry.sim?.labels, derived.cashflow, ageValue); if(Number.isFinite(interpolatedCashflow)) values.annualCashflow = interpolatedCashflow; return {...entry, values}; });
     if(!visibleEntries.length) return "";
     const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join("");
     const row = (label, key, strong=false, signed=false)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${escapeAttr(label)}</th>${visibleEntries.map(entry=>{ const valueClass = key === 'annualCashflow' ? getIncomeExpenseCashflowTooltipValueClass(entry.values[key]) : ''; const classAttr = valueClass ? ` class="${escapeAttr(valueClass)}"` : ''; return `<td${classAttr}>${escapeAttr(signed ? formatSignedMainChartTooltipMoney(entry.values[key], unitSpec, 'incomeExpense') : formatMainChartTooltipMoney(entry.values[key], unitSpec, 'incomeExpense'))}</td>`; }).join("")}</tr>`;
@@ -21799,6 +21962,9 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
   const idx = getNearestSimIndexByAge(sim, ageValue);
   if(idx < 0) return "";
   const values = getIncomeExpenseValuesAt(sim, idx);
+  const derived = getIncomeExpenseDerivedSeries(sim);
+  const interpolatedCashflow = getInterpolatedSeriesValueAtAge(sim?.labels, derived.cashflow, ageValue);
+  if(Number.isFinite(interpolatedCashflow)) values.annualCashflow = interpolatedCashflow;
   const visibleCategories = getIncomeExpenseVisibleCategorySet(chartInstance);
   const rows = [];
   rows.push(buildIncomeExpenseTooltipRow({label:'総収入', value:values.totalIncome, swatch:false, strong:true}, unitSpec));
@@ -21893,7 +22059,12 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
   }
   if(graphType === "incomeExpense"){
     const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
-    const html = buildIncomeExpenseTooltipHtml(unitSpec, extra.incomeExpenseTooltipEntries || [{name:"", sim:simRef, color:INCOME_EXPENSE_CASHFLOW_COLOR}], ageValue, !!extra.overlay, chartInstance);
+    const ageNum = Number(ageValue);
+    let activeOverlayIndices = null;
+    if(extra.overlay && Number.isFinite(ageNum) && Math.abs(ageNum - Math.round(ageNum)) > 1e-7){
+      activeOverlayIndices = new Set(dataPoints.map(dp=>Number(dp?.dataset?._overlayIndex)).filter(v=>Number.isFinite(v)));
+    }
+    const html = buildIncomeExpenseTooltipHtml(unitSpec, extra.incomeExpenseTooltipEntries || [{name:"", sim:simRef, color:INCOME_EXPENSE_CASHFLOW_COLOR}], ageValue, !!extra.overlay, chartInstance, activeOverlayIndices);
     if(!html){ tooltipEl.hidden = true; tooltipEl.__lastIncomeExpenseTooltipHtml = ''; return; }
     if(tooltipEl.__lastIncomeExpenseTooltipHtml !== html){
       tooltipEl.innerHTML = html;
@@ -21908,12 +22079,16 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
     .filter(dp=>String(dp?.dataset?.label || "").trim())
     .map(dp=>{
       const yValue = Number(dp?.parsed?.y);
-      const color = (graphType === "asset" && !extra.overlay && Number.isFinite(yValue))
+      const color = ((graphType === "asset" || graphType === "cashflow") && !extra.overlay && Number.isFinite(yValue))
         ? (yValue < 0 ? "#cf616d" : "#2b8b5f")
         : getDatasetColorForTooltip(dp.dataset);
       const label = escapeAttr(dp.dataset.label);
-      const value = escapeAttr(formatMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType));
-      return `<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, true)}<span>${label}</span></span></span><span class="chart-external-tooltip-value">${value}</span></div>`;
+      const valueClass = graphType === "cashflow"
+        ? getIncomeExpenseCashflowTooltipValueClass(yValue)
+        : ((graphType === "asset" && Number.isFinite(yValue) && yValue < 0) ? "chart-external-tooltip-value-negative" : "");
+      const valueClassAttr = valueClass ? ` ${escapeAttr(valueClass)}` : "";
+      const value = escapeAttr(graphType === "cashflow" ? formatSignedMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType) : formatMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType));
+      return `<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, true)}<span>${label}</span></span></span><span class="chart-external-tooltip-value${valueClassAttr}">${value}</span></div>`;
     });
   if(!rows.length){ tooltipEl.hidden = true; return; }
   tooltipEl.innerHTML = `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${rows.join("")}</div>`;
@@ -22416,7 +22591,7 @@ function renderCustomChartLegend(chartInstance, display){
 }
 
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
-  const symmetric = ["cashflow"].includes(graphType);
+  const symmetric = false;
   const axis = getAxisBounds(yData, {...cfg, _graphType:graphType}, symmetric);
   const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   const rawXMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
@@ -22435,7 +22610,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     maintainAspectRatio:false,
     layout:{padding:chartLayoutPadding},
     interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? false : true)},
-    events: (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? [] : undefined,
+    events: (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? [] : undefined,
     plugins:{
       legend:{display:false, labels:{
         usePointStyle:true,
@@ -22470,8 +22645,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
         return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
       }}},
       tooltip:{
-        enabled:!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"),
-        external:(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
+        enabled:!(graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense"),
+        external:(graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? (context)=>renderExternalChartTooltip(context, yUnitSpec, graphType, extra.simRef, extra) : undefined,
         backgroundColor:"rgba(15,23,42,.94)",
         titleColor:"#f8fafc",
         bodyColor:"#f8fafc",
@@ -22626,6 +22801,7 @@ function draw(){
   let baseSim = null;
   const assetBreakdownTooltipEntries = [];
   const incomeExpenseTooltipEntries = [];
+  const lifeGuideEntries = [];
 
   targets.forEach((entry, idx)=>{
     const s = entry.scenario || entry;
@@ -22635,6 +22811,7 @@ function draw(){
       baseSim = sim;
     }
     const scenarioColor = entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx);
+    lifeGuideEntries.push({cfg, sim, color:scenarioColor, style:entry.style || {}, overlayIndex:entry.index ?? idx, name:s.name});
     if(graphType === "assetBreakdown" || graphType === "investment"){
       assetBreakdownTooltipEntries.push({name:s.name, sim, color:scenarioColor});
     }
@@ -22663,12 +22840,13 @@ function draw(){
     type:"bar",
     data:{datasets},
     options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, assetBreakdownTooltipEntries, incomeExpenseTooltipEntries, overlay, educationCumData:getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120)}),
-    plugins:[pluginLines(firstCfg, baseSim)]
+    plugins:[pluginLines(firstCfg, baseSim, null, overlay ? lifeGuideEntries.slice() : null)]
   });
+  chart.$lifeGuideEntries = overlay ? lifeGuideEntries.slice() : null;
   chart.$graphType = graphType;
   chart.$overlayMode = overlay;
   chart.$legendContextKey = legendContextKey;
-  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense");
+  chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense");
   restoreChartLegendVisibilityState(chart);
   renderCustomChartLegend(chart, customLegendDisplay);
 }
@@ -29448,8 +29626,8 @@ function computeChartAxisAutoDefaults(){
   const xMin = Math.max(0, Math.min(120, currentAge));
   const xMax = Math.max(xMin, Math.min(120, Math.max(100, currentAge)));
   const yData = collectVisibleMainChartYValues(xMin, xMax, graphType);
-  const symmetric = ["cashflow"].includes(graphType);
-  const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
+  const symmetric = false;
+  const axis = getAxisBounds(yData, {...cfg, fixedScale:false, _graphType:graphType}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
 function computeChartAxisGestureOuterBounds(){
@@ -29462,8 +29640,8 @@ function computeChartAxisGestureOuterBounds(){
   const xMin = dataXMin - displayPad;
   const xMax = dataXMax + displayPad;
   const yData = collectVisibleMainChartYValues(dataXMin, dataXMax, graphType);
-  const symmetric = ["cashflow"].includes(graphType);
-  const axis = getAxisBounds(yData, {...cfg, fixedScale:false}, symmetric);
+  const symmetric = false;
+  const axis = getAxisBounds(yData, {...cfg, fixedScale:false, _graphType:graphType}, symmetric);
   return {xMin, xMax, yMin: axis.min, yMax: axis.max};
 }
 
@@ -30721,7 +30899,7 @@ window.addEventListener("load", ()=>{
     let chosen = null;
     let bestDist = Infinity;
     const maxDist = 8;
-    const lineMaxDist = chart.$graphType === "incomeExpense" ? 14 : maxDist;
+    const lineMaxDist = (chart.$graphType === "incomeExpense" || chart.$graphType === "cashflow") ? 14 : maxDist;
     const barMaxDist = maxDist;
     const datasets = chart.data?.datasets || [];
     if(chart.$graphType === "assetBreakdown"){
