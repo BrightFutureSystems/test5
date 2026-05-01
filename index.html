@@ -21261,7 +21261,7 @@ function formatAssetLifeLabelAge(crossAge){
   return Number.isFinite(age) ? age : null;
 }
 function resolveLifeGuideOverlayLineWidth(style, graphType){
-  return (graphType === 'asset' || graphType === 'cashflow' || graphType === 'incomeExpense')
+  return (graphType === 'asset' || graphType === 'assetBreakdown' || graphType === 'cashflow' || graphType === 'incomeExpense' || graphType === 'education')
     ? resolveAssetOverlayLineWidth(style?.lineWidth)
     : normalizeOverlayLineWidth(style?.lineWidth);
 }
