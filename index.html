@@ -20982,16 +20982,18 @@ function getIncomeExpenseCategorySeries(sim, group, category){
   }
   return sumSeriesByKeys(sim.expensePartsSeries, detailKeys);
 }
-function getIncomeExpenseTotalSeries(sim, group){
+function getIncomeExpenseTotalSeries(sim, group, visibleCategories=null){
   const labels = Array.isArray(sim?.labels) ? sim.labels : [];
-  const categories = INCOME_EXPENSE_CATEGORY_GROUPS[group] || [];
+  const categories = (INCOME_EXPENSE_CATEGORY_GROUPS[group] || []).filter(cat=>!visibleCategories || visibleCategories.has(String(cat.key)));
   const categorySeries = categories.map(cat=>getIncomeExpenseCategorySeries(sim, group, cat));
   const maxLen = Math.max(labels.length, 0, ...categorySeries.map(arr=>Array.isArray(arr) ? arr.length : 0));
   return Array.from({length:maxLen}, (_,idx)=>categorySeries.reduce((sum, arr)=>sum + (Number(arr?.[idx]) || 0), 0));
 }
-function getIncomeExpenseDerivedSeries(sim){
-  const totalIncome = getIncomeExpenseTotalSeries(sim, "income");
-  const totalExpense = getIncomeExpenseTotalSeries(sim, "expense");
+function getIncomeExpenseDerivedSeries(sim, visibleCategories=null, hiddenKinds=null){
+  const hideIncome = hiddenKinds instanceof Set && hiddenKinds.has("income");
+  const hideExpense = hiddenKinds instanceof Set && hiddenKinds.has("expense");
+  const totalIncome = hideIncome ? [] : getIncomeExpenseTotalSeries(sim, "income", visibleCategories);
+  const totalExpense = hideExpense ? [] : getIncomeExpenseTotalSeries(sim, "expense", visibleCategories);
   const labels = Array.isArray(sim?.labels) ? sim.labels : [];
   const maxLen = Math.max(labels.length, totalIncome.length, totalExpense.length);
   const income = Array.from({length:maxLen}, (_,idx)=>Number(totalIncome[idx]) || 0);
@@ -21029,6 +21031,7 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlay
     const expenseBar = makeIncomeExpenseOverlayBarDataset(`${labelPrefix} 総支出`, sim.labels, incomeExpenseDerived.expense.map(v=>-v), color, "expense", stackId, xOffset);
     const cashflowLine = makeLineDataset(`${labelPrefix} 年間収支`, sim.labels, incomeExpenseDerived.cashflow, {borderColor:color, backgroundColor:color, borderWidth:getIncomeExpenseCashflowLineWidth(), order:0, pointHoverRadius:4, yAxisID:INCOME_EXPENSE_CASHFLOW_AXIS_ID});
     cashflowLine.data = buildLinePointsWithZeroCrossings(sim.labels, incomeExpenseDerived.cashflow);
+    cashflowLine._incomeExpenseLabels = Array.isArray(sim.labels) ? sim.labels.slice() : [];
     cashflowLine._incomeExpenseOverlayKind = "cashflow";
     cashflowLine._scenarioColor = color;
     return [incomeBar, expenseBar, cashflowLine];
@@ -21063,6 +21066,7 @@ function buildIncomeExpenseDatasets(sim, color, overlay, labelPrefix="", overlay
       segment:{borderColor:ctx=>{const y0=Number(ctx.p0.parsed.y), y1=Number(ctx.p1.parsed.y); return (y0 < 0 || y1 < 0) ? INCOME_EXPENSE_CASHFLOW_NEGATIVE_COLOR : INCOME_EXPENSE_CASHFLOW_COLOR;}}
     });
     cashflow.data = buildLinePointsWithZeroCrossings(sim.labels, incomeExpenseDerived.cashflow);
+    cashflow._incomeExpenseLabels = Array.isArray(sim.labels) ? sim.labels.slice() : [];
     cashflow._incomeExpenseGroup = "line";
     cashflow._incomeExpenseCategory = "cashflow";
     d.push(cashflow);
@@ -22189,10 +22193,38 @@ function getInterpolatedSeriesValueAtAge(labels, series, ageValue){
   }
   return null;
 }
-function getIncomeExpenseValuesAt(sim, idx){
-  const derived = getIncomeExpenseDerivedSeries(sim);
+function getIncomeExpenseValuesAt(sim, idx, visibleCategories=null, hiddenKinds=null){
+  const derived = getIncomeExpenseDerivedSeries(sim, visibleCategories, hiddenKinds);
   const n = (arr)=>Number(Array.isArray(arr) ? arr[idx] : 0) || 0;
   return {totalIncome:n(derived.income), totalExpense:n(derived.expense), annualCashflow:n(derived.cashflow)};
+}
+function updateIncomeExpenseCashflowDatasets(chartInstance){
+  if(!chartInstance || chartInstance.$graphType !== 'incomeExpense') return;
+  const datasets = Array.isArray(chartInstance.data?.datasets) ? chartInstance.data.datasets : [];
+  const cashflowDatasets = datasets.filter(ds=>ds?._incomeExpenseGroup === 'line' || ds?._incomeExpenseOverlayKind === 'cashflow');
+  if(!cashflowDatasets.length) return;
+  cashflowDatasets.forEach(cashflowDs=>{
+    const overlayIndex = Number(cashflowDs?._overlayIndex);
+    const hasOverlayIndex = Number.isFinite(overlayIndex);
+    const labels = (cashflowDs._incomeExpenseLabels || (Array.isArray(cashflowDs.data) ? cashflowDs.data.map(p=>p?.x) : [])).map(v=>Number(v));
+    const values = labels.map((_, pointIdx)=>{
+      let total = 0;
+      datasets.forEach((ds, datasetIndex)=>{
+        if(ds?.type !== 'bar') return;
+        if(hasOverlayIndex){
+          if(Number(ds?._overlayIndex) !== overlayIndex) return;
+        }else if(Number.isFinite(Number(ds?._overlayIndex))){
+          return;
+        }
+        const isIncomeExpenseBar = ds?._incomeExpenseGroup === 'income' || ds?._incomeExpenseGroup === 'expense' || ds?._incomeExpenseOverlayKind === 'income' || ds?._incomeExpenseOverlayKind === 'expense';
+        if(!isIncomeExpenseBar) return;
+        if(typeof chartInstance.isDatasetVisible === 'function' && !chartInstance.isDatasetVisible(datasetIndex)) return;
+        total += Number(Array.isArray(ds.data) ? ds.data[pointIdx]?.y : 0) || 0;
+      });
+      return total;
+    });
+    cashflowDs.data = buildLinePointsWithZeroCrossings(labels, values);
+  });
 }
 function getIncomeExpenseDetailValue(sim, key, idx){
   if(key === "pensionSelf") return Number(Array.isArray(sim?.incomePensionPartsSeries?.self) ? sim.incomePensionPartsSeries.self[idx] : 0) || 0;
@@ -22246,7 +22278,7 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
     const constrainedEntries = (activeOverlayIndices instanceof Set && activeOverlayIndices.size)
       ? entries.filter(entry=>activeOverlayIndices.has(Number(entry.overlayIndex)))
       : entries;
-    const visibleEntries = constrainedEntries.filter(entry=>!hiddenScenarios.has(Number(entry.overlayIndex))).slice(0, maxTooltipEntries).map(entry=>{ const idx = getNearestSimIndexByAge(entry.sim, ageValue); const values = getIncomeExpenseValuesAt(entry.sim, idx); const derived = getIncomeExpenseDerivedSeries(entry.sim); const interpolatedCashflow = getInterpolatedSeriesValueAtAge(entry.sim?.labels, derived.cashflow, ageValue); if(Number.isFinite(interpolatedCashflow)) values.annualCashflow = interpolatedCashflow; return {...entry, values}; });
+    const visibleEntries = constrainedEntries.filter(entry=>!hiddenScenarios.has(Number(entry.overlayIndex))).slice(0, maxTooltipEntries).map(entry=>{ const idx = getNearestSimIndexByAge(entry.sim, ageValue); const values = getIncomeExpenseValuesAt(entry.sim, idx, null, hiddenKinds); const derived = getIncomeExpenseDerivedSeries(entry.sim, null, hiddenKinds); const interpolatedCashflow = getInterpolatedSeriesValueAtAge(entry.sim?.labels, derived.cashflow, ageValue); if(Number.isFinite(interpolatedCashflow)) values.annualCashflow = interpolatedCashflow; return {...entry, values}; });
     if(!visibleEntries.length) return "";
     const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join("");
     const row = (label, key, strong=false, signed=false)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${escapeAttr(label)}</th>${visibleEntries.map(entry=>{ const valueClass = key === 'annualCashflow' ? getIncomeExpenseCashflowTooltipValueClass(entry.values[key]) : ''; const classAttr = valueClass ? ` class="${escapeAttr(valueClass)}"` : ''; return `<td${classAttr}>${escapeAttr(signed ? formatSignedMainChartTooltipMoney(entry.values[key], unitSpec, 'incomeExpense') : formatMainChartTooltipMoney(entry.values[key], unitSpec, 'incomeExpense'))}</td>`; }).join("")}</tr>`;
@@ -22261,11 +22293,11 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
   const sim = entries[0].sim;
   const idx = getNearestSimIndexByAge(sim, ageValue);
   if(idx < 0) return "";
-  const values = getIncomeExpenseValuesAt(sim, idx);
-  const derived = getIncomeExpenseDerivedSeries(sim);
+  const visibleCategories = getIncomeExpenseVisibleCategorySet(chartInstance);
+  const values = getIncomeExpenseValuesAt(sim, idx, visibleCategories);
+  const derived = getIncomeExpenseDerivedSeries(sim, visibleCategories);
   const interpolatedCashflow = getInterpolatedSeriesValueAtAge(sim?.labels, derived.cashflow, ageValue);
   if(Number.isFinite(interpolatedCashflow)) values.annualCashflow = interpolatedCashflow;
-  const visibleCategories = getIncomeExpenseVisibleCategorySet(chartInstance);
   const rows = [];
   rows.push(buildIncomeExpenseTooltipRow({label:'総収入', value:values.totalIncome, swatch:false, strong:true}, unitSpec));
   rows.push(buildIncomeExpenseTooltipRow({label:'総支出', value:values.totalExpense, swatch:false, strong:true}, unitSpec));
@@ -22826,6 +22858,7 @@ function restoreChartLegendVisibilityState(chartInstance){
     chartInstance.$incomeExpenseOverlayHiddenScenarios = new Set((state.incomeExpenseOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
     chartInstance.$incomeExpenseOverlayHiddenKinds = new Set((state.incomeExpenseOverlay.hiddenKinds || []).map(v=>String(v || '')).filter(Boolean));
     applyIncomeExpenseOverlayLegendVisibility(chartInstance);
+    updateIncomeExpenseCashflowDatasets(chartInstance);
     chartInstance.update('none');
     return;
   }
@@ -22842,7 +22875,8 @@ function restoreChartLegendVisibilityState(chartInstance){
   });
   if(chartInstance.$graphType === 'education') updateEducationCumulativeDatasets(chartInstance);
   if(chartInstance.$graphType === 'investment') updateInvestmentReferenceDatasets(chartInstance);
-  if(changed || chartInstance.$graphType === 'investment') chartInstance.update('none');
+  if(chartInstance.$graphType === 'incomeExpense') updateIncomeExpenseCashflowDatasets(chartInstance);
+  if(changed || chartInstance.$graphType === 'investment' || chartInstance.$graphType === 'incomeExpense') chartInstance.update('none');
 }
 function getAssetBreakdownOverlayLegendDatasets(chartInstance){
   const datasets = chartInstance?.data?.datasets || [];
@@ -23080,9 +23114,9 @@ function applyIncomeExpenseOverlayLegendVisibility(chartInstance){
     chartInstance.setDatasetVisibility(datasetIndex, !state.hiddenScenarios.has(overlayIndex) && !state.hiddenKinds.has(kind));
   });
 }
-function setIncomeExpenseOverlayScenarioVisibility(chartInstance, overlayIndex, visible){ const state=ensureIncomeExpenseOverlayLegendState(chartInstance); visible ? state.hiddenScenarios.delete(Number(overlayIndex)) : state.hiddenScenarios.add(Number(overlayIndex)); applyIncomeExpenseOverlayLegendVisibility(chartInstance); }
+function setIncomeExpenseOverlayScenarioVisibility(chartInstance, overlayIndex, visible){ const state=ensureIncomeExpenseOverlayLegendState(chartInstance); visible ? state.hiddenScenarios.delete(Number(overlayIndex)) : state.hiddenScenarios.add(Number(overlayIndex)); applyIncomeExpenseOverlayLegendVisibility(chartInstance); updateIncomeExpenseCashflowDatasets(chartInstance); }
 function isIncomeExpenseOverlayScenarioVisible(chartInstance, overlayIndex){ return !ensureIncomeExpenseOverlayLegendState(chartInstance).hiddenScenarios.has(Number(overlayIndex)); }
-function setIncomeExpenseOverlayKindVisibility(chartInstance, kind, visible){ const state=ensureIncomeExpenseOverlayLegendState(chartInstance); visible ? state.hiddenKinds.delete(String(kind)) : state.hiddenKinds.add(String(kind)); applyIncomeExpenseOverlayLegendVisibility(chartInstance); }
+function setIncomeExpenseOverlayKindVisibility(chartInstance, kind, visible){ const state=ensureIncomeExpenseOverlayLegendState(chartInstance); visible ? state.hiddenKinds.delete(String(kind)) : state.hiddenKinds.add(String(kind)); applyIncomeExpenseOverlayLegendVisibility(chartInstance); updateIncomeExpenseCashflowDatasets(chartInstance); }
 function isIncomeExpenseOverlayKindVisible(chartInstance, kind){ return !ensureIncomeExpenseOverlayLegendState(chartInstance).hiddenKinds.has(String(kind)); }
 function renderIncomeExpenseLegend(chartInstance, display){
   const legendEl = document.getElementById("chartCustomLegend");
@@ -23118,7 +23152,7 @@ function renderIncomeExpenseLegend(chartInstance, display){
   const lifeGuideHtml = buildLifeGuideLegendHtml(chartInstance);
   if(!sections.length && !lifeGuideHtml){ legendEl.hidden = true; legendEl.innerHTML = ""; return; }
   legendEl.innerHTML = `<div class="chart-investment-legend">${sections.join('')}${lifeGuideHtml}</div>`;
-  legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>btn.addEventListener("click", ()=>{ const datasetIndex=Number(btn.dataset.datasetIndex); if(!Number.isFinite(datasetIndex)) return; const nextVisible=!chartInstance.isDatasetVisible(datasetIndex); chartInstance.setDatasetVisibility(datasetIndex,nextVisible); rememberChartLegendDatasetVisibility(chartInstance,datasetIndex,nextVisible); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance,display); }));
+  legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>btn.addEventListener("click", ()=>{ const datasetIndex=Number(btn.dataset.datasetIndex); if(!Number.isFinite(datasetIndex)) return; const nextVisible=!chartInstance.isDatasetVisible(datasetIndex); chartInstance.setDatasetVisibility(datasetIndex,nextVisible); updateIncomeExpenseCashflowDatasets(chartInstance); rememberChartLegendDatasetVisibility(chartInstance,datasetIndex,nextVisible); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance,display); }));
   attachLifeGuideLegendHandlers(chartInstance, display);
   legendEl.hidden = false;
 }
