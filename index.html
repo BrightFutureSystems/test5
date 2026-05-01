@@ -23229,6 +23229,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     options.scales.y.grid = makeGridWithoutZeroLine(options.scales.y.grid);
   }
   if(graphType === "education"){
+    options.scales.x.grid = {display:false, drawOnChartArea:false, drawTicks:false};
     options.scales.y.stacked = true;
     const rightAxisData = extra.educationCumData || [0];
     const rightAxis = getEducationRightAxisBounds(rightAxisData, cfg);
@@ -23363,7 +23364,10 @@ function draw(){
   chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education");
   chart.$educationTooltipEntries = educationTooltipEntries;
   restoreChartLegendVisibilityState(chart);
-  if(graphType === 'education') updateEducationCumulativeDatasets(chart);
+  if(graphType === 'education') {
+    updateEducationCumulativeDatasets(chart);
+    chart.update('none');
+  }
   renderCustomChartLegend(chart, customLegendDisplay);
 }
 
