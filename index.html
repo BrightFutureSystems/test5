@@ -21278,6 +21278,78 @@ function isOverlayGuideEntryVisible(chart, overlayIndex){
   }
   return !found;
 }
+
+function ensureLifeGuideLegendState(chartInstance){
+  if(!chartInstance) return {expected:true, asset:true};
+  if(!chartInstance.$lifeGuideLegendState){
+    chartInstance.$lifeGuideLegendState = {expected:true, asset:true};
+  }
+  if(typeof chartInstance.$lifeGuideLegendState.expected !== "boolean") chartInstance.$lifeGuideLegendState.expected = true;
+  if(typeof chartInstance.$lifeGuideLegendState.asset !== "boolean") chartInstance.$lifeGuideLegendState.asset = true;
+  return chartInstance.$lifeGuideLegendState;
+}
+function isLifeGuideVisible(chartInstance, key){
+  const state = ensureLifeGuideLegendState(chartInstance);
+  return state[String(key)] !== false;
+}
+function setLifeGuideVisibility(chartInstance, key, visible){
+  const state = ensureLifeGuideLegendState(chartInstance);
+  state[String(key)] = !!visible;
+}
+function shouldShowLifeGuideLegend(chartInstance){
+  const graphType = chartInstance?.$graphType || document.getElementById("graphType")?.value || "";
+  return shouldDrawMainChartLifeGuides(graphType) && !(typeof monteMode !== "undefined" && monteMode);
+}
+function isCompactLifeGuideLabel(){
+  try{
+    if(typeof isMobile === "function" && isMobile()) return true;
+    return !!(window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches);
+  }catch(_e){
+    return false;
+  }
+}
+function formatLifeGuideLabelForChart(type, age, overlay=false){
+  const ageText = `${age}歳`;
+  if(isCompactLifeGuideLabel()) return ageText;
+  if(type === "expected") return `想定寿命：${ageText}`;
+  return `資産寿命：${ageText}`;
+}
+function buildLifeGuideLegendSample(key, overlay=false){
+  const color = key === "expected" ? "#5b7c99" : (overlay ? colorToRgba("#1f2937", 0.55) : "#1f2937");
+  const lineStyle = key === "expected" ? "dashed" : "solid";
+  const lineWidth = key === "expected" ? 1.25 : 1.6;
+  return `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup(color, lineStyle, lineWidth, 50, lineStyle === "dashed" ? [7,5] : [])}</span>`;
+}
+function buildLifeGuideLegendHtml(chartInstance){
+  if(!shouldShowLifeGuideLegend(chartInstance)) return "";
+  const overlay = !!chartInstance?.$overlayMode;
+  const items = overlay
+    ? [{key:"asset", label:"資産寿命"}]
+    : [{key:"expected", label:"想定寿命"}, {key:"asset", label:"資産寿命"}];
+  const buttons = items.map(item=>{
+    const visible = isLifeGuideVisible(chartInstance, item.key);
+    return `<button type="button" class="chart-line-legend-item${visible ? "" : " is-hidden"}" data-life-guide="${escapeAttr(item.key)}" aria-pressed="${visible ? "true" : "false"}">${buildLifeGuideLegendSample(item.key, overlay)}<span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
+  }).join("");
+  return `<div class="chart-legend-category-block chart-life-guide-legend-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row chart-life-guide-legend-row">${buttons}</div></div>`;
+}
+function attachLifeGuideLegendHandlers(chartInstance, display){
+  const legendEl = document.getElementById("chartCustomLegend");
+  if(!legendEl || !shouldShowLifeGuideLegend(chartInstance)) return;
+  legendEl.querySelectorAll("[data-life-guide]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const key = String(btn.dataset.lifeGuide || "");
+      if(!key) return;
+      setLifeGuideVisibility(chartInstance, key, !isLifeGuideVisible(chartInstance, key));
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chartInstance.setActiveElements([]);
+      chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      chartInstance.update("none");
+      renderCustomChartLegend(chartInstance, display);
+    });
+  });
+}
+
 function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
   const configuredLifeGuideEntries = Array.isArray(lifeGuideEntries) ? lifeGuideEntries.slice() : null;
   const getConfiguredLifeGuideEntries = (chart)=>{
@@ -21325,7 +21397,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
         const overlayGuideEntries = allOverlayGuideEntries ? allOverlayGuideEntries.filter(entry=>entry && isOverlayGuideEntryVisible(chart, entry.overlayIndex)) : null;
         if(allOverlayGuideEntries){
           // 重ね書き時の寿命線は、datasets描画後に資産寿命線だけを描く。
-        }else{
+        }else if(isLifeGuideVisible(chart, "expected")){
           const pxLife = x.getPixelForValue(cfg.lifeExpect);
           if(Number.isFinite(pxLife) && pxLife >= area.left && pxLife <= area.right){
             ctx.save();
@@ -21391,7 +21463,8 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
       const allOverlayGuideEntries = getConfiguredLifeGuideEntries(chart);
       const overlayGuideEntries = allOverlayGuideEntries ? allOverlayGuideEntries.filter(entry=>entry && isOverlayGuideEntryVisible(chart, entry.overlayIndex)) : null;
       if(allOverlayGuideEntries){
-        overlayGuideEntries.forEach((entry, idx)=>{
+        if(isLifeGuideVisible(chart, "asset")){
+          overlayGuideEntries.forEach((entry, idx)=>{
           const entrySim = entry.sim || sim;
           const rawColor = entry.color || '#64748b';
           const lineColor = colorToRgba(rawColor, 0.55);
@@ -21413,17 +21486,18 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
               ctx.stroke();
               ctx.restore();
             }
-            drawVerticalGuideLabel(pxAssetLife, `資産寿命：${assetLifeLabelAge}歳`, labelColor, "top", {
+            drawVerticalGuideLabel(pxAssetLife, formatLifeGuideLabelForChart("asset", assetLifeLabelAge, true), labelColor, "top", {
               labelStroke: colorToRgba(rawColor, 0.24),
               stackIndex: idx
             });
           }
-        });
+          });
+        }
       }else{
         const assetZeroCrossAge = getAssetZeroCrossAgeForGuide(sim);
         const assetLifeLabelAge = formatAssetLifeLabelAge(assetZeroCrossAge);
         let pxD = null;
-        if(assetZeroCrossAge != null && assetLifeLabelAge != null){
+        if(isLifeGuideVisible(chart, "asset") && assetZeroCrossAge != null && assetLifeLabelAge != null){
           pxD = x.getPixelForValue(assetZeroCrossAge);
           if(Number.isFinite(pxD) && pxD >= area.left && pxD <= area.right){
             ctx.strokeStyle = "#1f2937";
@@ -21437,11 +21511,13 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null){
         }
 
         const pxLife = x.getPixelForValue(cfg.lifeExpect);
-        drawVerticalGuideLabel(pxLife, `想定寿命：${cfg.lifeExpect}歳`, "#5b7c99", "bottom", {
-          labelStroke: "rgba(91,124,153,0.30)"
-        });
-        if(pxD != null && assetLifeLabelAge != null){
-          drawVerticalGuideLabel(pxD, `資産寿命：${assetLifeLabelAge}歳`, "#1f2937", "top", {
+        if(isLifeGuideVisible(chart, "expected")){
+          drawVerticalGuideLabel(pxLife, formatLifeGuideLabelForChart("expected", cfg.lifeExpect, false), "#5b7c99", "bottom", {
+            labelStroke: "rgba(91,124,153,0.30)"
+          });
+        }
+        if(isLifeGuideVisible(chart, "asset") && pxD != null && assetLifeLabelAge != null){
+          drawVerticalGuideLabel(pxD, formatLifeGuideLabelForChart("asset", assetLifeLabelAge, false), "#1f2937", "top", {
             labelStroke: "rgba(31,41,55,0.22)"
           });
         }
@@ -22400,7 +22476,7 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
     const pressed = visible ? "true" : "false";
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-asset-category="${escapeAttr(item.key)}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="${item.style}"></span><span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
   }).join("");
-  legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div></div>` : ""}</div>`;
+  legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${categoryHtml ? `<div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${categoryHtml}</div></div>` : ""}${buildLifeGuideLegendHtml(chartInstance)}</div>`;
   legendEl.querySelectorAll("[data-overlay-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const overlayIndex = Number(btn.dataset.overlayIndex);
@@ -22431,12 +22507,14 @@ function renderAssetBreakdownOverlayLegend(chartInstance, display){
       renderAssetBreakdownOverlayLegend(chartInstance, display);
     });
   });
+  attachLifeGuideLegendHandlers(chartInstance, display);
   legendEl.hidden = false;
 }
 function renderInvestmentBreakdownLegend(chartInstance, display){
   const legendEl = document.getElementById("chartCustomLegend");
   if(!legendEl) return;
-  if(!display){
+  const lifeGuideHtml = buildLifeGuideLegendHtml(chartInstance);
+  if(!display && !lifeGuideHtml){
     legendEl.hidden = true;
     legendEl.innerHTML = "";
     return;
@@ -22448,7 +22526,7 @@ function renderInvestmentBreakdownLegend(chartInstance, display){
   const referenceDatasets = allDatasets
     .filter(ds=>ds?._investmentReferenceLine && shouldShowDatasetInLegend(ds))
     .sort((a,b)=>(Number(a._investmentReferenceOrder)||0)-(Number(b._investmentReferenceOrder)||0));
-  if(!datasets.length && !referenceDatasets.length){
+  if(!datasets.length && !referenceDatasets.length && !lifeGuideHtml){
     legendEl.hidden = true;
     legendEl.innerHTML = "";
     return;
@@ -22477,7 +22555,7 @@ function renderInvestmentBreakdownLegend(chartInstance, display){
     const pressed = visible ? "true" : "false";
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup(line.color, line.style, line.width, 50, line.dash)}</span><span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`;
   }).join("")}</div>` : "";
-  legendEl.innerHTML = `<div class="chart-investment-legend">${groupHtml}${referenceHtml}</div>`;
+  legendEl.innerHTML = `<div class="chart-investment-legend">${groupHtml}${referenceHtml}${lifeGuideHtml}</div>`;
   legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const datasetIndex = Number(btn.dataset.datasetIndex);
@@ -22493,6 +22571,7 @@ function renderInvestmentBreakdownLegend(chartInstance, display){
       renderInvestmentBreakdownLegend(chartInstance, display);
     });
   });
+  attachLifeGuideLegendHandlers(chartInstance, display);
   legendEl.hidden = false;
 }
 
@@ -22547,9 +22626,10 @@ function renderIncomeExpenseLegend(chartInstance, display){
       {key:'cashflow', label:'年間収支', sample:`<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155', 'solid', getIncomeExpenseOverlayCashflowLegendLineWidth(chartInstance), 50, [])}</span>`}
     ];
     const kindHtml = kindItems.map(item=>{ const visible = isIncomeExpenseOverlayKindVisible(chartInstance, item.key); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-income-expense-kind="${escapeAttr(item.key)}" aria-pressed="${visible ? 'true' : 'false'}">${item.sample}<span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`; }).join("");
-    legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div><div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${kindHtml}</div></div></div>`;
+    legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div><div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${kindHtml}</div></div>${buildLifeGuideLegendHtml(chartInstance)}</div>`;
     legendEl.querySelectorAll('[data-income-expense-scenario]').forEach(btn=>btn.addEventListener('click', ()=>{ const overlayIndex=Number(btn.dataset.incomeExpenseScenario); if(!Number.isFinite(overlayIndex)) return; setIncomeExpenseOverlayScenarioVisibility(chartInstance, overlayIndex, !isIncomeExpenseOverlayScenarioVisible(chartInstance, overlayIndex)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance, display); }));
     legendEl.querySelectorAll('[data-income-expense-kind]').forEach(btn=>btn.addEventListener('click', ()=>{ const kind=String(btn.dataset.incomeExpenseKind || ''); if(!kind) return; setIncomeExpenseOverlayKindVisibility(chartInstance, kind, !isIncomeExpenseOverlayKindVisible(chartInstance, kind)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance, display); }));
+    attachLifeGuideLegendHandlers(chartInstance, display);
     legendEl.hidden = false;
     return;
   }
@@ -22562,9 +22642,11 @@ function renderIncomeExpenseLegend(chartInstance, display){
   if(incomeDatasets.length) sections.push(`<div class="chart-investment-legend-group"><span class="chart-investment-legend-category is-current">収入</span><div class="chart-legend-row chart-investment-legend-items">${incomeDatasets.map(ds=>makeItem(ds)).join('')}</div></div>`);
   if(expenseDatasets.length) sections.push(`<div class="chart-legend-separator chart-investment-legend-separator" aria-hidden="true"></div><div class="chart-investment-legend-group"><span class="chart-investment-legend-category is-future">支出</span><div class="chart-legend-row chart-investment-legend-items">${expenseDatasets.map(ds=>makeItem(ds)).join('')}</div></div>`);
   if(lineDatasets.length) sections.push(`<div class="chart-legend-separator chart-investment-legend-separator" aria-hidden="true"></div><div class="chart-investment-reference-legend-group">${lineDatasets.map(ds=>makeItem(ds, true)).join('')}</div>`);
-  if(!sections.length){ legendEl.hidden = true; legendEl.innerHTML = ""; return; }
-  legendEl.innerHTML = `<div class="chart-investment-legend">${sections.join('')}</div>`;
+  const lifeGuideHtml = buildLifeGuideLegendHtml(chartInstance);
+  if(!sections.length && !lifeGuideHtml){ legendEl.hidden = true; legendEl.innerHTML = ""; return; }
+  legendEl.innerHTML = `<div class="chart-investment-legend">${sections.join('')}${lifeGuideHtml}</div>`;
   legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>btn.addEventListener("click", ()=>{ const datasetIndex=Number(btn.dataset.datasetIndex); if(!Number.isFinite(datasetIndex)) return; const nextVisible=!chartInstance.isDatasetVisible(datasetIndex); chartInstance.setDatasetVisibility(datasetIndex,nextVisible); rememberChartLegendDatasetVisibility(chartInstance,datasetIndex,nextVisible); const tooltipEl=document.getElementById("chartExternalTooltip"); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update("none"); renderIncomeExpenseLegend(chartInstance,display); }));
+  attachLifeGuideLegendHandlers(chartInstance, display);
   legendEl.hidden = false;
 }
 
@@ -22583,21 +22665,23 @@ function renderCustomChartLegend(chartInstance, display){
   }
   const legendEl = document.getElementById("chartCustomLegend");
   if(!legendEl) return;
-  if(!display || !chartInstance?.data?.datasets?.length){
+  const lifeGuideHtml = buildLifeGuideLegendHtml(chartInstance);
+  if((!display || !chartInstance?.data?.datasets?.length) && !lifeGuideHtml){
     legendEl.hidden = true;
     legendEl.innerHTML = "";
     return;
   }
-  const datasets = (chartInstance.data.datasets || [])
+  const hideSinglePrimaryLegend = !chartInstance?.$overlayMode && (chartInstance?.$graphType === "asset" || chartInstance?.$graphType === "cashflow");
+  const datasets = hideSinglePrimaryLegend ? [] : (chartInstance.data.datasets || [])
     .map((ds, idx)=>({...ds, _datasetIndex:idx}))
     .filter(shouldShowDatasetInLegend)
     .sort(sortLegendDatasets);
-  if(!datasets.length){
+  if(!datasets.length && !lifeGuideHtml){
     legendEl.hidden = true;
     legendEl.innerHTML = "";
     return;
   }
-  legendEl.innerHTML = datasets.map(ds=>{
+  const datasetLegendHtml = datasets.map(ds=>{
     const line = getLegendLineStyleFromDataset(ds);
     const label = escapeAttr(ds.label);
     const datasetIndex = Number(ds._datasetIndex);
@@ -22612,6 +22696,7 @@ function renderCustomChartLegend(chartInstance, display){
     const sampleContent = isBarLegend ? "" : buildLegendLineSvgMarkup(line.color, line.style, line.width, 50, line.dash);
     return `<button type="button" class="chart-line-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" aria-pressed="${pressed}"><span class="${sampleClass}" style="${sampleStyle}">${sampleContent}</span><span class="chart-line-legend-label">${label}</span></button>`;
   }).join("");
+  legendEl.innerHTML = lifeGuideHtml ? `<div class="chart-legend-stacked">${datasetLegendHtml ? `<div class="chart-legend-row chart-legend-category-row">${datasetLegendHtml}</div>` : ""}${lifeGuideHtml}</div>` : datasetLegendHtml;
   legendEl.querySelectorAll("[data-dataset-index]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const datasetIndex = Number(btn.dataset.datasetIndex);
@@ -22627,6 +22712,7 @@ function renderCustomChartLegend(chartInstance, display){
       renderCustomChartLegend(chartInstance, display);
     });
   });
+  attachLifeGuideLegendHandlers(chartInstance, display);
   legendEl.hidden = false;
 }
 
@@ -22875,7 +22961,7 @@ function draw(){
 
   const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'normal', graphType, overlay, targets}));
   if(chart) chart.destroy();
-  const customLegendDisplay = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
+  const customLegendDisplay = overlay || monteMode || shouldDrawMainChartLifeGuides(graphType) || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
