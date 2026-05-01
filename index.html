@@ -7249,7 +7249,7 @@ function applyOverlayStyleToDatasets(datasets, style, graphType){
       return next;
     }
     next.borderColor = color;
-    next.borderWidth = (graphType === 'asset' || graphType === 'cashflow' || graphType === 'incomeExpense') ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
+    next.borderWidth = (graphType === 'asset' || graphType === 'cashflow' || graphType === 'incomeExpense' || (graphType === 'education' && next.type === 'line')) ? resolveAssetOverlayLineWidth(style?.lineWidth) : lineWidth;
     next.borderDash = dash.length ? dash.slice() : [];
     if(graphType === 'assetBreakdown' && next.type === 'bar'){
       next.borderColor = 'rgba(0,0,0,0)';
@@ -20810,6 +20810,13 @@ function getEducationChildAlpha(childIndex, overlay=false){
   if(overlay) return EDUCATION_OVERLAY_CHILD_ALPHA[idx % EDUCATION_OVERLAY_CHILD_ALPHA.length];
   return Math.max(0.26, Math.min(0.62, EDUCATION_SINGLE_CHILD_ALPHA + idx * 0.045));
 }
+function getEducationSingleCumulativeLineWidth(){
+  try{
+    return (window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches) ? 1.8 : 2.0;
+  }catch(_e){
+    return 2.0;
+  }
+}
 function getEducationChildDisplayName(sim, childIndex){
   return sim?.childNames?.[childIndex] || `子供${childIndex}`;
 }
@@ -20878,6 +20885,7 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
       line._overlayIndex = scenarioKey;
       line._scenarioColor = color;
       line._educationCumLine = true;
+      line._educationLabels = Array.isArray(sim.labels) ? sim.labels.slice() : [];
       line._educationSeriesKind = 'cum';
       datasets.push(line);
     }
@@ -20899,7 +20907,7 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
     const line = makeLineDataset('教育費累計', sim.labels, sim.annualEducationCum, {
       borderColor:'#334155',
       backgroundColor:'#334155',
-      borderWidth:2.2,
+      borderWidth:getEducationSingleCumulativeLineWidth(),
       yAxisID:'y1',
       order:0,
       pointRadius:0,
@@ -20912,6 +20920,7 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
       pointHoverBorderWidth:2
     });
     line._educationCumLine = true;
+    line._educationLabels = Array.isArray(sim.labels) ? sim.labels.slice() : [];
     line._educationSeriesKind = 'cum';
     datasets.push(line);
   }
@@ -22360,21 +22369,48 @@ function getEducationSimIndexByExactAge(sim, ageValue){
   }
   return null;
 }
+function getEducationCumulativeSeriesForVisibleChildren(sim, visibleChildSet=null){
+  const labels = Array.isArray(sim?.labels) ? sim.labels : [];
+  const childSeries = sim?.educationByChildSeries || {};
+  if(!visibleChildSet){
+    return Array.isArray(sim?.annualEducationCum) ? sim.annualEducationCum.slice() : [];
+  }
+  let running = 0;
+  return labels.map((_, idx)=>{
+    let annual = 0;
+    Object.keys(childSeries).forEach(key=>{
+      const childIndex = Number(key);
+      if(!Number.isFinite(childIndex) || !visibleChildSet.has(childIndex)) return;
+      annual += Number(Array.isArray(childSeries[key]) ? childSeries[key][idx] : 0) || 0;
+    });
+    running += annual;
+    return running;
+  });
+}
 function getEducationValuesAt(entry, idx, visibleChildSet=null){
   const sim = entry?.sim || {};
   const childValues = {};
-  let visibleAnnualTotal = 0;
-  const allAnnualTotal = Number(Array.isArray(sim.annualEducation) ? sim.annualEducation[idx] : 0) || 0;
   const childSeries = sim.educationByChildSeries || {};
+  const index = Number(idx);
+  if(!Number.isInteger(index) || index < 0){
+    Object.keys(childSeries).forEach(key=>{
+      const childIndex = Number(key);
+      if(Number.isFinite(childIndex)) childValues[childIndex] = 0;
+    });
+    return {annualTotal:0, annualTotalAll:0, cumulative:0, childValues};
+  }
+  let visibleAnnualTotal = 0;
+  const allAnnualTotal = Number(Array.isArray(sim.annualEducation) ? sim.annualEducation[index] : 0) || 0;
   Object.keys(childSeries).forEach(key=>{
     const childIndex = Number(key);
     if(!Number.isFinite(childIndex)) return;
-    const value = Number(Array.isArray(childSeries[key]) ? childSeries[key][idx] : 0) || 0;
+    const value = Number(Array.isArray(childSeries[key]) ? childSeries[key][index] : 0) || 0;
     childValues[childIndex] = value;
     if(!visibleChildSet || visibleChildSet.has(childIndex)) visibleAnnualTotal += value;
   });
   if(!visibleChildSet) visibleAnnualTotal = allAnnualTotal;
-  return {annualTotal:visibleAnnualTotal, annualTotalAll:allAnnualTotal, cumulative:Number(Array.isArray(sim.annualEducationCum) ? sim.annualEducationCum[idx] : 0) || 0, childValues};
+  const cumulativeSeries = getEducationCumulativeSeriesForVisibleChildren(sim, visibleChildSet);
+  return {annualTotal:visibleAnnualTotal, annualTotalAll:allAnnualTotal, cumulative:Number(cumulativeSeries[index]) || 0, childValues};
 }
 function getEducationVisibleChildSet(chartInstance){
   const visible = new Set();
@@ -22387,6 +22423,33 @@ function getEducationVisibleChildSet(chartInstance){
     visible.add(childIndex);
   });
   return hasChildDataset ? visible : null;
+}
+function updateEducationCumulativeDatasets(chartInstance){
+  if(!chartInstance || chartInstance.$graphType !== 'education') return;
+  const datasets = chartInstance.data?.datasets || [];
+  const cumDatasets = datasets.filter(ds=>ds?._educationCumLine);
+  if(!cumDatasets.length) return;
+  cumDatasets.forEach(cumDs=>{
+    const overlayIndex = Number(cumDs?._overlayIndex);
+    const hasOverlayIndex = Number.isFinite(overlayIndex);
+    const labels = (cumDs._educationLabels || (Array.isArray(cumDs.data) ? cumDs.data.map(p=>p?.x) : [])).map(v=>Number(v));
+    let running = 0;
+    const points = labels.map((x, pointIdx)=>{
+      let annual = 0;
+      datasets.forEach((ds, datasetIndex)=>{
+        if(ds?.type !== 'bar') return;
+        const childIndex = Number(ds?._educationChildIndex);
+        if(!Number.isFinite(childIndex)) return;
+        if(hasOverlayIndex && Number(ds?._overlayIndex) !== overlayIndex) return;
+        if(!hasOverlayIndex && Number.isFinite(Number(ds?._overlayIndex))) return;
+        if(typeof chartInstance.isDatasetVisible === 'function' && !chartInstance.isDatasetVisible(datasetIndex)) return;
+        annual += Number(Array.isArray(ds.data) ? ds.data[pointIdx]?.y : 0) || 0;
+      });
+      running += annual;
+      return {x, y:running};
+    });
+    cumDs.data = points;
+  });
 }
 function getEducationActiveScenarioEntries(entries, chartInstance){
   const hidden = ensureEducationOverlayLegendState(chartInstance)?.hiddenScenarios || new Set();
@@ -22408,7 +22471,7 @@ function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartIn
   const titleAge = Number(ageValue);
   const title = getCalendarWindowTooltipTitle(sourceEntries[0].sim, Number.isFinite(titleAge) ? titleAge : ageValue);
   const visibleChildSet = getEducationVisibleChildSet(chartInstance);
-  const rightUnitSpec = getMainChartYAxisUnitSpec(sourceEntries.flatMap(entry=>Array.isArray(entry?.sim?.annualEducationCum) ? entry.sim.annualEducationCum : []), {includeSenman:true});
+  const rightUnitSpec = getMainChartYAxisUnitSpec(sourceEntries.flatMap(entry=>getEducationCumulativeSeriesForVisibleChildren(entry?.sim, visibleChildSet)), {includeSenman:true});
   const hasHiddenChild = (()=>{
     const all = new Set();
     (chartInstance?.data?.datasets || []).forEach(ds=>{ const c=Number(ds?._educationChildIndex); if(Number.isFinite(c)) all.add(c); });
@@ -22430,8 +22493,7 @@ function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartIn
     const headerCells = visibleEntries.map(entry=>`<th class="chart-external-tooltip-scenario-head"><span class="chart-external-tooltip-scenario-dot" style="background:${escapeAttr(entry.color || '#64748b')}"></span>${escapeAttr(entry.name || 'シナリオ')}</th>`).join('');
     const moneyCell = (value, spec)=>Math.abs(Number(value)||0) > 1e-9 ? escapeAttr(formatMainChartTooltipMoney(value, spec, 'education')) : '—';
     const row = (label, getter, strong=false, spec=unitSpec, labelHtml=null)=>`<tr class="${strong ? 'chart-external-tooltip-strong-row' : ''}"><th>${labelHtml || escapeAttr(label)}</th>${visibleEntries.map(entry=>`<td>${moneyCell(getter(entry), spec)}</td>`).join('')}</tr>`;
-    const cumulativeLabel = hasHiddenChild ? '教育費累計（全子供）' : '教育費累計';
-    const rows = [row('年間教育費合計', entry=>entry.values.annualTotal, true, unitSpec), row(cumulativeLabel, entry=>entry.values.cumulative, true, rightUnitSpec)];
+    const rows = [row('年間教育費合計', entry=>entry.values.annualTotal, true, unitSpec), row('教育費累計', entry=>entry.values.cumulative, true, rightUnitSpec)];
     if(childRows.length){
       childRows.forEach(childIndex=>{
         const labelEntry = visibleEntries.find(entry=>entry.idx != null && Math.abs(Number(entry.values.childValues[childIndex]) || 0) > 1e-6) || visibleEntries[0];
@@ -22452,7 +22514,7 @@ function buildEducationTooltipHtml(unitSpec, entries, ageValue, overlay, chartIn
     rows.push(`<div class="chart-external-tooltip-row${strong ? ' chart-external-tooltip-strong-row' : ''}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, swatchVisible)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(value, spec, 'education'))}</span></div>`);
   };
   summaryRow('年間教育費合計', values.annualTotal, unitSpec, true);
-  summaryRow(hasHiddenChild ? '教育費累計（全子供）' : '教育費累計', values.cumulative, rightUnitSpec, true, '#334155', true);
+  summaryRow('教育費累計', values.cumulative, rightUnitSpec, true, '#334155', true);
   const childIndices = Object.keys(values.childValues || {}).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
   let childCount = 0;
   childIndices.forEach(childIndex=>{
@@ -22498,6 +22560,7 @@ function applyEducationOverlayLegendVisibility(chartInstance){
     if(ds?._educationCumLine) visible = visible && chartInstance.$educationOverlayCumVisible !== false;
     chartInstance.setDatasetVisibility(idx, visible);
   });
+  updateEducationCumulativeDatasets(chartInstance);
 }
 function isEducationOverlayScenarioVisible(chartInstance, overlayIndex){ const state = ensureEducationOverlayLegendState(chartInstance); return !state || !state.hiddenScenarios.has(Number(overlayIndex)); }
 function setEducationOverlayScenarioVisibility(chartInstance, overlayIndex, visible){ const state = ensureEducationOverlayLegendState(chartInstance); if(!state || !Number.isFinite(Number(overlayIndex))) return; if(visible) state.hiddenScenarios.delete(Number(overlayIndex)); else state.hiddenScenarios.add(Number(overlayIndex)); applyEducationOverlayLegendVisibility(chartInstance); }
@@ -22517,7 +22580,9 @@ function renderEducationLegend(chartInstance, display){
     const childHtml = childItems.map(idx=>{ const visible = isEducationOverlayChildVisible(chartInstance, idx); const alpha = getEducationChildAlpha(idx, true); return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-education-child="${idx}" aria-pressed="${visible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(51,65,85,${alpha});border-color:rgba(51,65,85,${alpha});"></span><span class="chart-line-legend-label">${escapeAttr(getEducationChildDisplayName(chartInstance.$educationTooltipEntries?.[0]?.sim, idx))}</span></button>`; }).join('');
     const hasCum = (chartInstance.data?.datasets || []).some(ds=>ds?._educationCumLine && shouldShowDatasetInLegend(ds));
     const cumVisible = chartInstance.$educationOverlayCumVisible !== false;
-    const cumHtml = hasCum ? `<button type="button" class="chart-line-legend-item${cumVisible ? '' : ' is-hidden'}" data-education-cum="1" aria-pressed="${cumVisible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155','solid',2,50,[])}</span><span class="chart-line-legend-label">教育費累計</span></button>` : '';
+    const firstCumDataset = (chartInstance.data?.datasets || []).find(ds=>ds?._educationCumLine);
+    const cumLegendWidth = Math.max(1, Math.min(6, Number(firstCumDataset?.borderWidth) || resolveAssetOverlayLineWidth(DEFAULT_OVERLAY_LINE_WIDTH)));
+    const cumHtml = hasCum ? `<button type="button" class="chart-line-legend-item${cumVisible ? '' : ' is-hidden'}" data-education-cum="1" aria-pressed="${cumVisible ? 'true' : 'false'}"><span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup('#334155','solid',cumLegendWidth,50,[])}</span><span class="chart-line-legend-label">教育費累計</span></button>` : '';
     legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${scenarioHtml}</div>${(childHtml || cumHtml) ? `<div class="chart-legend-category-block"><div class="chart-legend-row chart-legend-category-row">${childHtml}${cumHtml}</div></div>` : ''}${buildLifeGuideLegendHtml(chartInstance)}</div>`;
     legendEl.querySelectorAll('[data-education-scenario]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.educationScenario); setEducationOverlayScenarioVisibility(chartInstance, idx, !isEducationOverlayScenarioVisible(chartInstance, idx)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
     legendEl.querySelectorAll('[data-education-child]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.educationChild); setEducationOverlayChildVisibility(chartInstance, idx, !isEducationOverlayChildVisible(chartInstance, idx)); saveCurrentChartLegendVisibilityState(chartInstance); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
@@ -22531,7 +22596,7 @@ function renderEducationLegend(chartInstance, display){
   if((!display || !datasets.length) && !lifeGuideHtml){ legendEl.hidden = true; legendEl.innerHTML = ''; return; }
   const datasetLegendHtml = datasets.map(ds=>{ const line=getLegendLineStyleFromDataset(ds); const datasetIndex=Number(ds._datasetIndex); const visible=chartInstance.isDatasetVisible(datasetIndex); const isBar=ds.type === 'bar'; const sample = isBar ? `<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:${escapeAttr(line.color)};border-color:${escapeAttr(line.color)};"></span>` : `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup(line.color,line.style,line.width,50,line.dash)}</span>`; return `<button type="button" class="chart-line-legend-item${visible ? '' : ' is-hidden'}" data-dataset-index="${datasetIndex}" aria-pressed="${visible ? 'true' : 'false'}">${sample}<span class="chart-line-legend-label">${escapeAttr(ds.label)}</span></button>`; }).join('');
   legendEl.innerHTML = `<div class="chart-legend-stacked">${datasetLegendHtml ? `<div class="chart-legend-row chart-legend-category-row">${datasetLegendHtml}</div>` : ''}${lifeGuideHtml}</div>`;
-  legendEl.querySelectorAll('[data-dataset-index]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.datasetIndex); if(!Number.isFinite(idx)) return; const next=!chartInstance.isDatasetVisible(idx); chartInstance.setDatasetVisibility(idx,next); rememberChartLegendDatasetVisibility(chartInstance,idx,next); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
+  legendEl.querySelectorAll('[data-dataset-index]').forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.dataset.datasetIndex); if(!Number.isFinite(idx)) return; const next=!chartInstance.isDatasetVisible(idx); chartInstance.setDatasetVisibility(idx,next); updateEducationCumulativeDatasets(chartInstance); rememberChartLegendDatasetVisibility(chartInstance,idx,next); const tooltipEl=document.getElementById('chartExternalTooltip'); if(tooltipEl) tooltipEl.hidden=true; chartInstance.setActiveElements([]); chartInstance.tooltip?.setActiveElements?.([], {x:0,y:0}); chartInstance.update('none'); renderEducationLegend(chartInstance, display); }));
   attachLifeGuideLegendHandlers(chartInstance, display);
   legendEl.hidden = false;
 }
@@ -22681,6 +22746,7 @@ function restoreChartLegendVisibilityState(chartInstance){
       changed = true;
     }
   });
+  if(chartInstance.$graphType === 'education') updateEducationCumulativeDatasets(chartInstance);
   if(changed) chartInstance.update('none');
 }
 function getAssetBreakdownOverlayLegendDatasets(chartInstance){
@@ -23297,6 +23363,7 @@ function draw(){
   chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education");
   chart.$educationTooltipEntries = educationTooltipEntries;
   restoreChartLegendVisibilityState(chart);
+  if(graphType === 'education') updateEducationCumulativeDatasets(chart);
   renderCustomChartLegend(chart, customLegendDisplay);
 }
 
@@ -30294,7 +30361,8 @@ function resetChartAxesToAuto(options = {}){
   if(chart && (document.getElementById("graphType")?.value || "asset") === "incomeExpense"){
     chart.$incomeExpenseTouchYZoomed = false;
   }
-  if(chart && (document.getElementById("graphType")?.value || "asset") === "education" && chart.$overlayMode){
+  if(chart && (document.getElementById("graphType")?.value || "asset") === "education"){
+    chart.$educationTouchYZoomed = false;
     chart.$educationOverlayTouchYZoomed = false;
   }
   const fixedScaleEl = document.getElementById("fixedScale");
@@ -30650,7 +30718,7 @@ function setupChartTouchInteractions(){
     // y方向のズーム状態に入った記録がある場合だけ許可する。
     const yZoomed = graphType === "incomeExpense"
       ? (chart?.$incomeExpenseTouchYZoomed === true && yRangeZoomed)
-      : ((graphType === "education" && chart?.$overlayMode) ? (chart?.$educationOverlayTouchYZoomed === true && yRangeZoomed) : (yRangeZoomed || yPositionZoomed));
+      : (graphType === "education" ? (chart?.$educationTouchYZoomed === true && yRangeZoomed) : (yRangeZoomed || yPositionZoomed));
     return {x:xZoomed, y:yZoomed, any:xZoomed || yZoomed};
   };
   const isZoomedFromDefaults = ()=>getTouchZoomAxesFromDefaults().any;
@@ -30700,8 +30768,9 @@ function setupChartTouchInteractions(){
       if(graphType === "incomeExpense"){
         chart.$incomeExpenseTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
       }
-      if(graphType === "education" && chart.$overlayMode){
-        chart.$educationOverlayTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
+      if(graphType === "education"){
+        chart.$educationTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
+        if(chart.$overlayMode) chart.$educationOverlayTouchYZoomed = chart.$educationTouchYZoomed;
       }
     }
     syncInvestmentReferenceYAxisFromMain(chart);
