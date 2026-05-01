@@ -20607,7 +20607,13 @@ function buildLinePointsWithZeroCrossings(labels, data){
       if(Number.isFinite(px) && Number.isFinite(py) && py !== 0 && y !== 0 && py * y < 0){
         const ratio = Math.abs(py) / (Math.abs(py) + Math.abs(y));
         const zx = px + (x - px) * ratio;
-        points.push({x:zx, y:0});
+        points.push({
+          x:zx,
+          y:0,
+          _zeroCrossing:true,
+          _zeroCrossDirection:(py > 0 && y < 0) ? "positiveToNegative" : "negativeToPositive",
+          _zeroCrossLabel:(py > 0 && y < 0) ? "黒字→赤字" : "赤字→黒字"
+        });
       }
     }
     points.push({x, y});
@@ -20693,7 +20699,10 @@ function buildAssetDatasets(sim, color, overlay, labelPrefix="", overlayCount=1)
       const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
       return y < 0 ? "#cf616d" : "#2b8b5f";
     },
-    pointHoverBorderColor:"#fff",
+    pointHoverBorderColor:ctx=>{
+      if(isCashflowZeroCrossPoint(ctx?.raw)) return "#64748b";
+      return "#fff";
+    },
     pointHoverBorderWidth:2,
     borderWidth:1.65,
     fill:{target:"origin"},
@@ -20712,6 +20721,18 @@ function buildAssetDatasets(sim, color, overlay, labelPrefix="", overlayCount=1)
     }
   }];
 }
+function isCashflowZeroCrossPoint(raw){
+  return !!(raw && raw._zeroCrossing === true);
+}
+function getCashflowZeroCrossPointRadius(ctx, baseRadius=0){
+  return isCashflowZeroCrossPoint(ctx?.raw) ? 3.2 : baseRadius;
+}
+function getCashflowZeroCrossPointBackground(ctx, fallbackColor){
+  return isCashflowZeroCrossPoint(ctx?.raw) ? "#fff" : fallbackColor;
+}
+function getCashflowZeroCrossPointBorder(ctx, fallbackColor){
+  return isCashflowZeroCrossPoint(ctx?.raw) ? (fallbackColor || "#64748b") : "#fff";
+}
 function buildCashflowDatasets(sim, color, overlay, labelPrefix="", overlayCount=1){
   const cashflowLabel = overlay ? (labelPrefix || "年間収支") : "年間収支";
   if(overlay){
@@ -20722,6 +20743,10 @@ function buildCashflowDatasets(sim, color, overlay, labelPrefix="", overlayCount
       borderWidth:1.6,
       fill:{target:"origin"},
       order:10,
+      pointRadius:(ctx)=>getCashflowZeroCrossPointRadius(ctx, 0),
+      pointBackgroundColor:(ctx)=>getCashflowZeroCrossPointBackground(ctx, color),
+      pointBorderColor:(ctx)=>getCashflowZeroCrossPointBorder(ctx, color),
+      pointBorderWidth:(ctx)=>isCashflowZeroCrossPoint(ctx?.raw) ? 1.7 : 1.5,
       pointHoverRadius:4
     });
     ds.data = buildLinePointsWithZeroCrossings(sim.labels, sim.annualCashflow);
@@ -20732,16 +20757,21 @@ function buildCashflowDatasets(sim, color, overlay, labelPrefix="", overlayCount
     label:"年間収支",
     data:buildLinePointsWithZeroCrossings(sim.labels, sim.annualCashflow),
     parsing:false,
-    pointRadius:0,
+    pointRadius:(ctx)=>getCashflowZeroCrossPointRadius(ctx, 0),
     pointHoverRadius:4,
     pointHitRadius:4,
     pointBackgroundColor:ctx=>{
+      if(isCashflowZeroCrossPoint(ctx?.raw)) return "#fff";
       const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
       return y < 0 ? "#cf616d" : "#2b8b5f";
     },
-    pointBorderColor:"#fff",
-    pointBorderWidth:1.5,
+    pointBorderColor:ctx=>{
+      if(isCashflowZeroCrossPoint(ctx?.raw)) return "#64748b";
+      return "#fff";
+    },
+    pointBorderWidth:ctx=>isCashflowZeroCrossPoint(ctx?.raw) ? 1.7 : 1.5,
     pointHoverBackgroundColor:ctx=>{
+      if(isCashflowZeroCrossPoint(ctx?.raw)) return "#64748b";
       const y = Number(ctx.parsed?.y ?? ctx.raw?.y);
       return y < 0 ? "#cf616d" : "#2b8b5f";
     },
@@ -22029,6 +22059,11 @@ function positionExternalChartTooltip(tooltipEl, chartInstance, tooltip){
   tooltipEl.style.left = `${left}px`;
   tooltipEl.style.top = `${top}px`;
 }
+function buildCashflowZeroCrossTooltipRow(raw){
+  if(!isCashflowZeroCrossPoint(raw)) return "";
+  const label = raw?._zeroCrossLabel || "黒字／赤字転換";
+  return `<div class="chart-external-tooltip-row chart-external-tooltip-detail-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch('#64748b', false)}<span>${escapeAttr(label)}</span></span></span><span class="chart-external-tooltip-value"></span></div>`;
+}
 function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra={}){
   const tooltipEl = document.getElementById("chartExternalTooltip");
   const chartInstance = context?.chart;
@@ -22075,9 +22110,10 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
     return;
   }
   const title = getCalendarWindowTooltipTitle(simRef, dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label);
-  const rows = dataPoints
+  const rows = [];
+  dataPoints
     .filter(dp=>String(dp?.dataset?.label || "").trim())
-    .map(dp=>{
+    .forEach(dp=>{
       const yValue = Number(dp?.parsed?.y);
       const color = ((graphType === "asset" || graphType === "cashflow") && !extra.overlay && Number.isFinite(yValue))
         ? (yValue < 0 ? "#cf616d" : "#2b8b5f")
@@ -22088,7 +22124,11 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
         : ((graphType === "asset" && Number.isFinite(yValue) && yValue < 0) ? "chart-external-tooltip-value-negative" : "");
       const valueClassAttr = valueClass ? ` ${escapeAttr(valueClass)}` : "";
       const value = escapeAttr(graphType === "cashflow" ? formatSignedMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType) : formatMainChartTooltipMoney(dp.parsed?.y, unitSpec, graphType));
-      return `<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, true)}<span>${label}</span></span></span><span class="chart-external-tooltip-value${valueClassAttr}">${value}</span></div>`;
+      rows.push(`<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(color, true)}<span>${label}</span></span></span><span class="chart-external-tooltip-value${valueClassAttr}">${value}</span></div>`);
+      if(graphType === "cashflow"){
+        const zeroCrossRow = buildCashflowZeroCrossTooltipRow(dp?.raw);
+        if(zeroCrossRow) rows.push(zeroCrossRow);
+      }
     });
   if(!rows.length){ tooltipEl.hidden = true; return; }
   tooltipEl.innerHTML = `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${rows.join("")}</div>`;
