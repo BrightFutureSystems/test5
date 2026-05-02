@@ -208,6 +208,31 @@ document.addEventListener("scroll", (ev)=>{
     font-weight:600;
   }
   #chartAxisBtn:hover{background:#fff;color:#0f172a;}
+  .probability-chart-controls{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    margin:6px 0 0;
+    padding:0 2px;
+    position:relative;
+    z-index:32;
+  }
+  .probability-chart-controls[hidden]{display:none !important;}
+  .probability-chart-status{
+    color:#64748b;
+    font-size:12px;
+    line-height:1.4;
+    text-align:right;
+  }
+  .probability-chart-run-btn{
+    min-width:88px;
+    font-weight:700;
+    color:#0f2942;
+    border-color:#cbd7e6;
+    background:#fff;
+  }
+  .probability-chart-run-btn:hover{background:#f8fbff;}
   .graph-row-label{
     font-size:12px;
     font-weight:700;
@@ -1543,6 +1568,13 @@ document.addEventListener("scroll", (ev)=>{
       max-width:100%;
     }
     #chartAxisBtn{left:10px;bottom:12px;padding:4px 9px;font-size:11px;}
+    .probability-chart-controls{
+      margin-top:5px;
+      gap:6px;
+      padding:0;
+    }
+    .probability-chart-status{font-size:11px;}
+    .probability-chart-run-btn{min-width:84px;padding:6px 9px;}
     .graph-select{width:116px;height:36px;min-height:36px;}
     .graph-row-label{font-size:11px;}
     .graph-menu-btn{width:36px;height:36px;min-width:36px;font-size:18px;}
@@ -5262,6 +5294,114 @@ document.addEventListener("scroll", (ev)=>{
   .chart-external-tooltip-body .chart-external-tooltip-value.chart-external-tooltip-value-negative{color:#dc2626;}
   </style>
 
+
+
+
+
+<!-- ===== v1150: asset-probability Step1 corrected select width and non-expanding button overlay only ===== -->
+<style>
+  /* PC: 「総資産（確率）」が見える最小寄り。既存コントロールの高さ・余白は変更しない。 */
+  #chartTopBar .graph-select,
+  #leftTopControls .graph-select,
+  #leftTopControls select.graph-select,
+  #leftTopControls .field .graph-select{
+    width:160px !important;
+    min-width:160px !important;
+  }
+
+  /* ボタンは通常フローに入れず、canvas/ハンドル/下余白を押し広げない。 */
+  .probability-chart-controls{
+    position:absolute !important;
+    left:10px !important;
+    bottom:4px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:0 !important;
+    width:auto !important;
+    margin:0 !important;
+    padding:0 !important;
+    z-index:32 !important;
+    pointer-events:none !important;
+  }
+  .probability-chart-controls[hidden]{
+    display:none !important;
+  }
+  .probability-chart-status{
+    display:none !important;
+  }
+  .probability-chart-run-btn{
+    pointer-events:auto !important;
+    min-width:104px !important;
+    height:40px !important;
+    min-height:40px !important;
+    padding:0 13px !important;
+    font-size:14px !important;
+    font-weight:400 !important;
+    color:#2f4a66 !important;
+    border:1px solid #bccbda !important;
+    border-radius:12px !important;
+    background:#fff !important;
+    box-shadow:0 1px 2px rgba(15,23,42,.04) !important;
+  }
+  .probability-chart-run-btn:hover,
+  .probability-chart-run-btn:focus{
+    background:#fff !important;
+    color:#2f4a66 !important;
+    border-color:#9ebcf4 !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    /* スマホ: 1行表示優先で「）」が見える最小寄り。 */
+    #leftTopControls .field{
+      flex:0 1 146px !important;
+      min-width:138px !important;
+      max-width:150px !important;
+      width:auto !important;
+    }
+    #chartTopBar .graph-select,
+    #leftTopControls .graph-select,
+    #leftTopControls select.graph-select,
+    #leftTopControls .field .graph-select{
+      width:100% !important;
+      min-width:138px !important;
+      max-width:150px !important;
+      padding-left:9px !important;
+      padding-right:25px !important;
+    }
+    .probability-chart-controls{
+      left:12px !important;
+      right:0 !important;
+      bottom:4px !important;
+    }
+    .probability-chart-run-btn{
+      min-width:94px !important;
+      height:38px !important;
+      min-height:38px !important;
+      padding:0 10px !important;
+      font-size:14px !important;
+      border-radius:12px !important;
+    }
+  }
+</style>
+
+
+
+
+<!-- ===== v1153: monte settings opens asset probability graph + probability button hover match graph controls ===== -->
+<style>
+  .probability-chart-run-btn:not(:disabled):hover,
+  .probability-chart-run-btn:not(:disabled):focus-visible,
+  .probability-chart-run-btn:not(:disabled):active{
+    background:#f3f7fc !important;
+    color:#2f4a66 !important;
+    border-color:#bccbda !important;
+    box-shadow:0 2px 5px rgba(18,38,63,.07) !important;
+    transform:none !important;
+  }
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -5302,6 +5442,7 @@ document.addEventListener("scroll", (ev)=>{
         <div class="field">
           <select id="graphType" class="graph-select" aria-label="グラフ種類">
             <option value="asset">総資産</option>
+            <option value="assetProbability">総資産（確率）</option>
             <option value="assetBreakdown">総資産内訳</option>
             <option value="investment">運用資産内訳</option>
             <option value="incomeExpense">収入／支出</option>
@@ -5340,6 +5481,10 @@ document.addEventListener("scroll", (ev)=>{
     <div id="chartCanvasStickyWrap">
       <div id="chartExternalTooltip" class="chart-external-tooltip" hidden></div>
       <canvas id="chart"></canvas>
+      <div id="assetProbabilityChartControls" class="probability-chart-controls" hidden>
+        <div id="assetProbabilityChartStatus" class="probability-chart-status" aria-live="polite"></div>
+        <button id="assetProbabilityRunBtn" type="button" class="compact-btn probability-chart-run-btn">確率計算</button>
+      </div>
       <button id="chartAxisBtn" type="button" aria-label="軸設定を開く" hidden>軸</button>
       <div class="chart-resize-handle-slot" aria-hidden="true"><div class="chart-resize-handle"></div></div>
     </div>
@@ -6880,7 +7025,14 @@ function createScenarioRecord(data = {}, serial = nextScenarioSerial){
     serial: resolvedSerial,
     name: defaultScenarioName(resolvedSerial),
     data: deepClone(data || {}),
-    overlayStyles: undefined
+    overlayStyles: undefined,
+    monteCarloResult: null,
+    monteCarloSettingsSnapshot: null,
+    monteCarloInputHash: '',
+    monteCarloComputedAt: '',
+    monteCarloDirty: false,
+    monteCarloStatus: 'idle',
+    monteCarloError: '' 
   };
 }
 function buildDefaultWorkspaceOverlaySettings(){
@@ -6923,10 +7075,420 @@ function ensureScenarioMetadata(){
       serial,
       name: nextName,
       data: item.data || {},
-      overlayStyles: item.overlayStyles ? JSON.parse(JSON.stringify(item.overlayStyles)) : item.overlayStyles
+      overlayStyles: item.overlayStyles ? JSON.parse(JSON.stringify(item.overlayStyles)) : item.overlayStyles,
+      monteCarloResult: item.monteCarloResult || null,
+      monteCarloSettingsSnapshot: item.monteCarloSettingsSnapshot || null,
+      monteCarloInputHash: String(item.monteCarloInputHash || ''),
+      monteCarloComputedAt: String(item.monteCarloComputedAt || ''),
+      monteCarloDirty: item.monteCarloDirty === true,
+      monteCarloStatus: ['idle','running','error'].includes(String(item.monteCarloStatus || '')) ? String(item.monteCarloStatus) : 'idle',
+      monteCarloError: String(item.monteCarloError || '')
     };
   });
   nextScenarioSerial = scenarios.length ? Math.max(Number(nextScenarioSerial) || 1, maxSerial + 1) : 1;
+}
+
+function ensureScenarioMonteCarloState(scenario){
+  if(!scenario || typeof scenario !== "object") return null;
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloResult")) scenario.monteCarloResult = null;
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloSettingsSnapshot")) scenario.monteCarloSettingsSnapshot = null;
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloInputHash")) scenario.monteCarloInputHash = "";
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloComputedAt")) scenario.monteCarloComputedAt = "";
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloDirty")) scenario.monteCarloDirty = false;
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloStatus")) scenario.monteCarloStatus = "idle";
+  if(!Object.prototype.hasOwnProperty.call(scenario, "monteCarloError")) scenario.monteCarloError = "";
+  return scenario;
+}
+function getCurrentScenarioMonteCarloState(){
+  const scenario = scenarios?.[currentTab];
+  return ensureScenarioMonteCarloState(scenario);
+}
+function buildMonteCarloInputHashFromData(data){
+  try{
+    return JSON.stringify(sanitizeSimulationInputData(data || {}, {includeMonteSettings:true}));
+  }catch(_e){
+    return "";
+  }
+}
+function isMonteCarloRelevantDataChanged(prevData, nextData){
+  return buildMonteCarloInputHashFromData(prevData) !== buildMonteCarloInputHashFromData(nextData);
+}
+function markScenarioMonteCarloDirty(scenario){
+  const state = ensureScenarioMonteCarloState(scenario);
+  if(!state) return;
+  state.monteCarloDirty = true;
+  if(state.monteCarloStatus === "error") state.monteCarloStatus = "idle";
+}
+function markCurrentScenarioMonteCarloDirty(){
+  markScenarioMonteCarloDirty(scenarios?.[currentTab]);
+}
+function isAssetProbabilityGraphSelected(){
+  return (document.getElementById("graphType")?.value || "") === "assetProbability";
+}
+function getAssetProbabilityRunButtonLabel(scenario){
+  const state = ensureScenarioMonteCarloState(scenario);
+  if(state?.monteCarloStatus === "running") return "計算中...";
+  if(state?.monteCarloStatus === "error") return "再試行";
+  if(state?.monteCarloResult && state?.monteCarloDirty) return "再計算";
+  return "確率計算";
+}
+function getAssetProbabilityStatusText(scenario){
+  const state = ensureScenarioMonteCarloState(scenario);
+  if(!state) return "";
+  if(state.monteCarloStatus === "error") return "前回計算に失敗しました。";
+  if(state.monteCarloStatus === "running") return "計算中...";
+  if(state.monteCarloResult && state.monteCarloDirty) return "再計算が必要";
+  if(state.monteCarloResult) return "計算済み";
+  return "未計算";
+}
+function updateAssetProbabilityControls(){
+  const controls = document.getElementById("assetProbabilityChartControls");
+  const status = document.getElementById("assetProbabilityChartStatus");
+  const btn = document.getElementById("assetProbabilityRunBtn");
+  const active = isAssetProbabilityGraphSelected();
+  if(controls) controls.hidden = !active;
+  if(!active) return;
+  const scenario = getCurrentScenarioMonteCarloState();
+  if(status) status.textContent = getAssetProbabilityStatusText(scenario);
+  if(btn){
+    btn.textContent = getAssetProbabilityRunButtonLabel(scenario);
+    btn.disabled = scenario?.monteCarloStatus === "running";
+  }
+}
+function buildAssetProbabilityPlaceholderPlugin(message){
+  return {
+    id:"assetProbabilityPlaceholder",
+    afterDraw(chartInstance){
+      const ctx = chartInstance?.ctx;
+      const area = chartInstance?.chartArea;
+      if(!ctx || !area) return;
+      ctx.save();
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "600 14px Arial, sans-serif";
+      ctx.fillText(message || "未計算", (area.left + area.right) / 2, (area.top + area.bottom) / 2);
+      ctx.restore();
+    }
+  };
+}
+function buildAssetProbabilityStoredResult(scenario, cfg, base, monteSettings){
+  const monteRun = getOrBuildMonteRunCache(scenario, cfg, base, monteSettings);
+  const displayBundle = buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scenario?.data || cfg);
+  const labels = Array.isArray(base?.labels) ? base.labels.slice() : [];
+  const basePlot = buildMontePlotSeries(cfg, labels, base?.totalAssets || []);
+  const displayResults = Array.isArray(displayBundle?.displayResults) ? displayBundle.displayResults : [];
+  const best = Array.isArray(displayBundle?.best) ? displayBundle.best : [];
+  const worst = Array.isArray(displayBundle?.worst) ? displayBundle.worst : [];
+  const finalsAtLife = Array.isArray(displayBundle?.finalsAtPlottedLife) ? displayBundle.finalsAtPlottedLife.slice() : (Array.isArray(monteRun?.finalsAtLife) ? monteRun.finalsAtLife.slice() : []);
+  return {
+    labels,
+    displayedPathIndices:Array.isArray(displayBundle?.displayIndices) ? displayBundle.displayIndices.slice() : [],
+    paths:displayResults.map(series=>Array.isArray(series) ? series.slice() : []),
+    deterministicSeries:basePlot.values.slice(),
+    percentile10:Array.isArray(displayBundle?.percentile10) ? buildMontePlotSeries(cfg, labels, displayBundle.percentile10).values.slice() : [],
+    percentile50:Array.isArray(displayBundle?.percentile50) ? buildMontePlotSeries(cfg, labels, displayBundle.percentile50).values.slice() : [],
+    percentile90:Array.isArray(displayBundle?.percentile90) ? buildMontePlotSeries(cfg, labels, displayBundle.percentile90).values.slice() : [],
+    bestSeries:buildMontePlotSeries(cfg, labels, best).values.slice(),
+    worstSeries:buildMontePlotSeries(cfg, labels, worst).values.slice(),
+    finalsAtLife,
+    ruinProbability:Number(monteRun?.prob || 0) || 0,
+    trials:clampMonteTrials(monteSettings?.trials || 80),
+    drawPaths:Math.max(1, Math.min(clampMonteTrials(monteSettings?.trials || 80), Math.round(Number(monteSettings?.drawPaths) || 80))),
+    settingsSummary:formatAssetProbabilitySettingsSummary(monteSettings),
+    settingsSnapshot:JSON.parse(JSON.stringify(monteSettings || {})),
+    lifeIndex:Number(monteRun?.lifeIndex || 0) || 0,
+    computedAt:new Date().toISOString(),
+    inputHash:buildMonteCarloInputHashFromData(scenario?.data || cfg)
+  };
+}
+function runAssetProbabilityCalculation(){
+  clearScheduledDraw();
+  ensureScenarioSaved();
+  const scenario = getCurrentScenarioMonteCarloState();
+  if(!scenario || scenario.monteCarloStatus === "running") return;
+  scenario.monteCarloStatus = "running";
+  scenario.monteCarloError = "";
+  updateAssetProbabilityControls();
+  try{
+    const currentDisplayCfg = getScenarioFromDOM();
+    const currentCache = getOrBuildNormalScenarioCache(scenario, scenario, currentDisplayCfg, null);
+    const monteSettings = getMonteCarloSettingsFromDOM();
+    const result = buildAssetProbabilityStoredResult(scenario, currentCache.cfg, currentCache.sim, monteSettings);
+    scenario.monteCarloResult = result;
+    scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(monteSettings || {}));
+    scenario.monteCarloInputHash = result.inputHash || buildMonteCarloInputHashFromData(scenario.data || currentCache.cfg);
+    scenario.monteCarloComputedAt = result.computedAt || new Date().toISOString();
+    scenario.monteCarloDirty = false;
+    scenario.monteCarloStatus = "idle";
+    scenario.monteCarloError = "";
+    persistState();
+  }catch(err){
+    console.error(err);
+    scenario.monteCarloStatus = "error";
+    scenario.monteCarloError = String(err?.message || err || "");
+  }
+  drawAssetProbabilityShell();
+}
+
+function ensureAssetProbabilityLegendState(chartInstance){
+  if(!chartInstance) return new Set();
+  if(!(chartInstance.$assetProbabilityHiddenKinds instanceof Set)) chartInstance.$assetProbabilityHiddenKinds = new Set();
+  return chartInstance.$assetProbabilityHiddenKinds;
+}
+function isAssetProbabilityKindVisible(chartInstance, kind){
+  const hidden = ensureAssetProbabilityLegendState(chartInstance);
+  return !hidden.has(String(kind || ""));
+}
+function setAssetProbabilityKindVisibility(chartInstance, kind, visible){
+  const hidden = ensureAssetProbabilityLegendState(chartInstance);
+  const key = String(kind || "");
+  if(!key) return;
+  if(visible) hidden.delete(key);
+  else hidden.add(key);
+  applyAssetProbabilityLegendVisibility(chartInstance);
+}
+function applyAssetProbabilityLegendVisibility(chartInstance){
+  if(!chartInstance) return;
+  const datasets = chartInstance.data?.datasets || [];
+  datasets.forEach((ds, idx)=>{
+    const kind = String(ds?._assetProbabilityKind || "");
+    if(!kind) return;
+    chartInstance.setDatasetVisibility(idx, isAssetProbabilityKindVisible(chartInstance, kind));
+  });
+}
+function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
+  return {
+    id:"assetProbabilityExpectedLifeGuide",
+    afterDatasetsDraw(chartInstance){
+      if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife")) return;
+      const ctx = chartInstance?.ctx;
+      const x = chartInstance?.scales?.x;
+      const y = chartInstance?.scales?.y;
+      const area = chartInstance?.chartArea;
+      const lifeAge = Number(cfg?.lifeExpect);
+      if(!ctx || !x || !y || !area || !Number.isFinite(lifeAge)) return;
+      const px = x.getPixelForValue(lifeAge);
+      if(!Number.isFinite(px) || px < area.left || px > area.right) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+      ctx.strokeStyle = "#5b7c99";
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([7,5]);
+      ctx.beginPath();
+      ctx.moveTo(Math.round(px) + 0.5, y.top);
+      ctx.lineTo(Math.round(px) + 0.5, y.bottom);
+      ctx.stroke();
+      ctx.restore();
+
+      const probValue = Number(monteInfo?.prob || 0) || 0;
+      const probText = Math.abs(probValue - Math.round(probValue)) < 1e-9 ? String(Math.round(probValue)) : formatNumberJP(probValue, 1);
+      const text = `破綻確率 ${probText}%`;
+      ctx.save();
+      ctx.font = "600 12px Arial";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      const padX = 6;
+      const labelW = ctx.measureText(text).width + padX * 2;
+      const labelH = 20;
+      const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
+      const labelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14);
+      ctx.fillStyle = "rgba(254,242,242,0.90)";
+      ctx.strokeStyle = "rgba(220,38,38,0.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 7);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#991b1b";
+      ctx.fillText(text, labelX + padX, labelY);
+      ctx.restore();
+    }
+  };
+}
+function buildAssetProbabilityLegendBandSample(){
+  return `<span class="chart-line-legend-sample chart-bar-legend-sample" style="background:rgba(37,99,235,0.12);border-color:rgba(37,99,235,0.22);"></span>`;
+}
+function buildAssetProbabilityLegendItemHtml(chartInstance, kind, label, sample){
+  const visible = isAssetProbabilityKindVisible(chartInstance, kind);
+  return `<button type="button" class="chart-line-legend-item${visible ? "" : " is-hidden"}" data-asset-probability-kind="${escapeAttr(kind)}" aria-pressed="${visible ? "true" : "false"}">${sample}<span class="chart-line-legend-label">${escapeAttr(label)}</span></button>`;
+}
+function renderAssetProbabilityLegend(chartInstance, display){
+  const legendEl = document.getElementById("chartCustomLegend");
+  if(!legendEl) return;
+  if(!display || !chartInstance?.data?.datasets?.length){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  ensureAssetProbabilityLegendState(chartInstance);
+  const datasets = chartInstance.data?.datasets || [];
+  const hasKind = (kind)=>datasets.some(ds=>String(ds?._assetProbabilityKind || "") === kind);
+  const items = [];
+  if(hasKind("paths")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "paths", "試行", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("rgba(156,163,175,0.55)", "solid", 1, 50, [])}</span>`));
+  if(hasKind("band")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "band", "10–90%", buildAssetProbabilityLegendBandSample()));
+  if(hasKind("median")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "median", "中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#2563eb", "solid", 2.5, 50, [])}</span>`));
+  if(hasKind("best")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "best", "ベスト", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("green", "solid", 2, 50, [])}</span>`));
+  if(hasKind("worst")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "worst", "ワースト", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("red", "solid", 2, 50, [])}</span>`));
+  if(hasKind("deterministic")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "deterministic", "一定利率", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("black", "solid", 2.5, 50, [])}</span>`));
+  items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "expectedLife", "想定寿命", buildLifeGuideLegendSample("expected", false)));
+  if(hasKind("distribution")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "distribution", "分布", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#f59e0b", "solid", 2, 50, [])}</span>`));
+  if(!items.length){
+    legendEl.hidden = true;
+    legendEl.innerHTML = "";
+    return;
+  }
+  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-category-row">${items.join("")}</div>`;
+  legendEl.querySelectorAll("[data-asset-probability-kind]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const kind = String(btn.dataset.assetProbabilityKind || "");
+      if(!kind) return;
+      setAssetProbabilityKindVisibility(chartInstance, kind, !isAssetProbabilityKindVisible(chartInstance, kind));
+      saveCurrentChartLegendVisibilityState(chartInstance);
+      const tooltipEl = document.getElementById("chartExternalTooltip");
+      if(tooltipEl) tooltipEl.hidden = true;
+      chartInstance.setActiveElements([]);
+      chartInstance.tooltip?.setActiveElements?.([], {x:0, y:0});
+      chartInstance.update("none");
+      renderAssetProbabilityLegend(chartInstance, display);
+    });
+  });
+  legendEl.hidden = false;
+}
+
+function buildAssetProbabilityChartDatasets(result, cfg){
+  const labels = Array.isArray(result?.labels) ? result.labels : [];
+  const datasets = [];
+  (Array.isArray(result?.paths) ? result.paths : []).forEach(series=>{
+    const plot = buildMontePlotSeries(cfg, labels, series);
+    datasets.push({...makeLineDataset("", plot.labels, plot.values, {borderColor:"rgba(156,163,175,0.30)", borderWidth:1, order:100}), _assetProbabilityKind:"paths"});
+  });
+  const p90 = Array.isArray(result?.percentile90) ? result.percentile90 : [];
+  const p50 = Array.isArray(result?.percentile50) ? result.percentile50 : [];
+  const p10 = Array.isArray(result?.percentile10) ? result.percentile10 : [];
+  if(p90.length && p10.length){
+    datasets.push({...makeLineDataset("", labels, p90, {borderColor:"rgba(37,99,235,0)", backgroundColor:"rgba(37,99,235,0.12)", borderWidth:0, pointRadius:0, pointHoverRadius:0, pointHitRadius:0, order:90}), _assetProbabilityKind:"band"});
+    datasets.push({...makeLineDataset("10–90%", labels, p10, {borderColor:"rgba(37,99,235,0)", backgroundColor:"rgba(37,99,235,0.12)", borderWidth:0, pointRadius:0, pointHoverRadius:0, pointHitRadius:0, fill:"-1", order:89}), _assetProbabilityKind:"band"});
+  }
+  if(p50.length){
+    datasets.push({...makeLineDataset("中央値", labels, p50, {borderColor:"#2563eb", borderWidth:2.5, order:2.4}), _assetProbabilityKind:"median"});
+  }
+  datasets.push({...makeLineDataset("ワースト", labels, Array.isArray(result?.worstSeries) ? result.worstSeries : [], {borderColor:"red", borderWidth:2, order:4}), _assetProbabilityKind:"worst"});
+  datasets.push({...makeLineDataset("ベスト", labels, Array.isArray(result?.bestSeries) ? result.bestSeries : [], {borderColor:"green", borderWidth:2, order:3}), _assetProbabilityKind:"best"});
+  datasets.push({...makeLineDataset("一定利率", labels, Array.isArray(result?.deterministicSeries) ? result.deterministicSeries : [], {borderColor:"black", borderWidth:2.5, order:2}), _assetProbabilityKind:"deterministic"});
+  const distributionDataset = buildMonteDistributionDataset(cfg, result?.finalsAtLife || [], {label:'想定寿命時の総資産確率分布'});
+  if(distributionDataset) datasets.push({...distributionDataset, order:1, _assetProbabilityKind:"distribution"});
+  return {datasets, distributionDataset};
+}
+function drawAssetProbabilityShell(){
+  monteMode = false;
+  ensureScenarioSaved();
+  const currentScenario = scenarios[currentTab];
+  const scenarioState = ensureScenarioMonteCarloState(currentScenario);
+  const currentDisplayCfg = getScenarioFromDOM();
+  const currentCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
+  const currentCfg = currentCache.cfg;
+  const currentSim = currentCache.sim;
+  updateResultCards(currentCfg, currentSim);
+  const storedResult = scenarioState?.monteCarloResult || null;
+  if(storedResult){
+    const {datasets, distributionDataset} = buildAssetProbabilityChartDatasets(storedResult, currentCfg);
+    const yData = [];
+    (datasets || []).forEach(ds=>{
+      (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
+        const y = Number(point?.y);
+        if(Number.isFinite(y)) yData.push(y);
+      });
+    });
+    const yUnitSpec = getMainChartYAxisUnitSpec(yData);
+    const compactLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
+    const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'assetProbability', graphType:'assetProbability', overlay:false, targets:[{scenario:currentScenario,index:currentTab}]}));
+    const monteInfo = {
+      assetProbabilityMode:true,
+      prob:Number(storedResult.ruinProbability || 0) || 0,
+      distributionMedian:distributionDataset?.medianMarker || null,
+      settingsSummary:(storedResult.settingsSummary && !/試行回数|です|<br>|<strong>/u.test(String(storedResult.settingsSummary))) ? String(storedResult.settingsSummary) : formatAssetProbabilitySettingsSummary(storedResult.settingsSnapshot || scenarioState?.monteCarloSettingsSnapshot || getMonteCarloSettingsFromDOM()),
+      dirtyMessage:scenarioState?.monteCarloDirty ? "再計算が必要" : ''
+    };
+    if(chart) chart.destroy();
+    chart = new Chart(document.getElementById("chart").getContext("2d"), {
+      type:"line",
+      data:{datasets},
+      options:{
+        animation:false,
+        responsive:true,
+        maintainAspectRatio:false,
+        layout:{padding:compactLayout ? {left:10,right:12} : {left:6,right:22}},
+        interaction:{mode:"nearest", intersect:true},
+        events:[],
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            enabled:false,
+            external:(context)=>renderExternalChartTooltip(context, yUnitSpec, "asset", currentSim),
+            callbacks:{
+              title(items){
+                const first = items?.[0];
+                if(!first) return '';
+                const datasetLabel = String(first.dataset?.label || '');
+                if(datasetLabel.includes('想定寿命時の総資産確率分布')) return datasetLabel;
+                return getCalendarWindowTooltipTitle(currentSim, first.parsed?.x ?? first.label);
+              },
+              label(ctx){
+                const raw = ctx.parsed?.y ?? 0;
+                return `${ctx.dataset.label}: ${Math.round(raw).toLocaleString()}万円`;
+              }
+            }
+          }
+        },
+        scales:{
+          x:{type:"linear", min:Math.min(currentCfg.xAxisMin ?? currentCfg.age, getMonteDistributionAxisMax(currentCfg)), max:getMonteDistributionAxisMax(currentCfg), offset:false, bounds:"ticks", ticks:{stepSize:5, maxRotation:0, minRotation:0, callback(value){ return getCalendarWindowTickLabel(currentSim, value); }}, title:{display:true,text:getXAxisTitleText()}},
+          y:{title:{display:true,text:`総資産（${yUnitSpec.label}）`}, ...getAxisBounds(yData.length ? yData : [0], currentCfg, false), grid:makeGridWithoutZeroLine({}), ticks:{includeBounds:false, padding:compactLayout ? 8 : 6, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
+        }
+      },
+      plugins:[pluginLines(currentCfg, currentSim, monteInfo), buildAssetProbabilityExpectedLifePlugin(currentCfg, monteInfo)]
+    });
+    chart.$graphType = "assetProbability";
+    chart.$overlayMode = false;
+    chart.$legendContextKey = legendContextKey;
+    chart.$useStrictPointTooltip = true;
+    ensureAssetProbabilityLegendState(chart);
+    applyAssetProbabilityLegendVisibility(chart);
+    restoreChartLegendVisibilityState(chart);
+    renderCustomChartLegend(chart, true);
+    updateAssetProbabilityControls();
+    return;
+  }
+  const yData = getVisibleSeriesValues(currentSim?.labels || [], currentSim?.totalAssets || [0], currentCfg?.xAxisMax || 120);
+  const yUnitSpec = getMainChartYAxisUnitSpec(yData);
+  const axis = getAxisBounds(yData.length ? yData : [0], currentCfg, false);
+  const placeholder = "未計算：右下の「確率計算」から計算します";
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById("chart").getContext("2d"), {
+    type:"line",
+    data:{datasets:[]},
+    options:{
+      animation:false,
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{left:6,right:22}},
+      events:[],
+      plugins:{legend:{display:false}, tooltip:{enabled:false}},
+      scales:{
+        x:{type:"linear", min:currentCfg.xAxisMin, max:currentCfg.xAxisMax, offset:false, bounds:"ticks", grid:{display:false}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:5, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, currentSim, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+        y:{title:{display:true,text:`総資産（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, grid:makeGridWithoutZeroLine({}), ticks:{includeBounds:false, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
+      }
+    },
+    plugins:[buildAssetProbabilityPlaceholderPlugin(placeholder), {id:"assetProbabilityZeroLine", afterDatasetsDraw(chartInstance){ drawCommonZeroLine(chartInstance.ctx, chartInstance.scales.x, chartInstance.scales.y); }}]
+  });
+  chart.$graphType = "assetProbability";
+  chart.$overlayMode = false;
+  chart.$legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'assetProbabilityShell', graphType:'assetProbability', overlay:false, targets:[{scenario:currentScenario,index:currentTab}]}));
+  chart.$useStrictPointTooltip = false;
+  renderCustomChartLegend(chart, false);
+  updateAssetProbabilityControls();
 }
 function getDefaultOverlayColorByIndex(idx){
   const n = Number(idx);
@@ -7641,6 +8203,22 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
   const displayResults = displayIndices.map(getSeries);
   const best = getSeries(bestIndex);
   const worst = getSeries(worstIndex);
+  const percentileSourceLength = Array.isArray(base?.labels) ? base.labels.length : Math.max(...Array.from({length:trials}, (_, i)=>Array.isArray(getSeries(i)) ? getSeries(i).length : 0), 0);
+  const percentile10 = [];
+  const percentile50 = [];
+  const percentile90 = [];
+  for(let pointIndex=0; pointIndex<percentileSourceLength; pointIndex++){
+    const values = [];
+    for(let trialIndex=0; trialIndex<trials; trialIndex++){
+      const series = getSeries(trialIndex);
+      const value = Number(series?.[pointIndex]);
+      if(Number.isFinite(value)) values.push(value);
+    }
+    values.sort((a,b)=>a-b);
+    percentile10.push(values.length ? percentileFromSorted(values, 0.10) : 0);
+    percentile50.push(values.length ? percentileFromSorted(values, 0.50) : 0);
+    percentile90.push(values.length ? percentileFromSorted(values, 0.90) : 0);
+  }
   const baseSeries = Array.isArray(base?.totalAssets) ? base.totalAssets : [];
   const fixedFinalAtLife = Number(baseSeries?.[plottedLifeIndex] ?? 0) || 0;
   const allFinalsSameAsFixed = finalsAtPlottedLife.every(v => Math.abs((Number(v) || 0) - fixedFinalAtLife) < 1e-9);
@@ -7651,6 +8229,9 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
     displayResults,
     best,
     worst,
+    percentile10,
+    percentile50,
+    percentile90,
     bestIndex,
     worstIndex,
     finalsAtPlottedLife,
@@ -10962,6 +11543,7 @@ function syncCurrentScenarioFromDOM(persistLocal = false){
   const nextData = migrateLegacyData(getAllInputs());
   const preservedOverlayStyles = scenarios[currentTab].overlayStyles || prevData.overlayStyles;
   if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
+  if(isMonteCarloRelevantDataChanged(prevData, nextData)) markScenarioMonteCarloDirty(scenarios[currentTab]);
   scenarios[currentTab].data = nextData;
   if(preservedOverlayStyles) scenarios[currentTab].overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
   if(persistLocal){
@@ -11131,6 +11713,7 @@ function ensureScenarioSaved(){
   const nextData = migrateLegacyData(getAllInputs());
   const preservedOverlayStyles = scenarios[currentTab].overlayStyles || prevData.overlayStyles;
   if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
+  if(isMonteCarloRelevantDataChanged(prevData, nextData)) markScenarioMonteCarloDirty(scenarios[currentTab]);
   scenarios[currentTab].data = nextData;
   if(preservedOverlayStyles) scenarios[currentTab].overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
 }
@@ -19028,6 +19611,16 @@ function formatMonteSettingsSummary(settings){
   }
   return `<strong>一様分布（簡易モデル）</strong><br>試行回数 ${settings.trials} 回、描画本数 ${settings.drawPaths} 本、実効ボラ（年次標準偏差） ${settings.effectiveVolPct}%、内部変動幅 ±${settings.uniformRangePct.toFixed(1)}%です。`;
 }
+function formatAssetProbabilitySettingsSummary(settings){
+  if(!settings) return '';
+  const model = normalizeMonteModel(settings.model || 'normal');
+  const modelLabel = model === 'normal' ? '標準モデル' : (model === 'mean_reverting' ? '平均回帰' : '簡易モデル');
+  const vol = Number(settings.effectiveVolPct);
+  const volText = Number.isFinite(vol) ? formatNumberJP(vol, Math.abs(vol - Math.round(vol)) < 1e-9 ? 0 : 1) : '-';
+  const trials = clampMonteTrials(settings.trials || 80);
+  const drawPaths = clampMonteDrawPaths(settings.drawPaths || trials, trials);
+  return `${modelLabel}｜ボラ ${volText}%｜計算 ${trials}回｜表示 ${drawPaths}本`;
+}
 function getPublicPensionDeductionByAge(age, cfg){
   const tax = cfg?.tax || {};
   return age >= 65 ? Number(tax.publicPensionDeduction65Plus || 0) : Number(tax.publicPensionDeductionUnder65 || 0);
@@ -21666,21 +22259,42 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
       ctx.save();
 
       if(monteInfo){
-        const tx = x.left + 12;
-        const ty = y.top + 18;
-        ctx.font = "bold 18px Arial";
-        const text = `破綻確率: ${monteInfo.prob}%`;
-        const w = ctx.measureText(text).width + 16;
-        ctx.fillStyle = "#111827";
-        ctx.fillRect(tx-8, ty-16, w, 28);
-        ctx.fillStyle = "#fff";
-        ctx.fillText(text, tx, ty+4);
+        if(monteInfo.assetProbabilityMode){
+          const area = chart.chartArea;
+          if(area){
+            const summary = String(monteInfo.settingsSummary || '');
+            if(summary){
+              ctx.save();
+              ctx.font = "12px Arial";
+              ctx.textAlign = "left";
+              ctx.textBaseline = "top";
+              ctx.fillStyle = "#334155";
+              ctx.fillText(summary, area.left + 10, area.top + 8);
+              if(monteInfo.dirtyMessage){
+                ctx.fillStyle = "#dc2626";
+                ctx.fillText(String(monteInfo.dirtyMessage), area.left + 10, area.top + 25);
+              }
+              ctx.restore();
+            }
 
-        ctx.font = "13px Arial";
-        monteInfo.legendItems.forEach((item, idx)=>{
-          ctx.fillStyle = item.color;
-          ctx.fillText(item.text, tx, ty + 28 + idx*16);
-        });
+          }
+        }else{
+          const tx = x.left + 12;
+          const ty = y.top + 18;
+          ctx.font = "bold 18px Arial";
+          const text = `破綻確率: ${monteInfo.prob}%`;
+          const w = ctx.measureText(text).width + 16;
+          ctx.fillStyle = "#111827";
+          ctx.fillRect(tx-8, ty-16, w, 28);
+          ctx.fillStyle = "#fff";
+          ctx.fillText(text, tx, ty+4);
+
+          ctx.font = "13px Arial";
+          (monteInfo.legendItems || []).forEach((item, idx)=>{
+            ctx.fillStyle = item.color;
+            ctx.fillText(item.text, tx, ty + 28 + idx*16);
+          });
+        }
 
         const medianMarker = monteInfo.distributionMedian;
         if(medianMarker && Number.isFinite(medianMarker.x) && Number.isFinite(medianMarker.y)){
@@ -22783,7 +23397,7 @@ function getChartLegendState(contextKey){
   const key = String(contextKey || chartLegendLastContextKey || '');
   if(!key) return null;
   if(!chartLegendVisibilityState.has(key)){
-    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null, educationOverlay:null, lifeGuide:null});
+    chartLegendVisibilityState.set(key, {datasets:{}, assetBreakdownOverlay:null, incomeExpenseOverlay:null, educationOverlay:null, assetProbabilityHiddenKinds:null, lifeGuide:null});
   }
   return chartLegendVisibilityState.get(key);
 }
@@ -22801,6 +23415,9 @@ function saveCurrentChartLegendVisibilityState(chartInstance){
     if(!key) return;
     state.datasets[key] = chartInstance.isDatasetVisible(idx);
   });
+  if(chartInstance.$graphType === 'assetProbability'){
+    state.assetProbabilityHiddenKinds = Array.from(ensureAssetProbabilityLegendState(chartInstance));
+  }
   if(chartInstance.$graphType === 'assetBreakdown' && chartInstance.$overlayMode){
     state.assetBreakdownOverlay = {
       hiddenScenarios:Array.from(chartInstance.$assetBreakdownOverlayHiddenScenarios || []),
@@ -22838,6 +23455,12 @@ function restoreChartLegendVisibilityState(chartInstance){
     const lifeState = ensureLifeGuideLegendState(chartInstance);
     if(typeof state.lifeGuide.expected === 'boolean') lifeState.expected = state.lifeGuide.expected;
     if(typeof state.lifeGuide.asset === 'boolean') lifeState.asset = state.lifeGuide.asset;
+  }
+  if(chartInstance.$graphType === 'assetProbability' && Array.isArray(state.assetProbabilityHiddenKinds)){
+    chartInstance.$assetProbabilityHiddenKinds = new Set(state.assetProbabilityHiddenKinds.map(v=>String(v || "")).filter(Boolean));
+    applyAssetProbabilityLegendVisibility(chartInstance);
+    chartInstance.update('none');
+    return;
   }
   if(chartInstance.$graphType === 'assetBreakdown' && chartInstance.$overlayMode && state.assetBreakdownOverlay){
     chartInstance.$assetBreakdownOverlayHiddenScenarios = new Set((state.assetBreakdownOverlay.hiddenScenarios || []).map(Number).filter(v=>Number.isFinite(v)));
@@ -23158,6 +23781,10 @@ function renderIncomeExpenseLegend(chartInstance, display){
 }
 
 function renderCustomChartLegend(chartInstance, display){
+  if(chartInstance?.$graphType === "assetProbability"){
+    renderAssetProbabilityLegend(chartInstance, display);
+    return;
+  }
   if(chartInstance?.$graphType === "investment"){
     renderInvestmentBreakdownLegend(chartInstance, display);
     return;
@@ -23424,6 +24051,11 @@ function draw(){
   monteMode = false;
   ensureScenarioSaved();
   const graphType = document.getElementById("graphType").value;
+  if(graphType === "assetProbability"){
+    drawAssetProbabilityShell();
+    return;
+  }
+  updateAssetProbabilityControls();
   const overlay = !!workspaceOverlayModeOn && graphType !== "investment";
   const currentScenario = scenarios[currentTab];
   const overlayEntriesBase = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice() : [];
@@ -23507,6 +24139,7 @@ function draw(){
 
 function runMonte(settingsOverride=null){
   clearScheduledDraw();
+  updateAssetProbabilityControls();
   monteMode = true;
   ensureScenarioSaved();
   const overlay = !!workspaceOverlayModeOn;
@@ -28453,11 +29086,12 @@ function openMonteSettingsModal(){
   syncMonteCompareUiFromState();
   const graphTypeEl = document.getElementById('graphType');
   if(graphTypeEl){
-    graphTypeEl.value = 'asset';
+    graphTypeEl.value = 'assetProbability';
     graphTypeEl.disabled = true;
     graphTypeEl.classList.add('preview-frozen-control');
-    graphTypeEl.title = 'モンテカルロ設定中は変更できません';
+    graphTypeEl.title = '確率（モンテカルロ）設定中は変更できません';
   }
+  updateAssetProbabilityControls();
   requestDraw({immediate:true});
   const monteSettingsModal = document.getElementById('monteCarloSettingsModal');
   openPreviewSheet(monteSettingsModal);
@@ -28506,6 +29140,7 @@ function saveMonteSettingsModal(){
   const settings = buildMonteSettingsFromModal();
   applyMonteSettingsToHidden(settings);
   syncMonteCompareStateFromUi();
+  markCurrentScenarioMonteCarloDirty();
   syncCurrentScenarioFromDOM(true);
   persistState();
   const graphTypeEl = document.getElementById('graphType');
@@ -29047,6 +29682,9 @@ document.addEventListener("wheel", (e)=>{
   if(allowed) return;
   e.preventDefault();
 }, {capture:true, passive:false});
+document.getElementById("assetProbabilityRunBtn")?.addEventListener("click", ()=>{
+  runAssetProbabilityCalculation();
+});
 document.getElementById("copyUrlBtn").addEventListener("click", copyURL);
 updateOverlayFeatureUI();
 document.getElementById("graphType").addEventListener("change", (e)=>{
@@ -29398,6 +30036,7 @@ document.addEventListener("click", (e)=>{
     const type = addBtn.dataset.addRow;
     rerenderDynamicSection(type, ((dynamicCounts[type] ?? 0)) + 1);
     monteMode = false;
+    markCurrentScenarioMonteCarloDirty();
     if(scenarios.length && currentTab >= 0) syncCurrentScenarioFromDOM(false);
     if(type === "child") updateChildAllowanceSummary();
     requestDraw();
@@ -29433,6 +30072,7 @@ document.addEventListener("change", (e)=>{
     rememberMainInputSnapshot(el);
     if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) syncCurrentScenarioFromDOM(false);
     monteMode = false;
+    markCurrentScenarioMonteCarloDirty();
     requestDraw();
     persistState();
     return;
@@ -29442,6 +30082,7 @@ document.addEventListener("change", (e)=>{
     const rowIndex = Number(payMatch[1]);
     syncInsurancePayDefaults(rowIndex);
     monteMode = false;
+    markCurrentScenarioMonteCarloDirty();
     requestDraw();
     persistState();
     return;
@@ -29470,6 +30111,7 @@ document.addEventListener("change", (e)=>{
     }
     syncInsuranceReceiveDefaults(rowIndex);
     monteMode = false;
+    markCurrentScenarioMonteCarloDirty();
     requestDraw();
     persistState();
     return;
@@ -29659,6 +30301,7 @@ function performDeferredDateMainInputCommit(el){
     syncSimpleModePeriodAutoAgesInDOM();
   }
   monteMode = false;
+  markCurrentScenarioMonteCarloDirty();
   updatePeriodDisplays();
   syncCurrentScenarioFromDOM(false);
   if(shouldRefreshChildAllowanceSummaryForElement(el)) updateChildAllowanceSummary();
@@ -29768,6 +30411,7 @@ function commitMainInputChange(e){
     syncSimpleModePeriodAutoAgesInDOM();
   }
   monteMode = false;
+  markCurrentScenarioMonteCarloDirty();
   updatePeriodDisplays();
   syncCurrentScenarioFromDOM(false);
   if(shouldRefreshChildAllowanceSummaryForElement(el)) updateChildAllowanceSummary();
@@ -38595,15 +39239,15 @@ body.withdrawal-preview-open #detailStickyNav *{
       gap:0 !important;
     }
     #leftTopControls .field{
-      flex:0 1 142px !important;
+      flex:0 1 146px !important;
       min-width:132px !important;
-      max-width:150px !important;
+      max-width:154px !important;
       width:auto !important;
     }
     #chartTopBar .graph-select{
       width:100% !important;
       min-width:132px !important;
-      max-width:150px !important;
+      max-width:154px !important;
       padding-left:9px !important;
       padding-right:26px !important;
     }
