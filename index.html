@@ -7164,10 +7164,10 @@ function buildAssetProbabilityPlaceholderPlugin(message){
       if(!ctx || !area) return;
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
       ctx.font = "600 14px Arial, sans-serif";
-      ctx.fillText(message || "未計算", (area.left + area.right) / 2, (area.top + area.bottom) / 2);
+      ctx.fillText(message || "未計算", area.left + 10, area.bottom - 10);
       ctx.restore();
     }
   };
@@ -7189,6 +7189,7 @@ function buildAssetProbabilityStoredResult(scenario, cfg, base, monteSettings){
     percentile10:Array.isArray(displayBundle?.percentile10) ? buildMontePlotSeries(cfg, labels, displayBundle.percentile10).values.slice() : [],
     percentile50:Array.isArray(displayBundle?.percentile50) ? buildMontePlotSeries(cfg, labels, displayBundle.percentile50).values.slice() : [],
     percentile90:Array.isArray(displayBundle?.percentile90) ? buildMontePlotSeries(cfg, labels, displayBundle.percentile90).values.slice() : [],
+    medianRuinAge:Number.isFinite(Number(displayBundle?.medianRuinAge)) ? Number(displayBundle.medianRuinAge) : null,
     bestSeries:buildMontePlotSeries(cfg, labels, best).values.slice(),
     worstSeries:buildMontePlotSeries(cfg, labels, worst).values.slice(),
     finalsAtLife,
@@ -7257,54 +7258,256 @@ function applyAssetProbabilityLegendVisibility(chartInstance){
     chartInstance.setDatasetVisibility(idx, isAssetProbabilityKindVisible(chartInstance, kind));
   });
 }
+function interpolateAssetProbabilitySeriesAtAge(labels, values, age){
+  const target = Number(age);
+  if(!Number.isFinite(target) || !Array.isArray(labels) || !Array.isArray(values) || !labels.length || !values.length) return null;
+  const len = Math.min(labels.length, values.length);
+  for(let i=0; i<len; i++){
+    const x = Number(labels[i]);
+    const y = Number(values[i]);
+    if(!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    if(Math.abs(x - target) < 1e-9) return y;
+    if(i < len - 1){
+      const nx = Number(labels[i + 1]);
+      const ny = Number(values[i + 1]);
+      if(!Number.isFinite(nx) || !Number.isFinite(ny)) continue;
+      const minX = Math.min(x, nx);
+      const maxX = Math.max(x, nx);
+      if(target >= minX && target <= maxX && Math.abs(nx - x) > 1e-9){
+        const t = (target - x) / (nx - x);
+        return y + (ny - y) * t;
+      }
+    }
+  }
+  return null;
+}
+function isAssetProbabilityTooltipKindVisible(chartInstance, kind){
+  if(!chartInstance || !isAssetProbabilityKindVisible(chartInstance, kind)) return false;
+  return (chartInstance.data?.datasets || []).some((ds, idx)=>{
+    if(String(ds?._assetProbabilityKind || "") !== String(kind || "")) return false;
+    return typeof chartInstance.isDatasetVisible === "function" ? chartInstance.isDatasetVisible(idx) : true;
+  });
+}
+function buildAssetProbabilityTooltipHtml(unitSpec, simRef, chartInstance, dataPoints){
+  const sourcePoint = (dataPoints || []).find(dp=>String(dp?.dataset?._assetProbabilityKind || "") !== "distribution");
+  if(!sourcePoint) return "";
+  const result = chartInstance?.$assetProbabilityResult || null;
+  if(!result) return "";
+  const ageValue = sourcePoint?.parsed?.x ?? sourcePoint?.label;
+  const ageNum = Number(ageValue);
+  if(!Number.isFinite(ageNum)) return "";
+  const labels = Array.isArray(result.labels) ? result.labels : [];
+  const rows = [];
+  const pushRow = (key, label, value, color, swatch)=>{
+    const num = Number(value);
+    if(!Number.isFinite(num)) return;
+    rows.push({key, label, value:num, color, swatch});
+  };
+  if(isAssetProbabilityTooltipKindVisible(chartInstance, "band")){
+    pushRow("p90", "90%点", interpolateAssetProbabilitySeriesAtAge(labels, result.percentile90 || [], ageNum), "#2563eb", false);
+  }
+  if(isAssetProbabilityTooltipKindVisible(chartInstance, "deterministic")){
+    pushRow("deterministic", "一定利率", interpolateAssetProbabilitySeriesAtAge(labels, result.deterministicSeries || [], ageNum), "#374151", true);
+  }
+  if(isAssetProbabilityTooltipKindVisible(chartInstance, "median")){
+    pushRow("median", "中央値", interpolateAssetProbabilitySeriesAtAge(labels, result.percentile50 || [], ageNum), "#2563eb", true);
+  }
+  if(isAssetProbabilityTooltipKindVisible(chartInstance, "band")){
+    pushRow("p10", "10%点", interpolateAssetProbabilitySeriesAtAge(labels, result.percentile10 || [], ageNum), "#2563eb", false);
+  }
+  rows.sort((a,b)=>{
+    const diff = Number(b.value) - Number(a.value);
+    if(Math.abs(diff) > 1e-9) return diff;
+    const order = {p90:0, deterministic:1, median:2, p10:3};
+    return (order[a.key] ?? 99) - (order[b.key] ?? 99);
+  });
+  if(!rows.length) return "";
+  const title = getCalendarWindowTooltipTitle(simRef, ageNum);
+  const rowHtml = rows.map(row=>`<div class="chart-external-tooltip-row"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildTooltipSwatch(row.color, row.swatch)}<span>${escapeAttr(row.label)}</span></span></span><span class="chart-external-tooltip-value">${escapeAttr(formatMainChartTooltipMoney(row.value, unitSpec, "asset"))}</span></div>`).join("");
+  return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${rowHtml}</div>`;
+}
+function formatAssetProbabilityLifeMedianLabel(value){
+  return `中央値 ${formatMainChartTooltipMoney(value, getMainChartYAxisUnitSpec([Number(value) || 0]), "asset")}`;
+}
+function buildAssetProbabilityLifeMedianInfo(result, cfg){
+  const value = interpolateAssetProbabilitySeriesAtAge(result?.labels || [], result?.percentile50 || [], cfg?.lifeExpect);
+  if(!Number.isFinite(Number(value))) return null;
+  return {value:Number(value), label:formatAssetProbabilityLifeMedianLabel(Number(value))};
+}
 function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
+  const getExpectedLifeGeometry = (chartInstance)=>{
+    const ctx = chartInstance?.ctx;
+    const x = chartInstance?.scales?.x;
+    const y = chartInstance?.scales?.y;
+    const area = chartInstance?.chartArea;
+    const lifeAge = Number(cfg?.lifeExpect);
+    if(!ctx || !x || !y || !area || !Number.isFinite(lifeAge)) return null;
+    const px = x.getPixelForValue(lifeAge);
+    if(!Number.isFinite(px) || px < area.left || px > area.right) return null;
+    return {ctx, x, y, area, px};
+  };
+  const drawExpectedLifeLine = (chartInstance)=>{
+    if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife")) return;
+    const geom = getExpectedLifeGeometry(chartInstance);
+    if(!geom) return;
+    const {ctx, y, area, px} = geom;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+    ctx.clip();
+    ctx.strokeStyle = "#5b7c99";
+    ctx.lineWidth = 1.25;
+    ctx.setLineDash([7,5]);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(px) + 0.5, y.top);
+    ctx.lineTo(Math.round(px) + 0.5, y.bottom);
+    ctx.stroke();
+    ctx.restore();
+  };
+  const drawRuinProbabilityLabel = (chartInstance)=>{
+    if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife")) return;
+    const geom = getExpectedLifeGeometry(chartInstance);
+    if(!geom) return;
+    const {ctx, x, y, px} = geom;
+    const probValue = Number(monteInfo?.prob || 0) || 0;
+    const probText = Math.abs(probValue - Math.round(probValue)) < 1e-9 ? String(Math.round(probValue)) : formatNumberJP(probValue, 1);
+    const text = `破綻確率 ${probText}%`;
+    ctx.save();
+    ctx.font = "600 11px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const padX = 5;
+    const labelW = ctx.measureText(text).width + padX * 2;
+    const labelH = 18;
+    const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
+    const labelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14);
+    ctx.fillStyle = "rgba(254,242,242,0.78)";
+    ctx.strokeStyle = "rgba(220,38,38,0.16)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#9f1d1d";
+    ctx.fillText(text, labelX + padX, labelY);
+    ctx.restore();
+  };
+  const getDistributionXAtValue = (chartInstance, value)=>{
+    const datasets = Array.isArray(chartInstance?.data?.datasets) ? chartInstance.data.datasets : [];
+    const dist = datasets.find(ds=>String(ds?._assetProbabilityKind || "") === "distribution");
+    const points = Array.isArray(dist?.data) ? dist.data : [];
+    if(points.length < 1 || !Number.isFinite(value)) return null;
+    const normalized = points
+      .map(point=>({x:Number(point?.x), y:Number(point?.y)}))
+      .filter(point=>Number.isFinite(point.x) && Number.isFinite(point.y))
+      .sort((a,b)=>a.y-b.y);
+    if(!normalized.length) return null;
+    if(value <= normalized[0].y) return normalized[0].x;
+    const last = normalized[normalized.length - 1];
+    if(value >= last.y) return last.x;
+    for(let i=0; i<normalized.length - 1; i++){
+      const left = normalized[i];
+      const right = normalized[i + 1];
+      if(value >= left.y && value <= right.y){
+        const span = Math.max(1e-9, right.y - left.y);
+        const t = (value - left.y) / span;
+        return left.x + (right.x - left.x) * t;
+      }
+    }
+    return null;
+  };
+  const drawMedianDistributionGuide = (chartInstance)=>{
+    if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife") || !isAssetProbabilityKindVisible(chartInstance, "median") || !isAssetProbabilityKindVisible(chartInstance, "distribution")) return;
+    const geom = getExpectedLifeGeometry(chartInstance);
+    if(!geom) return;
+    const {ctx, x, y, area, px} = geom;
+    const medianValue = Number(monteInfo?.lifeMedian?.value);
+    if(!Number.isFinite(medianValue)) return;
+    const guideY = y.getPixelForValue(medianValue);
+    const distributionXValue = getDistributionXAtValue(chartInstance, medianValue);
+    const guideEndX = Number.isFinite(distributionXValue) ? x.getPixelForValue(distributionXValue) : null;
+    if(!Number.isFinite(guideY) || !Number.isFinite(guideEndX) || guideY < area.top || guideY > area.bottom) return;
+    const startX = Math.max(area.left, Math.min(area.right, px));
+    const endX = Math.max(area.left, Math.min(area.right, guideEndX));
+    if(Math.abs(endX - startX) < 4) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(37,99,235,0.68)";
+    ctx.lineWidth = 1.7;
+    ctx.setLineDash([6,3]);
+    ctx.beginPath();
+    ctx.moveTo(startX, Math.round(guideY) + 0.5);
+    ctx.lineTo(endX, Math.round(guideY) + 0.5);
+    ctx.stroke();
+    ctx.restore();
+  };
+  const drawVerticalGuideLabel = (chartInstance, px, label, color, yPos, opts={})=>{
+    const ctx = chartInstance?.ctx;
+    const x = chartInstance?.scales?.x;
+    const y = chartInstance?.scales?.y;
+    const area = chartInstance?.chartArea;
+    if(!ctx || !x || !y || !area || !Number.isFinite(px) || px < area.left || px > area.right) return;
+    const labelStroke = opts.labelStroke || "rgba(148,163,184,0.34)";
+    ctx.save();
+    ctx.font = "12px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const padX = 6;
+    const labelW = ctx.measureText(label).width + padX * 2;
+    const labelH = 20;
+    const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
+    const labelY = yPos === "bottom"
+      ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14)
+      : Math.min(y.bottom - labelH / 2 - 4, y.top + 14);
+    ctx.fillStyle = "rgba(255,255,255,0.90)";
+    ctx.strokeStyle = labelStroke;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillText(label, labelX + padX, labelY);
+    ctx.restore();
+  };
+  const drawMedianRuinAgeLine = (chartInstance)=>{
+    if(!isAssetProbabilityKindVisible(chartInstance, "medianRuinAge")) return;
+    const ctx = chartInstance?.ctx;
+    const x = chartInstance?.scales?.x;
+    const y = chartInstance?.scales?.y;
+    const area = chartInstance?.chartArea;
+    const ruinAge = Number(monteInfo?.medianRuinAge);
+    if(!ctx || !x || !y || !area || !Number.isFinite(ruinAge)) return;
+    const px = x.getPixelForValue(ruinAge);
+    if(!Number.isFinite(px) || px < area.left || px > area.right) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+    ctx.clip();
+    ctx.strokeStyle = "#1f2937";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(px) + 0.5, y.top);
+    ctx.lineTo(Math.round(px) + 0.5, y.bottom);
+    ctx.stroke();
+    ctx.restore();
+    const labelAge = formatAssetLifeLabelAge(ruinAge);
+    if(labelAge != null){
+      drawVerticalGuideLabel(chartInstance, px, formatLifeGuideLabelForChart("asset", labelAge, false), "#1f2937", "bottom", {
+        labelStroke:"rgba(31,41,55,0.22)"
+      });
+    }
+  };
   return {
     id:"assetProbabilityExpectedLifeGuide",
+    beforeDatasetsDraw:drawExpectedLifeLine,
     afterDatasetsDraw(chartInstance){
-      if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife")) return;
-      const ctx = chartInstance?.ctx;
-      const x = chartInstance?.scales?.x;
-      const y = chartInstance?.scales?.y;
-      const area = chartInstance?.chartArea;
-      const lifeAge = Number(cfg?.lifeExpect);
-      if(!ctx || !x || !y || !area || !Number.isFinite(lifeAge)) return;
-      const px = x.getPixelForValue(lifeAge);
-      if(!Number.isFinite(px) || px < area.left || px > area.right) return;
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
-      ctx.clip();
-      ctx.strokeStyle = "#5b7c99";
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([7,5]);
-      ctx.beginPath();
-      ctx.moveTo(Math.round(px) + 0.5, y.top);
-      ctx.lineTo(Math.round(px) + 0.5, y.bottom);
-      ctx.stroke();
-      ctx.restore();
-
-      const probValue = Number(monteInfo?.prob || 0) || 0;
-      const probText = Math.abs(probValue - Math.round(probValue)) < 1e-9 ? String(Math.round(probValue)) : formatNumberJP(probValue, 1);
-      const text = `破綻確率 ${probText}%`;
-      ctx.save();
-      ctx.font = "600 12px Arial";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      const padX = 6;
-      const labelW = ctx.measureText(text).width + padX * 2;
-      const labelH = 20;
-      const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
-      const labelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14);
-      ctx.fillStyle = "rgba(254,242,242,0.90)";
-      ctx.strokeStyle = "rgba(220,38,38,0.22)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 7);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#991b1b";
-      ctx.fillText(text, labelX + padX, labelY);
-      ctx.restore();
+      drawMedianDistributionGuide(chartInstance);
+      drawMedianRuinAgeLine(chartInstance);
+      drawRuinProbabilityLabel(chartInstance);
     }
   };
 }
@@ -7327,20 +7530,22 @@ function renderAssetProbabilityLegend(chartInstance, display){
   const datasets = chartInstance.data?.datasets || [];
   const hasKind = (kind)=>datasets.some(ds=>String(ds?._assetProbabilityKind || "") === kind);
   const items = [];
-  if(hasKind("paths")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "paths", "試行", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("rgba(156,163,175,0.55)", "solid", 1, 50, [])}</span>`));
   if(hasKind("band")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "band", "10–90%", buildAssetProbabilityLegendBandSample()));
-  if(hasKind("median")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "median", "中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#2563eb", "solid", 2.5, 50, [])}</span>`));
-  if(hasKind("best")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "best", "ベスト", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("green", "solid", 2, 50, [])}</span>`));
-  if(hasKind("worst")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "worst", "ワースト", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("red", "solid", 2, 50, [])}</span>`));
-  if(hasKind("deterministic")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "deterministic", "一定利率", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("black", "solid", 2.5, 50, [])}</span>`));
-  items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "expectedLife", "想定寿命", buildLifeGuideLegendSample("expected", false)));
-  if(hasKind("distribution")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "distribution", "分布", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#f59e0b", "solid", 2, 50, [])}</span>`));
-  if(!items.length){
+  if(hasKind("paths")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "paths", "試行", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("rgba(156,163,175,0.55)", "solid", 1, 50, [])}</span>`));
+  if(hasKind("deterministic")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "deterministic", "一定利率", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#374151", "solid", 2.0, 50, [])}</span>`));
+  if(hasKind("median")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "median", "中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#2563eb", "solid", 2.2, 50, [])}</span>`));
+  if(hasKind("distribution")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "distribution", "分布", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#d97706", "solid", 1.8, 50, [])}</span>`));
+  const lifeItems = [buildAssetProbabilityLegendItemHtml(chartInstance, "expectedLife", "想定寿命", buildLifeGuideLegendSample("expected", false))];
+  const medianRuinAge = Number(chartInstance?.$assetProbabilityResult?.medianRuinAge);
+  if(Number.isFinite(medianRuinAge)){
+    lifeItems.push(buildAssetProbabilityLegendItemHtml(chartInstance, "medianRuinAge", "資産寿命中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#1f2937", "dashed", 1.6, 50, [6,4])}</span>`));
+  }
+  if(!items.length && !lifeItems.length){
     legendEl.hidden = true;
     legendEl.innerHTML = "";
     return;
   }
-  legendEl.innerHTML = `<div class="chart-legend-row chart-legend-category-row">${items.join("")}</div>`;
+  legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-category-row">${items.join("")}</div><div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row chart-life-guide-legend-row">${lifeItems.join("")}</div></div></div>`;
   legendEl.querySelectorAll("[data-asset-probability-kind]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const kind = String(btn.dataset.assetProbabilityKind || "");
@@ -7358,12 +7563,53 @@ function renderAssetProbabilityLegend(chartInstance, display){
   legendEl.hidden = false;
 }
 
+function collectAssetProbabilityAutoScaleValues(result, cfg, xMin=null, xMax=null, visibleKinds=null){
+  const labels = Array.isArray(result?.labels) ? result.labels : [];
+  const minX = Number.isFinite(Number(xMin)) ? Number(xMin) : Number(cfg?.xAxisMin ?? cfg?.age ?? 0);
+  const maxX = Number.isFinite(Number(xMax)) ? Number(xMax) : Number(cfg?.xAxisMax ?? 120);
+  const allowKind = (kind)=>{
+    if(!visibleKinds) return true;
+    if(visibleKinds instanceof Set) return visibleKinds.has(kind);
+    if(typeof visibleKinds === 'function') return !!visibleKinds(kind);
+    return true;
+  };
+  const values = [0];
+  const pushRangeValues = (series)=>{
+    if(!Array.isArray(series) || !series.length) return;
+    labels.forEach((age, idx)=>{
+      const x = Number(age);
+      const y = Number(series[idx]);
+      if(!Number.isFinite(x) || !Number.isFinite(y)) return;
+      if(x < minX || x > maxX) return;
+      values.push(y);
+    });
+  };
+
+  if(allowKind('band')){
+    pushRangeValues(Array.isArray(result?.percentile10) ? result.percentile10 : []);
+    pushRangeValues(Array.isArray(result?.percentile90) ? result.percentile90 : []);
+  }
+  if(allowKind('deterministic')) pushRangeValues(Array.isArray(result?.deterministicSeries) ? result.deterministicSeries : []);
+  if(allowKind('median')) pushRangeValues(Array.isArray(result?.percentile50) ? result.percentile50 : []);
+
+  if(values.length <= 1 && allowKind('paths')){
+    (Array.isArray(result?.paths) ? result.paths : []).forEach(series=> pushRangeValues(series));
+  }
+  if(values.length <= 1 && allowKind('distribution')){
+    (Array.isArray(result?.finalsAtLife) ? result.finalsAtLife : []).forEach(v=>{
+      const y = Number(v);
+      if(Number.isFinite(y)) values.push(y);
+    });
+  }
+  return values.filter(v=>Number.isFinite(v));
+}
+
 function buildAssetProbabilityChartDatasets(result, cfg){
   const labels = Array.isArray(result?.labels) ? result.labels : [];
   const datasets = [];
   (Array.isArray(result?.paths) ? result.paths : []).forEach(series=>{
     const plot = buildMontePlotSeries(cfg, labels, series);
-    datasets.push({...makeLineDataset("", plot.labels, plot.values, {borderColor:"rgba(156,163,175,0.30)", borderWidth:1, order:100}), _assetProbabilityKind:"paths"});
+    datasets.push({...makeLineDataset("", plot.labels, plot.values, {borderColor:"rgba(156,163,175,0.30)", borderWidth:1, order:91}), _assetProbabilityKind:"paths"});
   });
   const p90 = Array.isArray(result?.percentile90) ? result.percentile90 : [];
   const p50 = Array.isArray(result?.percentile50) ? result.percentile50 : [];
@@ -7372,14 +7618,12 @@ function buildAssetProbabilityChartDatasets(result, cfg){
     datasets.push({...makeLineDataset("", labels, p90, {borderColor:"rgba(37,99,235,0)", backgroundColor:"rgba(37,99,235,0.12)", borderWidth:0, pointRadius:0, pointHoverRadius:0, pointHitRadius:0, order:90}), _assetProbabilityKind:"band"});
     datasets.push({...makeLineDataset("10–90%", labels, p10, {borderColor:"rgba(37,99,235,0)", backgroundColor:"rgba(37,99,235,0.12)", borderWidth:0, pointRadius:0, pointHoverRadius:0, pointHitRadius:0, fill:"-1", order:89}), _assetProbabilityKind:"band"});
   }
+  datasets.push({...makeLineDataset("一定利率", labels, Array.isArray(result?.deterministicSeries) ? result.deterministicSeries : [], {borderColor:"#374151", borderWidth:2.0, order:60}), _assetProbabilityKind:"deterministic"});
   if(p50.length){
-    datasets.push({...makeLineDataset("中央値", labels, p50, {borderColor:"#2563eb", borderWidth:2.5, order:2.4}), _assetProbabilityKind:"median"});
+    datasets.push({...makeLineDataset("中央値", labels, p50, {borderColor:"#2563eb", borderWidth:2.2, order:50}), _assetProbabilityKind:"median"});
   }
-  datasets.push({...makeLineDataset("ワースト", labels, Array.isArray(result?.worstSeries) ? result.worstSeries : [], {borderColor:"red", borderWidth:2, order:4}), _assetProbabilityKind:"worst"});
-  datasets.push({...makeLineDataset("ベスト", labels, Array.isArray(result?.bestSeries) ? result.bestSeries : [], {borderColor:"green", borderWidth:2, order:3}), _assetProbabilityKind:"best"});
-  datasets.push({...makeLineDataset("一定利率", labels, Array.isArray(result?.deterministicSeries) ? result.deterministicSeries : [], {borderColor:"black", borderWidth:2.5, order:2}), _assetProbabilityKind:"deterministic"});
-  const distributionDataset = buildMonteDistributionDataset(cfg, result?.finalsAtLife || [], {label:'想定寿命時の総資産確率分布'});
-  if(distributionDataset) datasets.push({...distributionDataset, order:1, _assetProbabilityKind:"distribution"});
+  const distributionDataset = buildMonteDistributionDataset(cfg, result?.finalsAtLife || [], {label:'想定寿命時の総資産確率分布', borderColor:'#d97706', backgroundColor:'#d97706', borderWidth:1.8});
+  if(distributionDataset) datasets.push({...distributionDataset, order:20, _assetProbabilityKind:"distribution"});
   return {datasets, distributionDataset};
 }
 function drawAssetProbabilityShell(){
@@ -7395,20 +7639,27 @@ function drawAssetProbabilityShell(){
   const storedResult = scenarioState?.monteCarloResult || null;
   if(storedResult){
     const {datasets, distributionDataset} = buildAssetProbabilityChartDatasets(storedResult, currentCfg);
-    const yData = [];
-    (datasets || []).forEach(ds=>{
-      (Array.isArray(ds?.data) ? ds.data : []).forEach(point=>{
-        const y = Number(point?.y);
-        if(Number.isFinite(y)) yData.push(y);
-      });
-    });
+    const yData = collectAssetProbabilityAutoScaleValues(
+      storedResult,
+      currentCfg,
+      Number(currentCfg?.xAxisMin ?? currentCfg?.age ?? 0),
+      Number(currentCfg?.xAxisMax ?? 120)
+    );
     const yUnitSpec = getMainChartYAxisUnitSpec(yData);
     const compactLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
+    const xMin = Math.min(currentCfg.xAxisMin ?? currentCfg.age, getMonteDistributionAxisMax(currentCfg));
+    const xMax = getMonteDistributionAxisMax(currentCfg);
+    const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
+    const yTickPadding = compactLayout ? 8 : 6;
+    const assetProbabilityAxisCfg = {...currentCfg, xAxisMin:xMin, xAxisMax:xMax};
+    const assetProbabilitySideOptions = buildChartOptions("asset", assetProbabilityAxisCfg, yData.length ? yData : [0], false, {simRef:currentSim, cfgRef:currentCfg});
     const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'assetProbability', graphType:'assetProbability', overlay:false, targets:[{scenario:currentScenario,index:currentTab}]}));
     const monteInfo = {
       assetProbabilityMode:true,
       prob:Number(storedResult.ruinProbability || 0) || 0,
-      distributionMedian:distributionDataset?.medianMarker || null,
+      distributionMedian:null,
+      lifeMedian:buildAssetProbabilityLifeMedianInfo(storedResult, currentCfg),
+      medianRuinAge:Number.isFinite(Number(storedResult.medianRuinAge)) ? Number(storedResult.medianRuinAge) : null,
       settingsSummary:(storedResult.settingsSummary && !/試行回数|です|<br>|<strong>/u.test(String(storedResult.settingsSummary))) ? String(storedResult.settingsSummary) : formatAssetProbabilitySettingsSummary(storedResult.settingsSnapshot || scenarioState?.monteCarloSettingsSnapshot || getMonteCarloSettingsFromDOM()),
       dirtyMessage:scenarioState?.monteCarloDirty ? "再計算が必要" : ''
     };
@@ -7427,7 +7678,7 @@ function drawAssetProbabilityShell(){
           legend:{display:false},
           tooltip:{
             enabled:false,
-            external:(context)=>renderExternalChartTooltip(context, yUnitSpec, "asset", currentSim),
+            external:(context)=>renderExternalChartTooltip(context, yUnitSpec, "assetProbability", currentSim),
             callbacks:{
               title(items){
                 const first = items?.[0];
@@ -7443,15 +7694,14 @@ function drawAssetProbabilityShell(){
             }
           }
         },
-        scales:{
-          x:{type:"linear", min:Math.min(currentCfg.xAxisMin ?? currentCfg.age, getMonteDistributionAxisMax(currentCfg)), max:getMonteDistributionAxisMax(currentCfg), offset:false, bounds:"ticks", ticks:{stepSize:5, maxRotation:0, minRotation:0, callback(value){ return getCalendarWindowTickLabel(currentSim, value); }}, title:{display:true,text:getXAxisTitleText()}},
-          y:{title:{display:true,text:`総資産（${yUnitSpec.label}）`}, ...getAxisBounds(yData.length ? yData : [0], currentCfg, false), grid:makeGridWithoutZeroLine({}), ticks:{includeBounds:false, padding:compactLayout ? 8 : 6, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
-        }
+        scales:assetProbabilitySideOptions.scales
       },
       plugins:[pluginLines(currentCfg, currentSim, monteInfo), buildAssetProbabilityExpectedLifePlugin(currentCfg, monteInfo)]
     });
     chart.$graphType = "assetProbability";
     chart.$overlayMode = false;
+    chart.$assetProbabilityResult = storedResult;
+    chart.$assetProbabilityCfg = currentCfg;
     chart.$legendContextKey = legendContextKey;
     chart.$useStrictPointTooltip = true;
     ensureAssetProbabilityLegendState(chart);
@@ -7464,7 +7714,14 @@ function drawAssetProbabilityShell(){
   const yData = getVisibleSeriesValues(currentSim?.labels || [], currentSim?.totalAssets || [0], currentCfg?.xAxisMax || 120);
   const yUnitSpec = getMainChartYAxisUnitSpec(yData);
   const axis = getAxisBounds(yData.length ? yData : [0], currentCfg, false);
-  const placeholder = "未計算：右下の「確率計算」から計算します";
+  const compactLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
+  const xMin = currentCfg.xAxisMin;
+  const xMax = currentCfg.xAxisMax;
+  const xStepSize = getAdaptiveXAxisStepSize(xMin, xMax);
+  const yTickPadding = compactLayout ? 8 : 6;
+  const assetProbabilityAxisCfg = {...currentCfg, xAxisMin:xMin, xAxisMax:xMax};
+  const assetProbabilitySideOptions = buildChartOptions("asset", assetProbabilityAxisCfg, yData.length ? yData : [0], false, {simRef:currentSim, cfgRef:currentCfg});
+  const placeholder = "未計算：左下の「確率計算」から計算します";
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"line",
@@ -7473,13 +7730,10 @@ function drawAssetProbabilityShell(){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{left:6,right:22}},
+      layout:{padding:compactLayout ? {left:10,right:12} : {left:6,right:22}},
       events:[],
       plugins:{legend:{display:false}, tooltip:{enabled:false}},
-      scales:{
-        x:{type:"linear", min:currentCfg.xAxisMin, max:currentCfg.xAxisMax, offset:false, bounds:"ticks", grid:{display:false}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:5, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, currentSim, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
-        y:{title:{display:true,text:`総資産（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, grid:makeGridWithoutZeroLine({}), ticks:{includeBounds:false, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
-      }
+      scales:assetProbabilitySideOptions.scales
     },
     plugins:[buildAssetProbabilityPlaceholderPlugin(placeholder), {id:"assetProbabilityZeroLine", afterDatasetsDraw(chartInstance){ drawCommonZeroLine(chartInstance.ctx, chartInstance.scales.x, chartInstance.scales.y); }}]
   });
@@ -8207,6 +8461,7 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
   const percentile10 = [];
   const percentile50 = [];
   const percentile90 = [];
+  const ruinAges = [];
   for(let pointIndex=0; pointIndex<percentileSourceLength; pointIndex++){
     const values = [];
     for(let trialIndex=0; trialIndex<trials; trialIndex++){
@@ -8219,6 +8474,13 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
     percentile50.push(values.length ? percentileFromSorted(values, 0.50) : 0);
     percentile90.push(values.length ? percentileFromSorted(values, 0.90) : 0);
   }
+  for(let trialIndex=0; trialIndex<trials; trialIndex++){
+    const crossAge = getAssetZeroCrossAgeForGuide({labels:Array.isArray(base?.labels) ? base.labels : [], totalAssets:getSeries(trialIndex)});
+    if(Number.isFinite(Number(crossAge))) ruinAges.push(Number(crossAge));
+  }
+  ruinAges.sort((a,b)=>a-b);
+  const requiredRuinCountForMedian = Math.ceil(trials * 0.5);
+  const medianRuinAge = ruinAges.length >= requiredRuinCountForMedian ? ruinAges[requiredRuinCountForMedian - 1] : null;
   const baseSeries = Array.isArray(base?.totalAssets) ? base.totalAssets : [];
   const fixedFinalAtLife = Number(baseSeries?.[plottedLifeIndex] ?? 0) || 0;
   const allFinalsSameAsFixed = finalsAtPlottedLife.every(v => Math.abs((Number(v) || 0) - fixedFinalAtLife) < 1e-9);
@@ -8232,6 +8494,7 @@ function buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, scen
     percentile10,
     percentile50,
     percentile90,
+    medianRuinAge:Number.isFinite(Number(medianRuinAge)) ? Number(medianRuinAge) : null,
     bestIndex,
     worstIndex,
     finalsAtPlottedLife,
@@ -22103,7 +22366,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
       const y = scales.y;
       if(!x || !y) return;
       ctx.save();
-      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && graphType !== "cashflow" && graphType !== "education" && Array.isArray(x.ticks) && x.ticks.length){
+      if(graphType !== "asset" && graphType !== "assetBreakdown" && graphType !== "investment" && graphType !== "incomeExpense" && graphType !== "cashflow" && graphType !== "education" && graphType !== "assetProbability" && Array.isArray(x.ticks) && x.ticks.length){
         ctx.save();
         ctx.strokeStyle = "rgba(148,163,184,0.22)";
         ctx.lineWidth = 1;
@@ -22990,6 +23253,14 @@ function renderExternalChartTooltip(context, unitSpec, graphType, simRef, extra=
   }
   const dataPoints = Array.isArray(tooltip.dataPoints) ? tooltip.dataPoints : [];
   if(!dataPoints.length){ tooltipEl.hidden = true; return; }
+  if(graphType === "assetProbability"){
+    const html = buildAssetProbabilityTooltipHtml(unitSpec, simRef, chartInstance, dataPoints);
+    if(!html){ tooltipEl.hidden = true; return; }
+    tooltipEl.innerHTML = html;
+    tooltipEl.hidden = false;
+    positionExternalChartTooltip(tooltipEl, chartInstance, tooltip);
+    return;
+  }
   if(graphType === "assetBreakdown"){
     const ageValue = dataPoints[0]?.parsed?.x ?? dataPoints[0]?.label;
     const html = buildAssetBreakdownTooltipHtml(unitSpec, extra.assetBreakdownTooltipEntries || [{name:"", sim:simRef, color:ASSET_BREAKDOWN_COLORS.deposit}], ageValue, !!extra.overlay);
@@ -23872,7 +24143,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     animation:false,
     responsive:true,
     maintainAspectRatio:false,
-    layout:{padding:chartLayoutPadding},
+    layout:{padding:((graphType === "cashflow" || graphType === "education") ? {...chartLayoutPadding, top:((chartLayoutPadding.top || 0) + 1)} : ((graphType === "investment" || graphType === "incomeExpense") ? {...chartLayoutPadding, bottom:((chartLayoutPadding.bottom || 0) + 1)} : chartLayoutPadding))},
     interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? false : true)},
     events: (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? [] : undefined,
     plugins:{
@@ -23985,8 +24256,12 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   if(!(graphType === "asset" || graphType === "assetBreakdown" || graphType === "investment")){
     options.scales.y.grid = makeGridWithoutZeroLine(options.scales.y.grid);
   }
+  if(graphType === "incomeExpense" || graphType === "cashflow"){
+    options.scales.y.grid = {...options.scales.y.grid, drawTicks:false};
+  }
   if(graphType === "education"){
-    options.scales.x.grid = {display:false, drawOnChartArea:false, drawTicks:false};
+    options.scales.x.grid = {display:false, z:-1};
+    options.scales.y.grid = {...options.scales.y.grid, drawTicks:false};
     options.scales.y.stacked = true;
     const rightAxisData = extra.educationCumData || [0];
     const rightAxis = getEducationRightAxisBounds(rightAxisData, cfg);
@@ -23996,7 +24271,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       stacked:false,
       min:rightAxis.min,
       max:rightAxis.max,
-      grid:{drawOnChartArea:false, z:-1}, border:{z:-1},
+      grid:{drawOnChartArea:false, drawTicks:false, z:-1}, border:{z:-1},
       title:{display:false,text:`教育費累計（${rightAxisUnitSpec.label}）`},
       _educationRightTitleText:`教育費累計（${rightAxisUnitSpec.label}）`,
       afterFit(scale){ scale.width += 18; },
@@ -24051,6 +24326,8 @@ function draw(){
   monteMode = false;
   ensureScenarioSaved();
   const graphType = document.getElementById("graphType").value;
+  const chartFrameEl = document.getElementById("chartCanvasStickyWrap");
+  if(chartFrameEl) chartFrameEl.dataset.graphType = graphType;
   if(graphType === "assetProbability"){
     drawAssetProbabilityShell();
     return;
@@ -30881,6 +31158,15 @@ function setChartAxisModalLabelMode(mode){
 function collectVisibleMainChartYValues(xMin, xMax, graphType){
   const yData = [];
   if(!chart?.data?.datasets) return yData;
+  if(graphType === "assetProbability"){
+    const result = chart.$assetProbabilityResult || null;
+    const cfgRef = chart.$assetProbabilityCfg || getScenarioFromDOM() || {};
+    const visibleKinds = new Set();
+    ["band", "deterministic", "median", "paths", "distribution"].forEach(kind=>{
+      if(isAssetProbabilityKindVisible(chart, kind)) visibleKinds.add(kind);
+    });
+    return collectAssetProbabilityAutoScaleValues(result, cfgRef, xMin, xMax, visibleKinds);
+  }
   const stacked = graphType === "incomeExpense" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "education";
   if(stacked){
     const posByKey = new Map();
@@ -39729,6 +40015,51 @@ body.withdrawal-preview-open #detailStickyNav *{
   #monteCarloSettingsModal .withdrawal-preview-sheet .withdrawal-preview-handle span,
   #chartAxisModal .withdrawal-preview-sheet .withdrawal-preview-handle span{
     pointer-events:none !important;
+  }
+}
+</style>
+
+
+
+<!-- ===== v1171/v1172: investment + income/expense chart frame lower edge +1px up only ===== -->
+<style id="v1171-v1172-chart-frame-bottom-up-1px">
+/* Scope: investment and incomeExpense chart category frame lower edge only. Chart canvas/layout/options are not changed here. */
+#chartCanvasStickyWrap[data-graph-type="investment"],
+#chartCanvasStickyWrap[data-graph-type="incomeExpense"]{
+  padding-bottom:17px !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap[data-graph-type="investment"],
+  #chartCanvasStickyWrap[data-graph-type="incomeExpense"]{
+    padding-bottom:15px !important;
+  }
+}
+</style>
+
+
+<!-- ===== v1173: cashflow chart + frame 1px down only ===== -->
+<style id="v1173-cashflow-chart-frame-down-1px">
+/* Scope: cashflow chart category frame lower edge only. Chart scales/datasets/legend/tooltip are not changed here. */
+#chartCanvasStickyWrap[data-graph-type="cashflow"]{
+  padding-bottom:19px !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap[data-graph-type="cashflow"]{
+    padding-bottom:17px !important;
+  }
+}
+</style>
+
+
+<!-- ===== v1175: education chart + frame 1px down only ===== -->
+<style id="v1175-education-chart-frame-down-1px">
+/* Scope: education chart category frame lower edge only. Chart scales/datasets/legend/tooltip are not changed here. */
+#chartCanvasStickyWrap[data-graph-type="education"]{
+  padding-bottom:19px !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #chartCanvasStickyWrap[data-graph-type="education"]{
+    padding-bottom:17px !important;
   }
 }
 </style>
