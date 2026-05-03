@@ -7896,6 +7896,27 @@ function collectAssetProbabilityAutoScaleValues(result, cfg, xMin=null, xMax=nul
   }
   return values.filter(v=>Number.isFinite(v));
 }
+function collectAssetProbabilityOverlayAutoScaleValues(entries, xMin=null, xMax=null, chartInstance=null){
+  const values = [0];
+  const hiddenScenarios = chartInstance?.$assetProbabilityOverlayHiddenScenarios instanceof Set ? chartInstance.$assetProbabilityOverlayHiddenScenarios : new Set();
+  const hiddenKinds = chartInstance?.$assetProbabilityOverlayHiddenKinds instanceof Set ? chartInstance.$assetProbabilityOverlayHiddenKinds : new Set();
+  const visibleKinds = new Set();
+  ["band", "deterministic", "median"].forEach(kind=>{
+    if(!hiddenKinds.has(kind)) visibleKinds.add(kind);
+  });
+  (entries || []).forEach((entry, idx)=>{
+    const overlayIndex = Number.isFinite(Number(entry?.index)) ? Number(entry.index) : idx;
+    if(hiddenScenarios.has(overlayIndex)) return;
+    const scenario = ensureScenarioMonteCarloState(entry?.scenario);
+    const result = scenario?.monteCarloResult || null;
+    if(!result || scenario?.monteCarloDirty === true) return;
+    collectAssetProbabilityAutoScaleValues(result, {}, xMin, xMax, visibleKinds).forEach(v=>{
+      const n = Number(v);
+      if(Number.isFinite(n)) values.push(n);
+    });
+  });
+  return values.filter(v=>Number.isFinite(v));
+}
 
 function buildAssetProbabilityChartDatasets(result, cfg){
   const labels = Array.isArray(result?.labels) ? result.labels : [];
@@ -8135,12 +8156,13 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
   const readyEntries = getAssetProbabilityOverlayReadyEntries(entries);
   const drawEntries = readyEntries.slice().reverse();
   const {datasets, yData, medianRuinEntries, ruinSummaryEntries} = buildAssetProbabilityOverlayDatasets(drawEntries);
-  const yUnitSpec = getMainChartYAxisUnitSpec(yData);
   const compactLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
   const xMin = currentCfg.xAxisMin;
   const xMax = currentCfg.xAxisMax;
+  const overlayScaleYData = collectAssetProbabilityOverlayAutoScaleValues(readyEntries, xMin, xMax);
+  const yUnitSpec = getMainChartYAxisUnitSpec(overlayScaleYData.length ? overlayScaleYData : yData);
   const assetProbabilityAxisCfg = {...currentCfg, xAxisMin:xMin, xAxisMax:xMax};
-  const assetProbabilitySideOptions = buildChartOptions("asset", assetProbabilityAxisCfg, yData.length ? yData : [0], true, {simRef:currentSim, cfgRef:currentCfg});
+  const assetProbabilitySideOptions = buildChartOptions("asset", assetProbabilityAxisCfg, overlayScaleYData.length ? overlayScaleYData : (yData.length ? yData : [0]), true, {simRef:currentSim, cfgRef:currentCfg});
   medianRuinEntries.forEach(entry=>{
     const hitDataset = buildAssetProbabilityMedianRuinHitDataset(entry.age, assetProbabilitySideOptions?.scales?.y?.min, assetProbabilitySideOptions?.scales?.y?.max);
     if(hitDataset){
@@ -8179,6 +8201,7 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
   chart.$assetProbabilityOverlayRuinEntries = ruinSummaryEntries;
   chart.$assetProbabilityOverlayStyles = {};
   chart.$assetProbabilityOverlayNames = {};
+  chart.$assetProbabilityOverlayTouchYZoomed = false;
   readyEntries.forEach((entry, idx)=>{
     const overlayIndex = Number.isFinite(Number(entry.index)) ? Number(entry.index) : idx;
     chart.$assetProbabilityOverlayStyles[overlayIndex] = entry.style || {};
@@ -31747,6 +31770,10 @@ function collectVisibleMainChartYValues(xMin, xMax, graphType){
   const yData = [];
   if(!chart?.data?.datasets) return yData;
   if(graphType === "assetProbability"){
+    if(chart?.$assetProbabilityOverlayMode){
+      const entries = Array.isArray(chart.$assetProbabilityOverlayEntries) ? chart.$assetProbabilityOverlayEntries : [];
+      return collectAssetProbabilityOverlayAutoScaleValues(entries, xMin, xMax, chart);
+    }
     const result = chart.$assetProbabilityResult || null;
     const cfgRef = chart.$assetProbabilityCfg || getScenarioFromDOM() || {};
     const visibleKinds = new Set();
@@ -32374,7 +32401,11 @@ function setupChartTouchInteractions(){
     // y方向のズーム状態に入った記録がある場合だけ許可する。
     const yZoomed = graphType === "incomeExpense"
       ? (chart?.$incomeExpenseTouchYZoomed === true && yRangeZoomed)
-      : (graphType === "education" ? (chart?.$educationTouchYZoomed === true && yRangeZoomed) : (yRangeZoomed || yPositionZoomed));
+      : (graphType === "education"
+        ? (chart?.$educationTouchYZoomed === true && yRangeZoomed)
+        : (graphType === "assetProbability" && chart?.$assetProbabilityOverlayMode
+          ? (chart?.$assetProbabilityOverlayTouchYZoomed === true && yRangeZoomed)
+          : (yRangeZoomed || yPositionZoomed)));
     return {x:xZoomed, y:yZoomed, any:xZoomed || yZoomed};
   };
   const isZoomedFromDefaults = ()=>getTouchZoomAxesFromDefaults().any;
@@ -32427,6 +32458,9 @@ function setupChartTouchInteractions(){
       if(graphType === "education"){
         chart.$educationTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
         if(chart.$overlayMode) chart.$educationOverlayTouchYZoomed = chart.$educationTouchYZoomed;
+      }
+      if(graphType === "assetProbability" && chart?.$assetProbabilityOverlayMode){
+        chart.$assetProbabilityOverlayTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
       }
     }
     syncInvestmentReferenceYAxisFromMain(chart);
