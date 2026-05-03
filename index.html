@@ -917,8 +917,16 @@ document.addEventListener("scroll", (ev)=>{
   .withdrawal-compare-table td.compare-metric-col{width:44px;min-width:44px;max-width:44px;padding-left:1px;padding-right:1px;text-align:center !important;}
   .withdrawal-compare-table th.compare-group-label{white-space:normal;line-height:1.35;text-align:center !important;}
   #monteCompareSection{border:none;padding:0;background:transparent;display:block;}
-  #monteSettingsSeedOnField,#monteSettingsSeedValueField,#monteSettingsModelField{grid-column:1;}
-  #monteSettingsSeedTopSpacer,#monteSettingsSeedBottomSpacer,#monteSettingsModelSpacer{grid-column:2;}
+  #monteSettingsModelField{grid-column:1;}
+  #monteSettingsSeedValueField{grid-column:1 / -1;}
+  #monteSettingsModelSpacer{grid-column:2;}
+  .monte-settings-seed-inline{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .monte-settings-seed-inline .input-unit{width:auto;}
+  #monteSettingsSeedOnField{display:inline-flex;align-items:center;min-height:38px;margin-left:4px;white-space:nowrap;}
+  #monteSettingsSeedValueField{gap:0;}
+  #monteSettingsSeedValueField .monte-settings-seed-inline{align-items:center;margin-top:-4px;}
+  #monteSettingsSeedTopSpacer,#monteSettingsSeedBottomSpacer{display:none !important;}
+  .monte-settings-divider{grid-column:1 / -1;border-top:1px solid #e5e7eb;margin:2px 0 0;min-height:1px;}
 
   #inputs{
     max-height:calc(100vh - 620px);
@@ -1649,6 +1657,7 @@ document.addEventListener("scroll", (ev)=>{
 
     .insurance-assist-fields{grid-template-columns:1fr;}
     .monte-settings-fields{grid-template-columns:1fr;}
+    #monteSettingsModelSpacer{grid-column:1 / -1;}
     .chart-axis-fields{grid-template-columns:1fr;}
     .chart-axis-fields-3{grid-template-columns:repeat(2, minmax(0, 1fr));}
     .chart-axis-fields-3 .chart-axis-spacer{display:none !important;}
@@ -5469,7 +5478,7 @@ document.addEventListener("scroll", (ev)=>{
           <button id="fireDiagnosisBtn" type="button" class="compact-btn">FIRE診断</button>
           <div class="split-btn-group">
             <button id="runMonteBtn" type="button" class="compact-btn split-btn-main">確率計算</button>
-            <button id="openMonteSettingsBtn" type="button" class="compact-btn split-btn-toggle" aria-label="モンテカルロ設定">▼</button>
+            <button id="openMonteSettingsBtn" type="button" class="compact-btn split-btn-toggle" aria-label="確率（モンテカルロ）設定">▼</button>
           </div>
           <button id="copyUrlBtn" type="button" class="compact-btn">結果共有</button>
         </div>
@@ -5496,9 +5505,9 @@ document.addEventListener("scroll", (ev)=>{
       <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
       <button id="overflowMenuWithdrawalBtn" type="button">取り崩し設定</button>
       <button id="overflowMenuCrashBtn" type="button">暴落設定</button>
-      <button id="overflowMenuMonteSettingsBtn" type="button">モンテカルロ設定</button>
+      <button id="overflowMenuMonteSettingsBtn" type="button">確率（モンテカルロ）設定</button>
       <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
-      <button id="overflowMenuMonteRunBtn" type="button">モンテカルロ計算</button>
+      <button id="overflowMenuMonteRunBtn" type="button">確率計算</button>
       <button id="overflowMenuFireBtn" type="button">FIRE診断</button>
       <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
       <button id="overflowMenuCashflowBtn" type="button">年度別収支表</button>
@@ -5867,7 +5876,7 @@ document.addEventListener("scroll", (ev)=>{
       <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
         <div class="withdrawal-rule-note">※ 資産をどの考え方・順番で取り崩すかを設定します。</div>
-        <div class="withdrawal-rule-note">※ 設定した取り崩しルールは、通常計算・モンテカルロ計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
+        <div class="withdrawal-rule-note">※ 設定した取り崩しルールは、通常計算・確率計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
         <div class="withdrawal-rule-section">
           <div class="withdrawal-rule-section-title">設定内容</div>
           <div class="withdrawal-rule-fields">
@@ -6005,7 +6014,7 @@ document.addEventListener("scroll", (ev)=>{
                 </select>
               </div>
             </div>
-            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定・同一乱数列で、選択した取り崩しルールの結果を比較します。</div>
+            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定・同一乱数列で、選択した取り崩しルールの結果を比較します。</div>
             <div id="withdrawalCompareRuleEditor">
               <div class="withdrawal-param-case-help">※ 比較したい取り崩しルールだけを選択してください。重複選択はできません。1つ以上選択すると比較を実行できます。</div>
               <div class="withdrawal-compare-table-wrap">
@@ -6054,7 +6063,7 @@ document.addEventListener("scroll", (ev)=>{
         <div id="crashTestTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">暴落設定</div>
         <div class="withdrawal-rule-grid">
           <div class="withdrawal-rule-note">※ 運用資産に対する下落・回復シナリオを設定します。預貯金・安全資産には直接ショックを与えません。</div>
-          <div class="withdrawal-rule-note">※ 設定した暴落シナリオは、通常計算・モンテカルロ計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
+          <div class="withdrawal-rule-note">※ 設定した暴落シナリオは、通常計算・確率計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
           <div class="withdrawal-rule-section">
             <div class="withdrawal-rule-section-title">暴落シナリオ</div>
             <div class="withdrawal-compare-table-wrap">
@@ -6120,7 +6129,7 @@ document.addEventListener("scroll", (ev)=>{
                   </select>
                 </div>
               </div>
-              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定・同一乱数列で、「暴落なし」と「現在の暴落設定」の結果を比較します。</div>
+              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定・同一乱数列で、「暴落なし」と「現在の暴落設定」の結果を比較します。</div>
               <div id="crashCompareCaseEditor" class="withdrawal-rule-hidden">
                 <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の暴落条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
                 <div class="withdrawal-compare-table-wrap">
@@ -6156,19 +6165,13 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card monte-settings-modal withdrawal-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="monteCarloSettingsTitle">
       <div class="withdrawal-preview-handle" aria-hidden="true"><span></span></div>
       <div class="withdrawal-preview-scroll">
-        <div id="monteCarloSettingsTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">モンテカルロ設定</div>
+        <div id="monteCarloSettingsTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">確率（モンテカルロ）設定</div>
         <div class="monte-settings-grid">
-          <div class="monte-settings-note">※ モンテカルロ計算に用いるパラメータを設定します。</div>
-          <div class="monte-settings-note">※ 設定中は総資産グラフを表示します。設定を変えただけでは再計算されません。確認したい条件で「モンテカルロ計算」を押して再計算してください。同じシードなら同じ結果を再現しやすいです。12345 は既定のサンプル値です。</div>
+          <div class="monte-settings-note">※ モンテカルロ法により、将来の運用結果を多数回試行し、総資産の確率的な範囲を表示します。</div>
+          <div class="monte-settings-note">※ 設定変更後は、グラフ左下の「確率計算」ボタンを押すと結果に反映されます。重ね書き時は、対象タブの未計算・再計算が必要な結果をまとめて計算します。</div>
           <div class="monte-settings-section">
             <div class="monte-settings-section-title">基本設定</div>
             <div class="monte-settings-fields">
-              <div class="monte-settings-field"><label for="monteSettingsTrials">試行回数</label><div class="input-unit"><input id="monteSettingsTrials" type="number" class="agebox" value="80" min="10" max="5000" step="10"><span class="suffix">回</span></div></div>
-              <div class="monte-settings-field"><label for="monteSettingsDrawPaths">描画本数</label><div class="input-unit"><input id="monteSettingsDrawPaths" type="number" class="agebox" value="80" min="10" max="500" step="10"><span class="suffix">本</span></div></div>
-              <div class="monte-settings-field" id="monteSettingsSeedOnField"><label class="inline-check"><input id="monteSettingsSeedOn" type="checkbox"> 乱数シードを固定する</label></div>
-              <div class="monte-settings-field monte-settings-hidden" id="monteSettingsSeedTopSpacer" aria-hidden="true"></div>
-              <div class="monte-settings-field" id="monteSettingsSeedValueField"><label for="monteSettingsSeedValue">シード値</label><div class="input-unit"><input id="monteSettingsSeedValue" type="number" class="moneybox" value="12345" step="1"><span class="suffix">seed</span></div></div>
-              <div class="monte-settings-field monte-settings-hidden" id="monteSettingsSeedBottomSpacer" aria-hidden="true"></div>
               <div class="monte-settings-field" id="monteSettingsModelField"><label for="monteSettingsModel">利回りモデル</label><select id="monteSettingsModel"><option value="uniform">一様分布（簡易モデル）</option><option value="normal" selected>正規分布（標準モデル）</option><option value="mean_reverting">平均回帰（上級モデル）</option></select></div>
               <div class="monte-settings-field monte-settings-hidden" id="monteSettingsModelSpacer" aria-hidden="true"></div>
               <div class="monte-settings-field"><label for="monteSettingsEffectiveVolPct">実効ボラ（年次標準偏差）</label><div class="input-unit"><input id="monteSettingsEffectiveVolPct" type="number" class="ratebox" value="10" min="0" step="0.1"><span class="suffix">%</span></div></div>
@@ -6177,13 +6180,25 @@ document.addEventListener("scroll", (ev)=>{
               <div id="monteSettingsMeanRevertingDerivedField" class="monte-settings-field monte-settings-hidden"><label>内部ノイズ標準偏差</label><div id="monteSettingsMeanRevDerived" class="monte-settings-summary">9.4%</div></div>
               <div id="monteSettingsMeanRevPhiField" class="monte-settings-field monte-settings-hidden"><label for="monteSettingsMeanRevPhi">持続性</label><div class="input-unit"><input id="monteSettingsMeanRevPhi" type="number" class="ratebox" value="0.35" min="0" max="0.99" step="0.01"><span class="suffix">0〜0.99</span></div></div>
               <div id="monteSettingsMeanRevPhiSpacer" class="monte-settings-field monte-settings-hidden" aria-hidden="true"></div>
-            </div>
-            <div class="monte-settings-foot">
               <div class="monte-settings-note-row">
                 <div class="monte-settings-note" id="monteSettingsModelNote">※ 実効ボラを基準に、一様分布の半幅を内部で自動計算します。実効ボラ 10% のとき、内部変動幅は ±17.3%です。</div>
               </div>
+              <div class="monte-settings-divider" aria-hidden="true"></div>
+              <div class="monte-settings-field"><label for="monteSettingsTrials">計算回数</label><div class="input-unit"><input id="monteSettingsTrials" type="number" class="agebox" value="80" min="10" max="5000" step="10"><span class="suffix">回</span></div></div>
+              <div class="monte-settings-field"><label for="monteSettingsDrawPaths">表示本数</label><div class="input-unit"><input id="monteSettingsDrawPaths" type="number" class="agebox" value="80" min="10" max="500" step="10"><span class="suffix">本</span></div></div>
+              <div class="monte-settings-field" id="monteSettingsSeedValueField"><label for="monteSettingsSeedValue">シード値</label><div class="monte-settings-seed-inline"><div class="input-unit"><input id="monteSettingsSeedValue" type="number" class="moneybox" value="12345" step="1"><span class="suffix">seed</span></div><label id="monteSettingsSeedOnField" class="inline-check"><input id="monteSettingsSeedOn" type="checkbox"> 乱数シードを固定する</label></div></div>
+              <div class="monte-settings-note-row">
+                <div class="monte-settings-note">※ 計算回数は確率帯・中央値・破綻確率の計算に使う試行数です。表示本数はグラフに薄く表示する試行パスの本数です。</div>
+              </div>
+              <div class="monte-settings-note-row">
+                <div class="monte-settings-note">※ シード固定をONにすると、同じ条件では毎回同じ乱数列で計算します。OFFにすると、計算のたびに結果が変わります。重ね書き時は、条件差を公平に比較するため、シード固定設定に関わらず同一乱数列で計算します。</div>
+              </div>
+              <div class="monte-settings-field monte-settings-hidden" id="monteSettingsSeedTopSpacer" aria-hidden="true"></div>
+              <div class="monte-settings-field monte-settings-hidden" id="monteSettingsSeedBottomSpacer" aria-hidden="true"></div>
+            </div>
+            <div class="monte-settings-foot">
               <div class="monte-settings-action-row">
-                <button type="button" id="monteRunInSheetBtn">モンテカルロ計算</button>
+                <button type="button" id="monteRunInSheetBtn">確率計算</button>
               </div>
             </div>
           </div>
@@ -6194,14 +6209,14 @@ document.addEventListener("scroll", (ev)=>{
           <div class="monte-settings-section">
             <div class="withdrawal-compare-header monte-compare-header">
               <div class="split-btn-group withdrawal-compare-split">
-                <button id="runMonteCompareBtn" type="button" class="compact-btn split-btn-main">モンテカルロ比較</button>
-                <button id="toggleMonteCompareBtn" type="button" class="compact-btn split-btn-toggle" aria-label="モンテカルロ比較の開閉" aria-expanded="false">▼</button>
+                <button id="runMonteCompareBtn" type="button" class="compact-btn split-btn-main">確率比較</button>
+                <button id="toggleMonteCompareBtn" type="button" class="compact-btn split-btn-toggle" aria-label="確率比較の開閉" aria-expanded="false">▼</button>
               </div>
               <span class="compare-header-note">（同一乱数で確率比較）</span>
             </div>
             <div id="monteCompareContent" class="withdrawal-compare-content" hidden>
               <div id="monteCompareSection">
-                <div id="monteCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「モンテカルロ比較」を押すと、同一乱数列で比較します。</div>
+                <div id="monteCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「確率比較」を押すと、同一乱数列で比較します。</div>
                 <div class="withdrawal-compare-subcontrols">
                   <div class="withdrawal-rule-field">
                     <label for="monteCompareMode">比較モード</label>
@@ -6232,9 +6247,9 @@ document.addEventListener("scroll", (ev)=>{
                     </select>
                   </div>
                 </div>
-                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在のモンテカルロ設定・同一乱数列で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」の結果を比較します。</div>
+                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定・同一乱数列で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」の結果を比較します。</div>
                 <div id="monteCompareCaseEditor" class="withdrawal-compare-table-wrap withdrawal-rule-hidden">
-                  <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他のモンテカルロ条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
+                  <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の確率条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
                   <table class="withdrawal-param-case-table">
                     <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
                     <tbody id="monteCompareCaseBody"></tbody>
@@ -6290,7 +6305,7 @@ document.addEventListener("scroll", (ev)=>{
             <div id="fireDiagnosisRequiredSuccessRateField" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden"><label for="fireDiagnosisRequiredSuccessRateInput">成功率しきい値</label><div class="input-unit"><input id="fireDiagnosisRequiredSuccessRateInput" type="number" class="ratebox" value="80" step="1" min="1" max="100"><span class="suffix">%</span></div></div>
             <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>探索年齢</label><div class="fire-diagnosis-age-range"><div class="fire-diagnosis-age-item"><span>開始</span><div class="input-unit"><input id="fireDiagnosisAgeFromInput" type="number" class="agebox" value="40" step="1" min="0" max="120"><span class="suffix">歳</span></div></div><div class="fire-diagnosis-age-item"><span>終了</span><div class="input-unit"><input id="fireDiagnosisAgeToInput" type="number" class="agebox" value="70" step="1" min="0" max="120"><span class="suffix">歳</span></div></div></div></div>
             <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>判定条件</label><div id="fireDiagnosisConditionSummary" class="withdrawal-rule-summary">標準：想定寿命まで総資産が一度もマイナスにならないこと</div></div>
-            <div id="fireDiagnosisMonteNote" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden"><div class="withdrawal-rule-summary">モンテカルロ診断では、既存のモンテカルロ設定の試行回数・利回りモデル・シード設定を利用します。結果表示モードで「暴落なし（通常）」「暴落あり」「暴落なし＋暴落あり比較」を選べます。</div></div>
+            <div id="fireDiagnosisMonteNote" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden"><div class="withdrawal-rule-summary">モンテカルロ診断では、既存の確率（モンテカルロ）設定の計算回数・利回りモデル・シード設定を利用します。結果表示モードで「暴落なし（通常）」「暴落あり」「暴落なし＋暴落あり比較」を選べます。</div></div>
           </div>
         </div>
         <div class="withdrawal-rule-section">
@@ -20461,13 +20476,14 @@ function buildMonteDistributionDataset(cfg, finalsAtLife, opts={}){
 }
 function formatMonteSettingsSummary(settings){
   if(!settings) return '';
+  const volText = formatNumberJP(Number(settings.effectiveVolPct), Math.abs(Number(settings.effectiveVolPct) - Math.round(Number(settings.effectiveVolPct))) < 1e-9 ? 0 : 1);
   if(settings.model === 'normal'){
-    return `<strong>正規分布（標準モデル）</strong><br>試行回数 ${settings.trials} 回、描画本数 ${settings.drawPaths} 本、実効ボラ（年次標準偏差） ${settings.effectiveVolPct}%です。`;
+    return `<strong>正規分布（標準モデル）</strong><br>実効ボラ ${volText}%｜計算回数 ${settings.trials}回｜表示本数 ${settings.drawPaths}本`;
   }
   if(settings.model === 'mean_reverting'){
-    return `<strong>平均回帰（上級モデル）</strong><br>試行回数 ${settings.trials} 回、描画本数 ${settings.drawPaths} 本、実効ボラ（年次標準偏差） ${settings.effectiveVolPct}%、持続性 ${formatNumberJP(settings.meanRevPhi, 2)}、内部ノイズ標準偏差 ${settings.meanRevInnovationStdPct.toFixed(1)}%です。`;
+    return `<strong>平均回帰（上級モデル）</strong><br>実効ボラ ${volText}%｜持続性 ${formatNumberJP(settings.meanRevPhi, 2)}｜計算回数 ${settings.trials}回｜表示本数 ${settings.drawPaths}本<br>内部ノイズ標準偏差 ${settings.meanRevInnovationStdPct.toFixed(1)}%`;
   }
-  return `<strong>一様分布（簡易モデル）</strong><br>試行回数 ${settings.trials} 回、描画本数 ${settings.drawPaths} 本、実効ボラ（年次標準偏差） ${settings.effectiveVolPct}%、内部変動幅 ±${settings.uniformRangePct.toFixed(1)}%です。`;
+  return `<strong>一様分布（簡易モデル）</strong><br>実効ボラ ${volText}%｜計算回数 ${settings.trials}回｜表示本数 ${settings.drawPaths}本<br>内部変動幅 ±${settings.uniformRangePct.toFixed(1)}%`;
 }
 function formatAssetProbabilitySettingsSummary(settings){
   if(!settings) return '';
@@ -20477,7 +20493,8 @@ function formatAssetProbabilitySettingsSummary(settings){
   const volText = Number.isFinite(vol) ? formatNumberJP(vol, Math.abs(vol - Math.round(vol)) < 1e-9 ? 0 : 1) : '-';
   const trials = clampMonteTrials(settings.trials || 80);
   const drawPaths = clampMonteDrawPaths(settings.drawPaths || trials, trials);
-  return `${modelLabel}｜ボラ ${volText}%｜計算 ${trials}回｜表示 ${drawPaths}本`;
+  const phiText = model === 'mean_reverting' ? `｜持続性 ${formatNumberJP(settings.meanRevPhi, 2)}` : '';
+  return `${modelLabel}｜ボラ ${volText}%${phiText}｜計算 ${trials}回｜表示 ${drawPaths}本`;
 }
 function getPublicPensionDeductionByAge(age, cfg){
   const tax = cfg?.tax || {};
@@ -28654,11 +28671,11 @@ function renderWithdrawalComparisonResults(results){
         const ruleMode = document.getElementById('withdrawalCompareParamRule')?.value || 'current';
         const paramKey = document.getElementById('withdrawalCompareParamKey')?.value || '';
         const paramDef = getWithdrawalParameterDefinition(ruleMode, paramKey);
-        status.textContent = `同一のモンテカルロ乱数列で、${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} の ${paramDef?.label || 'パラメータ'} を変えた ${results.length} ケースを比較しました。`;
+        status.textContent = `同一乱数列で、${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} の ${paramDef?.label || 'パラメータ'} を変えた ${results.length} ケースを比較しました。`;
       }else if(results.length <= 1){
-        status.textContent = '同一のモンテカルロ乱数列で、選択した 1 つの取り崩しルールの結果を表示しました。';
+        status.textContent = '同一乱数列で、選択した 1 つの取り崩しルールの結果を表示しました。';
       }else{
-        status.textContent = `同一のモンテカルロ乱数列で、選択した ${results.length} 個の取り崩しルールを比較しました。95%点 / 5%点で上振れ・下振れも確認できます。`;
+        status.textContent = `同一乱数列で、選択した ${results.length} 個の取り崩しルールを比較しました。95%点 / 5%点で上振れ・下振れも確認できます。`;
       }
     }
   }catch(chartErr){
@@ -29278,9 +29295,9 @@ function updateMonteSettingsModalUI(){
   if(normalEl) normalEl.textContent = `${settings.normalStdPct.toFixed(1)}%`;
   if(meanRevEl) meanRevEl.textContent = `${settings.meanRevInnovationStdPct.toFixed(1)}%`;
   if(noteEl){
-    if(model === 'uniform') noteEl.textContent = `※ 実効ボラを基準に、一様分布の半幅を内部で自動計算します。実効ボラ ${settings.effectiveVolPct.toFixed(1)}% のとき、内部変動幅は ±${settings.uniformRangePct.toFixed(1)}%です。`;
-    else if(model === 'mean_reverting') noteEl.textContent = '※ 実効ボラ（定常状態の年次標準偏差）が正規分布モデルと揃うように、内部ノイズ標準偏差を自動調整します。持続性が高いほど、内部ノイズは小さくても連続する好況・不況が起こりやすくなります。';
-    else noteEl.textContent = '※ 実効ボラ（年次標準偏差）をそのまま使います。現時点の標準推奨モデルです。';
+    if(model === 'uniform') noteEl.textContent = `※ 指定した平均利回りと実効ボラをもとに、毎年の利回りを簡易的にばらつかせます。実効ボラ ${settings.effectiveVolPct.toFixed(1)}% のとき、内部変動幅は ±${settings.uniformRangePct.toFixed(1)}%です。`;
+    else if(model === 'mean_reverting') noteEl.textContent = `※ 長期平均に戻る傾向を加味して、利回りのばらつきを調整します。実効ボラ ${settings.effectiveVolPct.toFixed(1)}% のとき、内部ノイズ標準偏差は ${settings.meanRevInnovationStdPct.toFixed(1)}%です。持続性が高いほど、内部ノイズは小さくても連続する好況・不況が起こりやすくなります。`;
+    else noteEl.textContent = '※ 平均利回りと実効ボラをもとに、毎年の利回りを正規分布でばらつかせます。現時点の標準推奨モデルです。';
   }
   document.getElementById('monteSettingsSummary').innerHTML = formatMonteSettingsSummary(settings);
 }
@@ -29516,7 +29533,7 @@ function renderMonteCompareCaseEditor(){
   const def = getMonteCompareParamDefinition(model, paramKey);
   const cases = parseMonteCompareCaseJson();
   wrap.classList.remove('withdrawal-rule-hidden');
-  if(help) help.textContent = '※ 1つの比較パラメータだけを変え、他のモンテカルロ条件は固定したまま 2〜5 ケースを同一乱数列で比較します。';
+  if(help) help.textContent = '※ 1つの比較パラメータだけを変え、他の確率条件は固定したまま 2〜5 ケースを同一乱数列で比較します。';
   body.innerHTML = cases.map((item, idx)=>`<tr><td>${escapeHtml(item.label || `ケース${idx + 1}`)}</td><td><div class="input-unit"><input type="number" data-monte-compare-case-input="1" data-case-index="${idx}" value="${escapeHtml(String(item.value ?? ''))}" step="${escapeHtml(String(def?.step ?? 1))}" min="${escapeHtml(String(def?.min ?? ''))}" max="${escapeHtml(String(def?.max ?? ''))}"></div></td><td>${escapeHtml(def?.unit || '')}</td></tr>`).join('');
 }
 function rebuildMonteCompareCases(useDefaults=false){
@@ -29867,7 +29884,7 @@ function updateMonteCompareModeUI(){
   document.getElementById('monteCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', isParameter);
   if(!monteCompareCache) setMonteCompareResultsVisible(false);
   const status = document.getElementById('monteCompareStatus');
-  if(status && !monteCompareCache) status.textContent = '比較条件を設定して「モンテカルロ比較」を押すと、同一乱数列で比較します。';
+  if(status && !monteCompareCache) status.textContent = '比較条件を設定して「確率比較」を押すと、同一乱数列で比較します。';
 }
 function renderMonteCompareResults(results){
   renderMonteCompareTable(results);
@@ -29942,7 +29959,7 @@ function updateScenarioScopedModalTitles(){
   const map = [
     ['withdrawalRuleTitle', '取り崩し設定'],
     ['crashTestTitle', '暴落設定'],
-    ['monteCarloSettingsTitle', 'モンテカルロ設定'],
+    ['monteCarloSettingsTitle', '確率（モンテカルロ）設定'],
     ['fireDiagnosisTitle', 'FIRE診断'],
     ['cashflowModalTitle', '年度別収支表']
   ];
