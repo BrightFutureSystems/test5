@@ -920,11 +920,13 @@ document.addEventListener("scroll", (ev)=>{
   #monteSettingsModelField{grid-column:1;}
   #monteSettingsSeedValueField{grid-column:1 / -1;}
   #monteSettingsModelSpacer{grid-column:2;}
+  #monteSettingsSeedValueField{gap:4px;}
+  .monte-settings-seed-label-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .monte-settings-seed-label-row > label:first-child{font-size:.92rem;color:#374151;}
   .monte-settings-seed-inline{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   .monte-settings-seed-inline .input-unit{width:auto;}
-  #monteSettingsSeedOnField{display:inline-flex;align-items:center;min-height:38px;margin-left:4px;white-space:nowrap;}
-  #monteSettingsSeedValueField{gap:0;}
-  #monteSettingsSeedValueField .monte-settings-seed-inline{align-items:center;margin-top:-4px;}
+  #monteSettingsSeedOnField{display:inline-flex;align-items:center;min-height:22px;margin-left:0;white-space:nowrap;font-size:.92rem;color:#374151;}
+  #monteSettingsSeedValueField.monte-settings-seed-auto #monteSettingsSeedValue{color:#94a3b8;background:#f8fafc;box-shadow:none;cursor:not-allowed;}
   #monteSettingsSeedTopSpacer,#monteSettingsSeedBottomSpacer{display:none !important;}
   .monte-settings-divider{grid-column:1 / -1;border-top:1px solid #e5e7eb;margin:2px 0 0;min-height:1px;}
 
@@ -1471,7 +1473,6 @@ document.addEventListener("scroll", (ev)=>{
     background:#e5e7eb;
     border-radius:999px;
   }
-  .legacy-top-actions[hidden]{display:none !important;}
   @media (max-width:900px), (pointer:coarse){
     #appHero{
       gap:12px;
@@ -5411,6 +5412,92 @@ document.addEventListener("scroll", (ev)=>{
   }
 </style>
 
+
+<!-- ===== v1217: asset probability calculation progress overlay ===== -->
+<style>
+  .asset-probability-progress-overlay{
+    position:absolute;
+    inset:0;
+    z-index:46;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .asset-probability-progress-overlay.show{display:flex;}
+  .asset-probability-progress-card{
+    min-width:188px;
+    padding:18px 20px 16px;
+    border:1px solid rgba(207,218,232,.92);
+    border-radius:20px;
+    background:rgba(255,255,255,.90);
+    box-shadow:0 14px 36px rgba(15,23,42,.16);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .asset-probability-progress-ring{
+    --progress:0;
+    position:relative;
+    width:92px;
+    height:92px;
+    border-radius:50%;
+    background:conic-gradient(from 0deg, #4f8eff 0deg, #7a63f6 var(--progress-deg, 0deg), #e7eef6 var(--progress-deg, 0deg), #e7eef6 360deg);
+    box-shadow:inset 0 0 0 1px rgba(148,163,184,.10);
+  }
+  .asset-probability-progress-ring::before{
+    content:"";
+    position:absolute;
+    inset:9px;
+    border-radius:50%;
+    background:rgba(255,255,255,.98);
+    box-shadow:inset 0 0 0 1px rgba(226,232,240,.95);
+  }
+  .asset-probability-progress-percent{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#122b45;
+    font-size:22px;
+    font-weight:800;
+    line-height:1;
+    letter-spacing:-.02em;
+  }
+  .asset-probability-progress-label{
+    color:#122b45;
+    font-size:13px;
+    font-weight:800;
+    line-height:1.35;
+    text-align:center;
+  }
+  .asset-probability-progress-detail{
+    min-height:15px;
+    color:#607589;
+    font-size:11px;
+    line-height:1.35;
+    text-align:center;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    .asset-probability-progress-card{
+      min-width:164px;
+      padding:15px 16px 14px;
+      border-radius:18px;
+    }
+    .asset-probability-progress-ring{
+      width:78px;
+      height:78px;
+    }
+    .asset-probability-progress-ring::before{inset:8px;}
+    .asset-probability-progress-percent{font-size:19px;}
+    .asset-probability-progress-label{font-size:12px;}
+  }
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -5472,16 +5559,6 @@ document.addEventListener("scroll", (ev)=>{
         <input id="xAxisLabelMode" type="hidden" value="age">
       </div>
       <div id="rightTopControls">
-        <div class="legacy-top-actions" hidden aria-hidden="true">
-          <button id="withdrawalRuleBtn" type="button" class="compact-btn">取り崩し設定</button>
-          <button id="crashTestBtn" type="button" class="compact-btn">暴落設定</button>
-          <button id="fireDiagnosisBtn" type="button" class="compact-btn">FIRE診断</button>
-          <div class="split-btn-group">
-            <button id="runMonteBtn" type="button" class="compact-btn split-btn-main">確率計算</button>
-            <button id="openMonteSettingsBtn" type="button" class="compact-btn split-btn-toggle" aria-label="確率（モンテカルロ）設定">▼</button>
-          </div>
-          <button id="copyUrlBtn" type="button" class="compact-btn">結果共有</button>
-        </div>
         <button id="graphMenuBtn" type="button" class="graph-menu-btn" aria-label="グラフメニュー" aria-haspopup="menu" aria-expanded="false"><span></span></button>
       </div>
     </div>
@@ -5507,7 +5584,6 @@ document.addEventListener("scroll", (ev)=>{
       <button id="overflowMenuCrashBtn" type="button">暴落設定</button>
       <button id="overflowMenuMonteSettingsBtn" type="button">確率（モンテカルロ）設定</button>
       <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
-      <button id="overflowMenuMonteRunBtn" type="button">確率計算</button>
       <button id="overflowMenuFireBtn" type="button">FIRE診断</button>
       <div class="overflow-menu-separator" role="separator" aria-hidden="true"></div>
       <button id="overflowMenuCashflowBtn" type="button">年度別収支表</button>
@@ -5983,7 +6059,7 @@ document.addEventListener("scroll", (ev)=>{
             <span class="compare-header-note">（同一乱数で確率比較）</span>
           </div>
           <div id="withdrawalCompareContent" class="withdrawal-compare-content" hidden>
-            <div id="withdrawalCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「取り崩し比較」を押すと、同一乱数列で比較します。</div>
+            <div id="withdrawalCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「取り崩し比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。</div>
             <div class="withdrawal-compare-subcontrols">
               <div class="withdrawal-rule-field">
                 <label for="withdrawalCompareMode">比較モード</label>
@@ -6014,7 +6090,7 @@ document.addEventListener("scroll", (ev)=>{
                 </select>
               </div>
             </div>
-            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定・同一乱数列で、選択した取り崩しルールの結果を比較します。</div>
+            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定で、選択した取り崩しルールの結果を同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
             <div id="withdrawalCompareRuleEditor">
               <div class="withdrawal-param-case-help">※ 比較したい取り崩しルールだけを選択してください。重複選択はできません。1つ以上選択すると比較を実行できます。</div>
               <div class="withdrawal-compare-table-wrap">
@@ -6026,7 +6102,7 @@ document.addEventListener("scroll", (ev)=>{
               <input id="withdrawalCompareRuleSelectionJson" type="hidden" value="">
             </div>
             <div id="withdrawalCompareParamEditor" class="withdrawal-rule-hidden">
-              <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の取り崩し条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
+              <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の取り崩し条件は固定したまま 2〜5 ケースを同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
               <div class="withdrawal-compare-table-wrap">
                 <table class="withdrawal-param-case-table">
                   <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
@@ -6102,12 +6178,12 @@ document.addEventListener("scroll", (ev)=>{
               <span class="compare-header-note">（同一乱数で確率比較）</span>
             </div>
             <div id="crashCompareContent" class="crash-compare-content" hidden>
-              <div id="crashCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。</div>
+              <div id="crashCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。</div>
               <div class="withdrawal-compare-subcontrols">
                 <div class="withdrawal-rule-field">
                   <label for="crashCompareMode">比較モード</label>
                   <select id="crashCompareMode">
-                    <option value="presence">暴落あり／なし比較</option>
+                    <option value="presence">暴落なし／あり比較</option>
                     <option value="parameter">暴落条件比較</option>
                   </select>
                 </div>
@@ -6129,9 +6205,9 @@ document.addEventListener("scroll", (ev)=>{
                   </select>
                 </div>
               </div>
-              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定・同一乱数列で、「暴落なし」と「現在の暴落設定」の結果を比較します。</div>
+              <div id="crashCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定で、「暴落なし」と「現在の暴落設定」の結果を同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
               <div id="crashCompareCaseEditor" class="withdrawal-rule-hidden">
-                <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の暴落条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
+                <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の暴落条件は固定したまま 2〜5 ケースを同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
                 <div class="withdrawal-compare-table-wrap">
                   <table class="withdrawal-param-case-table">
                     <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
@@ -6186,20 +6262,15 @@ document.addEventListener("scroll", (ev)=>{
               <div class="monte-settings-divider" aria-hidden="true"></div>
               <div class="monte-settings-field"><label for="monteSettingsTrials">計算回数</label><div class="input-unit"><input id="monteSettingsTrials" type="number" class="agebox" value="80" min="10" max="5000" step="10"><span class="suffix">回</span></div></div>
               <div class="monte-settings-field"><label for="monteSettingsDrawPaths">表示本数</label><div class="input-unit"><input id="monteSettingsDrawPaths" type="number" class="agebox" value="80" min="10" max="500" step="10"><span class="suffix">本</span></div></div>
-              <div class="monte-settings-field" id="monteSettingsSeedValueField"><label for="monteSettingsSeedValue">シード値</label><div class="monte-settings-seed-inline"><div class="input-unit"><input id="monteSettingsSeedValue" type="number" class="moneybox" value="12345" step="1"><span class="suffix">seed</span></div><label id="monteSettingsSeedOnField" class="inline-check"><input id="monteSettingsSeedOn" type="checkbox"> 乱数シードを固定する</label></div></div>
+              <div class="monte-settings-field" id="monteSettingsSeedValueField"><div class="monte-settings-seed-label-row"><label for="monteSettingsSeedValue">乱数シード値</label><label id="monteSettingsSeedOnField" class="inline-check"><input id="monteSettingsSeedOn" type="checkbox"> 固定値を使用</label></div><div class="monte-settings-seed-inline"><div class="input-unit"><input id="monteSettingsSeedValue" type="text" inputmode="numeric" class="moneybox" value="12345"></div></div></div>
               <div class="monte-settings-note-row">
                 <div class="monte-settings-note">※ 計算回数は確率帯・中央値・破綻確率の計算に使う試行数です。表示本数はグラフに薄く表示する試行パスの本数です。</div>
               </div>
               <div class="monte-settings-note-row">
-                <div class="monte-settings-note">※ シード固定をONにすると、同じ条件では毎回同じ乱数列で計算します。OFFにすると、計算のたびに結果が変わります。重ね書き時は、条件差を公平に比較するため、シード固定設定に関わらず同一乱数列で計算します。</div>
+                <div class="monte-settings-note">※ 固定シード値を使用すると、入力した乱数シード値で毎回同じ乱数列を使います。重ね書きや比較でも、各ケースに同じ乱数列を使います。<br>※ 使用しない場合は、確率計算・比較・診断のたびに新しい乱数列を使います。各回の比較では、全ケースに同じ共通乱数列を使います。<br>※ 固定シード値を使用しない重ね書きや比較では、毎回対象ケースを再計算するため、時間がかかる場合があります。</div>
               </div>
               <div class="monte-settings-field monte-settings-hidden" id="monteSettingsSeedTopSpacer" aria-hidden="true"></div>
               <div class="monte-settings-field monte-settings-hidden" id="monteSettingsSeedBottomSpacer" aria-hidden="true"></div>
-            </div>
-            <div class="monte-settings-foot">
-              <div class="monte-settings-action-row">
-                <button type="button" id="monteRunInSheetBtn">確率計算</button>
-              </div>
             </div>
           </div>
           <div class="monte-settings-section">
@@ -6216,7 +6287,7 @@ document.addEventListener("scroll", (ev)=>{
             </div>
             <div id="monteCompareContent" class="withdrawal-compare-content" hidden>
               <div id="monteCompareSection">
-                <div id="monteCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「確率比較」を押すと、同一乱数列で比較します。</div>
+                <div id="monteCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「確率比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。</div>
                 <div class="withdrawal-compare-subcontrols">
                   <div class="withdrawal-rule-field">
                     <label for="monteCompareMode">比較モード</label>
@@ -6247,9 +6318,9 @@ document.addEventListener("scroll", (ev)=>{
                     </select>
                   </div>
                 </div>
-                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定・同一乱数列で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」の結果を比較します。</div>
+                <div id="monteCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定で、「一様分布（簡易モデル）」「正規分布（標準モデル）」「平均回帰（上級モデル）」の結果を同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
                 <div id="monteCompareCaseEditor" class="withdrawal-compare-table-wrap withdrawal-rule-hidden">
-                  <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の確率条件は固定したまま 2〜5 ケースを同一乱数列で比較します。</div>
+                  <div id="monteCompareCaseHelp" class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の確率条件は固定したまま 2〜5 ケースを同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
                   <table class="withdrawal-param-case-table">
                     <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
                     <tbody id="monteCompareCaseBody"></tbody>
@@ -6281,7 +6352,7 @@ document.addEventListener("scroll", (ev)=>{
   <input id="monteNormalStdPct" type="hidden" value="10">
   <input id="monteMeanRevStdPct" type="hidden" value="10">
   <input id="monteMeanRevPhi" type="hidden" value="0.35">
-  <input id="monteSeedOn" type="hidden" value="false">
+  <input id="monteSeedOn" type="hidden" value="true">
   <input id="monteSeedValue" type="hidden" value="12345">
   <input id="monteCompareExpandedState" type="hidden" value="0">
   <input id="monteCompareModeState" type="hidden" value="model">
@@ -6923,6 +6994,41 @@ let chartAxisPendingAutoLeft = false;
 let chartAxisPendingAutoRight = false;
 let chartAxisApplyingAutoDefaults = false;
 let chartAxisSnapshot = null;
+let assetProbabilityPreviewMonteSnapshot = null;
+const ASSET_PROBABILITY_MONTE_STATE_KEYS = [
+  "monteCarloResult",
+  "monteCarloSettingsSnapshot",
+  "monteCarloInputHash",
+  "monteCarloComputedAt",
+  "monteCarloDirty",
+  "monteCarloStatus",
+  "monteCarloError"
+];
+function captureAssetProbabilityPreviewMonteState(){
+  return Array.isArray(scenarios) ? scenarios.map(sc=>{
+    const state = {};
+    ASSET_PROBABILITY_MONTE_STATE_KEYS.forEach(key=>{ state[key] = deepClone(sc?.[key] ?? null); });
+    return state;
+  }) : [];
+}
+function restoreAssetProbabilityPreviewMonteState(snapshot){
+  if(!Array.isArray(snapshot) || !Array.isArray(scenarios)) return;
+  snapshot.forEach((state, idx)=>{
+    const sc = scenarios[idx];
+    if(!sc || !state) return;
+    ASSET_PROBABILITY_MONTE_STATE_KEYS.forEach(key=>{ sc[key] = deepClone(state[key] ?? null); });
+  });
+}
+function beginAssetProbabilityPreviewMonteSnapshot(){
+  assetProbabilityPreviewMonteSnapshot = captureAssetProbabilityPreviewMonteState();
+}
+function restoreAssetProbabilityPreviewMonteSnapshot(){
+  restoreAssetProbabilityPreviewMonteState(assetProbabilityPreviewMonteSnapshot);
+  assetProbabilityPreviewMonteSnapshot = null;
+}
+function clearAssetProbabilityPreviewMonteSnapshot(){
+  assetProbabilityPreviewMonteSnapshot = null;
+}
 let drawDebounceTimer = null;
 let scenarios = [];
 let currentTab = 0;
@@ -6945,7 +7051,6 @@ let workspaceOverlayModeOn = false;
 let workspaceOverlaySettings = {};
 let currentInputMode = "detail";
 let inputModeScrollPositions = {simple:0, detail:0};
-let monteMode = false;
 let fireDiagnosisProbabilityChart = null;
 let lastFireDiagnosisResult = null;
 let defaultScenarioTemplate = null;
@@ -7199,7 +7304,10 @@ function updateAssetProbabilityControls(){
   if(!active) return;
   if(workspaceOverlayModeOn){
     const entries = getAssetProbabilityOverlayEntries();
-    if(status) status.textContent = getAssetProbabilityOverlayStatusText(entries);
+    if(status){
+      const currentSettings = getMonteCarloSettingsFromDOM();
+      status.textContent = ((entries || []).length && !currentSettings.seedOn) ? "固定シード値未使用：全タブを新しい乱数列で再計算" : getAssetProbabilityOverlayStatusText(entries);
+    }
     if(btn){
       btn.textContent = getAssetProbabilityOverlayRunButtonLabel(entries);
       btn.disabled = isAssetProbabilityOverlayRunning(entries) || !(entries || []).length;
@@ -7228,6 +7336,293 @@ function buildAssetProbabilityPlaceholderPlugin(message){
       ctx.fillText(message || "未計算", area.left + 10, area.bottom - 10);
       ctx.restore();
     }
+  };
+}
+function createMonteAutoSeed(){
+  return Math.max(1, Math.floor(Math.random() * 2147483646) + 1);
+}
+function normalizeMonteSettingsForAssetProbabilityRun(settings){
+  const base = {...(settings || getMonteCarloSettingsFromDOM())};
+  if(base.seedOn){
+    return {...base, seedOn:true, seedValue:Math.round(Number(base.seedValue || 12345) || 12345)};
+  }
+  return {...base, seedOn:true, seedValue:createMonteAutoSeed(), autoSeed:true, sourceSeedOn:false};
+}
+
+const ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS = 100;
+let assetProbabilityProgressState = {visible:false, lastUiAt:0, hideTimer:null};
+function ensureAssetProbabilityProgressOverlay(){
+  const host = document.getElementById('chartCanvasStickyWrap');
+  if(!host) return null;
+  let overlay = document.getElementById('assetProbabilityProgressOverlay');
+  if(overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'assetProbabilityProgressOverlay';
+  overlay.className = 'asset-probability-progress-overlay';
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.innerHTML = `
+    <div class="asset-probability-progress-card" role="status" aria-label="確率計算中">
+      <div class="asset-probability-progress-ring" data-progress-ring>
+        <div class="asset-probability-progress-percent" data-progress-percent>0%</div>
+      </div>
+      <div class="asset-probability-progress-label" data-progress-label>確率計算中...</div>
+      <div class="asset-probability-progress-detail" data-progress-detail></div>
+    </div>`;
+  host.appendChild(overlay);
+  return overlay;
+}
+function setAssetProbabilityProgressOverlay(progress, label='確率計算中...', detail=''){
+  const overlay = ensureAssetProbabilityProgressOverlay();
+  if(!overlay) return;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  const ring = overlay.querySelector('[data-progress-ring]');
+  const percent = overlay.querySelector('[data-progress-percent]');
+  const labelEl = overlay.querySelector('[data-progress-label]');
+  const detailEl = overlay.querySelector('[data-progress-detail]');
+  if(ring){
+    ring.style.setProperty('--progress', String(value));
+    ring.style.setProperty('--progress-deg', `${value * 3.6}deg`);
+  }
+  if(percent) percent.textContent = `${Math.round(value)}%`;
+  if(labelEl) labelEl.textContent = label || '確率計算中...';
+  if(detailEl) detailEl.textContent = detail || '';
+}
+function showAssetProbabilityProgressOverlay(label='確率計算中...', detail=''){
+  const overlay = ensureAssetProbabilityProgressOverlay();
+  if(!overlay) return;
+  if(assetProbabilityProgressState.hideTimer){
+    clearTimeout(assetProbabilityProgressState.hideTimer);
+    assetProbabilityProgressState.hideTimer = null;
+  }
+  assetProbabilityProgressState.visible = true;
+  assetProbabilityProgressState.lastUiAt = 0;
+  setAssetProbabilityProgressOverlay(0, label, detail);
+  overlay.classList.add('show');
+}
+function hideAssetProbabilityProgressOverlay(delayMs=180){
+  const overlay = document.getElementById('assetProbabilityProgressOverlay');
+  if(!overlay) return;
+  if(assetProbabilityProgressState.hideTimer){
+    clearTimeout(assetProbabilityProgressState.hideTimer);
+    assetProbabilityProgressState.hideTimer = null;
+  }
+  assetProbabilityProgressState.hideTimer = setTimeout(()=>{
+    overlay.classList.remove('show');
+    assetProbabilityProgressState.visible = false;
+    assetProbabilityProgressState.hideTimer = null;
+  }, Math.max(0, Number(delayMs) || 0));
+}
+function waitAssetProbabilityProgressFrame(){
+  return new Promise(resolve=>{
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(()=>resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+async function reportAssetProbabilityProgress(progress, options={}){
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const force = !!options.force;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  if(force || !assetProbabilityProgressState.lastUiAt || now - assetProbabilityProgressState.lastUiAt >= ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS || value >= 100){
+    setAssetProbabilityProgressOverlay(value, options.label || '確率計算中...', options.detail || '');
+    assetProbabilityProgressState.lastUiAt = now;
+    await waitAssetProbabilityProgressFrame();
+  }
+}
+async function buildMonteRunResultAsync(cfg, base, monteSettings, scenarioDataOverride, progressReporter=null){
+  const trials = clampMonteTrials(monteSettings?.trials || 80);
+  const scenarioData = scenarioDataOverride || cfg || {};
+  const staticSeries = getOrBuildMonteStaticSeries(scenarioData, cfg);
+  const shockTrials = buildSharedReturnShocks(cfg, trials, scenarioData, monteSettings);
+  const lifeIndex = Math.max(0, Math.min((base?.labels?.length || 1) - 1, Number(cfg.lifeExpect || 0) - Number(cfg.age || 0)));
+  const plottedLifeIndex = lifeIndex;
+  const finalsAtLife = [];
+  let fail = 0;
+  let bestIndex = 0;
+  let worstIndex = 0;
+  if(progressReporter) await progressReporter(5, {force:true, detail:'乱数列を準備中'});
+  for(let i=0;i<trials;i++){
+    const finalSim = simulateMonteFinalOnly(cfg, staticSeries, shockTrials[i], plottedLifeIndex);
+    const finalValue = Number(finalSim?.finalAtLife || 0) || 0;
+    finalsAtLife.push(finalValue);
+    if(finalValue <= 0) fail++;
+    if(i !== 0){
+      if(finalValue > (Number(finalsAtLife[bestIndex]) || 0)) bestIndex = i;
+      if(finalValue < (Number(finalsAtLife[worstIndex]) || 0)) worstIndex = i;
+    }
+    if(progressReporter && (i % 10 === 0 || i === trials - 1)){
+      await progressReporter(5 + ((i + 1) / Math.max(1, trials)) * 30, {detail:`試行 ${i + 1}/${trials}`});
+    }
+  }
+  const prob = Math.round(fail / Math.max(1, trials) * 100);
+  return {
+    lifeIndex,
+    fail,
+    prob,
+    finalsAtLife,
+    bestIndex,
+    worstIndex,
+    trials,
+    displayCache:{},
+    fixedFinalAtLife:Number(base?.totalAssets?.[plottedLifeIndex] ?? base?.totalAssets?.at?.(-1) ?? 0) || 0
+  };
+}
+async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSettings, scenarioDataOverride, progressReporter=null){
+  const run = monteRun || {};
+  const trials = Math.max(1, Number(run.trials || 0) || clampMonteTrials(monteSettings?.trials || 80));
+  const drawPaths = Math.max(1, Math.min(trials, Math.round(Number(monteSettings?.drawPaths) || trials)));
+  if(!run.displayCache) run.displayCache = {};
+  const cacheKey = String(drawPaths);
+  if(run.displayCache[cacheKey]){
+    if(progressReporter) await progressReporter(96, {force:true, detail:'推移データを準備中'});
+    return run.displayCache[cacheKey];
+  }
+  const scenarioData = scenarioDataOverride || cfg || {};
+  const staticSeries = getOrBuildMonteStaticSeries(scenarioData, cfg);
+  const shockTrials = buildSharedReturnShocks(cfg, trials, scenarioData, monteSettings);
+  const displayIndices = pickMonteDisplayIndices(trials, drawPaths);
+  const plottedLifeIndex = Math.max(0, Math.min((Array.isArray(base?.labels) ? base.labels.length : 1) - 1, Number(run.lifeIndex) || 0));
+  const trialSeriesCache = new Map();
+  const trialValueCache = new Map();
+  let simulatedSeriesCount = 0;
+  const getSeries = async (trialIndex)=>{
+    const safeIndex = Math.max(0, Math.min(trials - 1, Number(trialIndex) || 0));
+    const key = String(safeIndex);
+    if(trialSeriesCache.has(key)) return trialSeriesCache.get(key);
+    const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shockTrials[safeIndex]});
+    const series = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+    trialSeriesCache.set(key, series);
+    trialValueCache.set(key, Number(series?.[plottedLifeIndex] ?? 0) || 0);
+    simulatedSeriesCount++;
+    if(progressReporter && (simulatedSeriesCount % 5 === 0 || simulatedSeriesCount === trials)){
+      await progressReporter(35 + (Math.min(simulatedSeriesCount, trials) / Math.max(1, trials)) * 57, {detail:`推移データ ${Math.min(simulatedSeriesCount, trials)}/${trials}`});
+    }
+    return series;
+  };
+  const getLifeValue = async (trialIndex)=>{
+    const safeIndex = Math.max(0, Math.min(trials - 1, Number(trialIndex) || 0));
+    const key = String(safeIndex);
+    if(trialValueCache.has(key)) return Number(trialValueCache.get(key) || 0) || 0;
+    await getSeries(safeIndex);
+    return Number(trialValueCache.get(key) || 0) || 0;
+  };
+  let bestIndex = 0;
+  let worstIndex = 0;
+  const finalsAtPlottedLife = [];
+  for(let i=0; i<trials; i++){
+    const value = await getLifeValue(i);
+    finalsAtPlottedLife.push(value);
+    if(i !== 0){
+      if(value > finalsAtPlottedLife[bestIndex]) bestIndex = i;
+      if(value < finalsAtPlottedLife[worstIndex]) worstIndex = i;
+    }
+  }
+  const displayResults = [];
+  for(const idx of displayIndices){
+    displayResults.push(await getSeries(idx));
+  }
+  const best = await getSeries(bestIndex);
+  const worst = await getSeries(worstIndex);
+  const labelLength = Array.isArray(base?.labels) ? base.labels.length : 0;
+  let maxSeriesLength = labelLength;
+  for(let i=0; i<trials; i++){
+    const series = await getSeries(i);
+    if(Array.isArray(series) && series.length > maxSeriesLength) maxSeriesLength = series.length;
+  }
+  const percentileSourceLength = maxSeriesLength;
+  const percentile10 = [];
+  const percentile50 = [];
+  const percentile90 = [];
+  const ruinAges = [];
+  for(let pointIndex=0; pointIndex<percentileSourceLength; pointIndex++){
+    const values = [];
+    for(let trialIndex=0; trialIndex<trials; trialIndex++){
+      const series = await getSeries(trialIndex);
+      const value = Number(series?.[pointIndex]);
+      if(Number.isFinite(value)) values.push(value);
+    }
+    values.sort((a,b)=>a-b);
+    percentile10.push(values.length ? percentileFromSorted(values, 0.10) : 0);
+    percentile50.push(values.length ? percentileFromSorted(values, 0.50) : 0);
+    percentile90.push(values.length ? percentileFromSorted(values, 0.90) : 0);
+    if(progressReporter && (pointIndex % 3 === 0 || pointIndex === percentileSourceLength - 1)){
+      await progressReporter(92 + ((pointIndex + 1) / Math.max(1, percentileSourceLength)) * 4, {detail:'分位点を集計中'});
+    }
+  }
+  for(let trialIndex=0; trialIndex<trials; trialIndex++){
+    const crossAge = getAssetZeroCrossAgeForGuide({labels:Array.isArray(base?.labels) ? base.labels : [], totalAssets:await getSeries(trialIndex)});
+    if(Number.isFinite(Number(crossAge))) ruinAges.push(Number(crossAge));
+    if(progressReporter && (trialIndex % 10 === 0 || trialIndex === trials - 1)){
+      await progressReporter(96 + ((trialIndex + 1) / Math.max(1, trials)) * 2, {detail:'資産寿命を集計中'});
+    }
+  }
+  ruinAges.sort((a,b)=>a-b);
+  const requiredRuinCountForMedian = Math.ceil(trials * 0.5);
+  const medianRuinAge = ruinAges.length >= requiredRuinCountForMedian ? ruinAges[requiredRuinCountForMedian - 1] : null;
+  const baseSeries = Array.isArray(base?.totalAssets) ? base.totalAssets : [];
+  const fixedFinalAtLife = Number(baseSeries?.[plottedLifeIndex] ?? 0) || 0;
+  const allFinalsSameAsFixed = finalsAtPlottedLife.every(v => Math.abs((Number(v) || 0) - fixedFinalAtLife) < 1e-9);
+  const allVisibleSame = [best, worst, ...displayResults].every(r => r.length === baseSeries.length && r.every((v, i)=>Math.abs((Number(v) || 0) - (Number(baseSeries[i]) || 0)) < 1e-9));
+  const bundle = {
+    drawPaths,
+    displayIndices,
+    displayResults,
+    best,
+    worst,
+    percentile10,
+    percentile50,
+    percentile90,
+    medianRuinAge:Number.isFinite(Number(medianRuinAge)) ? Number(medianRuinAge) : null,
+    bestIndex,
+    worstIndex,
+    finalsAtPlottedLife,
+    plottedLifeIndex,
+    allSame: allFinalsSameAsFixed && allVisibleSame
+  };
+  run.displayCache[cacheKey] = bundle;
+  if(progressReporter) await progressReporter(98, {force:true, detail:'グラフを準備中'});
+  return bundle;
+}
+async function getOrBuildMonteRunCacheAsync(scenario, cfg, base, monteSettingsOverride, progressReporter=null){
+  const data = scenario?.data || cfg || {};
+  const monteSettings = monteSettingsOverride || cfg?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const cached = getMonteRunCacheEntry(data, monteSettings);
+  if(cached?.value){
+    if(progressReporter) await progressReporter(35, {force:true, detail:'キャッシュを読み込み中'});
+    return cached.value;
+  }
+  const value = await buildMonteRunResultAsync(cfg, base, monteSettings, data, progressReporter);
+  setMonteRunCacheEntry(data, monteSettings, value);
+  return value;
+}
+async function buildAssetProbabilityStoredResultAsync(scenario, cfg, base, monteSettings, progressReporter=null){
+  const monteRun = await getOrBuildMonteRunCacheAsync(scenario, cfg, base, monteSettings, progressReporter);
+  const displayBundle = await buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSettings, scenario?.data || cfg, progressReporter);
+  const labels = Array.isArray(base?.labels) ? base.labels.slice() : [];
+  const displayResults = Array.isArray(displayBundle?.displayResults) ? displayBundle.displayResults : [];
+  const best = Array.isArray(displayBundle?.best) ? displayBundle.best : [];
+  const worst = Array.isArray(displayBundle?.worst) ? displayBundle.worst : [];
+  const finalsAtLife = Array.isArray(displayBundle?.finalsAtPlottedLife) ? displayBundle.finalsAtPlottedLife.slice() : (Array.isArray(monteRun?.finalsAtLife) ? monteRun.finalsAtLife.slice() : []);
+  if(progressReporter) await progressReporter(99, {force:true, detail:'結果を反映中'});
+  return {
+    labels,
+    displayedPathIndices:Array.isArray(displayBundle?.displayIndices) ? displayBundle.displayIndices.slice() : [],
+    paths:displayResults.map(series=>Array.isArray(series) ? series.slice() : []),
+    deterministicSeries:Array.isArray(base?.totalAssets) ? base.totalAssets.slice(0, labels.length) : [],
+    percentile10:Array.isArray(displayBundle?.percentile10) ? displayBundle.percentile10.slice(0, labels.length) : [],
+    percentile50:Array.isArray(displayBundle?.percentile50) ? displayBundle.percentile50.slice(0, labels.length) : [],
+    percentile90:Array.isArray(displayBundle?.percentile90) ? displayBundle.percentile90.slice(0, labels.length) : [],
+    medianRuinAge:Number.isFinite(Number(displayBundle?.medianRuinAge)) ? Number(displayBundle.medianRuinAge) : null,
+    bestSeries:Array.isArray(best) ? best.slice(0, labels.length) : [],
+    worstSeries:Array.isArray(worst) ? worst.slice(0, labels.length) : [],
+    finalsAtLife,
+    ruinProbability:Number(monteRun?.prob || 0) || 0,
+    trials:clampMonteTrials(monteSettings?.trials || 80),
+    drawPaths:Math.max(1, Math.min(clampMonteTrials(monteSettings?.trials || 80), Math.round(Number(monteSettings?.drawPaths) || 80))),
+    settingsSummary:formatAssetProbabilitySettingsSummary(monteSettings),
+    settingsSnapshot:JSON.parse(JSON.stringify(monteSettings || {})),
+    lifeIndex:Number(monteRun?.lifeIndex || 0) || 0,
+    computedAt:new Date().toISOString(),
+    inputHash:buildMonteCarloInputHashFromData(scenario?.data || cfg)
   };
 }
 function buildAssetProbabilityStoredResult(scenario, cfg, base, monteSettings){
@@ -7260,45 +7655,53 @@ function buildAssetProbabilityStoredResult(scenario, cfg, base, monteSettings){
     inputHash:buildMonteCarloInputHashFromData(scenario?.data || cfg)
   };
 }
-function runSingleAssetProbabilityCalculation(){
+async function runSingleAssetProbabilityCalculation(settingsOverride=null, progressReporter=null){
   const scenario = getCurrentScenarioMonteCarloState();
-  if(!scenario || scenario.monteCarloStatus === "running") return;
+  if(!scenario || scenario.monteCarloStatus === "running") return false;
   scenario.monteCarloStatus = "running";
   scenario.monteCarloError = "";
   updateAssetProbabilityControls();
   try{
     const currentDisplayCfg = getScenarioFromDOM();
     const currentCache = getOrBuildNormalScenarioCache(scenario, scenario, currentDisplayCfg, null);
-    const monteSettings = getMonteCarloSettingsFromDOM();
-    const result = buildAssetProbabilityStoredResult(scenario, currentCache.cfg, currentCache.sim, monteSettings);
+    const requestedMonteSettings = settingsOverride || getMonteCarloSettingsFromDOM();
+    const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
+    const result = progressReporter
+      ? await buildAssetProbabilityStoredResultAsync(scenario, currentCache.cfg, currentCache.sim, monteSettings, progressReporter)
+      : buildAssetProbabilityStoredResult(scenario, currentCache.cfg, currentCache.sim, monteSettings);
+    result.settingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
     scenario.monteCarloResult = result;
-    scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(monteSettings || {}));
+    scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
     scenario.monteCarloInputHash = result.inputHash || buildMonteCarloInputHashFromData(scenario.data || currentCache.cfg);
     scenario.monteCarloComputedAt = result.computedAt || new Date().toISOString();
     scenario.monteCarloDirty = false;
     scenario.monteCarloStatus = "idle";
     scenario.monteCarloError = "";
     persistState();
+    return true;
   }catch(err){
     console.error(err);
     scenario.monteCarloStatus = "error";
     scenario.monteCarloError = String(err?.message || err || "");
+    return false;
   }
 }
-function buildAssetProbabilityOverlayMonteSettings(){
-  const base = getMonteCarloSettingsFromDOM();
-  return {...base, seedOn:true, seedValue:Math.round(Number(base?.seedValue || 12345) || 12345)};
+function buildAssetProbabilityOverlayMonteSettings(settingsOverride=null){
+  const base = settingsOverride || getMonteCarloSettingsFromDOM();
+  return normalizeMonteSettingsForAssetProbabilityRun(base);
 }
-function runAssetProbabilityOverlayCalculation(){
+async function runAssetProbabilityOverlayCalculation(settingsOverride=null, progressReporter=null){
   const entries = getAssetProbabilityOverlayEntries();
-  if(!entries.length) return;
+  if(!entries.length) return false;
+  const requestedMonteSettings = settingsOverride || getMonteCarloSettingsFromDOM();
+  const seedFixed = !!requestedMonteSettings?.seedOn;
   const pendingEntries = getAssetProbabilityOverlayPendingEntries(entries);
-  const targets = pendingEntries.length ? pendingEntries : entries;
-  if(isAssetProbabilityOverlayRunning(entries)) return;
+  const targets = seedFixed ? (pendingEntries.length ? pendingEntries : entries) : entries;
+  if(isAssetProbabilityOverlayRunning(entries)) return false;
   const currentScenario = scenarios[currentTab];
   const currentDisplayCfg = getScenarioFromDOM();
   const currentCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
-  const monteSettings = buildAssetProbabilityOverlayMonteSettings();
+  const monteSettings = buildAssetProbabilityOverlayMonteSettings(requestedMonteSettings);
   targets.forEach(entry=>{
     const scenario = ensureScenarioMonteCarloState(entry.scenario);
     if(!scenario) return;
@@ -7307,20 +7710,35 @@ function runAssetProbabilityOverlayCalculation(){
   });
   updateAssetProbabilityControls();
   try{
-    targets.forEach(entry=>{
+    for(let targetIndex=0; targetIndex<targets.length; targetIndex++){
+      const entry = targets[targetIndex];
       const scenario = ensureScenarioMonteCarloState(entry.scenario);
-      if(!scenario) return;
+      if(!scenario) continue;
+      const stageStart = targets.length ? (targetIndex / targets.length) * 100 : 0;
+      const stageSpan = targets.length ? 100 / targets.length : 100;
+      const scenarioLabel = entry?.label || scenario?.name || `タブ${targetIndex + 1}`;
+      const scopedProgress = progressReporter ? async (progress, options={})=>{
+        await progressReporter(stageStart + (Math.max(0, Math.min(100, Number(progress) || 0)) / 100) * stageSpan, {
+          ...options,
+          detail: options.detail ? `${scenarioLabel}：${options.detail}` : scenarioLabel
+        });
+      } : null;
       const cache = getOrBuildNormalScenarioCache(scenario, currentScenario, currentCache.cfg, currentCache.sim);
-      const result = buildAssetProbabilityStoredResult(scenario, cache.cfg, cache.sim, monteSettings);
+      const result = scopedProgress
+        ? await buildAssetProbabilityStoredResultAsync(scenario, cache.cfg, cache.sim, monteSettings, scopedProgress)
+        : buildAssetProbabilityStoredResult(scenario, cache.cfg, cache.sim, monteSettings);
+      result.settingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
       scenario.monteCarloResult = result;
-      scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(monteSettings || {}));
+      scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
       scenario.monteCarloInputHash = result.inputHash || buildMonteCarloInputHashFromData(scenario.data || cache.cfg);
       scenario.monteCarloComputedAt = result.computedAt || new Date().toISOString();
       scenario.monteCarloDirty = false;
       scenario.monteCarloStatus = "idle";
       scenario.monteCarloError = "";
-    });
+      updateAssetProbabilityControls();
+    }
     persistState();
+    return true;
   }catch(err){
     console.error(err);
     targets.forEach(entry=>{
@@ -7329,17 +7747,28 @@ function runAssetProbabilityOverlayCalculation(){
       scenario.monteCarloStatus = "error";
       scenario.monteCarloError = String(err?.message || err || "");
     });
+    return false;
   }
 }
-function runAssetProbabilityCalculation(){
+async function runAssetProbabilityCalculation(settingsOverride=null){
   clearScheduledDraw();
   ensureScenarioSaved();
-  if(workspaceOverlayModeOn){
-    runAssetProbabilityOverlayCalculation();
-  }else{
-    runSingleAssetProbabilityCalculation();
+  showAssetProbabilityProgressOverlay('確率計算中...', workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中');
+  await reportAssetProbabilityProgress(0, {force:true, detail:workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中'});
+  const progressReporter = async (progress, options={})=>{
+    await reportAssetProbabilityProgress(progress, {label:'確率計算中...', ...(options || {})});
+  };
+  try{
+    const success = workspaceOverlayModeOn
+      ? await runAssetProbabilityOverlayCalculation(settingsOverride, progressReporter)
+      : await runSingleAssetProbabilityCalculation(settingsOverride, progressReporter);
+    if(success) await reportAssetProbabilityProgress(100, {force:true, detail:'完了'});
+    else await reportAssetProbabilityProgress(0, {force:true, label:'計算に失敗しました', detail:'再試行してください'});
+  }finally{
+    drawAssetProbabilityShell();
+    updateAssetProbabilityControls();
+    hideAssetProbabilityProgressOverlay(220);
   }
-  drawAssetProbabilityShell();
 }
 
 function ensureAssetProbabilityLegendState(chartInstance){
@@ -8143,9 +8572,16 @@ function buildAssetProbabilityOverlayRuinSummaryPlugin(entries){
       const maxItems = compactLayout ? 3 : 5;
       const shown = visibleEntries.slice(0, maxItems);
       const restCount = Math.max(0, visibleEntries.length - shown.length);
-      const pieces = shown.map(entry=>`${entry.name} ${formatPercentOneDecimal(entry.prob)}`);
-      if(restCount > 0) pieces.push(`ほか${restCount}件`);
-      const text = `破綻確率：${pieces.join("｜")}`;
+      const textRuns = [];
+      textRuns.push({text:"破綻確率：", color:"#475569"});
+      shown.forEach((entry, idx)=>{
+        if(idx > 0) textRuns.push({text:"｜", color:"#94a3b8"});
+        textRuns.push({text:`${entry.name} ${formatPercentOneDecimal(entry.prob)}`, color:hexToRgbaString(entry.color || "#475569", 0.92)});
+      });
+      if(restCount > 0){
+        if(shown.length > 0) textRuns.push({text:"｜", color:"#94a3b8"});
+        textRuns.push({text:`ほか${restCount}件`, color:"#64748b"});
+      }
       ctx.save();
       ctx.font = compactLayout ? "11px Arial" : "12px Arial";
       ctx.textAlign = "left";
@@ -8153,13 +8589,28 @@ function buildAssetProbabilityOverlayRuinSummaryPlugin(entries){
       const x = area.left + 10;
       const y = area.top + 25;
       const maxWidth = Math.max(80, area.right - x - 10);
-      let drawText = text;
-      while(drawText.length > 0 && ctx.measureText(drawText).width > maxWidth){
-        drawText = drawText.slice(0, -1);
+      let cursorX = x;
+      let remainingWidth = maxWidth;
+      for(let i = 0; i < textRuns.length; i++){
+        let runText = String(textRuns[i].text || "");
+        if(!runText) continue;
+        const runWidth = ctx.measureText(runText).width;
+        if(runWidth > remainingWidth){
+          let clipped = runText;
+          while(clipped.length > 0 && ctx.measureText(clipped + "…").width > remainingWidth){
+            clipped = clipped.slice(0, -1);
+          }
+          if(clipped.length > 0){
+            ctx.fillStyle = textRuns[i].color || "#475569";
+            ctx.fillText(clipped + "…", cursorX, y);
+          }
+          break;
+        }
+        ctx.fillStyle = textRuns[i].color || "#475569";
+        ctx.fillText(runText, cursorX, y);
+        cursorX += runWidth;
+        remainingWidth -= runWidth;
       }
-      if(drawText.length < text.length) drawText = drawText.replace(/…?$/u, "") + "…";
-      ctx.fillStyle = "#475569";
-      ctx.fillText(drawText, x, y);
       ctx.restore();
     }
   };
@@ -8229,7 +8680,6 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
   updateAssetProbabilityControls();
 }
 function drawAssetProbabilityShell(){
-  monteMode = false;
   ensureScenarioSaved();
   const currentScenario = scenarios[currentTab];
   const scenarioState = ensureScenarioMonteCarloState(currentScenario);
@@ -8852,7 +9302,7 @@ function saveOverlaySettingsModal(){
     updateInputsVisibility();
   }
   renderTabs();
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
   persistState();
 }
 function getOrBuildNormalScenarioCache(scenario, currentScenario, currentCfg, currentSim){
@@ -11010,7 +11460,6 @@ function applyInsuranceAssistModal(){
   }
   setAllInputs(data);
   updatePeriodDisplays();
-  monteMode = false;
   requestDraw();
   persistState();
   closeInsuranceAssistModal();
@@ -13906,7 +14355,6 @@ function applySimpleModeFieldValue(key, rawValue, commit = false){
   if(!commit) return;
   const values = collectSimpleModeValuesFromUI();
   writeSimpleModeValuesToDetail(values, key);
-  monteMode = false;
   syncCurrentScenarioFromDOM(false);
   requestDraw();
   persistState();
@@ -14711,8 +15159,7 @@ function confirmDeleteCurrentTab(){
   if(!scenarios.length){
     nextScenarioSerial = 1;
     currentTab = -1;
-    monteMode = false;
-    updateInputsVisibility();
+      updateInputsVisibility();
     renderTabs();
     closeDeleteTabModal();
     persistState();
@@ -14720,7 +15167,6 @@ function confirmDeleteCurrentTab(){
   }
   currentTab = workspaceOverlayModeOn ? getLeftmostVisibleOverlayIndex() : Math.min(deleteIndex, scenarios.length - 1);
   enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
-  monteMode = false;
   updateInputsVisibility();
   renderTabs();
   draw();
@@ -14733,7 +15179,6 @@ function switchTab(i){
   ensureScenarioSaved();
   currentTab = i;
   enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
-  monteMode = false;
   updateInputsVisibility();
   renderTabs();
   requestDraw({immediate:true});
@@ -14799,7 +15244,6 @@ function resetChartViewportForTabClick(){
   if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
   if(fixedScaleEl) fixedScaleEl.checked = false;
-  monteMode = false;
 }
 function clearTabDropIndicators(){
   document.querySelectorAll('#tabButtons .tab-btn.tab-drop-before, #tabButtons .tab-btn.tab-drop-after').forEach(btn=>{
@@ -18067,7 +18511,7 @@ function refreshCrashPreviewGraph(){
   if(currentTab !== crashTestPreviewSourceTab) return;
   applyCrashPreviewToScenario(crashTestDraft);
   syncCurrentScenarioFromDOM(false);
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
 }
 function restoreCrashPreviewSnapshot(snapshot){
   const hidden = document.getElementById('crashTestsJson');
@@ -18078,7 +18522,7 @@ function restoreCrashPreviewSnapshot(snapshot){
   renderCrashTestRows();
   initializeCrashCompareModal();
   syncCurrentScenarioFromDOM(false);
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
 }
 function commitCrashPreviewState(){
   syncCrashTestDraftFromModal();
@@ -18087,6 +18531,7 @@ function commitCrashPreviewState(){
 }
 function openCrashPreviewSheet(){
   if(isAnyPreviewSheetOpen()) return;
+  beginAssetProbabilityPreviewMonteSnapshot();
   crashTestPreviewSnapshot = captureCrashPreviewSnapshot();
   crashTestDraft = createCrashPreviewWorkingState();
   crashTestPreviewSourceTab = currentTab;
@@ -18108,6 +18553,7 @@ function closeCrashTestModal(){
   applyTabOrder();
 }
 function cancelCrashPreviewSheet(){
+  restoreAssetProbabilityPreviewMonteSnapshot();
   restoreCrashPreviewSnapshot(crashTestPreviewSnapshot);
   if(crashCompareRunTimer){ clearTimeout(crashCompareRunTimer); crashCompareRunTimer = null; }
   if(crashCompareChart){ crashCompareChart.destroy(); crashCompareChart = null; }
@@ -18115,10 +18561,11 @@ function cancelCrashPreviewSheet(){
   closeCrashTestModal();
 }
 function saveCrashPreviewSheet(){
+  clearAssetProbabilityPreviewMonteSnapshot();
   commitCrashPreviewState();
   syncCrashCompareHiddenFromModal();
   syncCurrentScenarioFromDOM(true);
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
   persistState();
   crashTestPreviewSnapshot = captureCrashPreviewSnapshot();
   if(crashCompareRunTimer){ clearTimeout(crashCompareRunTimer); crashCompareRunTimer = null; }
@@ -18404,7 +18851,8 @@ function buildMonteFinalStatsFromCrashCases(cfgBase, cases, shockTrials){
 function runCrashComparisonCalculation(){
   const cfgBase = getScenarioFromDOM();
   cfgBase.crashTests = getCrashCompareRows();
-  const monteSettings = cfgBase?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const requestedMonteSettings = cfgBase?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
   const trials = clampMonteTrials(monteSettings?.trials || 80);
   const cases = getCrashComparisonCases(cfgBase);
   if(!cases.length) return [];
@@ -18609,7 +19057,7 @@ function renderCrashComparisonResults(results){
         const paramDef = getCrashCompareParamDefinition(row?.timingType, document.getElementById('crashCompareParamKey')?.value || '');
         status.textContent = `同一乱数列で 1つの比較パラメータだけを変えた ${results.length} ケースを比較しています。`;
       }else{
-        status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
+        status.textContent = '比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
       }
     }
   }catch(chartErr){
@@ -18650,9 +19098,9 @@ function updateCrashComparePendingStatus(){
   const status = document.getElementById('crashCompareStatus');
   if(!status) return;
   if(getCrashCompareMode() === 'parameter'){
-    status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
+    status.textContent = '比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
   }else{
-    status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
+    status.textContent = '比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
   }
 }
 function updateCrashCompareModeUI(options={}){
@@ -18670,9 +19118,9 @@ function updateCrashCompareModeUI(options={}){
   if(isParameter){
     rebuildCrashCompareCases(false);
     renderCrashCompareCaseEditor();
-    if(status && !crashCompareCache) status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
+    if(status && !crashCompareCache) status.textContent = '比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
   }else{
-    if(status && !crashCompareCache) status.textContent = '比較条件を設定して「暴落比較」を押すと、同一乱数列で比較します。';
+    if(status && !crashCompareCache) status.textContent = '比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
   }
   if(!crashCompareCache){
     const body = document.getElementById('crashCompareBody');
@@ -18950,7 +19398,7 @@ function updateFireDiagnosisJudgementUi(){
     const noteBody = monteNote.querySelector('.withdrawal-rule-summary');
     if(noteBody){
       noteBody.textContent = isMonte
-        ? 'モンテカルロ診断では、既存の確率（モンテカルロ）設定の計算回数・利回りモデル・シード設定を利用します。暴落ケースでは「暴落なし」「暴落あり」「暴落なし／あり比較」を選べます。暴落ありでは、設定済みの暴落シナリオを診断に反映します。'
+        ? 'モンテカルロ診断では、確率（モンテカルロ）設定の計算回数・利回りモデル・乱数シード設定を利用します。固定シード値を使用する場合は同じ乱数列で再現計算し、使用しない場合は診断のたびに新しい乱数列で計算します。暴落なし／あり比較では、各回の比較で両方に同じ乱数列を使います。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。'
         : '暴落ケースでは「暴落なし」「暴落あり」「暴落なし／あり比較」を選べます。暴落ありでは、設定済みの暴落シナリオを診断に反映します。比較では、暴落なしと暴落ありのFIRE可能年齢を比較します。';
     }
   }
@@ -19538,7 +19986,8 @@ function buildMonteCarloFireProbabilitySeries(centerAge, radius, options, baseSc
   });
 }
 function runMonteCarloFireDiagnosis(baseScenario, options){
-  const monteSettings = getMonteCarloSettingsFromDOM();
+  const requestedMonteSettings = options?.monteSettingsOverride || getMonteCarloSettingsFromDOM();
+  const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
   const applyCrash = options?.mode === 'with_crash';
   const contexts = buildMonteCarloFireTrialContexts(baseScenario, {monteSettings, trials:monteSettings.trials, applyCrash});
   const searchResult = findMonteCarloFireAgeBinary(baseScenario, {
@@ -20172,9 +20621,10 @@ function runFireDiagnosisCore(baseData, settings){
   const activeState = captureActiveInputState();
   try{
     if(settings.diagnosisType === 'monte_carlo'){
+      const monteExecutionSettings = normalizeMonteSettingsForAssetProbabilityRun(getMonteCarloSettingsFromDOM());
       if(settings.mode === 'compare_crash'){
-        const normal = runMonteCarloFireDiagnosis(originalData, {...settings, mode:'normal'});
-        const withCrash = runMonteCarloFireDiagnosis(originalData, {...settings, mode:'with_crash'});
+        const normal = runMonteCarloFireDiagnosis(originalData, {...settings, mode:'normal', monteSettingsOverride:monteExecutionSettings});
+        const withCrash = runMonteCarloFireDiagnosis(originalData, {...settings, mode:'with_crash', monteSettingsOverride:monteExecutionSettings});
         return {
           diagnosisType:'monte_carlo',
           mode:'compare_crash',
@@ -20189,7 +20639,7 @@ function runFireDiagnosisCore(baseData, settings){
           withCrash
         };
       }
-      return runMonteCarloFireDiagnosis(originalData, settings);
+      return runMonteCarloFireDiagnosis(originalData, {...settings, monteSettingsOverride:monteExecutionSettings});
     }
     if(settings.mode === 'compare_crash'){
       const normal = runSingleFireDiagnosisCore(originalData, {...settings, mode:'normal'});
@@ -20375,17 +20825,6 @@ function buildMonteCarloShockTrials(cfg, settings){
   }
   return out;
 }
-function pickMonteDisplayPaths(results, drawPaths){
-  if(!Array.isArray(results) || !results.length) return [];
-  const maxPaths = Math.max(1, Math.min(results.length, Math.round(Number(drawPaths) || results.length)));
-  if(results.length <= maxPaths) return results;
-  const out = [];
-  for(let i=0;i<maxPaths;i++){
-    const idx = Math.round(i * (results.length - 1) / Math.max(1, maxPaths - 1));
-    out.push(results[idx]);
-  }
-  return out;
-}
 function pickMonteDisplayIndices(totalTrials, drawPaths){
   const total = Math.max(1, Math.round(Number(totalTrials) || 0));
   const maxPaths = Math.max(1, Math.min(total, Math.round(Number(drawPaths) || total)));
@@ -20396,22 +20835,6 @@ function pickMonteDisplayIndices(totalTrials, drawPaths){
     out.push(idx);
   }
   return out;
-}
-function getMonteChartStartTotal(cfg){
-  const deposits = Array.isArray(cfg?.deposits) ? cfg.deposits : [];
-  const investments = Array.isArray(cfg?.investments) ? cfg.investments : [];
-  const safeAssets = initializeSafeAssetState(cfg);
-  const depositTotal = deposits.reduce((s, d)=>s + (Number(d?.amount) || 0), 0);
-  const investmentTotal = investments.reduce((s, inv)=>s + (Number(inv?.amount) || 0), 0);
-  const safeTotal = currentSafeAssetTotal(safeAssets, Number(cfg?.age) || 0) || 0;
-  return depositTotal + investmentTotal + safeTotal;
-}
-function buildMontePlotSeries(cfg, labels, series){
-  const safeLabels = Array.isArray(labels) ? labels.slice() : [];
-  const safeSeries = Array.isArray(series) ? series.slice() : [];
-  if(!safeLabels.length) return {labels:safeLabels, values:safeSeries};
-  const startTotal = getMonteChartStartTotal(cfg);
-  return {labels:safeLabels, values:[startTotal, ...safeSeries.slice(0, Math.max(0, safeLabels.length - 1))]};
 }
 function getMonteDistributionAxisMax(cfg){
   const currentMax = Number(cfg?.xAxisMax);
@@ -22918,7 +23341,7 @@ function setLifeGuideVisibility(chartInstance, key, visible){
 }
 function shouldShowLifeGuideLegend(chartInstance){
   const graphType = chartInstance?.$graphType || document.getElementById("graphType")?.value || "";
-  return shouldDrawMainChartLifeGuides(graphType) && !(typeof monteMode !== "undefined" && monteMode);
+  return shouldDrawMainChartLifeGuides(graphType);
 }
 function isCompactLifeGuideLabel(){
   try{
@@ -24781,7 +25204,7 @@ function renderCustomChartLegend(chartInstance, display){
 function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   const symmetric = false;
   const axis = getAxisBounds(yData, {...cfg, _graphType:graphType}, symmetric);
-  const showLegend = overlay || monteMode || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
+  const showLegend = overlay || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   const rawXMin = Math.min(cfg.xAxisMin ?? cfg.age, cfg.xAxisMax);
   const rawXMax = cfg.xAxisMax;
   const xPadding = (graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? 0.5 : 0;
@@ -24970,13 +25393,8 @@ function restoreActiveInputState(state){
 function getScenarioConfigAndSimForDrawing(scenario, currentScenario, currentCfg, currentSim){
   return getOrBuildNormalScenarioCache(scenario, currentScenario, currentCfg, currentSim);
 }
-function getScenarioMonteBaseForDrawing(scenario, currentScenario, currentCfg, currentBase){
-  const cached = getOrBuildNormalScenarioCache(scenario, currentScenario, currentCfg, currentBase);
-  return {cfg: cached.cfg, base: cached.sim};
-}
 
 function draw(){
-  monteMode = false;
   ensureScenarioSaved();
   const graphType = document.getElementById("graphType").value;
   const chartFrameEl = document.getElementById("chartCanvasStickyWrap");
@@ -25046,7 +25464,7 @@ function draw(){
   const pendingLegendState = chartLegendVisibilityState.get(String(legendContextKey || '')) || null;
   const pendingLifeGuideState = pendingLegendState?.lifeGuide ? {...pendingLegendState.lifeGuide} : null;
   if(chart) chart.destroy();
-  const customLegendDisplay = overlay || monteMode || shouldDrawMainChartLifeGuides(graphType) || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
+  const customLegendDisplay = overlay || shouldDrawMainChartLifeGuides(graphType) || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
@@ -25065,179 +25483,6 @@ function draw(){
     chart.update('none');
   }
   renderCustomChartLegend(chart, customLegendDisplay);
-}
-
-function runMonte(settingsOverride=null){
-  clearScheduledDraw();
-  updateAssetProbabilityControls();
-  monteMode = true;
-  ensureScenarioSaved();
-  const overlay = !!workspaceOverlayModeOn;
-  const currentScenario = scenarios[currentTab];
-  const overlayEntries = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice().reverse() : [];
-  const targets = overlayEntries.length ? overlayEntries : [{scenario: currentScenario, index: currentTab, style: getOverlayStylesForTab(currentTab)?.[currentScenario?.id] || {color:getDefaultOverlayColorByIndex(currentTab), lineStyle:DEFAULT_OVERLAY_LINE_STYLE, lineWidth:DEFAULT_OVERLAY_LINE_WIDTH, fillArea:true}}];
-  const currentDisplayCfg = getScenarioFromDOM();
-  const currentBaseCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
-  const currentCfg = currentBaseCache.cfg;
-  const currentBaseSim = currentBaseCache.sim;
-  const currentMonteSettings = settingsOverride || getMonteCarloSettingsFromDOM();
-  let datasets = [];
-  let yData = [];
-  let firstCfg = null;
-  let baseSim = null;
-  let monteInfo = null;
-
-  targets.forEach((entry, idx)=>{
-    const s = entry.scenario || entry;
-    const {cfg, base} = getScenarioMonteBaseForDrawing(s, currentScenario, currentCfg, currentBaseSim);
-    const monteSettings = currentMonteSettings;
-    const trials = clampMonteTrials(monteSettings.trials || 80);
-    if(idx===0){
-      firstCfg = cfg;
-      baseSim = base;
-    }
-
-    const monteRun = getOrBuildMonteRunCache(s, cfg, base, currentMonteSettings);
-    const displayBundle = buildMonteDisplayBundleFromRun(monteRun, cfg, base, monteSettings, s?.data || cfg);
-    const displayResults = displayBundle.displayResults || [];
-    const lifeIndex = monteRun.lifeIndex;
-    const fail = monteRun.fail;
-    const prob = monteRun.prob;
-    const best = displayBundle.best || [];
-    const worst = displayBundle.worst || [];
-    const color = entry.style?.color || getDefaultOverlayColorByIndex(entry.index ?? idx);
-    const overlayDash = getLineDashByOverlayStyle(entry.style?.lineStyle);
-    const overlayLegendIndex = Number.isFinite(Number(entry.index)) ? Number(entry.index) : idx;
-    const overlayWidth = resolveAssetOverlayLineWidth(entry.style?.lineWidth);
-    const allSame = !!displayBundle.allSame;
-    const plotLabels = Array.isArray(base.labels) ? base.labels.slice() : [];
-    const basePlot = buildMontePlotSeries(cfg, plotLabels, base.totalAssets);
-    const displayPlots = displayResults.map(r => buildMontePlotSeries(cfg, plotLabels, r));
-    const bestPlot = buildMontePlotSeries(cfg, plotLabels, best);
-    const worstPlot = buildMontePlotSeries(cfg, plotLabels, worst);
-    const distributionDataset = !overlay ? buildMonteDistributionDataset(cfg, displayBundle.finalsAtPlottedLife || monteRun.finalsAtLife, {label:'想定寿命時の総資産確率分布'}) : null;
-
-    if(overlay){
-      displayPlots.forEach(plot=>{
-        datasets.push(makeLineDataset("", plot.labels, plot.values, {
-          borderColor:color + "33", borderWidth:1, order:100
-        }));
-      });
-      datasets.push(makeLineDataset(`${s.name} ワースト`, worstPlot.labels, worstPlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [5,4], borderWidth:overlayWidth, order:4, _overlayIndex:overlayLegendIndex}));
-      datasets.push(makeLineDataset(`${s.name} ベスト`, bestPlot.labels, bestPlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:overlayWidth, order:3, _overlayIndex:overlayLegendIndex}));
-      datasets.push(makeLineDataset(`${s.name} 一定利率`, basePlot.labels, basePlot.values, {borderColor:color, borderDash:overlayDash.length ? overlayDash : [], borderWidth:overlayWidth, order:2, _overlayIndex:overlayLegendIndex}));
-    }else{
-      displayPlots.forEach(plot=>{
-        datasets.push(makeLineDataset("", plot.labels, plot.values, {
-          borderColor:"rgba(156,163,175,0.30)", borderWidth:1, order:100
-        }));
-      });
-      datasets.push(makeLineDataset("ワースト", worstPlot.labels, worstPlot.values, {borderColor:"red", borderWidth:2, order:4}));
-      datasets.push(makeLineDataset("ベスト", bestPlot.labels, bestPlot.values, {borderColor:"green", borderWidth:2, order:3}));
-      datasets.push(makeLineDataset("一定利率", basePlot.labels, basePlot.values, {borderColor:"black", borderWidth:2.5, order:2}));
-      if(distributionDataset) datasets.push({...distributionDataset, order:1});
-    }
-    displayPlots.forEach(plot=> yData.push(...getVisibleSeriesValues(plot.labels, plot.values, cfg.xAxisMax)));
-    yData.push(...getVisibleSeriesValues(basePlot.labels, basePlot.values, cfg.xAxisMax));
-    if(distributionDataset){
-      distributionDataset.data.forEach(point=>{ if(Number.isFinite(point?.y)) yData.push(Number(point.y) || 0); });
-    }
-    if(idx===0){
-      const summaryText = formatMonteSettingsSummary(monteSettings).replace(/<br>/g, ' ').replace(/<[^>]+>/g, '');
-      monteInfo = overlay
-        ? {prob, legendItems:[{text:`各ケースの試行 / ベスト / 一定利率 / ワースト（${summaryText}）`, color:TAB_COLORS[0]}, ...(allSame ? [{text:"全試行が一定利率と同一です（リスク資産や利回り設定を確認）", color:"#6b7280"}] : [])]}
-        : {prob, distributionMedian:distributionDataset?.medianMarker || null, legendItems:[{text:`グレー: 試行パス（表示 ${displayResults.length} 本 / 計算 ${trials} 回）`, color:"#6b7280"},{text:"緑: ベスト", color:"green"},{text:"黒: 一定利率", color:"black"},{text:"赤: ワースト", color:"red"},{text:"オレンジ: 想定寿命時の総資産確率分布", color:"#f59e0b"},{text:summaryText, color:"#2563eb"}, ...(allSame ? [{text:"全試行が一定利率と同一です（リスク資産や利回り設定を確認）", color:"#6b7280"}] : [])]};
-    }
-  });
-  const currentSim = currentBaseSim;
-  updateResultCards(currentCfg, currentSim);
-
-  const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'monte', graphType:'monteCarlo', overlay, targets}));
-  const monteYAxisUnitSpec = getMainChartYAxisUnitSpec(yData);
-  const compactMonteChartLayout = (typeof isMobile === "function") ? isMobile() : (window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches || false);
-  const monteChartLayoutPadding = compactMonteChartLayout ? {left:10, right:12} : {left:6, right:22};
-  const monteYTickPadding = compactMonteChartLayout ? 8 : 6;
-  if(chart) chart.destroy();
-  chart = new Chart(document.getElementById("chart").getContext("2d"), {
-    type:"line",
-    data:{datasets},
-    options:{
-      animation:false,
-      responsive:true,
-      maintainAspectRatio:false,
-      layout:{padding:monteChartLayoutPadding},
-      interaction:{mode:"nearest", intersect:true},
-      events:[],
-      plugins:{
-        legend:{display:false, labels:{
-          usePointStyle:true,
-          pointStyle:"line",
-          boxWidth:42,
-          boxHeight:10,
-          padding:14,
-          generateLabels(chart){
-            const base = Chart.defaults.plugins.legend.labels.generateLabels(chart) || [];
-            return base.map(item=>{
-              const ds = chart?.data?.datasets?.[item.datasetIndex] || {};
-              const borderColor = Array.isArray(ds.borderColor) ? ds.borderColor[0] : ds.borderColor;
-              return {
-                ...item,
-                pointStyle:"line",
-                fillStyle:"rgba(0,0,0,0)",
-                strokeStyle:borderColor || item.strokeStyle || item.fillStyle,
-                lineWidth:Math.max(2, Number(ds.borderWidth) || 2),
-                lineDash:Array.isArray(ds.borderDash) ? ds.borderDash.slice() : []
-              };
-            });
-          },
-          filter:(item, data)=>{
-          const ds = data?.datasets?.[item.datasetIndex];
-          return !!item.text && (!!ds ? ds.data.some(p=>Number.isFinite(p?.y) && Math.abs(p.y) > 1e-9) : true);
-        }, sort:(a,b,data)=>{
-          const da = data?.datasets?.[a.datasetIndex];
-          const db = data?.datasets?.[b.datasetIndex];
-          const ia = Number.isFinite(Number(da?._overlayIndex)) ? Number(da._overlayIndex) : Number(a.datasetIndex || 0);
-          const ib = Number.isFinite(Number(db?._overlayIndex)) ? Number(db._overlayIndex) : Number(b.datasetIndex || 0);
-          if(ia !== ib) return ia - ib;
-          return Number(a.datasetIndex || 0) - Number(b.datasetIndex || 0);
-        }}},
-        tooltip:{
-          enabled:false,
-          external:(context)=>renderExternalChartTooltip(context, monteYAxisUnitSpec, "asset", baseSim),
-          callbacks:{
-            title(items){
-              const first = items?.[0];
-              if(!first) return '';
-              const datasetLabel = String(first.dataset?.label || '');
-              if(datasetLabel.includes('想定寿命時の総資産確率分布')){
-                return datasetLabel;
-              }
-              return getCalendarWindowTooltipTitle(baseSim, first.parsed?.x ?? first.label);
-            },
-            label(ctx){
-              const raw = ctx.parsed?.y ?? 0;
-              return `${ctx.dataset.label}: ${Math.round(raw).toLocaleString()}万円`;
-            }
-          }
-        }
-      },
-      scales:{
-        x:{type:"linear", min:Math.min(firstCfg.xAxisMin ?? firstCfg.age, getMonteDistributionAxisMax(firstCfg)), max:getMonteDistributionAxisMax(firstCfg), offset:false, bounds:"ticks", ticks:{stepSize:5, callback(value){ return getCalendarWindowTickLabel(baseSim, value); }}, title:{display:true,text:getXAxisTitleText()}},
-        y:{
-          title:{display:true,text:`総資産（${monteYAxisUnitSpec.label}）`},
-          ...getAxisBounds(yData, firstCfg, false),
-          ticks:{includeBounds:false, padding:monteYTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, monteYAxisUnitSpec); }}
-        }
-      }
-    },
-    plugins:[pluginLines(firstCfg, baseSim, monteInfo)]
-  });
-  chart.$graphType = 'monteCarlo';
-  chart.$overlayMode = overlay;
-  chart.$legendContextKey = legendContextKey;
-  chart.$useStrictPointTooltip = true;
-  restoreChartLegendVisibilityState(chart);
-  renderCustomChartLegend(chart, overlay);
 }
 
 function getSaveData(){
@@ -26380,7 +26625,7 @@ function applyWithdrawalRulePreview(){
   if(currentTab !== withdrawalRulePreviewSourceTab) return;
   if(withdrawalRulePreviewApplyTimer){ clearTimeout(withdrawalRulePreviewApplyTimer); withdrawalRulePreviewApplyTimer = null; }
   syncCurrentScenarioFromDOM(false);
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
 }
 function scheduleWithdrawalRulePreview(){
   if(!isWithdrawalPreviewSheetOpen()) return;
@@ -26696,7 +26941,7 @@ function updateWithdrawalCompareModeUI(){
   }
   const status = document.getElementById('withdrawalCompareStatus');
   if(status && !withdrawalCompareCache){
-    status.textContent = '比較条件を設定して「取り崩し比較」を押すと、同一乱数列で比較します。';
+    status.textContent = '比較条件を設定して「取り崩し比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
     const body = document.getElementById('withdrawalCompareBody');
     if(body) body.innerHTML = '';
     setWithdrawalCompareResultsVisible(false);
@@ -26771,7 +27016,8 @@ function buildMonteFinalStatsFromCases(cfgBase, cases, shockTrials){
 }
 function runWithdrawalComparisonCalculation(){
   const cfgBase = getScenarioFromDOM();
-  const monteSettings = cfgBase?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const requestedMonteSettings = cfgBase?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
   const trials = clampMonteTrials(monteSettings?.trials || 80);
   const cases = getWithdrawalComparisonCases(cfgBase);
   if(!cases.length) return [];
@@ -29270,7 +29516,43 @@ function syncMonteSettingsModalFromHidden(){
   document.getElementById('monteSettingsEffectiveVolPct').value = settings.effectiveVolPct;
   document.getElementById('monteSettingsMeanRevPhi').value = settings.meanRevPhi;
   document.getElementById('monteSettingsSeedOn').checked = !!settings.seedOn;
-  document.getElementById('monteSettingsSeedValue').value = settings.seedValue;
+  const seedInput = document.getElementById('monteSettingsSeedValue');
+  if(seedInput){
+    seedInput.dataset.fixedSeedValue = String(Math.round(Number(settings.seedValue || 12345) || 12345));
+    seedInput.value = seedInput.dataset.fixedSeedValue;
+  }
+  updateMonteSettingsSeedInputState();
+}
+function getMonteSettingsSeedValueFromModal(){
+  const input = document.getElementById('monteSettingsSeedValue');
+  const saved = Math.round(Number(input?.dataset?.fixedSeedValue || 12345) || 12345);
+  const raw = Math.round(Number(input?.value || saved) || saved);
+  return Number.isFinite(raw) && raw > 0 ? raw : saved;
+}
+function updateMonteSettingsSeedInputState(){
+  const input = document.getElementById('monteSettingsSeedValue');
+  const field = document.getElementById('monteSettingsSeedValueField');
+  const checked = !!document.getElementById('monteSettingsSeedOn')?.checked;
+  if(!input) return;
+  if(checked){
+    input.type = 'text';
+    input.readOnly = false;
+    input.disabled = false;
+    input.removeAttribute('aria-disabled');
+    input.inputMode = 'numeric';
+    field?.classList.remove('monte-settings-seed-auto');
+    const seed = Math.round(Number(input.dataset.fixedSeedValue || input.value || 12345) || 12345);
+    input.value = String(seed || 12345);
+  }else{
+    const current = Math.round(Number(input.value || input.dataset.fixedSeedValue || 12345) || 12345);
+    if(Number.isFinite(current) && current > 0) input.dataset.fixedSeedValue = String(current);
+    input.type = 'text';
+    input.readOnly = true;
+    input.disabled = true;
+    input.setAttribute('aria-disabled', 'true');
+    input.value = '自動';
+    field?.classList.add('monte-settings-seed-auto');
+  }
 }
 function buildMonteSettingsFromModal(){
   const trials = clampMonteTrials(document.getElementById('monteSettingsTrials')?.value || 80);
@@ -29288,7 +29570,7 @@ function buildMonteSettingsFromModal(){
     meanRevInnovationStdPct: monteEffectiveVolToMeanRevInnovationStdPct(effectiveVolPct, meanRevPhi),
     meanRevPhi,
     seedOn: !!document.getElementById('monteSettingsSeedOn')?.checked,
-    seedValue: Math.round(Number(document.getElementById('monteSettingsSeedValue')?.value || 12345) || 12345)
+    seedValue: getMonteSettingsSeedValueFromModal()
   };
 }
 function applyMonteSettingsToHidden(settings){
@@ -29304,6 +29586,7 @@ function applyMonteSettingsToHidden(settings){
   document.getElementById('monteSeedValue').value = String(settings.seedValue);
 }
 function updateMonteSettingsModalUI(){
+  updateMonteSettingsSeedInputState();
   const settings = buildMonteSettingsFromModal();
   const model = settings.model;
   document.getElementById('monteSettingsUniformDerivedField')?.classList.toggle('monte-settings-hidden', model !== 'uniform');
@@ -29326,8 +29609,6 @@ function updateMonteSettingsModalUI(){
   }
   document.getElementById('monteSettingsSummary').innerHTML = formatMonteSettingsSummary(settings);
 }
-document.getElementById("crashTestBtn")?.addEventListener("click", openCrashTestModal);
-document.getElementById("fireDiagnosisBtn")?.addEventListener("click", openFireDiagnosisModal);
 document.getElementById("crashCompareMode")?.addEventListener("change", ()=>{ crashCompareCache = null; updateCrashCompareModeUI({autoRun:false}); });
 document.getElementById("crashCompareTargetIndex")?.addEventListener("change", ()=>{ crashCompareCache = null; rebuildCrashCompareCases(true); updateCrashCompareModeUI({autoRun:false}); });
 document.getElementById("crashCompareParamKey")?.addEventListener("change", ()=>{ crashCompareCache = null; rebuildCrashCompareCases(true); updateCrashCompareModeUI({autoRun:false}); });
@@ -29442,8 +29723,6 @@ document.getElementById("fireDiagnosisModal")?.addEventListener("mousedown", (e)
 let monteSettingsSnapshot = null;
 let monteSettingsPreviewSourceTab = -1;
 let monteSettingsPreviousGraphType = 'asset';
-let monteSettingsPreviousMonteMode = false;
-let monteSettingsPreviewHasRun = false;
 let monteCompareChart = null;
 let monteCompareCache = null;
 const MONTE_COMPARE_PARAM_DEFS = {
@@ -29558,7 +29837,7 @@ function renderMonteCompareCaseEditor(){
   const def = getMonteCompareParamDefinition(model, paramKey);
   const cases = parseMonteCompareCaseJson();
   wrap.classList.remove('withdrawal-rule-hidden');
-  if(help) help.textContent = '※ 1つの比較パラメータだけを変え、他の確率条件は固定したまま 2〜5 ケースを同一乱数列で比較します。';
+  if(help) help.textContent = '※ 1つの比較パラメータだけを変え、他の確率条件は固定したまま 2〜5 ケースを同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。';
   body.innerHTML = cases.map((item, idx)=>`<tr><td>${escapeHtml(item.label || `ケース${idx + 1}`)}</td><td><div class="input-unit"><input type="number" data-monte-compare-case-input="1" data-case-index="${idx}" value="${escapeHtml(String(item.value ?? ''))}" step="${escapeHtml(String(def?.step ?? 1))}" min="${escapeHtml(String(def?.min ?? ''))}" max="${escapeHtml(String(def?.max ?? ''))}"></div></td><td>${escapeHtml(def?.unit || '')}</td></tr>`).join('');
 }
 function rebuildMonteCompareCases(useDefaults=false){
@@ -29909,7 +30188,7 @@ function updateMonteCompareModeUI(){
   document.getElementById('monteCompareModeHelp')?.classList.toggle('withdrawal-rule-hidden', isParameter);
   if(!monteCompareCache) setMonteCompareResultsVisible(false);
   const status = document.getElementById('monteCompareStatus');
-  if(status && !monteCompareCache) status.textContent = '比較条件を設定して「確率比較」を押すと、同一乱数列で比較します。';
+  if(status && !monteCompareCache) status.textContent = '比較条件を設定して「確率比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
 }
 function renderMonteCompareResults(results){
   renderMonteCompareTable(results);
@@ -29937,7 +30216,8 @@ function runMonteCompare(){
   setTimeout(()=>{
     try{
       const cfgBase = getScenarioFromDOM();
-      const settings = buildMonteSettingsFromModal();
+      const requestedSettings = buildMonteSettingsFromModal();
+      const settings = normalizeMonteSettingsForAssetProbabilityRun(requestedSettings);
       const cases = buildMonteComparisonCases(settings);
       const results = buildMonteCompareStatsFromCases(cfgBase, cases);
       monteCompareCache = results;
@@ -29995,20 +30275,19 @@ function updateScenarioScopedModalTitles(){
 }
 function openMonteSettingsModal(){
   updateScenarioScopedModalTitles();
+  beginAssetProbabilityPreviewMonteSnapshot();
   monteSettingsSnapshot = {
     settings: getMonteCarloSettingsFromDOM(),
     ui: captureMonteSettingsUiState()
   };
   monteSettingsPreviewSourceTab = currentTab;
   monteSettingsPreviousGraphType = document.getElementById('graphType')?.value || 'asset';
-  monteSettingsPreviousMonteMode = !!monteMode;
-  monteSettingsPreviewHasRun = false;
   if(workspaceOverlayModeOn){
     workspaceOverlayModeOn = false;
     updateOverlayFeatureUI();
     renderTabs();
     syncCurrentScenarioFromDOM(false);
-    monteMode ? runMonte() : requestDraw({immediate:true});
+    requestDraw({immediate:true});
   }
   syncMonteSettingsModalFromHidden();
   restoreMonteSettingsUiState(monteSettingsSnapshot.ui);
@@ -30051,22 +30330,16 @@ function restoreMonteSettingsDisplayState(){
     graphTypeEl.removeAttribute('title');
     graphTypeEl.value = monteSettingsPreviousGraphType || 'asset';
   }
-  monteMode = !!monteSettingsPreviousMonteMode;
-  if(monteSettingsPreviousMonteMode) runMonte();
-  else requestDraw({immediate:true});
+  requestDraw({immediate:true});
 }
 function cancelMonteSettingsModal(){
+  restoreAssetProbabilityPreviewMonteSnapshot();
   if(monteSettingsSnapshot) restoreMonteSettingsUiState(monteSettingsSnapshot.ui);
   closeMonteSettingsModal();
   restoreMonteSettingsDisplayState();
 }
-function runMonteFromPreviewSheet(){
-  const settings = buildMonteSettingsFromModal();
-  updateMonteSettingsModalUI();
-  monteSettingsPreviewHasRun = true;
-  runMonte(settings);
-}
 function saveMonteSettingsModal(){
+  clearAssetProbabilityPreviewMonteSnapshot();
   const settings = buildMonteSettingsFromModal();
   applyMonteSettingsToHidden(settings);
   syncMonteCompareStateFromUi();
@@ -30080,11 +30353,11 @@ function saveMonteSettingsModal(){
     graphTypeEl.removeAttribute('title');
   }
   closeMonteSettingsModal();
-  if(monteSettingsPreviewHasRun || monteMode) runMonte();
-  else requestDraw({immediate:true});
+  requestDraw({immediate:true});
 }
 function openWithdrawalRuleModal(){
   updateScenarioScopedModalTitles();
+  beginAssetProbabilityPreviewMonteSnapshot();
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
   withdrawalRulePreviewSourceTab = currentTab;
   const withdrawalRuleModal = document.getElementById('withdrawalRuleModal');
@@ -30118,16 +30391,18 @@ function closeWithdrawalRuleModal(){
   applyTabOrder();
 }
 function cancelWithdrawalRuleModal(){
+  restoreAssetProbabilityPreviewMonteSnapshot();
   if(withdrawalRuleSnapshot) restoreWithdrawalRuleState(withdrawalRuleSnapshot);
   syncCurrentScenarioFromDOM(false);
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
   closeWithdrawalRuleModal();
 }
 function saveWithdrawalRuleModal(){
+  clearAssetProbabilityPreviewMonteSnapshot();
   withdrawalRuleSnapshot = captureWithdrawalRuleState();
   updateWithdrawalRuleModalUI();
   syncCurrentScenarioFromDOM(true);
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
   persistState();
   closeWithdrawalRuleModal();
 }
@@ -30222,10 +30497,6 @@ document.getElementById("overflowMenuCrashBtn")?.addEventListener("click", ()=>{
 document.getElementById("overflowMenuMonteSettingsBtn")?.addEventListener("click", ()=>{
   closeOverflowMenu();
   openMonteSettingsModal();
-});
-document.getElementById("overflowMenuMonteRunBtn")?.addEventListener("click", ()=>{
-  closeOverflowMenu();
-  runMonte();
 });
 document.getElementById("overflowMenuFireBtn")?.addEventListener("click", ()=>{
   closeOverflowMenu();
@@ -30366,7 +30637,6 @@ document.addEventListener("scroll", ()=>{ closeTabContextMenu(); closeRowContext
 document.addEventListener("keydown", (e)=>{
   if(e.key === "Escape"){ closeTabContextMenu(); closeRowContextMenu(); closeOverflowMenu(); }
 });
-document.getElementById("withdrawalRuleBtn")?.addEventListener("click", openWithdrawalRuleModal);
 document.getElementById("runWithdrawalCompareBtn")?.addEventListener("click", runWithdrawalComparison);
 document.getElementById("runCrashCompareBtn")?.addEventListener("click", runCrashComparison);
 document.getElementById("toggleCrashCompareBtn")?.addEventListener("click", (e)=>{
@@ -30438,20 +30708,10 @@ ensureWithdrawalParameterOptions();
 rebuildWithdrawalParameterCases(true);
 ensureWithdrawalCompareRuleSelectionState();
 updateWithdrawalCompareModeUI();
-document.getElementById("runMonteBtn").addEventListener("click", ()=>{
-  clearScheduledDraw();
-  runMonte(); persistState();
-});
-document.getElementById("openMonteSettingsBtn")?.addEventListener("click", (e)=>{
-  e.preventDefault();
-  e.stopPropagation();
-  openMonteSettingsModal();
-});
 document.getElementById("closeCashflowModalBtn")?.addEventListener("click", closeCashflowModal);
 /* unified modal keyboard handler: cashflowModal */
 document.getElementById("cancelMonteSettingsBtn")?.addEventListener("click", cancelMonteSettingsModal);
 document.getElementById("saveMonteSettingsBtn")?.addEventListener("click", saveMonteSettingsModal);
-document.getElementById("monteRunInSheetBtn")?.addEventListener("click", runMonteFromPreviewSheet);
 document.getElementById("runMonteCompareBtn")?.addEventListener("click", (e)=>{ e.preventDefault(); runMonteCompare(); });
 document.getElementById("toggleMonteCompareBtn")?.addEventListener("click", (e)=>{ e.preventDefault(); setMonteCompareExpanded(!isMonteCompareExpanded(), {animate:true, syncStored:true, resizeChart:true}); });
 document.getElementById("monteCompareMode")?.addEventListener("change", ()=>{ monteCompareCache = null; syncMonteCompareStateFromUi(); rebuildMonteCompareCases(true); updateMonteCompareModeUI(); });
@@ -30465,7 +30725,14 @@ document.getElementById("monteSettingsDrawPaths")?.addEventListener("input", upd
 document.getElementById("monteSettingsEffectiveVolPct")?.addEventListener("input", updateMonteSettingsModalUI);
 document.getElementById("monteSettingsMeanRevPhi")?.addEventListener("input", updateMonteSettingsModalUI);
 document.getElementById("monteSettingsSeedOn")?.addEventListener("change", updateMonteSettingsModalUI);
-document.getElementById("monteSettingsSeedValue")?.addEventListener("input", updateMonteSettingsModalUI);
+document.getElementById("monteSettingsSeedValue")?.addEventListener("input", ()=>{
+  const input = document.getElementById('monteSettingsSeedValue');
+  if(input && document.getElementById('monteSettingsSeedOn')?.checked){
+    const seed = Math.round(Number(input.value || 12345) || 12345);
+    if(Number.isFinite(seed) && seed > 0) input.dataset.fixedSeedValue = String(seed);
+  }
+  updateMonteSettingsModalUI();
+});
 /* unified modal keyboard handler: monteCarloSettingsModal */
 
 document.getElementById("withdrawalRuleMode")?.addEventListener("keydown", (e)=>{
@@ -30545,7 +30812,6 @@ document.getElementById("childAllowanceSummaryWrap")?.addEventListener("change",
     }
     updateChildAllowanceSummary();
   }
-  monteMode = false;
   syncCurrentScenarioFromDOM(false);
   invalidateSimulationCaches();
   requestDraw();
@@ -30553,7 +30819,6 @@ document.getElementById("childAllowanceSummaryWrap")?.addEventListener("change",
   e.stopPropagation();
 });
 document.getElementById("childAllowanceOn")?.addEventListener("change", ()=>{
-  monteMode = false;
   syncCurrentScenarioFromDOM(false);
   invalidateSimulationCaches();
   updateChildAllowanceSummary();
@@ -30573,8 +30838,7 @@ document.getElementById("childRows")?.addEventListener("change", (e)=>{
   const el = document.getElementById(id);
   if(!el) return;
   const handler = ()=>{
-    monteMode = false;
-    syncCurrentScenarioFromDOM(false);
+      syncCurrentScenarioFromDOM(false);
     invalidateSimulationCaches();
     requestDraw();
     persistState();
@@ -30612,10 +30876,12 @@ document.addEventListener("wheel", (e)=>{
   if(allowed) return;
   e.preventDefault();
 }, {capture:true, passive:false});
-document.getElementById("assetProbabilityRunBtn")?.addEventListener("click", ()=>{
-  runAssetProbabilityCalculation();
+document.getElementById("assetProbabilityRunBtn")?.addEventListener("click", async ()=>{
+  const monteSettingsModal = document.getElementById('monteCarloSettingsModal');
+  const usePreviewSettings = !!monteSettingsModal?.classList.contains('show');
+  if(usePreviewSettings) updateMonteSettingsModalUI();
+  await runAssetProbabilityCalculation(usePreviewSettings ? buildMonteSettingsFromModal() : null);
 });
-document.getElementById("copyUrlBtn").addEventListener("click", copyURL);
 updateOverlayFeatureUI();
 document.getElementById("graphType").addEventListener("change", (e)=>{
   const graphTypeEl = document.getElementById("graphType");
@@ -30630,7 +30896,6 @@ document.getElementById("graphType").addEventListener("change", (e)=>{
   if(xAxisMinEl) xAxisMinEl.value = String(Math.max(0, Math.min(120, currentAge)));
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.max(Math.max(0, Math.min(120, currentAge)), Math.min(120, Math.max(100, currentAge))));
   if(fixedScaleEl) fixedScaleEl.checked = false;
-  monteMode = false;
   requestDraw();
   if(document.getElementById('chartAxisModal')?.classList.contains('show')){
     requestAnimationFrame(()=>syncChartAxisModalFromState());
@@ -30640,7 +30905,7 @@ document.getElementById("graphType").addEventListener("change", (e)=>{
 document.getElementById("overlayToggle").addEventListener("change", ()=>{
   ensureScenarioSaved();
   setOverlayModeEnabled(document.getElementById("overlayToggle").checked);
-  monteMode ? runMonte() : requestDraw();
+  requestDraw();
   persistState();
 });
 document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
@@ -30650,7 +30915,7 @@ document.getElementById("overlayApplyBtn")?.addEventListener("click", ()=>{
   const nextEnabled = !workspaceOverlayModeOn;
   setOverlayModeEnabled(nextEnabled);
   renderTabs();
-  monteMode ? runMonte() : requestDraw({immediate:true});
+  requestDraw({immediate:true});
   persistState();
 });
 document.getElementById("overlayMenuBtn")?.addEventListener("click", (e)=>{
@@ -30734,11 +30999,11 @@ document.addEventListener('click', (e)=>{
   if(e.target?.closest?.('#overlaySettingsBody .overlay-style-color-wrap')) return;
   closeOverlayColorPalettes();
 });
-document.getElementById("fixedScale").addEventListener("change", ()=>{ monteMode ? runMonte() : requestDraw(); persistState(); });
+document.getElementById("fixedScale").addEventListener("change", ()=>{ requestDraw(); persistState(); });
 function commitAxisControlChange(e){
   const el = e?.target;
   if(!el || !["fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax"].includes(el.id)) return;
-  monteMode ? runMonte() : requestDraw();
+  requestDraw();
   persistState();
 }
 document.addEventListener("change", commitAxisControlChange);
@@ -30965,8 +31230,7 @@ document.addEventListener("click", (e)=>{
     e.stopPropagation();
     const type = addBtn.dataset.addRow;
     rerenderDynamicSection(type, ((dynamicCounts[type] ?? 0)) + 1);
-    monteMode = false;
-    markCurrentScenarioMonteCarloDirty();
+      markCurrentScenarioMonteCarloDirty();
     if(scenarios.length && currentTab >= 0) syncCurrentScenarioFromDOM(false);
     if(type === "child") updateChildAllowanceSummary();
     requestDraw();
@@ -31001,8 +31265,7 @@ document.addEventListener("change", (e)=>{
     updateLoanSummary();
     rememberMainInputSnapshot(el);
     if(scenarios.length && currentTab >= 0 && scenarios[currentTab]) syncCurrentScenarioFromDOM(false);
-    monteMode = false;
-    markCurrentScenarioMonteCarloDirty();
+      markCurrentScenarioMonteCarloDirty();
     requestDraw();
     persistState();
     return;
@@ -31011,8 +31274,7 @@ document.addEventListener("change", (e)=>{
   if(payMatch){
     const rowIndex = Number(payMatch[1]);
     syncInsurancePayDefaults(rowIndex);
-    monteMode = false;
-    markCurrentScenarioMonteCarloDirty();
+      markCurrentScenarioMonteCarloDirty();
     requestDraw();
     persistState();
     return;
@@ -31040,8 +31302,7 @@ document.addEventListener("change", (e)=>{
       }
     }
     syncInsuranceReceiveDefaults(rowIndex);
-    monteMode = false;
-    markCurrentScenarioMonteCarloDirty();
+      markCurrentScenarioMonteCarloDirty();
     requestDraw();
     persistState();
     return;
@@ -31230,7 +31491,6 @@ function performDeferredDateMainInputCommit(el){
   if(["age","baseDate","selfBirthDate","self_retire_year","self_retire_month"].includes(id)){
     syncSimpleModePeriodAutoAgesInDOM();
   }
-  monteMode = false;
   markCurrentScenarioMonteCarloDirty();
   updatePeriodDisplays();
   syncCurrentScenarioFromDOM(false);
@@ -31340,7 +31600,6 @@ function commitMainInputChange(e){
   if(["age","baseDate","selfBirthDate","self_retire_year","self_retire_month"].includes(el.id)){
     syncSimpleModePeriodAutoAgesInDOM();
   }
-  monteMode = false;
   markCurrentScenarioMonteCarloDirty();
   updatePeriodDisplays();
   syncCurrentScenarioFromDOM(false);
@@ -31782,8 +32041,7 @@ getSimpleModeRoot()?.addEventListener("change", (e)=>{
   if(target.dataset.simpleExtra === "sumInvTaxFree"){
     const values = collectSimpleModeValuesFromUI();
     writeSimpleModeValuesToDetail(values, "sumInvTaxFree");
-    monteMode = false;
-    syncCurrentScenarioFromDOM(false);
+      syncCurrentScenarioFromDOM(false);
     requestDraw();
     persistState();
     return;
@@ -32018,8 +32276,7 @@ function closeChartAxisModal(){
   chartAxisSnapshot = null;
   const modal = document.getElementById("chartAxisModal");
   closePreviewSheet(modal);
-  if(monteMode) runMonte();
-  else draw();
+  draw();
 }
 function saveChartAxisModal(){
   const autoDefaults = computeChartAxisAutoDefaults();
@@ -32052,8 +32309,7 @@ function saveChartAxisModal(){
   persistState();
   const modal = document.getElementById("chartAxisModal");
   closePreviewSheet(modal);
-  if(monteMode) runMonte();
-  else draw();
+  draw();
 }
 function markChartAxisManualEdit(){
   if(chartAxisApplyingAutoDefaults) return;
@@ -32074,8 +32330,7 @@ function applyChartAxisAutoAndSave(){
   if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(autoDefaults.xMax));
   if(fixedScaleMinEl) fixedScaleMinEl.value = String(Math.round(autoDefaults.yMin));
   if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(autoDefaults.yMax));
-  if(monteMode) runMonte();
-  else draw();
+  draw();
   syncChartAxisModalFromState();
 }
 function resetChartAxesToAuto(options = {}){
@@ -32104,8 +32359,7 @@ function resetChartAxesToAuto(options = {}){
   formatNumericInputDisplay(fixedScaleMaxEl, true);
   if(persist) persistState();
   if(redraw){
-    if(monteMode) runMonte();
-    else draw();
+    draw();
   }
   if(document.getElementById('chartAxisModal')?.classList.contains('show')){
     requestAnimationFrame(()=>syncChartAxisModalFromState());
@@ -33004,7 +33258,7 @@ window.addEventListener("load", ()=>{
       if(fixedScaleMaxEl) fixedScaleMaxEl.value = String(Math.round(yMax));
       if(xAxisMinEl) xAxisMinEl.value = String(Math.round(xMin));
       if(xAxisMaxEl) xAxisMaxEl.value = String(Math.round(xMax));
-      if(monteMode) runMonte(); else draw();
+      draw();
       syncChartAxisModalFromState();
       requestAnimationFrame(()=>syncChartAxisModalFromState());
     });
@@ -33017,7 +33271,7 @@ window.addEventListener("load", ()=>{
       if(Array.isArray(scenarios)) scenarios.forEach(sc=>{ if(!sc) return; sc.xAxisLabelMode = mode; if(sc.data) sc.data.xAxisLabelMode = mode; });
       updateChartAxisModalXAxisUnits();
       syncChartAxisModalFromState();
-      if(monteMode) runMonte(); else draw();
+      draw();
       requestAnimationFrame(()=>syncChartAxisModalFromState());
     });
   });
@@ -35518,14 +35772,6 @@ body.body-v844-chart-resizing{
       return result;
     };
   }
-  const originalRunMonte = window.runMonte;
-  if(typeof originalRunMonte === 'function'){
-    window.runMonte = function(){
-      const result = originalRunMonte.apply(this, arguments);
-      scheduleApply();
-      return result;
-    };
-  }
   scheduleApply();
 })();
 </script>
@@ -35829,15 +36075,6 @@ body.body-v846-chart-resizing{
       return result;
     };
   }
-  const originalRunMonte = window.runMonte;
-  if(typeof originalRunMonte === 'function' && !window.__v846RunMonteWrapped){
-    window.__v846RunMonteWrapped = true;
-    window.runMonte = function(){
-      const result = originalRunMonte.apply(this, arguments);
-      scheduleApply();
-      return result;
-    };
-  }
   scheduleApply();
 })();
 </script>
@@ -35933,15 +36170,6 @@ body.body-v846-chart-resizing{
     window.__v850DrawWrapped = true;
     window.draw = function(){
       const result = originalDraw.apply(this, arguments);
-      schedule();
-      return result;
-    };
-  }
-  const originalRunMonte = window.runMonte;
-  if(typeof originalRunMonte === 'function' && !window.__v850RunMonteWrapped){
-    window.__v850RunMonteWrapped = true;
-    window.runMonte = function(){
-      const result = originalRunMonte.apply(this, arguments);
       schedule();
       return result;
     };
@@ -37182,11 +37410,6 @@ body.body-v846-chart-resizing{
   if(typeof previousDraw === 'function' && !window.__v869NaturalDrawWrapped){
     window.__v869NaturalDrawWrapped = true;
     window.draw = function(){ const result = previousDraw.apply(this, arguments); schedule(); return result; };
-  }
-  const previousRunMonte = window.runMonte;
-  if(typeof previousRunMonte === 'function' && !window.__v869NaturalRunMonteWrapped){
-    window.__v869NaturalRunMonteWrapped = true;
-    window.runMonte = function(){ const result = previousRunMonte.apply(this, arguments); schedule(); return result; };
   }
   schedule();
 })();
