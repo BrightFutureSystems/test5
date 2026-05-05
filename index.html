@@ -9859,6 +9859,37 @@ function getDefaultScenarioTemplate(){
   return deepClone(defaultScenarioTemplate);
 }
 
+function getCurrentDynamicCountsForNewScenario(){
+  const counts = {};
+  DYNAMIC_SECTIONS.forEach(type=>{
+    counts[type] = Math.max(DEFAULT_ROW_COUNT[type] || 1, normalizeDynamicCountValue(dynamicCounts?.[type]));
+  });
+  return counts;
+}
+function applyDataValuesToExistingInputs(data = {}){
+  Object.entries(data || {}).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
+    else el.value = val == null ? "" : String(val);
+  });
+}
+function buildDefaultScenarioDataForDynamicCounts(targetCounts = dynamicCounts){
+  const counts = {};
+  DYNAMIC_SECTIONS.forEach(type=>{
+    counts[type] = Math.max(DEFAULT_ROW_COUNT[type] || 1, normalizeDynamicCountValue(targetCounts?.[type]));
+  });
+  const baseData = getDefaultScenarioTemplate();
+  dynamicCounts = {...counts};
+  renderDynamicSections(baseData);
+  applyDataValuesToExistingInputs(baseData);
+  syncAllBirthDateDerivedFields();
+  syncSimpleModeSumInvAutoAgesInDOM();
+  updatePeriodDisplays();
+  updateChildAllowanceSummary();
+  return migrateLegacyData(getAllInputs());
+}
+
 function buildSchoolSelect(id, value){
   const sel = document.getElementById(id);
   if(!sel) return;
@@ -15543,7 +15574,7 @@ function addTab(){
   const hadNoScenarios = !scenarios.length;
   if(!hadNoScenarios) ensureScenarioSaved();
   normalizeScenarioNames();
-  const baseData = getDefaultScenarioTemplate();
+  const baseData = buildDefaultScenarioDataForDynamicCounts(getCurrentDynamicCountsForNewScenario());
   const insertIndex = hadNoScenarios ? 0 : Math.min(Math.max(currentTab + 1, 0), scenarios.length);
   const nextScenario = createScenarioRecord(baseData, nextScenarioSerial);
   nextScenarioSerial += 1;
