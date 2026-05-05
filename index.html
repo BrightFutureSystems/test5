@@ -1269,6 +1269,11 @@ document.addEventListener("scroll", (ev)=>{
   .child-allowance-table th:nth-child(2),.child-allowance-table td:nth-child(2){width:72px;min-width:72px;}
   .child-allowance-table .summary-total-row th,.child-allowance-table .summary-total-row td{background:#f8fafc;font-weight:700;}
   .child-allowance-table .summary-disabled-row{opacity:.55;}
+  .child-allowance-table .child-allowance-disabled-row{
+    cursor:not-allowed;
+    user-select:none;
+    -webkit-user-select:none;
+  }
   .child-allowance-empty{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fafafa;color:var(--muted);}
   .child-allowance-note{margin-top:6px;color:var(--muted);font-size:12px;}
   .edu-wrap{
@@ -1283,6 +1288,25 @@ document.addEventListener("scroll", (ev)=>{
   .edu-wrap td:nth-child(2){min-width:88px;width:88px;}
   #eduBody td:first-child .row-label-btn{display:inline-block;min-width:52px;white-space:nowrap;}
   .edu-cell-readonly{display:flex;align-items:center;justify-content:center;min-height:38px;width:100%;padding:0 4px;color:#111827;white-space:nowrap;text-align:center;}
+  .edu-disabled-row{
+    opacity:.55;
+    cursor:not-allowed;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .edu-disabled-row td{background:#f8fafc !important;}
+  .edu-disabled-row select,
+  .edu-disabled-row input,
+  .edu-disabled-row button{
+    cursor:not-allowed !important;
+    user-select:none !important;
+    -webkit-user-select:none !important;
+  }
+  .edu-disabled-row input,
+  .edu-disabled-row select,
+  .edu-disabled-row button{
+    pointer-events:none !important;
+  }
   .edu-wrap th:last-child,
   .edu-wrap td:last-child{min-width:58px !important;width:58px !important;max-width:58px !important;white-space:nowrap;padding-left:4px;padding-right:4px;}
   .edu-cell-detail{min-width:58px !important;width:58px !important;max-width:58px !important;}
@@ -12026,6 +12050,9 @@ function buildEducationGrid(data = {}){
   const abroadOptions = ["なし","あり"];
   let html = "";
   for(let i=1;i<=dynamicCounts.child;i++){
+    const childEnabled = parseStoredCheckboxValue(data[`child${i}_enabled`], false);
+    const eduRowClass = childEnabled ? "" : "edu-disabled-row";
+    const eduDisabledAttr = childEnabled ? "" : " disabled aria-disabled=\"true\"";
     const childLabel = escapeHtml(getRowLabel(data || {}, "child", i));
     const currentSchool = data[`child${i}_school`] ?? data[`c${i}_current_school`] ?? "年少未満";
     const detailRaw = String(data[`c${i}_detail_json`] || '').trim();
@@ -12038,7 +12065,7 @@ function buildEducationGrid(data = {}){
         detailBtnLabel = hasEducationDetailEnabled(parsedDetail) ? "詳細済" : "詳細";
       }
     }
-    html += `<tr><td><span class="row-label-btn row-label-readonly">${childLabel}</span><input type="hidden" id="child${i}_name" value="${escapeAttr(getRowLabel(data || {}, "child", i))}"><input type="hidden" id="child${i}_custom" value="${isRowCustom(data || {}, "child", i) ? "true" : "false"}"></td>`;
+    html += `<tr class="${eduRowClass}" data-edu-child-index="${i}" data-child-enabled="${childEnabled ? "true" : "false"}"><td><span class="row-label-btn row-label-readonly">${childLabel}</span><input type="hidden" id="child${i}_name" value="${escapeAttr(getRowLabel(data || {}, "child", i))}"><input type="hidden" id="child${i}_custom" value="${isRowCustom(data || {}, "child", i) ? "true" : "false"}"></td>`;
     html += `<td class="edu-cell"><div class="edu-cell-inner"><div class="edu-cell-readonly">${escapeHtml(currentSchool)}</div></div></td>`;
     const stageDefs = [
       {key:"preschool", options:preschoolOptions, defaultType:"標準", suffix:"万円 / 月", step:"0.1"},
@@ -12052,15 +12079,31 @@ function buildEducationGrid(data = {}){
       const currentType = data[`c${i}_${def.key}_type`] ?? def.defaultType;
       const currentExtraVal = getSimpleEducationExtraInputValue(def.key, currentType, data[`c${i}_${def.key}_extra`]);
       const currentExtra = attrValue(currentExtraVal, 0);
-      html += `<td class="edu-cell"><div class="edu-cell-inner"><select id="c${i}_${def.key}_type" data-edu-stage="${def.key}" data-prev-type="${escapeAttr(currentType)}">${def.options.map(opt => `<option value="${escapeAttr(opt)}" ${String(currentType) === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select><div style="height:6px"></div><div class="input-unit"><input id="c${i}_${def.key}_extra" type="number" class="moneybox" value="${currentExtra}" step="${def.step}"><span class="suffix">${def.suffix}</span></div></div></td>`;
+      html += `<td class="edu-cell"><div class="edu-cell-inner"><select id="c${i}_${def.key}_type" data-edu-stage="${def.key}" data-prev-type="${escapeAttr(currentType)}"${eduDisabledAttr}>${def.options.map(opt => `<option value="${escapeAttr(opt)}" ${String(currentType) === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select><div style="height:6px"></div><div class="input-unit"><input id="c${i}_${def.key}_extra" type="number" class="moneybox" value="${currentExtra}" step="${def.step}"${eduDisabledAttr}><span class="suffix">${def.suffix}</span></div></div></td>`;
     });
     const abroadType = data[`c${i}_abroad_type`] ?? "なし";
     const abroadAmount = attrValue(data[`c${i}_abroad_amount`], 0);
-    html += `<td class="edu-cell"><div class="edu-cell-inner"><select id="c${i}_abroad_type">${abroadOptions.map(opt => `<option value="${escapeAttr(opt)}" ${String(abroadType) === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select><div style="height:6px"></div><div class="input-unit"><input id="c${i}_abroad_amount" type="number" class="moneybox" value="${abroadAmount}" step="1"><span class="suffix">万円</span></div></div></td>`;
-    html += `<td class="edu-cell edu-cell-detail"><div class="edu-cell-inner"><button type="button" class="loan-detail-btn edu-detail-open-btn" data-edu-detail-open="${i}">${detailBtnLabel}</button><button type="button" class="edu-reset-btn" data-edu-reset="${i}">初期化</button><input type="hidden" id="c${i}_detail_json" value="${escapeAttr(detailHiddenValue)}"></div></td>`;
+    html += `<td class="edu-cell"><div class="edu-cell-inner"><select id="c${i}_abroad_type"${eduDisabledAttr}>${abroadOptions.map(opt => `<option value="${escapeAttr(opt)}" ${String(abroadType) === String(opt) ? "selected" : ""}>${escapeHtml(opt)}</option>`).join("")}</select><div style="height:6px"></div><div class="input-unit"><input id="c${i}_abroad_amount" type="number" class="moneybox" value="${abroadAmount}" step="1"${eduDisabledAttr}><span class="suffix">万円</span></div></div></td>`;
+    html += `<td class="edu-cell edu-cell-detail"><div class="edu-cell-inner"><button type="button" class="loan-detail-btn edu-detail-open-btn" data-edu-detail-open="${i}"${eduDisabledAttr}>${detailBtnLabel}</button><button type="button" class="edu-reset-btn" data-edu-reset="${i}"${eduDisabledAttr}>初期化</button><input type="hidden" id="c${i}_detail_json" value="${escapeAttr(detailHiddenValue)}"></div></td>`;
     html += `</tr>`;
   }
   body.innerHTML = html;
+}
+function updateEducationGridChildEnabledStates(){
+  const body = document.getElementById("eduBody");
+  if(!body) return;
+  for(let i=1;i<=dynamicCounts.child;i++){
+    const row = body.querySelector(`tr[data-edu-child-index="${i}"]`);
+    if(!row) continue;
+    const enabled = !!document.getElementById(`child${i}_enabled`)?.checked;
+    row.dataset.childEnabled = enabled ? "true" : "false";
+    row.classList.toggle("edu-disabled-row", !enabled);
+    row.querySelectorAll('select, input:not([type="hidden"]), button').forEach(control=>{
+      control.disabled = !enabled;
+      if(!enabled) control.setAttribute("aria-disabled", "true");
+      else control.removeAttribute("aria-disabled");
+    });
+  }
 }
 function renderDynamicSections(data = {}){
   lastInputModeUIRenderSignature = null;
@@ -13275,6 +13318,8 @@ function setAllInputs(data){
     else el.value = val;
   });
   __setAllInputsMark('applyValues', {entries:__valueEntries, applied:__valueApplied});
+  updateEducationGridChildEnabledStates();
+  __setAllInputsMark('updateEducationGridChildEnabledStates');
   refreshRowLabelTexts();
   __setAllInputsMark('refreshRowLabelTexts');
   syncAllBirthDateDerivedFields();
@@ -18260,7 +18305,21 @@ function eachMonthChunkInRange(startParts, endExclusiveParts, fn){
   }
 }
 function getChildAllowancePotentialRows(cfg){
-  return (cfg.children || []).filter(child=>child && (child.birthDate || Number.isFinite(child.age)));
+  return (cfg.children || []).filter(child=>child && child.enabled !== false && (child.birthDate || Number.isFinite(child.age)));
+}
+function getChildAllowanceDisplayRowsFromDOM(){
+  const rows = [];
+  for(let i=1;i<=dynamicCounts.child;i++){
+    const enabled = !!document.getElementById(`child${i}_enabled`)?.checked;
+    const birthDate = document.getElementById(`child${i}_birthDate`)?.value || "";
+    const age = numInput(`child${i}_age`, NaN);
+    const name = document.getElementById(`child${i}_name`)?.value || `子${i}`;
+    const storeEl = document.getElementById(`child${i}_allowanceOn`);
+    const stored = scenarios?.[currentTab]?.data?.[`child${i}_allowanceOn`];
+    const allowanceOn = enabled && (storeEl ? !!storeEl.checked : parseStoredCheckboxValue(stored, true));
+    rows.push({idx:i, name, enabled, birthDate, age, allowanceOn});
+  }
+  return rows;
 }
 function getChildAllowanceAllowanceEndExclusive(child){
   const birth = parseDateInput(child?.birthDate || "");
@@ -18367,6 +18426,28 @@ function getChildAllowanceForYear(cfg, yearIndex){
   return cache.totals[yearIndex] || 0;
 }
 
+function getChildAllowanceDisplayMaxCols(cfg, displayChildren){
+  const baseParts = parseDateInput(cfg?.baseDate || "");
+  let maxCols = 1;
+  (displayChildren || []).forEach(child=>{
+    if(!child || !(child.birthDate || Number.isFinite(child.age))) return;
+    const endExclusive = getChildAllowanceAllowanceEndExclusive({
+      ...child,
+      baseDate:cfg?.baseDate || "",
+      cfgBaseDate:cfg?.baseDate || ""
+    });
+    if(!baseParts || !endExclusive) return;
+    let cols = 0;
+    while(cols < 40){
+      const periodStart = getSimulationYearStartParts(cfg, cols);
+      if(!periodStart || compareDateParts(periodStart, endExclusive) >= 0) break;
+      cols += 1;
+    }
+    maxCols = Math.max(maxCols, cols || 1);
+  });
+  return maxCols;
+}
+
 function formatAllowanceSummaryCell(value){
   const n = Math.round((Number(value) || 0) * 10) / 10;
   if(Math.abs(n) < 0.05) return "-";
@@ -18376,31 +18457,39 @@ function updateChildAllowanceSummary(data = null){
   const wrap = document.getElementById("childAllowanceSummaryWrap");
   if(!wrap) return;
   const cfg = getScenarioFromDOM();
-  const children = getChildAllowancePotentialRows(cfg);
-  if(!children.length){
+  const displayChildren = getChildAllowanceDisplayRowsFromDOM();
+  if(!displayChildren.length){
     wrap.innerHTML = '<div class="child-allowance-empty">子どもを追加すると、児童手当サマリーを表示します。</div>';
     return;
   }
   const cache = getChildAllowanceCache(cfg);
+  const displayMaxCols = Math.max(cache.maxCols || 1, getChildAllowanceDisplayMaxCols(cfg, displayChildren));
   const globalOn = !!cfg.childAllowanceOn;
   let html = '<div class="table-scroll"><table class="center-table child-allowance-table"><thead><tr><th>子</th><th>含める</th>';
-  for(let yearIndex=0; yearIndex<cache.maxCols; yearIndex++){
+  for(let yearIndex=0; yearIndex<displayMaxCols; yearIndex++){
     const yearStartParts = getSimulationYearStartParts(cfg, yearIndex);
     const yearLabel = yearStartParts ? `${yearStartParts.year}年` : `${yearIndex + 1}年目`;
     html += `<th>${escapeHtml(yearLabel)}</th>`;
   }
   html += '<th>合計</th></tr></thead><tbody>';
-  children.forEach(child=>{
-    const row = cache.rows[child.idx] || [];
-    const rowTotal = row.reduce((sum, v)=>sum + (Number(v) || 0), 0);
-    html += `<tr class="${child.allowanceOn ? '' : 'summary-disabled-row'}"><td>${escapeHtml(child.name || `子${child.idx}`)}</td><td><label class="inline-check"><input id="child${child.idx}_allowanceOn_ui" data-child-allowance-index="${child.idx}" type="checkbox" ${child.allowanceOn ? 'checked' : ''}></label></td>`;
-    for(let yearIndex=0; yearIndex<cache.maxCols; yearIndex++) html += `<td>${formatAllowanceSummaryCell(row[yearIndex] || 0)}</td>`;
-    html += `<td>${formatAllowanceSummaryCell(rowTotal)}</td></tr>`;
+  displayChildren.forEach(child=>{
+    const active = !!child.enabled;
+    const row = active ? (cache.rows[child.idx] || []) : [];
+    const rowTotal = active ? row.reduce((sum, v)=>sum + (Number(v) || 0), 0) : 0;
+    const included = active && !!child.allowanceOn;
+    const rowClass = active && included ? '' : (active ? 'summary-disabled-row' : 'summary-disabled-row child-allowance-disabled-row');
+    const checkedAttr = included ? 'checked' : '';
+    const disabledAttr = active ? '' : 'disabled aria-disabled="true"';
+    html += `<tr class="${rowClass}"><td>${escapeHtml(child.name || `子${child.idx}`)}</td><td><label class="inline-check"><input id="child${child.idx}_allowanceOn_ui" data-child-allowance-index="${child.idx}" type="checkbox" ${checkedAttr} ${disabledAttr}></label></td>`;
+    for(let yearIndex=0; yearIndex<displayMaxCols; yearIndex++){
+      html += `<td>${active ? formatAllowanceSummaryCell(row[yearIndex] || 0) : '-'}</td>`;
+    }
+    html += `<td>${active ? formatAllowanceSummaryCell(rowTotal) : '-'}</td></tr>`;
   });
   const totals = globalOn ? cache.totals : cache.totals.map(()=>0);
   const grandTotal = totals.reduce((sum, v)=>sum + (Number(v) || 0), 0);
   html += '<tr class="summary-total-row"><td>合計</td><td></td>';
-  for(let yearIndex=0; yearIndex<cache.maxCols; yearIndex++) html += `<td>${formatAllowanceSummaryCell(totals[yearIndex] || 0)}</td>`;
+  for(let yearIndex=0; yearIndex<displayMaxCols; yearIndex++) html += `<td>${formatAllowanceSummaryCell(totals[yearIndex] || 0)}</td>`;
   html += `<td>${formatAllowanceSummaryCell(grandTotal)}</td></tr>`;
   html += '</tbody></table></div>';
   if(!globalOn) html += '<div class="child-allowance-note">※ 現在は「計算に含める」がOFFのため、表は参考表示です。計算には反映していません。</div>';
@@ -23786,7 +23875,6 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
       });
       ds._overlayIndex = scenarioKey;
       ds._scenarioColor = color;
-      ds._scenarioLabel = labelPrefix || 'シナリオ';
       ds._educationChildIndex = idx;
       ds._educationSeriesKind = 'child';
       return ds;
@@ -23809,7 +23897,6 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
       });
       line._overlayIndex = scenarioKey;
       line._scenarioColor = color;
-      line._scenarioLabel = labelPrefix || 'シナリオ';
       line._educationCumLine = true;
       line._educationLabels = Array.isArray(sim.labels) ? sim.labels.slice() : [];
       line._educationSeriesKind = 'cum';
@@ -25630,7 +25717,7 @@ function getEducationOverlayLegendDatasets(chartInstance){
     const overlayIndex = Number(ds?._overlayIndex);
     if(!Number.isFinite(overlayIndex)) return;
     if(map.has(overlayIndex)) return;
-    const label = String(ds?._scenarioLabel || '').trim() || String(ds?.label || '').replace(/\s+(教育費累計|子供?\d+|子\d+)\s*$/, '').trim() || `シナリオ${map.size + 1}`;
+    const label = String(ds?.label || '').replace(/\s+(教育費累計|子供?\d+|子\d+)\s*$/, '').trim() || `シナリオ${map.size + 1}`;
     map.set(overlayIndex, {overlayIndex, datasetIndex:idx, label, color:ds?._scenarioColor || '#64748b'});
   });
   return Array.from(map.values()).sort((a,b)=>a.overlayIndex-b.overlayIndex);
@@ -26382,7 +26469,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       title:{display:false,text:`教育費累計（${rightAxisUnitSpec.label}）`},
       _educationRightTitleText:`教育費累計（${rightAxisUnitSpec.label}）`,
       afterFit(scale){ scale.width += 18; },
-      ticks:{padding:yTickPadding, callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
+      ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
     };
   }
   return options;
@@ -32713,11 +32800,14 @@ document.getElementById("childAllowanceOn")?.addEventListener("change", ()=>{
 });
 document.getElementById("childRows")?.addEventListener("change", (e)=>{
   const input = e.target.closest('input[id^="child"][id$="_enabled"]');
-  if(!input || !input.checked) return;
+  if(!input) return;
   const match = input.id.match(/^child(\d+)_enabled$/);
   if(!match) return;
-  const storeEl = document.getElementById(`child${match[1]}_allowanceOn`);
-  if(storeEl && !storeEl.checked) storeEl.checked = true;
+  if(input.checked){
+    const storeEl = document.getElementById(`child${match[1]}_allowanceOn`);
+    if(storeEl && !storeEl.checked) storeEl.checked = true;
+  }
+  updateEducationGridChildEnabledStates();
 });
 ["taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxPublicPensionDeductionUnder65","taxPublicPensionDeduction65Plus","taxResidentRatePct","socialNationalPensionOn","socialHealthOn","socialNationalPensionAnnual","social_self_healthMode","social_sp_healthMode","socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"].forEach(id=>{
   const el = document.getElementById(id);
