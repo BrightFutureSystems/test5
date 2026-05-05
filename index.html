@@ -7037,6 +7037,9 @@ function clearAssetProbabilityPreviewMonteSnapshot(){
   assetProbabilityPreviewMonteSnapshot = null;
 }
 let drawDebounceTimer = null;
+let simpleModeRealtimeDrawRaf = null;
+let simpleModeSliderPersistTimer = null;
+const SIMPLE_MODE_SLIDER_PERSIST_DELAY_MS = 400;
 let scenarios = [];
 let currentTab = 0;
 let tabDragScenarioId = "";
@@ -14603,7 +14606,8 @@ function writeSimpleModeValueToDetailByKey(key, simpleValue){
       break;
   }
 }
-function writeSimpleModeValuesToDetail(simpleValues, changedKey = null){
+function writeSimpleModeValuesToDetail(simpleValues, changedKey = null, options = {}){
+  const skipSimpleModeFullSync = !!options.skipSimpleModeFullSync;
   ensureSimpleRepresentativeSlotsInDOM(simpleValues);
   if(changedKey){
     writeSimpleModeValueToDetailByKey(changedKey, simpleValues[changedKey]);
@@ -14616,13 +14620,41 @@ function writeSimpleModeValuesToDetail(simpleValues, changedKey = null){
   syncSimpleInflationCheckboxesFromRate(simpleValues?.inflRate);
   updateLoanSummary();
   applySimpleLinkedHighlights();
-  syncSimpleModeFromDetail();
+  if(!skipSimpleModeFullSync) syncSimpleModeFromDetail();
 }
-function applySimpleModeFieldValue(key, rawValue, commit = false){
+let simpleModeSliderPerfSeq = 0;
+let simpleModeSliderPerfLastAt = 0;
+function logSimpleModeSliderPerf(entry){
+  console.log("[SimpleModeSliderPerf]", entry);
+}
+function applySimpleModeFieldValue(key, rawValue, commit = false, perfContext = null){
+  const perfEnabled = !!perfContext;
+  const perfStart = perfEnabled ? performance.now() : 0;
+  const perf = perfEnabled ? {seq:++simpleModeSliderPerfSeq, key, eventType:perfContext.eventType || "input", rawValue:String(rawValue), commit, sincePrevInputMs:simpleModeSliderPerfLastAt ? perfStart - simpleModeSliderPerfLastAt : null} : null;
+  if(perfEnabled) simpleModeSliderPerfLastAt = perfStart;
+  let t = perfStart;
+  const mark = (name)=>{
+    if(!perfEnabled) return;
+    const now = performance.now();
+    perf[name] = now - t;
+    t = now;
+  };
   const def = getSimpleModeFieldDef(key);
-  if(!def) return;
+  if(!def){
+    if(perfEnabled){
+      perf.cancelReason = "missing_def";
+      perf.totalMs = performance.now() - perfStart;
+      logSimpleModeSliderPerf(perf);
+    }
+    return;
+  }
   if(isSimpleModeFieldCustomLocked(key)){
     syncSimpleModeFromDetail();
+    if(perfEnabled){
+      perf.cancelReason = "custom_locked";
+      perf.totalMs = performance.now() - perfStart;
+      logSimpleModeSliderPerf(perf);
+    }
     return;
   }
   const normalizedRaw = numValue(rawValue, def.min);
@@ -14632,15 +14664,50 @@ function applySimpleModeFieldValue(key, rawValue, commit = false){
   const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
   const clamped = clampSimpleModeValue(normalizedRaw, dynamicDef);
   setSimpleModeFieldUIValue(key, clamped);
-  if(!commit) return;
+  if(perfEnabled){
+    perf.clampedValue = clamped;
+    perf.rangeMin = dynamicDef.min;
+    perf.rangeMax = dynamicDef.max;
+  }
+  mark("uiMs");
+  if(!commit){
+    if(perfEnabled){
+      perf.totalMs = performance.now() - perfStart;
+      logSimpleModeSliderPerf(perf);
+    }
+    return;
+  }
   const values = collectSimpleModeValuesFromUI();
-  writeSimpleModeValuesToDetail(values, key);
+  mark("collectMs");
+  const isRangeInput = perfContext?.eventType === "range_input";
+  writeSimpleModeValuesToDetail(values, key, {skipSimpleModeFullSync:isRangeInput});
+  if(perfEnabled) perf.skippedSimpleModeFullSync = isRangeInput;
+  mark(isRangeInput ? "writeDetailWithoutFullSyncMs" : "writeDetailAndSyncSimpleMs");
   syncCurrentScenarioFromDOM(false);
-  requestDraw();
-  persistState();
+  mark("syncScenarioMs");
+  const useRealtimeDraw = isRangeInput;
+  if(useRealtimeDraw) requestSimpleModeRealtimeDraw();
+  else requestDraw();
+  mark("requestDrawMs");
+  if(isRangeInput){
+    scheduleSimpleModeSliderPersist();
+    mark("schedulePersistMs");
+  }else{
+    cancelSimpleModeSliderPersist();
+    persistState();
+    mark("persistMs");
+  }
+  if(perfEnabled){
+    perf.persistMode = isRangeInput ? "delayed" : "immediate";
+    perf.persistDelayMs = isRangeInput ? SIMPLE_MODE_SLIDER_PERSIST_DELAY_MS : 0;
+    perf.drawMode = useRealtimeDraw ? "requestAnimationFrame" : "debounce";
+    perf.drawDebounceMs = useRealtimeDraw ? 0 : DRAW_DEBOUNCE_MS;
+    perf.totalMs = performance.now() - perfStart;
+    logSimpleModeSliderPerf(perf);
+  }
 }
-function handleSimpleModeFieldInput(key, rawValue){
-  applySimpleModeFieldValue(key, rawValue, true);
+function handleSimpleModeFieldInput(key, rawValue, eventType = null){
+  applySimpleModeFieldValue(key, rawValue, true, eventType ? {eventType} : null);
 }
 function previewSimpleModeFieldInput(key, rawValue){
   applySimpleModeFieldValue(key, rawValue, false);
@@ -24141,6 +24208,27 @@ function clearScheduledDraw(){
     drawDebounceTimer = null;
   }
 }
+function requestSimpleModeRealtimeDraw(){
+  clearScheduledDraw();
+  if(simpleModeRealtimeDrawRaf) return;
+  simpleModeRealtimeDrawRaf = requestAnimationFrame(()=>{
+    simpleModeRealtimeDrawRaf = null;
+    draw();
+  });
+}
+function cancelSimpleModeSliderPersist(){
+  if(simpleModeSliderPersistTimer){
+    clearTimeout(simpleModeSliderPersistTimer);
+    simpleModeSliderPersistTimer = null;
+  }
+}
+function scheduleSimpleModeSliderPersist(){
+  cancelSimpleModeSliderPersist();
+  simpleModeSliderPersistTimer = setTimeout(()=>{
+    simpleModeSliderPersistTimer = null;
+    persistState();
+  }, SIMPLE_MODE_SLIDER_PERSIST_DELAY_MS);
+}
 function requestDraw(options = {}){
   const immediate = options && options.immediate === true;
   clearScheduledDraw();
@@ -28176,9 +28264,8 @@ async function reportMonteCompareProgress(progress, options={}){
 // ===== v1256: FIRE diagnosis progress overlay helpers =====
 let fireDiagnosisProgressState = {visible:false, lastUiAt:0, hideTimer:null, uiUpdates:0, yieldedFrames:0, progressReports:0, displayedProgress:0};
 function ensureFireDiagnosisProgressOverlay(){
-  const host = document.querySelector('#fireDiagnosisModal .modal-card');
+  const host = document.getElementById('fireDiagnosisModal');
   if(!host) return null;
-  if(!host.style.position) host.style.position = 'relative';
   let overlay = document.getElementById('fireDiagnosisProgressOverlay');
   if(overlay) return overlay;
   overlay = document.createElement('div');
@@ -33812,7 +33899,7 @@ getSimpleModeRoot()?.addEventListener("input", (e)=>{
     return;
   }
   const key = fieldWrap.dataset.simpleField || '';
-  if(target.type === "range") handleSimpleModeFieldInput(key, target.value);
+  if(target.type === "range") handleSimpleModeFieldInput(key, target.value, "range_input");
   else previewSimpleModeFieldInput(key, target.value);
 });
 getSimpleModeRoot()?.addEventListener("change", (e)=>{
