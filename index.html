@@ -5498,6 +5498,67 @@ document.addEventListener("scroll", (ev)=>{
   }
 </style>
 
+<!-- ===== v1220 dev-only: asset probability progress timing controls ===== -->
+<style>
+  .asset-probability-progress-debug{
+    position:absolute;
+    top:10px;
+    right:12px;
+    z-index:47;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    align-items:flex-end;
+    padding:7px 9px;
+    border:1px solid rgba(207,218,232,.92);
+    border-radius:12px;
+    background:rgba(255,255,255,.88);
+    box-shadow:0 4px 12px rgba(15,23,42,.10);
+    color:#475569;
+    font-size:11px;
+    line-height:1.35;
+    pointer-events:auto;
+  }
+  .asset-probability-progress-debug-row{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:5px;
+    white-space:nowrap;
+  }
+  .asset-probability-progress-debug input{
+    width:58px;
+    height:24px;
+    padding:2px 5px;
+    border:1px solid #cbd7e6;
+    border-radius:8px;
+    background:#fff;
+    color:#122b45;
+    font-size:11px;
+    text-align:right;
+  }
+  .asset-probability-progress-debug-result{
+    max-width:230px;
+    color:#607589;
+    text-align:right;
+    white-space:normal;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    .asset-probability-progress-debug{
+      top:8px;
+      right:8px;
+      padding:6px 7px;
+      font-size:10px;
+    }
+    .asset-probability-progress-debug input{
+      width:50px;
+      height:22px;
+      font-size:10px;
+    }
+    .asset-probability-progress-debug-result{max-width:170px;}
+  }
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -7349,8 +7410,71 @@ function normalizeMonteSettingsForAssetProbabilityRun(settings){
   return {...base, seedOn:true, seedValue:createMonteAutoSeed(), autoSeed:true, sourceSeedOn:false};
 }
 
-const ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS = 100;
+const ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS = 100;
 let assetProbabilityProgressState = {visible:false, lastUiAt:0, hideTimer:null};
+let assetProbabilityProgressDebugState = {runId:0, startedAt:0, intervalMs:ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS, enabled:true, progressReports:0, uiUpdates:0, yieldedFrames:0};
+function getAssetProbabilityProgressDebugIntervalMs(){
+  const input = document.getElementById('assetProbabilityProgressIntervalInput');
+  const raw = input ? input.value : String(ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS);
+  const parsed = Math.round(Number(raw));
+  if(!Number.isFinite(parsed)) return ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS;
+  return Math.max(0, Math.min(5000, parsed));
+}
+function ensureAssetProbabilityProgressDebugPanel(){
+  const host = document.getElementById('chartCanvasStickyWrap');
+  if(!host) return null;
+  let panel = document.getElementById('assetProbabilityProgressDebugPanel');
+  if(panel) return panel;
+  panel = document.createElement('div');
+  panel.id = 'assetProbabilityProgressDebugPanel';
+  panel.className = 'asset-probability-progress-debug';
+  panel.innerHTML = `
+    <label class="asset-probability-progress-debug-row">
+      <span>進捗更新</span>
+      <input id="assetProbabilityProgressIntervalInput" type="text" inputmode="numeric" value="100" aria-label="進捗更新間隔ミリ秒">
+      <span>ms</span>
+    </label>
+    <div class="asset-probability-progress-debug-result" id="assetProbabilityProgressDebugResult">0でリングなし</div>`;
+  host.appendChild(panel);
+  return panel;
+}
+function setAssetProbabilityProgressDebugResult(text){
+  ensureAssetProbabilityProgressDebugPanel();
+  const result = document.getElementById('assetProbabilityProgressDebugResult');
+  if(result) result.textContent = text || '';
+}
+function startAssetProbabilityProgressDebugRun(intervalMs, enabled){
+  ensureAssetProbabilityProgressDebugPanel();
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  assetProbabilityProgressDebugState = {
+    runId:(Number(assetProbabilityProgressDebugState.runId) || 0) + 1,
+    startedAt:now,
+    intervalMs,
+    enabled,
+    progressReports:0,
+    uiUpdates:0,
+    yieldedFrames:0
+  };
+  setAssetProbabilityProgressDebugResult(enabled ? `計測中... 更新 ${intervalMs}ms` : '計測中... リングなし');
+}
+function finishAssetProbabilityProgressDebugRun(success){
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const state = assetProbabilityProgressDebugState || {};
+  const totalMs = Math.max(0, now - (Number(state.startedAt) || now));
+  const totalSec = (totalMs / 1000).toFixed(2);
+  const status = success ? '完了' : '未完了';
+  const mode = state.enabled ? `更新 ${state.intervalMs}ms` : 'リングなし';
+  setAssetProbabilityProgressDebugResult(`${status}: ${totalSec}秒 / ${mode} / UI ${state.uiUpdates || 0}回`);
+  console.log('[AssetProbabilityProgressDebug]', {
+    success:!!success,
+    totalMs:Math.round(totalMs),
+    intervalMs:Number(state.intervalMs) || 0,
+    progressEnabled:!!state.enabled,
+    progressReports:Number(state.progressReports) || 0,
+    uiUpdates:Number(state.uiUpdates) || 0,
+    yieldedFrames:Number(state.yieldedFrames) || 0
+  });
+}
 function ensureAssetProbabilityProgressOverlay(){
   const host = document.getElementById('chartCanvasStickyWrap');
   if(!host) return null;
@@ -7419,13 +7543,18 @@ function waitAssetProbabilityProgressFrame(){
   });
 }
 async function reportAssetProbabilityProgress(progress, options={}){
+  assetProbabilityProgressDebugState.progressReports = (Number(assetProbabilityProgressDebugState.progressReports) || 0) + 1;
+  const intervalMs = getAssetProbabilityProgressDebugIntervalMs();
+  if(intervalMs <= 0) return;
   const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   const force = !!options.force;
   const value = Math.max(0, Math.min(100, Number(progress) || 0));
-  if(force || !assetProbabilityProgressState.lastUiAt || now - assetProbabilityProgressState.lastUiAt >= ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS || value >= 100){
+  if(force || !assetProbabilityProgressState.lastUiAt || now - assetProbabilityProgressState.lastUiAt >= intervalMs || value >= 100){
     setAssetProbabilityProgressOverlay(value, options.label || '確率計算中...', options.detail || '');
     assetProbabilityProgressState.lastUiAt = now;
+    assetProbabilityProgressDebugState.uiUpdates = (Number(assetProbabilityProgressDebugState.uiUpdates) || 0) + 1;
     await waitAssetProbabilityProgressFrame();
+    assetProbabilityProgressDebugState.yieldedFrames = (Number(assetProbabilityProgressDebugState.yieldedFrames) || 0) + 1;
   }
 }
 async function buildMonteRunResultAsync(cfg, base, monteSettings, scenarioDataOverride, progressReporter=null){
@@ -7753,21 +7882,31 @@ async function runAssetProbabilityOverlayCalculation(settingsOverride=null, prog
 async function runAssetProbabilityCalculation(settingsOverride=null){
   clearScheduledDraw();
   ensureScenarioSaved();
-  showAssetProbabilityProgressOverlay('確率計算中...', workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中');
-  await reportAssetProbabilityProgress(0, {force:true, detail:workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中'});
-  const progressReporter = async (progress, options={})=>{
+  ensureAssetProbabilityProgressDebugPanel();
+  const progressIntervalMs = getAssetProbabilityProgressDebugIntervalMs();
+  const progressEnabled = progressIntervalMs > 0;
+  startAssetProbabilityProgressDebugRun(progressIntervalMs, progressEnabled);
+  if(progressEnabled){
+    showAssetProbabilityProgressOverlay('確率計算中...', workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中');
+    await reportAssetProbabilityProgress(0, {force:true, detail:workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中'});
+  }
+  const progressReporter = progressEnabled ? async (progress, options={})=>{
     await reportAssetProbabilityProgress(progress, {label:'確率計算中...', ...(options || {})});
-  };
+  } : null;
+  let success = false;
   try{
-    const success = workspaceOverlayModeOn
+    success = workspaceOverlayModeOn
       ? await runAssetProbabilityOverlayCalculation(settingsOverride, progressReporter)
       : await runSingleAssetProbabilityCalculation(settingsOverride, progressReporter);
-    if(success) await reportAssetProbabilityProgress(100, {force:true, detail:'完了'});
-    else await reportAssetProbabilityProgress(0, {force:true, label:'計算に失敗しました', detail:'再試行してください'});
+    if(progressEnabled){
+      if(success) await reportAssetProbabilityProgress(100, {force:true, detail:'完了'});
+      else await reportAssetProbabilityProgress(0, {force:true, label:'計算に失敗しました', detail:'再試行してください'});
+    }
   }finally{
     drawAssetProbabilityShell();
     updateAssetProbabilityControls();
-    hideAssetProbabilityProgressOverlay(220);
+    if(progressEnabled) hideAssetProbabilityProgressOverlay(220);
+    finishAssetProbabilityProgressDebugRun(success);
   }
 }
 
@@ -8680,6 +8819,7 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
   updateAssetProbabilityControls();
 }
 function drawAssetProbabilityShell(){
+  ensureAssetProbabilityProgressDebugPanel();
   ensureScenarioSaved();
   const currentScenario = scenarios[currentTab];
   const scenarioState = ensureScenarioMonteCarloState(currentScenario);
