@@ -23786,6 +23786,7 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
       });
       ds._overlayIndex = scenarioKey;
       ds._scenarioColor = color;
+      ds._scenarioLabel = labelPrefix || 'シナリオ';
       ds._educationChildIndex = idx;
       ds._educationSeriesKind = 'child';
       return ds;
@@ -23808,6 +23809,7 @@ function buildEducationDatasets(sim, color, overlay, labelPrefix="", overlayCoun
       });
       line._overlayIndex = scenarioKey;
       line._scenarioColor = color;
+      line._scenarioLabel = labelPrefix || 'シナリオ';
       line._educationCumLine = true;
       line._educationLabels = Array.isArray(sim.labels) ? sim.labels.slice() : [];
       line._educationSeriesKind = 'cum';
@@ -25628,7 +25630,7 @@ function getEducationOverlayLegendDatasets(chartInstance){
     const overlayIndex = Number(ds?._overlayIndex);
     if(!Number.isFinite(overlayIndex)) return;
     if(map.has(overlayIndex)) return;
-    const label = String(ds?.label || '').replace(/\s+(教育費累計|子供?\d+|子\d+)\s*$/, '').trim() || `シナリオ${map.size + 1}`;
+    const label = String(ds?._scenarioLabel || '').trim() || String(ds?.label || '').replace(/\s+(教育費累計|子供?\d+|子\d+)\s*$/, '').trim() || `シナリオ${map.size + 1}`;
     map.set(overlayIndex, {overlayIndex, datasetIndex:idx, label, color:ds?._scenarioColor || '#64748b'});
   });
   return Array.from(map.values()).sort((a,b)=>a.overlayIndex-b.overlayIndex);
@@ -26380,7 +26382,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       title:{display:false,text:`教育費累計（${rightAxisUnitSpec.label}）`},
       _educationRightTitleText:`教育費累計（${rightAxisUnitSpec.label}）`,
       afterFit(scale){ scale.width += 18; },
-      ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
+      ticks:{padding:yTickPadding, callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
     };
   }
   return options;
