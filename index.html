@@ -13097,54 +13097,17 @@ function getAllInputs(){
   });
   return data;
 }
-function syncCurrentScenarioFromDOM(persistLocal = false, perfBreakdown = null){
-  const measure = !!perfBreakdown;
-  const syncStart = measure ? performance.now() : 0;
-  let t = syncStart;
-  const syncPerf = measure ? {} : null;
-  const markSync = (name)=>{
-    if(!measure) return;
-    const now = performance.now();
-    syncPerf[name] = now - t;
-    t = now;
-  };
-  if(!scenarios.length || currentTab < 0 || !scenarios[currentTab]){
-    if(measure){
-      syncPerf.cancelReason = "missing_current_scenario";
-      syncPerf.totalMs = performance.now() - syncStart;
-      perfBreakdown.syncCurrentScenarioFromDOMBreakdown = syncPerf;
-    }
-    return;
-  }
+function syncCurrentScenarioFromDOM(persistLocal = false){
+  if(!scenarios.length || currentTab < 0 || !scenarios[currentTab]) return;
   const scenario = scenarios[currentTab];
-  markSync("guardMs");
   const prevData = migrateLegacyData(scenario.data || {});
-  markSync("migratePrevDataMs");
-  const rawInputs = getAllInputs();
-  if(measure) syncPerf.inputKeyCount = Object.keys(rawInputs || {}).length;
-  markSync("getAllInputsMs");
-  const nextData = migrateLegacyData(rawInputs);
-  markSync("migrateNextDataMs");
+  const nextData = migrateLegacyData(getAllInputs());
   const preservedOverlayStyles = scenario.overlayStyles || prevData.overlayStyles;
   if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
-  markSync("preserveOverlayStylesMs");
-  const monteDirty = isMonteCarloRelevantDataChanged(prevData, nextData);
-  markSync("monteDirtyCheckMs");
-  if(monteDirty) markScenarioMonteCarloDirty(scenario);
-  markSync("markMonteDirtyMs");
+  if(isMonteCarloRelevantDataChanged(prevData, nextData)) markScenarioMonteCarloDirty(scenario);
   scenario.data = nextData;
   if(preservedOverlayStyles) scenario.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
-  markSync("assignScenarioDataMs");
-  if(persistLocal){
-    persistState();
-  }
-  markSync("persistStateMs");
-  if(measure){
-    syncPerf.monteDirty = monteDirty;
-    syncPerf.persistLocal = !!persistLocal;
-    syncPerf.totalMs = performance.now() - syncStart;
-    perfBreakdown.syncCurrentScenarioFromDOMBreakdown = syncPerf;
-  }
+  if(persistLocal) persistState();
 }
 function invalidateSimulationCaches(){
   normalSimCache.clear();
@@ -14658,37 +14621,6 @@ function writeSimpleModeValuesToDetail(simpleValues, changedKey = null, options 
   applySimpleLinkedHighlights();
   if(!skipSimpleModeFullSync) syncSimpleModeFromDetail();
 }
-let simpleModeSliderPerfSeq = 0;
-let simpleModeSliderPerfLastAt = 0;
-function logSimpleModeSliderPerf(entry){
-  console.log("[SimpleModeSliderPerf]", entry);
-}
-function buildSimpleModeDetailDataDiff(beforeData, afterData, limit = 60){
-  const before = beforeData || {};
-  const after = afterData || {};
-  const keySet = new Set([...Object.keys(before), ...Object.keys(after)]);
-  const changedKeys = [];
-  const changedEntries = [];
-  keySet.forEach(k=>{
-    const beforeHas = Object.prototype.hasOwnProperty.call(before, k);
-    const afterHas = Object.prototype.hasOwnProperty.call(after, k);
-    const beforeValue = beforeHas ? before[k] : undefined;
-    const afterValue = afterHas ? after[k] : undefined;
-    if(beforeHas === afterHas && beforeValue === afterValue) return;
-    changedKeys.push(k);
-    if(changedEntries.length < limit){
-      changedEntries.push({key:k, before:beforeValue, after:afterValue});
-    }
-  });
-  changedKeys.sort();
-  changedEntries.sort((a,b)=>String(a.key).localeCompare(String(b.key)));
-  return {
-    changedKeyCount: changedKeys.length,
-    changedKeys,
-    changedEntries,
-    truncated: changedKeys.length > changedEntries.length
-  };
-}
 const SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP = {
   depAmount:"dep1_amount",
   invAmount:"inv1_amount",
@@ -14703,80 +14635,56 @@ const SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP = {
   rent:"rent1_val",
   retirePay:"self_retire_pay",
   pensionMonth:"self_pension_month",
-  pensionAge:"self_pension_age"
+  pensionAge:"self_pension_age",
+  retireAge:[
+    "self_retire_year",
+    "self_retire_month",
+    "self_retire_age",
+    "withdrawalBasicAnnualStartAge",
+    "withdrawalBasicHybridStartAge",
+    "withdrawalBasicLumpAge",
+    "withdrawalStartConditionValue"
+  ]
 };
-function logSimpleModeScenarioPatchAudit(entry){
-  console.log("[SimpleModeScenarioPatchAudit]", entry);
-}
-function buildSimpleModeScenarioPatchAudit(key, dataKey, beforeValue, patchedValue, scenarioData){
-  const scenarioValueAfterPatch = scenarioData ? scenarioData[dataKey] : undefined;
+function getSimpleModePatchInputValue(dataKey){
   const sourceEl = document.getElementById(dataKey);
-  const fullInputValueForDetailKey = sourceEl ? (sourceEl.dataset.numericReady === "1" ? sanitizeNumericText(sourceEl.value, true) : sourceEl.value) : undefined;
-  const matched = String(scenarioValueAfterPatch ?? "") === String(fullInputValueForDetailKey ?? "");
-  return {
-    simpleKey:key,
-    detailKey:dataKey,
-    beforeValue,
-    patchedValue,
-    scenarioValueAfterPatch,
-    fullInputValueForDetailKey,
-    matched
-  };
+  if(!sourceEl) return undefined;
+  return sourceEl.dataset.numericReady === "1" ? sanitizeNumericText(sourceEl.value, true) : sourceEl.value;
 }
 function patchCurrentScenarioDataForSimpleModeRangeKey(key){
-  const dataKey = SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP[key];
-  if(!dataKey) return {applied:false, reason:"unsupported_key"};
+  const patchTarget = SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP[key];
+  if(!patchTarget) return {applied:false, reason:"unsupported_key"};
+  const dataKeys = Array.isArray(patchTarget) ? patchTarget : [patchTarget];
   if(!(scenarios.length && currentTab >= 0 && scenarios[currentTab])) return {applied:false, reason:"missing_current_scenario"};
-  const sourceEl = document.getElementById(dataKey);
-  if(!sourceEl) return {applied:false, reason:"missing_source_input", dataKey};
+  const missingDataKey = dataKeys.find(dataKey=>!document.getElementById(dataKey));
+  if(missingDataKey) return {applied:false, reason:"missing_source_input", dataKey:missingDataKey, dataKeys};
   const scenario = scenarios[currentTab];
   const prevData = scenario.data || {};
   const nextData = migrateLegacyData(prevData);
-  const beforeValue = nextData[dataKey];
-  const afterValue = sourceEl.dataset.numericReady === "1" ? sanitizeNumericText(sourceEl.value, true) : sourceEl.value;
-  if(String(beforeValue ?? "") === String(afterValue ?? "")){
-    const audit = buildSimpleModeScenarioPatchAudit(key, dataKey, beforeValue, afterValue, nextData);
-    logSimpleModeScenarioPatchAudit(audit);
-    return {applied:true, key, patchedKeys:[dataKey], changed:false, before:beforeValue, after:afterValue, audit};
+  let changed = false;
+  dataKeys.forEach(dataKey=>{
+    const beforeValue = nextData[dataKey];
+    const afterValue = getSimpleModePatchInputValue(dataKey);
+    if(String(beforeValue ?? "") !== String(afterValue ?? "")){
+      nextData[dataKey] = afterValue;
+      changed = true;
+    }
+  });
+  if(!changed){
+    return {applied:true, key, patchedKeys:dataKeys, changed:false};
   }
-  nextData[dataKey] = afterValue;
   const preservedOverlayStyles = scenario.overlayStyles || prevData.overlayStyles;
   if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
   markScenarioMonteCarloDirty(scenario);
   scenario.data = nextData;
   if(preservedOverlayStyles) scenario.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
-  const audit = buildSimpleModeScenarioPatchAudit(key, dataKey, beforeValue, afterValue, scenario.data);
-  logSimpleModeScenarioPatchAudit(audit);
-  return {applied:true, key, patchedKeys:[dataKey], changed:true, before:beforeValue, after:afterValue, monteDirty:true, audit};
+  return {applied:true, key, patchedKeys:dataKeys, changed:true, monteDirty:true};
 }
-function applySimpleModeFieldValue(key, rawValue, commit = false, perfContext = null){
-  const perfEnabled = !!perfContext;
-  const perfStart = perfEnabled ? performance.now() : 0;
-  const perf = perfEnabled ? {seq:++simpleModeSliderPerfSeq, key, eventType:perfContext.eventType || "input", rawValue:String(rawValue), commit, sincePrevInputMs:simpleModeSliderPerfLastAt ? perfStart - simpleModeSliderPerfLastAt : null} : null;
-  if(perfEnabled) simpleModeSliderPerfLastAt = perfStart;
-  let t = perfStart;
-  const mark = (name)=>{
-    if(!perfEnabled) return;
-    const now = performance.now();
-    perf[name] = now - t;
-    t = now;
-  };
+function applySimpleModeFieldValue(key, rawValue, commit = false, context = null){
   const def = getSimpleModeFieldDef(key);
-  if(!def){
-    if(perfEnabled){
-      perf.cancelReason = "missing_def";
-      perf.totalMs = performance.now() - perfStart;
-      logSimpleModeSliderPerf(perf);
-    }
-    return;
-  }
+  if(!def) return;
   if(isSimpleModeFieldCustomLocked(key)){
     syncSimpleModeFromDetail();
-    if(perfEnabled){
-      perf.cancelReason = "custom_locked";
-      perf.totalMs = performance.now() - perfStart;
-      logSimpleModeSliderPerf(perf);
-    }
     return;
   }
   const normalizedRaw = numValue(rawValue, def.min);
@@ -14786,90 +14694,29 @@ function applySimpleModeFieldValue(key, rawValue, commit = false, perfContext = 
   const dynamicDef = {...def, min:numValue(rangeEl?.min ?? numberEl?.min ?? def.min, numValue(def.min, 0)), max:numValue(rangeEl?.max ?? numberEl?.max ?? def.max, numValue(def.max, 0))};
   const clamped = clampSimpleModeValue(normalizedRaw, dynamicDef);
   setSimpleModeFieldUIValue(key, clamped);
-  if(perfEnabled){
-    perf.clampedValue = clamped;
-    perf.rangeMin = dynamicDef.min;
-    perf.rangeMax = dynamicDef.max;
-  }
-  mark("uiMs");
-  if(!commit){
-    if(perfEnabled){
-      perf.totalMs = performance.now() - perfStart;
-      logSimpleModeSliderPerf(perf);
-    }
-    return;
-  }
+  if(!commit) return;
+
   const values = collectSimpleModeValuesFromUI();
-  mark("collectMs");
-  const isRangeInput = perfContext?.eventType === "range_input";
+  const isRangeInput = context?.eventType === "range_input";
   const useScenarioPartialPatch = isRangeInput && Object.prototype.hasOwnProperty.call(SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP, key);
-  let detailDiffBeforeData = null;
-  if(perfEnabled && isRangeInput && !useScenarioPartialPatch){
-    const diffBeforeStart = performance.now();
-    detailDiffBeforeData = getAllInputs();
-    perf.detailDiffBeforeReadMs = performance.now() - diffBeforeStart;
-    t = performance.now();
-  }
-  const writeDetailStart = perfEnabled ? performance.now() : 0;
+
   writeSimpleModeValuesToDetail(values, key, {skipSimpleModeFullSync:isRangeInput});
-  if(perfEnabled){
-    perf.skippedSimpleModeFullSync = isRangeInput;
-    perf[isRangeInput ? "writeDetailWithoutFullSyncMs" : "writeDetailAndSyncSimpleMs"] = performance.now() - writeDetailStart;
-    t = performance.now();
-    if(isRangeInput && !useScenarioPartialPatch){
-      const diffAfterStart = performance.now();
-      const detailDiffAfterData = getAllInputs();
-      perf.detailDiffAfterReadMs = performance.now() - diffAfterStart;
-      const diffCompareStart = performance.now();
-      perf.simpleModeDetailDataDiff = buildSimpleModeDetailDataDiff(detailDiffBeforeData, detailDiffAfterData);
-      perf.detailDiffCompareMs = performance.now() - diffCompareStart;
-      perf.detailDiffDiagnosticMs = (perf.detailDiffBeforeReadMs || 0) + (perf.detailDiffAfterReadMs || 0) + (perf.detailDiffCompareMs || 0);
-      t = performance.now();
-    }else if(isRangeInput && useScenarioPartialPatch){
-      perf.detailDiffDiagnosticSkipped = true;
-      perf.detailDiffDiagnosticSkipReason = "scenario_partial_patch";
-    }
-  }else{
-    mark(isRangeInput ? "writeDetailWithoutFullSyncMs" : "writeDetailAndSyncSimpleMs");
-  }
+
   if(useScenarioPartialPatch){
-    const patchStart = perfEnabled ? performance.now() : 0;
     const patchResult = patchCurrentScenarioDataForSimpleModeRangeKey(key);
-    if(perfEnabled){
-      perf.scenarioPartialPatch = patchResult;
-      perf.syncCurrentScenarioFromDOMSkipped = !!patchResult?.applied;
-      perf.scenarioPatchMs = performance.now() - patchStart;
-      t = performance.now();
-    }
-    if(!patchResult?.applied){
-      syncCurrentScenarioFromDOM(false, perfEnabled ? perf : null);
-      mark("syncScenarioMs");
-    }else{
-      mark("syncScenarioMs");
-    }
+    if(!patchResult?.applied) syncCurrentScenarioFromDOM(false);
   }else{
-    syncCurrentScenarioFromDOM(false, perfEnabled ? perf : null);
-    mark("syncScenarioMs");
+    syncCurrentScenarioFromDOM(false);
   }
-  const useRealtimeDraw = isRangeInput;
-  if(useRealtimeDraw) requestSimpleModeRealtimeDraw();
+
+  if(isRangeInput) requestSimpleModeRealtimeDraw();
   else requestDraw();
-  mark("requestDrawMs");
+
   if(isRangeInput){
     scheduleSimpleModeSliderPersist();
-    mark("schedulePersistMs");
   }else{
     cancelSimpleModeSliderPersist();
     persistState();
-    mark("persistMs");
-  }
-  if(perfEnabled){
-    perf.persistMode = isRangeInput ? "delayed" : "immediate";
-    perf.persistDelayMs = isRangeInput ? SIMPLE_MODE_SLIDER_PERSIST_DELAY_MS : 0;
-    perf.drawMode = useRealtimeDraw ? "requestAnimationFrame" : "debounce";
-    perf.drawDebounceMs = useRealtimeDraw ? 0 : DRAW_DEBOUNCE_MS;
-    perf.totalMs = performance.now() - perfStart;
-    logSimpleModeSliderPerf(perf);
   }
 }
 function handleSimpleModeFieldInput(key, rawValue, eventType = null){
