@@ -5483,26 +5483,12 @@ document.addEventListener("scroll", (ev)=>{
     text-align:center;
   }
 
-  /* ===== v1222 dev-only: asset probability fast route comparison label ===== */
-  .asset-probability-fast-debug-label{
-    position:absolute;
-    right:18px;
-    bottom:16px;
-    z-index:33;
-    max-width:min(420px, calc(100% - 36px));
-    padding:7px 10px;
-    border:1px solid #cbd7e6;
-    border-radius:12px;
-    background:rgba(255,255,255,.94);
-    color:#334155;
-    box-shadow:0 2px 7px rgba(15,23,42,.08);
-    font-size:11px;
-    line-height:1.45;
-    text-align:left;
-    pointer-events:none;
-    white-space:normal;
+  /* ===== v1224 dev-only: withdrawal compare progress/debug ===== */
+  #withdrawalCompareSection{position:relative;}
+  .withdrawal-compare-progress-overlay{
+    z-index:8;
   }
-  .asset-probability-fast-debug-label[hidden]{display:none !important;}
+
   @media (max-width:900px), (pointer:coarse){
     .asset-probability-progress-card{
       min-width:164px;
@@ -7089,6 +7075,31 @@ const monteRunCache = new Map();
 const monteCompareResultCache = new Map();
 const monteStaticSeriesCache = new Map();
 const monteSharedShockCache = new Map();
+let tabSwitchPerfDebugCurrent = null;
+let lastInputModeUIRenderSignature = null;
+function tabSwitchPerfNow(){
+  return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+}
+function addTabSwitchPerfStep(name, ms, extra = {}){
+  const perf = tabSwitchPerfDebugCurrent;
+  if(!perf) return;
+  perf.steps.push({name, ms, ...extra});
+}
+function measureTabSwitchPerfStep(name, fn, extra = {}){
+  const t0 = tabSwitchPerfNow();
+  const result = fn();
+  addTabSwitchPerfStep(name, tabSwitchPerfNow() - t0, extra);
+  return result;
+}
+function finishTabSwitchPerfDebug(){
+  const perf = tabSwitchPerfDebugCurrent;
+  if(!perf) return;
+  tabSwitchPerfDebugCurrent = null;
+  perf.totalMs = tabSwitchPerfNow() - perf.startedAt;
+  try{
+    void perf;
+  }catch(_e){}
+}
 const DISPLAY_ONLY_INPUT_IDS = new Set(["graphType","overlayToggle","fixedScale","fixedScaleMin","fixedScaleMax","xAxisMin","xAxisMax","xAxisLabelMode"]);
 const MONTE_SETTING_INPUT_IDS = new Set(["monteTrials","monteDrawPaths","monteModel","monteEffectiveVolPct","monteUniformRangePct","monteNormalStdPct","monteMeanRevStdPct","monteMeanRevPhi","monteSeedOn","monteSeedValue"]);
 
@@ -7266,11 +7277,26 @@ function markCurrentScenarioMonteCarloDirty(){
 function isAssetProbabilityGraphSelected(){
   return (document.getElementById("graphType")?.value || "") === "assetProbability";
 }
-function getAssetProbabilityRunButtonLabel(scenario){
+function isAssetProbabilityResultStaleForCurrentSettings(scenario, currentSettings=null){
+  const state = ensureScenarioMonteCarloState(scenario);
+  if(!state?.monteCarloResult) return false;
+  if(state.monteCarloDirty === true) return true;
+  try{
+    const currentHash = buildMonteCarloInputHashFromData(scenario?.data || {});
+    if(state.monteCarloInputHash && currentHash && String(state.monteCarloInputHash) !== String(currentHash)) return true;
+  }catch(_e){}
+  try{
+    const previousKey = getAssetProbabilitySettingsCompareKey(state.monteCarloSettingsSnapshot || state.monteCarloResult?.settingsSnapshot || {});
+    const currentKey = getAssetProbabilitySettingsCompareKey(currentSettings || getMonteCarloSettingsFromDOM());
+    if(previousKey && currentKey && previousKey !== currentKey) return true;
+  }catch(_e){}
+  return false;
+}
+function getAssetProbabilityRunButtonLabel(scenario, currentSettings=null){
   const state = ensureScenarioMonteCarloState(scenario);
   if(state?.monteCarloStatus === "running") return "計算中...";
   if(state?.monteCarloStatus === "error") return "再試行";
-  if(state?.monteCarloResult && state?.monteCarloDirty) return "再計算";
+  if(isAssetProbabilityResultStaleForCurrentSettings(scenario, currentSettings)) return "再計算";
   return "確率計算";
 }
 function getAssetProbabilityStatusText(scenario){
@@ -7311,10 +7337,11 @@ function getAssetProbabilityOverlayStatusText(entries = getAssetProbabilityOverl
   }
   return "重ね書き計算済み";
 }
-function getAssetProbabilityOverlayRunButtonLabel(entries = getAssetProbabilityOverlayEntries()){
+function getAssetProbabilityOverlayRunButtonLabel(entries = getAssetProbabilityOverlayEntries(), currentSettings=null){
   if(isAssetProbabilityOverlayRunning(entries)) return "計算中...";
-  const pendingCount = getAssetProbabilityOverlayPendingEntries(entries).length;
-  return pendingCount > 0 ? "確率計算" : "再計算";
+  const settings = currentSettings || getMonteCarloSettingsFromDOM();
+  const hasStaleResult = (entries || []).some(entry=>isAssetProbabilityResultStaleForCurrentSettings(entry?.scenario, settings));
+  return hasStaleResult ? "再計算" : "確率計算";
 }
 function updateAssetProbabilityControls(){
   const controls = document.getElementById("assetProbabilityChartControls");
@@ -7325,20 +7352,21 @@ function updateAssetProbabilityControls(){
   if(!active) return;
   if(workspaceOverlayModeOn){
     const entries = getAssetProbabilityOverlayEntries();
+    const currentSettings = getMonteCarloSettingsFromDOM();
     if(status){
-      const currentSettings = getMonteCarloSettingsFromDOM();
       status.textContent = ((entries || []).length && !currentSettings.seedOn) ? "固定シード値未使用：全タブを新しい乱数列で再計算" : getAssetProbabilityOverlayStatusText(entries);
     }
     if(btn){
-      btn.textContent = getAssetProbabilityOverlayRunButtonLabel(entries);
+      btn.textContent = getAssetProbabilityOverlayRunButtonLabel(entries, currentSettings);
       btn.disabled = isAssetProbabilityOverlayRunning(entries) || !(entries || []).length;
     }
     return;
   }
   const scenario = getCurrentScenarioMonteCarloState();
+  const currentSettings = getMonteCarloSettingsFromDOM();
   if(status) status.textContent = getAssetProbabilityStatusText(scenario);
   if(btn){
-    btn.textContent = getAssetProbabilityRunButtonLabel(scenario);
+    btn.textContent = getAssetProbabilityRunButtonLabel(scenario, currentSettings);
     btn.disabled = scenario?.monteCarloStatus === "running";
   }
 }
@@ -7371,42 +7399,9 @@ function normalizeMonteSettingsForAssetProbabilityRun(settings){
 }
 
 
-// ===== v1222 dev-only: asset probability fast route comparison helpers =====
-const ASSET_PROBABILITY_FAST_COMPARE_DEBUG = true;
-let assetProbabilityFastDebugState = {lastFast:null, compareTimer:null};
+// ===== v1222: asset probability fast route helpers =====
 function getAssetProbabilityNow(){
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-}
-function ensureAssetProbabilityFastDebugLabel(){
-  const host = document.getElementById('chartCanvasStickyWrap');
-  if(!host) return null;
-  let label = document.getElementById('assetProbabilityFastDebugLabel');
-  if(label) return label;
-  label = document.createElement('div');
-  label.id = 'assetProbabilityFastDebugLabel';
-  label.className = 'asset-probability-fast-debug-label';
-  label.hidden = true;
-  host.appendChild(label);
-  return label;
-}
-function setAssetProbabilityFastDebugLabel(text){
-  const label = ensureAssetProbabilityFastDebugLabel();
-  if(!label) return;
-  label.textContent = text || '';
-  label.hidden = !text;
-}
-function clearAssetProbabilityFastDebugLabel(){
-  setAssetProbabilityFastDebugLabel('');
-}
-function formatAssetProbabilityDebugMs(ms){
-  const n = Number(ms);
-  if(!Number.isFinite(n)) return '-';
-  if(n >= 1000) return `${(n / 1000).toFixed(2)}秒`;
-  return `${Math.round(n)}ms`;
-}
-function getAssetProbabilityFinalPercentile(values, p){
-  const sorted = (Array.isArray(values) ? values : []).map(v=>Number(v)).filter(Number.isFinite).sort((a,b)=>a-b);
-  return sorted.length ? percentileFromSorted(sorted, p) : 0;
 }
 function buildAssetProbabilityRunShellForFastPath(cfg, base, monteSettings){
   const trials = clampMonteTrials(monteSettings?.trials || 80);
@@ -7419,79 +7414,36 @@ function buildAssetProbabilityRunShellForFastPath(cfg, base, monteSettings){
     fixedFinalAtLife:Number(base?.totalAssets?.[lifeIndex] ?? base?.totalAssets?.at?.(-1) ?? 0) || 0
   };
 }
-function summarizeAssetProbabilityFinals(finals){
-  const values = (Array.isArray(finals) ? finals : []).map(v=>Number(v)).filter(Number.isFinite);
-  const fail = values.filter(v=>v <= 0).length;
-  return {
-    count:values.length,
-    fail,
-    prob:Math.round(fail / Math.max(1, values.length) * 100),
-    p10:getAssetProbabilityFinalPercentile(values, 0.10),
-    p50:getAssetProbabilityFinalPercentile(values, 0.50),
-    p90:getAssetProbabilityFinalPercentile(values, 0.90)
+function normalizeAssetProbabilitySettingsSnapshotForCompare(settings){
+  const src = settings || {};
+  const normalized = {
+    model:String(src.model || 'uniform'),
+    trials:clampMonteTrials(src.trials || 80),
+    drawPaths:Math.max(1, Math.min(clampMonteTrials(src.trials || 80), Math.round(Number(src.drawPaths) || 80))),
+    volatility:Number(src.volatility || 0) || 0,
+    meanReversionVolatility:Number(src.meanReversionVolatility || 0) || 0,
+    meanReversionPersistence:Number(src.meanReversionPersistence || 0) || 0,
+    seedOn:!!src.seedOn,
+    seedValue:Math.round(Number(src.seedValue || 12345) || 12345)
   };
+  return normalized;
 }
-function compareAssetProbabilityFinalArrays(fastFinals, oldFinals){
-  const fast = Array.isArray(fastFinals) ? fastFinals : [];
-  const old = Array.isArray(oldFinals) ? oldFinals : [];
-  const len = Math.min(fast.length, old.length);
-  let maxAbsDiff = 0;
-  let mismatchCount = 0;
-  for(let i=0;i<len;i++){
-    const diff = Math.abs((Number(fast[i]) || 0) - (Number(old[i]) || 0));
-    if(diff > maxAbsDiff) maxAbsDiff = diff;
-    if(diff > 1e-6) mismatchCount++;
+function getAssetProbabilitySettingsCompareKey(settings){
+  try{
+    return JSON.stringify(normalizeAssetProbabilitySettingsSnapshotForCompare(settings));
+  }catch(_e){
+    return '';
   }
-  return {len, lengthDiff:fast.length - old.length, maxAbsDiff, mismatchCount};
 }
-function scheduleAssetProbabilityFastCompareLog(scenario, cfg, base, monteSettings, fastResult, fastTotalMs){
-  if(!ASSET_PROBABILITY_FAST_COMPARE_DEBUG) return;
-  if(assetProbabilityFastDebugState.compareTimer){
-    clearTimeout(assetProbabilityFastDebugState.compareTimer);
-    assetProbabilityFastDebugState.compareTimer = null;
-  }
-  const scenarioData = scenario?.data || cfg || {};
-  const cfgSnapshot = cfg;
-  const baseSnapshot = base;
-  const settingsSnapshot = JSON.parse(JSON.stringify(monteSettings || {}));
-  const fastFinals = Array.isArray(fastResult?.finalsAtLife) ? fastResult.finalsAtLife.slice() : [];
-  const fastSummary = summarizeAssetProbabilityFinals(fastFinals);
-  setAssetProbabilityFastDebugLabel(`高速完了: ${formatAssetProbabilityDebugMs(fastTotalMs)} / 旧finalOnly比較を計測中...`);
-  assetProbabilityFastDebugState.compareTimer = setTimeout(()=>{
-    const compareStart = getAssetProbabilityNow();
-    let oldRun = null;
-    let error = null;
-    try{
-      oldRun = buildMonteRunResult(cfgSnapshot, baseSnapshot, settingsSnapshot, scenarioData);
-    }catch(err){
-      error = err;
-    }
-    const oldMs = getAssetProbabilityNow() - compareStart;
-    if(error){
-      console.error('[AssetProbabilityFastCompare]', error);
-      setAssetProbabilityFastDebugLabel(`高速: ${formatAssetProbabilityDebugMs(fastTotalMs)} / 旧finalOnly比較エラー`);
-      return;
-    }
-    const oldFinals = Array.isArray(oldRun?.finalsAtLife) ? oldRun.finalsAtLife : [];
-    const oldSummary = summarizeAssetProbabilityFinals(oldFinals);
-    const finalCompare = compareAssetProbabilityFinalArrays(fastFinals, oldFinals);
-    const p50Diff = (Number(fastSummary.p50) || 0) - (Number(oldSummary.p50) || 0);
-    const probDiff = (Number(fastSummary.prob) || 0) - (Number(oldSummary.prob) || 0);
-    const payload = {
-      fastTotalMs,
-      oldFinalOnlyMs:oldMs,
-      expectedSavedMs:oldMs,
-      fastSummary,
-      oldSummary,
-      probDiff,
-      p50Diff,
-      finalCompare,
-      fastLifeIndex:Number(fastResult?.lifeIndex || 0) || 0,
-      oldLifeIndex:Number(oldRun?.lifeIndex || 0) || 0
-    };
-    console.log('[AssetProbabilityFastCompare]', payload);
-    setAssetProbabilityFastDebugLabel(`高速: ${formatAssetProbabilityDebugMs(fastTotalMs)} / 旧finalOnly: ${formatAssetProbabilityDebugMs(oldMs)} / 破綻差 ${probDiff}pt / P50差 ${Math.round(p50Diff).toLocaleString()}万円 / 最大差 ${Math.round(finalCompare.maxAbsDiff).toLocaleString()}万円`);
-  }, 350);
+function canReuseAssetProbabilityStoredResult(scenario, currentInputHash, requestedMonteSettings){
+  const state = ensureScenarioMonteCarloState(scenario);
+  if(!state?.monteCarloResult) return false;
+  if(state.monteCarloDirty === true) return false;
+  if(!requestedMonteSettings || !requestedMonteSettings.seedOn) return false;
+  if(String(state.monteCarloInputHash || '') !== String(currentInputHash || '')) return false;
+  const previousKey = getAssetProbabilitySettingsCompareKey(state.monteCarloSettingsSnapshot || state.monteCarloResult?.settingsSnapshot || {});
+  const currentKey = getAssetProbabilitySettingsCompareKey(requestedMonteSettings || {});
+  return !!previousKey && previousKey === currentKey;
 }
 
 const ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS = 100;
@@ -7626,8 +7578,18 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
   const shockTrials = buildSharedReturnShocks(cfg, trials, scenarioData, monteSettings);
   const displayIndices = pickMonteDisplayIndices(trials, drawPaths);
   const plottedLifeIndex = Math.max(0, Math.min((Array.isArray(base?.labels) ? base.labels.length : 1) - 1, Number(run.lifeIndex) || 0));
-  const progressStart = run.fastAssetProbabilityShell ? 5 : 35;
-  const progressSpan = run.fastAssetProbabilityShell ? 85 : 57;
+  const isFastAssetProbabilityShell = !!run.fastAssetProbabilityShell;
+  // v1239: apply the shared annual expense-series cache to single asset-probability calculations only.
+  const expenseSeriesProfile = isFastAssetProbabilityShell ? {} : null;
+  const expenseSeriesBundle = isFastAssetProbabilityShell ? buildAnnualExpenseSeriesForSimulation(cfg, staticSeries, expenseSeriesProfile) : null;
+  const expenseSeries = Array.isArray(expenseSeriesBundle?.values) ? expenseSeriesBundle.values : null;
+  const progressStart = isFastAssetProbabilityShell ? 5 : 35;
+  const progressSpan = isFastAssetProbabilityShell ? 93 : 57;
+  const percentileProgressStart = isFastAssetProbabilityShell ? 98 : 92;
+  const percentileProgressSpan = isFastAssetProbabilityShell ? 1 : 4;
+  const ruinProgressStart = isFastAssetProbabilityShell ? 99 : 96;
+  const ruinProgressSpan = isFastAssetProbabilityShell ? 0.5 : 2;
+  const graphProgressValue = isFastAssetProbabilityShell ? 99.6 : 98;
   const trialSeriesCache = new Map();
   const trialValueCache = new Map();
   let simulatedSeriesCount = 0;
@@ -7635,7 +7597,7 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
     const safeIndex = Math.max(0, Math.min(trials - 1, Number(trialIndex) || 0));
     const key = String(safeIndex);
     if(trialSeriesCache.has(key)) return trialSeriesCache.get(key);
-    const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shockTrials[safeIndex]});
+    const sim = simulate(cfg, true, {compact:true, staticSeries, expenseSeries, returnShocks:shockTrials[safeIndex]});
     const series = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
     trialSeriesCache.set(key, series);
     trialValueCache.set(key, Number(series?.[plottedLifeIndex] ?? 0) || 0);
@@ -7694,14 +7656,14 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
     percentile50.push(values.length ? percentileFromSorted(values, 0.50) : 0);
     percentile90.push(values.length ? percentileFromSorted(values, 0.90) : 0);
     if(progressReporter && (pointIndex % 3 === 0 || pointIndex === percentileSourceLength - 1)){
-      await progressReporter(92 + ((pointIndex + 1) / Math.max(1, percentileSourceLength)) * 4, {detail:'分位点を集計中'});
+      await progressReporter(percentileProgressStart + ((pointIndex + 1) / Math.max(1, percentileSourceLength)) * percentileProgressSpan, {detail:'分位点を集計中'});
     }
   }
   for(let trialIndex=0; trialIndex<trials; trialIndex++){
     const crossAge = getAssetZeroCrossAgeForGuide({labels:Array.isArray(base?.labels) ? base.labels : [], totalAssets:await getSeries(trialIndex)});
     if(Number.isFinite(Number(crossAge))) ruinAges.push(Number(crossAge));
     if(progressReporter && (trialIndex % 10 === 0 || trialIndex === trials - 1)){
-      await progressReporter(96 + ((trialIndex + 1) / Math.max(1, trials)) * 2, {detail:'資産寿命を集計中'});
+      await progressReporter(ruinProgressStart + ((trialIndex + 1) / Math.max(1, trials)) * ruinProgressSpan, {detail:'資産寿命を集計中'});
     }
   }
   ruinAges.sort((a,b)=>a-b);
@@ -7711,6 +7673,18 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
   const fixedFinalAtLife = Number(baseSeries?.[plottedLifeIndex] ?? 0) || 0;
   const allFinalsSameAsFixed = finalsAtPlottedLife.every(v => Math.abs((Number(v) || 0) - fixedFinalAtLife) < 1e-9);
   const allVisibleSame = [best, worst, ...displayResults].every(r => r.length === baseSeries.length && r.every((v, i)=>Math.abs((Number(v) || 0) - (Number(baseSeries[i]) || 0)) < 1e-9));
+  let expenseSeriesMaxAbsDiff = 0;
+  let expenseSeriesMismatchCount = 0;
+  if(expenseSeries && staticSeries){
+    const len = Math.min(expenseSeries.length, staticSeries.length);
+    for(let ei=0; ei<len; ei++){
+      const cachedTotal = Number(expenseSeries?.[ei]?.total || 0) || 0;
+      const directTotal = Number(staticSeries?.[ei]?.expenseObj?.total || 0) || 0;
+      const diff = Math.abs(cachedTotal - directTotal);
+      if(diff > expenseSeriesMaxAbsDiff) expenseSeriesMaxAbsDiff = diff;
+      if(diff > 1e-6) expenseSeriesMismatchCount++;
+    }
+  }
   const bundle = {
     drawPaths,
     displayIndices,
@@ -7727,10 +7701,18 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
     prob,
     finalsAtPlottedLife,
     plottedLifeIndex,
-    allSame: allFinalsSameAsFixed && allVisibleSame
+    allSame: allFinalsSameAsFixed && allVisibleSame,
+    expenseSeriesDebug: expenseSeries ? {
+      buildMs:Number(expenseSeriesProfile?.expenseSeriesBuildMs || 0) || 0,
+      length:Number(expenseSeriesProfile?.expenseSeriesLength || expenseSeries.length || 0) || 0,
+      directCalls:Number(expenseSeriesProfile?.expenseSeriesDirectCalls || 0) || 0,
+      expectedHits:trials * (Number(expenseSeriesProfile?.expenseSeriesLength || expenseSeries.length || 0) || 0),
+      maxAbsDiff:expenseSeriesMaxAbsDiff,
+      mismatchCount:expenseSeriesMismatchCount
+    } : null
   };
   run.displayCache[cacheKey] = bundle;
-  if(progressReporter) await progressReporter(98, {force:true, detail:'グラフを準備中'});
+  if(progressReporter) await progressReporter(graphProgressValue, {force:true, detail:'グラフを準備中'});
   return bundle;
 }
 async function getOrBuildMonteRunCacheAsync(scenario, cfg, base, monteSettingsOverride, progressReporter=null){
@@ -7756,7 +7738,7 @@ async function buildAssetProbabilityStoredResultFastAsync(scenario, cfg, base, m
   const finalsAtLife = Array.isArray(displayBundle?.finalsAtPlottedLife) ? displayBundle.finalsAtPlottedLife.slice() : [];
   const fail = Number(displayBundle?.fail ?? finalsAtLife.filter(v => (Number(v) || 0) <= 0).length) || 0;
   const ruinProbability = Number.isFinite(Number(displayBundle?.prob)) ? Number(displayBundle.prob) : Math.round(fail / Math.max(1, finalsAtLife.length || 1) * 100);
-  if(progressReporter) await progressReporter(99, {force:true, detail:'結果を反映中'});
+  if(progressReporter) await progressReporter(99.8, {force:true, detail:'結果を反映中'});
   return {
     labels,
     displayedPathIndices:Array.isArray(displayBundle?.displayIndices) ? displayBundle.displayIndices.slice() : [],
@@ -7777,7 +7759,8 @@ async function buildAssetProbabilityStoredResultFastAsync(scenario, cfg, base, m
     lifeIndex:Number(monteRun?.lifeIndex || 0) || 0,
     computedAt:new Date().toISOString(),
     inputHash:buildMonteCarloInputHashFromData(scenario?.data || cfg),
-    fastFinalOnlyIntegrated:true
+    fastFinalOnlyIntegrated:true,
+    expenseSeriesDebug: displayBundle?.expenseSeriesDebug || null
   };
 }
 async function buildAssetProbabilityStoredResultAsync(scenario, cfg, base, monteSettings, progressReporter=null){
@@ -7844,24 +7827,28 @@ function buildAssetProbabilityStoredResult(scenario, cfg, base, monteSettings){
 async function runSingleAssetProbabilityCalculation(settingsOverride=null, progressReporter=null){
   const scenario = getCurrentScenarioMonteCarloState();
   if(!scenario || scenario.monteCarloStatus === "running") return false;
-  scenario.monteCarloStatus = "running";
   scenario.monteCarloError = "";
   updateAssetProbabilityControls();
   try{
     const currentDisplayCfg = getScenarioFromDOM();
     const currentCache = getOrBuildNormalScenarioCache(scenario, scenario, currentDisplayCfg, null);
     const requestedMonteSettings = settingsOverride || getMonteCarloSettingsFromDOM();
-    const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
-    const fastStart = getAssetProbabilityNow();
-    const result = await buildAssetProbabilityStoredResultFastAsync(scenario, currentCache.cfg, currentCache.sim, monteSettings, progressReporter);
-    const fastTotalMs = getAssetProbabilityNow() - fastStart;
-    if(ASSET_PROBABILITY_FAST_COMPARE_DEBUG){
-      scheduleAssetProbabilityFastCompareLog(scenario, currentCache.cfg, currentCache.sim, monteSettings, result, fastTotalMs);
+    const currentInputHash = buildMonteCarloInputHashFromData(scenario.data || currentCache.cfg);
+    if(canReuseAssetProbabilityStoredResult(scenario, currentInputHash, requestedMonteSettings)){
+      scenario.monteCarloStatus = "idle";
+      scenario.monteCarloError = "";
+      if(progressReporter) await progressReporter(100, {force:true, detail:'前回結果を表示中'});
+      updateAssetProbabilityControls();
+      return true;
     }
+    scenario.monteCarloStatus = "running";
+    updateAssetProbabilityControls();
+    const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
+    const result = await buildAssetProbabilityStoredResultFastAsync(scenario, currentCache.cfg, currentCache.sim, monteSettings, progressReporter);
     result.settingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
     scenario.monteCarloResult = result;
     scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
-    scenario.monteCarloInputHash = result.inputHash || buildMonteCarloInputHashFromData(scenario.data || currentCache.cfg);
+    scenario.monteCarloInputHash = result.inputHash || currentInputHash;
     scenario.monteCarloComputedAt = result.computedAt || new Date().toISOString();
     scenario.monteCarloDirty = false;
     scenario.monteCarloStatus = "idle";
@@ -7884,13 +7871,23 @@ async function runAssetProbabilityOverlayCalculation(settingsOverride=null, prog
   if(!entries.length) return false;
   const requestedMonteSettings = settingsOverride || getMonteCarloSettingsFromDOM();
   const seedFixed = !!requestedMonteSettings?.seedOn;
-  const pendingEntries = getAssetProbabilityOverlayPendingEntries(entries);
-  const targets = seedFixed ? (pendingEntries.length ? pendingEntries : entries) : entries;
   if(isAssetProbabilityOverlayRunning(entries)) return false;
   const currentScenario = scenarios[currentTab];
   const currentDisplayCfg = getScenarioFromDOM();
   const currentCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
   const monteSettings = buildAssetProbabilityOverlayMonteSettings(requestedMonteSettings);
+  const targets = seedFixed ? entries.filter(entry=>{
+    const scenario = ensureScenarioMonteCarloState(entry.scenario);
+    if(!scenario) return false;
+    const cache = getOrBuildNormalScenarioCache(scenario, currentScenario, currentCache.cfg, currentCache.sim);
+    const currentInputHash = buildMonteCarloInputHashFromData(scenario.data || cache.cfg);
+    return !canReuseAssetProbabilityStoredResult(scenario, currentInputHash, requestedMonteSettings);
+  }) : entries;
+  if(seedFixed && !targets.length){
+    if(progressReporter) await progressReporter(100, {force:true, detail:'前回結果を表示中'});
+    updateAssetProbabilityControls();
+    return true;
+  }
   targets.forEach(entry=>{
     const scenario = ensureScenarioMonteCarloState(entry.scenario);
     if(!scenario) return;
@@ -7913,9 +7910,11 @@ async function runAssetProbabilityOverlayCalculation(settingsOverride=null, prog
         });
       } : null;
       const cache = getOrBuildNormalScenarioCache(scenario, currentScenario, currentCache.cfg, currentCache.sim);
-      const result = scopedProgress
-        ? await buildAssetProbabilityStoredResultAsync(scenario, cache.cfg, cache.sim, monteSettings, scopedProgress)
-        : buildAssetProbabilityStoredResult(scenario, cache.cfg, cache.sim, monteSettings);
+      // v1240: use the same fast asset-probability route for overlay calculations.
+      // This skips the legacy finalOnly pass and applies the annual expense-series cache per scenario.
+      const overlayFastStart = getAssetProbabilityNow();
+      const result = await buildAssetProbabilityStoredResultFastAsync(scenario, cache.cfg, cache.sim, monteSettings, scopedProgress);
+      const overlayFastTotalMs = getAssetProbabilityNow() - overlayFastStart;
       result.settingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
       scenario.monteCarloResult = result;
       scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
@@ -7941,7 +7940,6 @@ async function runAssetProbabilityOverlayCalculation(settingsOverride=null, prog
 }
 async function runAssetProbabilityCalculation(settingsOverride=null){
   clearScheduledDraw();
-  clearAssetProbabilityFastDebugLabel();
   ensureScenarioSaved();
   showAssetProbabilityProgressOverlay('確率計算中...', workspaceOverlayModeOn ? '重ね書き対象を計算中' : '推移データを準備中');
   await reportAssetProbabilityProgress(0, {force:true, detail:workspaceOverlayModeOn ? '重ね書き対象を計算中' : '推移データを準備中'});
@@ -8873,8 +8871,8 @@ function drawAssetProbabilityShell(){
   ensureScenarioSaved();
   const currentScenario = scenarios[currentTab];
   const scenarioState = ensureScenarioMonteCarloState(currentScenario);
-  const currentDisplayCfg = getScenarioFromDOM();
-  const currentCache = getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null);
+  const currentDisplayCfg = measureTabSwitchPerfStep('draw.getScenarioFromDOM', ()=>getScenarioFromDOM());
+  const currentCache = measureTabSwitchPerfStep('draw.currentNormalCache', ()=>getOrBuildNormalScenarioCache(currentScenario, currentScenario, currentDisplayCfg, null));
   const currentCfg = currentCache.cfg;
   const currentSim = currentCache.sim;
   updateResultCards(currentCfg, currentSim);
@@ -9109,11 +9107,33 @@ function getSafeActiveScenarioIndex(preferredIndex = currentTab){
   return isScenarioIncludedInOverlayByIndex(normalizedPreferred) ? normalizedPreferred : leftmostVisible;
 }
 function enforceOverlaySafeActiveScenario(preferredIndex = currentTab, opts = {}){
-  const nextIndex = getSafeActiveScenarioIndex(preferredIndex);
-  currentTab = nextIndex;
-  if(opts && opts.syncInputs && currentTab >= 0 && scenarios[currentTab]){
+  const syncInputs = !!(opts && opts.syncInputs);
+  if(!scenarios.length){
+    currentTab = -1;
+    addTabSwitchPerfStep('enforce.noScenarios', 0);
+    return currentTab;
+  }
+  const normalizedPreferred = Number.isFinite(preferredIndex) ? Math.max(0, Math.min(scenarios.length - 1, preferredIndex)) : 0;
+  let nextIndex = normalizedPreferred;
+  if(workspaceOverlayModeOn){
+    const tSafe = tabSwitchPerfNow();
+    nextIndex = getSafeActiveScenarioIndex(normalizedPreferred);
+    addTabSwitchPerfStep('enforce.getSafeActiveScenarioIndex', tabSwitchPerfNow() - tSafe, {overlayOn:true, preferred:normalizedPreferred, nextIndex});
+  }else{
+    addTabSwitchPerfStep('enforce.overlayOffFastPath', 0, {preferred:normalizedPreferred, nextIndex});
+  }
+  if(currentTab !== nextIndex){
+    currentTab = nextIndex;
+  }
+  if(syncInputs && currentTab >= 0 && scenarios[currentTab]){
+    const tSet = tabSwitchPerfNow();
     setAllInputs(scenarios[currentTab].data);
+    addTabSwitchPerfStep('enforce.setAllInputs', tabSwitchPerfNow() - tSet, {scenario:scenarios[currentTab]?.name || ''});
+    const tPeriod = tabSwitchPerfNow();
     updatePeriodDisplays();
+    addTabSwitchPerfStep('enforce.updatePeriodDisplays', tabSwitchPerfNow() - tPeriod);
+  }else{
+    addTabSwitchPerfStep('enforce.skipInputSync', 0, {syncInputs});
   }
   return currentTab;
 }
@@ -9495,8 +9515,16 @@ function saveOverlaySettingsModal(){
   requestDraw({immediate:true});
   persistState();
 }
+function buildNormalSimulationWithExpenseSeries(cfg){
+  const staticSeries = buildMonteStaticSeries(cfg);
+  const expenseBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries);
+  const expenseSeries = Array.isArray(expenseBundle?.values) ? expenseBundle.values : null;
+  return simulate(cfg, false, {staticSeries, expenseSeries});
+}
 function getOrBuildNormalScenarioCache(scenario, currentScenario, currentCfg, currentSim){
-  if(!scenario) return {cfg: mergeDisplaySettingsIntoCfg(currentCfg, currentCfg), sim: currentSim};
+  if(!scenario){
+    return {cfg: mergeDisplaySettingsIntoCfg(currentCfg, currentCfg), sim: currentSim};
+  }
   const cached = getNormalSimCacheByData(scenario.data);
   if(cached){
     return {cfg: mergeDisplaySettingsIntoCfg(cached.cfg, currentCfg), sim: cached.sim};
@@ -9508,12 +9536,13 @@ function getOrBuildNormalScenarioCache(scenario, currentScenario, currentCfg, cu
   const focusState = captureActiveInputState();
   setAllInputs(scenario.data);
   const cfg = getScenarioFromDOM();
-  const sim = simulate(cfg, false);
+  const sim = buildNormalSimulationWithExpenseSeries(cfg);
   if(currentScenario?.data) setAllInputs(currentScenario.data);
   restoreActiveInputState(focusState);
   const stored = setNormalSimCacheByData(scenario.data, cfg, sim);
   return {cfg: mergeDisplaySettingsIntoCfg(stored.cfg, currentCfg), sim: stored.sim};
 }
+
 
 function pruneMonteRunCacheIfNeeded(){
   if(monteRunCache.size > MONTE_RUN_CACHE_LIMIT) monteRunCache.clear();
@@ -9820,7 +9849,23 @@ function isCheckedAttr(v, fallback=false){
 }
 
 const DYNAMIC_SECTIONS = ["child","dep","safeAsset","inv","futureInv","sumInv","reginc","inc","insPay","insRecv","rent","homeMaint","life","period","extra"];
+const DYNAMIC_SECTION_BODY_IDS = {child:"childRows",dep:"depRows",safeAsset:"safeAssetRows",inv:"invRows",futureInv:"futureInvRows",sumInv:"sumInvRows",reginc:"regincRows",inc:"incRows",insPay:"insPayRows",insRecv:"insRecvRows",rent:"rentRows",homeMaint:"homeMaintRows",life:"lifeRows",period:"periodRows",extra:"extraRows"};
 let dynamicCounts = {child:1,dep:1,safeAsset:1,inv:1,futureInv:1,sumInv:1,reginc:1,inc:1,insPay:1,insRecv:1,rent:1,homeMaint:4,life:1,period:1,extra:1};
+function normalizeDynamicCountValue(value){
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.max(1, Math.floor(n)) : 1;
+}
+function getDynamicCountsSignature(counts = dynamicCounts){
+  return DYNAMIC_SECTIONS.map(type => `${type}:${normalizeDynamicCountValue(counts?.[type])}`).join('|');
+}
+function dynamicSectionDomMatchesCounts(counts = dynamicCounts){
+  return DYNAMIC_SECTIONS.every(type=>{
+    const bodyId = DYNAMIC_SECTION_BODY_IDS[type];
+    const body = bodyId ? document.getElementById(bodyId) : null;
+    if(!body) return false;
+    return body.children.length === normalizeDynamicCountValue(counts?.[type]);
+  }) && (document.getElementById('eduBody')?.children.length === normalizeDynamicCountValue(counts?.child));
+}
 function parseAgeLikeValue(value){
   if(value == null || value === "") return NaN;
   const n = Number(value);
@@ -12015,6 +12060,7 @@ function buildEducationGrid(data = {}){
   body.innerHTML = html;
 }
 function renderDynamicSections(data = {}){
+  lastInputModeUIRenderSignature = null;
   renderChildRows(data);
   renderDepositRows(data);
   renderSafeAssetRows(data);
@@ -13183,14 +13229,39 @@ function refreshRowLabelTexts(){
   });
 }
 function setAllInputs(data){
+  const __setAllInputsPerfActive = !!tabSwitchPerfDebugCurrent;
+  const __setAllInputsStart = tabSwitchPerfNow();
+  let __setAllInputsLast = __setAllInputsStart;
+  const __setAllInputsMark = (name, extra = {})=>{
+    if(!__setAllInputsPerfActive) return;
+    const __now = tabSwitchPerfNow();
+    addTabSwitchPerfStep(`setAllInputs.${name}`, __now - __setAllInputsLast, extra);
+    __setAllInputsLast = __now;
+  };
+  const __dynamicCountsBefore = {...dynamicCounts};
+  const __dynamicSignatureBefore = getDynamicCountsSignature(__dynamicCountsBefore);
   const migrated = syncDynamicCountsFromData(data || {});
-  renderDynamicSections(migrated);
+  const __dynamicSignatureAfter = getDynamicCountsSignature(dynamicCounts);
+  __setAllInputsMark('syncDynamicCountsFromData', {before:__dynamicSignatureBefore, after:__dynamicSignatureAfter});
+  const __canSkipDynamicRender = (__dynamicSignatureBefore === __dynamicSignatureAfter) && dynamicSectionDomMatchesCounts(dynamicCounts);
+  if(__canSkipDynamicRender){
+    __setAllInputsMark('renderDynamicSections.skip', {reason:'sameDynamicSignature', signature:__dynamicSignatureAfter});
+  }else{
+    renderDynamicSections(migrated);
+    __setAllInputsMark('renderDynamicSections', {skipped:false, reason:(__dynamicSignatureBefore === __dynamicSignatureAfter ? 'domMismatch' : 'dynamicSignatureChanged'), before:__dynamicSignatureBefore, after:__dynamicSignatureAfter});
+  }
   syncRetireYearSelectOptions("self", migrated);
   syncRetireYearSelectOptions("sp", migrated);
+  __setAllInputsMark('syncRetireYearSelectOptions');
   syncLoanBuyYearSelectOptions(migrated);
+  __setAllInputsMark('syncLoanBuyYearSelectOptions');
+  let __valueEntries = 0;
+  let __valueApplied = 0;
   Object.entries(migrated || {}).forEach(([id,val])=>{
+    __valueEntries += 1;
     const el = document.getElementById(id);
     if(!el) return;
+    __valueApplied += 1;
     if(id === 'xAxisLabelMode'){
       const hiddenMode = document.getElementById('xAxisLabelMode')?.value;
       const scenarioMode = Array.isArray(scenarios) ? scenarios.find(sc=>sc && (sc.xAxisLabelMode || sc.data?.xAxisLabelMode)) : null;
@@ -13201,22 +13272,41 @@ function setAllInputs(data){
     if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
+  __setAllInputsMark('applyValues', {entries:__valueEntries, applied:__valueApplied});
   refreshRowLabelTexts();
+  __setAllInputsMark('refreshRowLabelTexts');
   syncAllBirthDateDerivedFields();
+  __setAllInputsMark('syncAllBirthDateDerivedFields');
   syncLoanBuyFieldsFromYearMonth();
+  __setAllInputsMark('syncLoanBuyFieldsFromYearMonth');
   enhanceNumericInputs(document);
+  __setAllInputsMark('enhanceNumericInputs');
   formatAllNumericInputs(document, true);
+  __setAllInputsMark('formatAllNumericInputs');
   const nextContext = {currentAge: currentAgeValue(migrated), baseYear: currentBaseYearValue(migrated)};
   refreshAllTimeDisplays(nextContext, nextContext);
+  __setAllInputsMark('refreshAllTimeDisplays');
   updateIncomeCurveControls();
+  __setAllInputsMark('updateIncomeCurveControls');
   updateChildAllowanceSummary(migrated);
+  __setAllInputsMark('updateChildAllowanceSummary');
   syncSimpleModeFromDetail();
+  __setAllInputsMark('syncSimpleModeFromDetail');
   syncSimpleInflationCheckboxesFromRate();
+  __setAllInputsMark('syncSimpleInflationCheckboxesFromRate');
   applySimpleLinkedHighlights();
+  __setAllInputsMark('applySimpleLinkedHighlights');
   seedLoanDetailHiddenFromSimpleIfNeeded();
+  __setAllInputsMark('seedLoanDetailHiddenFromSimpleIfNeeded');
   updateHomeDetailUIState();
+  __setAllInputsMark('updateHomeDetailUIState');
   updateLoanSummary();
+  __setAllInputsMark('updateLoanSummary');
   updateWithdrawalRuleModalUI();
+  __setAllInputsMark('updateWithdrawalRuleModalUI');
+  if(__setAllInputsPerfActive){
+    addTabSwitchPerfStep('setAllInputs.total', tabSwitchPerfNow() - __setAllInputsStart, {entries:__valueEntries, applied:__valueApplied});
+  }
 }
 function ensureScenarioSaved(){
   if(!(scenarios.length && currentTab >= 0 && scenarios[currentTab])) return;
@@ -15157,11 +15247,21 @@ function toggleInputModeWithFlip(){
 }
 
 function updateInputsVisibility(){
+  const __visibilityPerfActive = !!tabSwitchPerfDebugCurrent;
+  const __visibilityStart = tabSwitchPerfNow();
+  let __visibilityLast = __visibilityStart;
+  const __visibilityMark = (name, extra = {})=>{
+    if(!__visibilityPerfActive) return;
+    const __now = tabSwitchPerfNow();
+    addTabSwitchPerfStep(`updateInputsVisibility.${name}`, __now - __visibilityLast, extra);
+    __visibilityLast = __now;
+  };
   const hasScenario = scenarios.length > 0;
   const inputsEl = document.getElementById("inputs");
   const chartWrapEl = document.getElementById("chartWrap");
   if(inputsEl) inputsEl.style.display = hasScenario ? "block" : "none";
   if(chartWrapEl) chartWrapEl.style.display = hasScenario ? "" : "none";
+  __visibilityMark('toggleContainers', {hasScenario});
   if(!hasScenario && chart){
     chart.destroy();
     chart = null;
@@ -15169,7 +15269,12 @@ function updateInputsVisibility(){
     const ctx = canvas?.getContext?.("2d");
     if(ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
+  __visibilityMark('emptyChartCleanup');
   updateInputModeUI();
+  __visibilityMark('updateInputModeUI');
+  if(__visibilityPerfActive){
+    addTabSwitchPerfStep('updateInputsVisibility.total', tabSwitchPerfNow() - __visibilityStart, {hasScenario});
+  }
 }
 function normalizeInputMode(mode){
   return mode === "simple" ? "simple" : "detail";
@@ -15249,28 +15354,65 @@ function setInputMode(mode, options = {}){
   if(options.persist !== false) persistState();
 }
 function updateInputModeUI(){
+  const __inputModePerfActive = !!tabSwitchPerfDebugCurrent;
+  const __inputModeStart = tabSwitchPerfNow();
+  let __inputModeLast = __inputModeStart;
+  const __inputModeMark = (name, extra = {})=>{
+    if(!__inputModePerfActive) return;
+    const __now = tabSwitchPerfNow();
+    addTabSwitchPerfStep(`updateInputModeUI.${name}`, __now - __inputModeLast, extra);
+    __inputModeLast = __now;
+  };
   const inputsEl = document.getElementById("inputs");
   const hasScenario = !!scenarios.length;
   const mode = hasScenario ? normalizeInputMode(currentInputMode) : "detail";
   const simplePanel = document.getElementById("simpleModePanel");
   const detailPanel = document.getElementById("detailModePanel");
   const commonPanel = document.getElementById("commonSettingsPanel");
+  const dynamicSignature = typeof getDynamicCountsSignature === "function" ? getDynamicCountsSignature(dynamicCounts) : "";
+  const nextSignature = `${hasScenario ? "1" : "0"}|${mode}|${dynamicSignature}`;
+  const panelsAlreadyMatch =
+    (!commonPanel || commonPanel.hidden === true) &&
+    (!simplePanel || simplePanel.hidden === !(hasScenario && mode === "simple")) &&
+    (!detailPanel || detailPanel.hidden === !(hasScenario && mode === "detail")) &&
+    (!inputsEl || inputsEl.dataset.inputMode === mode);
+  if(lastInputModeUIRenderSignature === nextSignature && panelsAlreadyMatch && !pendingInputModeReveal){
+    __inputModeMark('skip', {reason:'sameSignature', signature:nextSignature});
+    if(__inputModePerfActive) addTabSwitchPerfStep('updateInputModeUI.total', tabSwitchPerfNow() - __inputModeStart, {skipped:true});
+    return;
+  }
   if(commonPanel) commonPanel.hidden = true;
+  __inputModeMark('commonPanel');
   relocateBasicInfoSection(mode);
+  __inputModeMark('relocateBasicInfoSection');
   if(simplePanel) simplePanel.hidden = !(hasScenario && mode === "simple");
   if(detailPanel) detailPanel.hidden = !(hasScenario && mode === "detail");
+  __inputModeMark('togglePanels', {mode, hasScenario});
   relocateResultBar(mode);
+  __inputModeMark('relocateResultBar');
   if(inputsEl) inputsEl.dataset.inputMode = mode;
   updateInputModeToggleButton();
+  __inputModeMark('updateToggleButton');
   if(hasScenario && mode === "simple"){
     syncSimpleModeFromDetail();
+    __inputModeMark('syncSimpleModeFromDetail');
     buildSimpleStickyNav();
+    __inputModeMark('buildSimpleStickyNav');
   }
-  if(hasScenario && mode === "detail") buildDetailStickyNav();
+  if(hasScenario && mode === "detail"){
+    buildDetailStickyNav();
+    __inputModeMark('buildDetailStickyNav');
+  }
   updateDetailStickyTop();
+  __inputModeMark('updateDetailStickyTop');
   updateSimpleStickyNavVisibility();
+  __inputModeMark('updateSimpleStickyNavVisibility');
   updateDetailStickyNavVisibility();
+  __inputModeMark('updateDetailStickyNavVisibility');
   applyTabOrder();
+  __inputModeMark('applyTabOrder');
+  lastInputModeUIRenderSignature = nextSignature;
+  if(__inputModePerfActive) addTabSwitchPerfStep('updateInputModeUI.total', tabSwitchPerfNow() - __inputModeStart, {skipped:false, signature:nextSignature});
 }
 function addTab(){
   const hadNoScenarios = !scenarios.length;
@@ -15370,7 +15512,9 @@ function switchTab(i){
   currentTab = i;
   enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
   updateInputsVisibility();
-  renderTabs();
+  if(!updateTabActiveStateOnly()){
+    renderTabs();
+  }
   requestDraw({immediate:true});
 }
 function openTabContextMenu(tabIndex, x, y){
@@ -15885,6 +16029,57 @@ function finishTabMouseDrag(commit){
 function handleTabMouseUp(){
   finishTabMouseDrag(true);
 }
+function updateTabActiveStateOnly(){
+  const el = document.getElementById("tabButtons");
+  if(!el) return false;
+  const btns = Array.from(el.querySelectorAll(".tab-btn"));
+  if(btns.length !== scenarios.length) return false;
+  for(let i=0;i<scenarios.length;i++){
+    const s = scenarios[i];
+    const btn = btns[i];
+    if(!s || !btn) return false;
+    if(String(btn.dataset.tabIndex || "") !== String(i)) return false;
+    if(String(btn.dataset.scenarioId || "") !== String(s.id || "")) return false;
+    const overlayIncluded = !!(workspaceOverlayModeOn && s?.id && workspaceOverlaySettings[s.id]?.visible);
+    const overlayLocked = !!(workspaceOverlayModeOn && !overlayIncluded);
+    const dragging = !!(s?.id && s.id === tabDragScenarioId);
+    btn.classList.toggle("active", i === currentTab);
+    btn.classList.toggle("overlay-included", overlayIncluded);
+    btn.classList.toggle("overlay-locked", overlayLocked);
+    btn.classList.toggle("tab-dragging", dragging);
+    if(overlayLocked){
+      btn.setAttribute("title", "重ね描き対象外です。設定で追加してください");
+      btn.setAttribute("aria-disabled", "true");
+    }else{
+      btn.removeAttribute("title");
+      btn.removeAttribute("aria-disabled");
+    }
+    if(overlayIncluded){
+      const style = workspaceOverlaySettings[s.id] || {};
+      const lineColor = style.color || getDefaultOverlayColorByIndex(i);
+      const lineStyle = normalizeOverlayLineStyle(style.lineStyle);
+      const lineWidth = resolveAssetOverlayLineWidth(style.lineWidth);
+      btn.style.setProperty("--overlay-line-color", lineColor);
+      btn.style.setProperty("--overlay-line-style", lineStyle);
+      btn.style.setProperty("--overlay-line-width", `${lineWidth}px`);
+      btn.style.setProperty("--overlay-line-bg", buildOverlayPreviewSvgDataUrl(lineColor, lineStyle, style.lineWidth, 60));
+      btn.style.setProperty("--overlay-line-bg-mobile", buildOverlayPreviewSvgDataUrl(lineColor, lineStyle, style.lineWidth, 44));
+    }else{
+      btn.style.removeProperty("--overlay-line-color");
+      btn.style.removeProperty("--overlay-line-style");
+      btn.style.removeProperty("--overlay-line-width");
+      btn.style.removeProperty("--overlay-line-bg");
+      btn.style.removeProperty("--overlay-line-bg-mobile");
+    }
+  }
+  const activeBtn = el.querySelector(`.tab-btn[data-tab-index="${currentTab}"]`);
+  if(activeBtn && typeof activeBtn.scrollIntoView === "function"){
+    activeBtn.scrollIntoView({ block:"nearest", inline:"nearest" });
+  }
+  applyTabOrder();
+  return true;
+}
+
 function renderTabs(){
   ensureScenarioMetadata();
   ensureWorkspaceOverlayState();
@@ -17800,11 +17995,26 @@ function liquidateMatchingInvestmentsGross(targetGross, investments, owner, acco
   }
   return raised;
 }
-function processRetireReceiptForYear(cfg, age, owner, receiptState){
+function receiptProfileNow(){ return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now(); }
+function addReceiptProfile(profile, key, value){
+  if(!profile) return;
+  profile[key] = (Number(profile[key]) || 0) + (Number(value) || 0);
+}
+function addReceiptProfileCount(profile, key, count=1){
+  if(!profile) return;
+  profile[key] = (Number(profile[key]) || 0) + (Number(count) || 0);
+}
+function processRetireReceiptForYear(cfg, age, owner, receiptState, profile=null){
+  if(profile) addReceiptProfileCount(profile, 'receiptRetireCalls');
+  const settingStart = profile ? receiptProfileNow() : 0;
   const setting = getResolvedReceiptSetting(cfg, owner, "退職金");
+  if(profile) addReceiptProfile(profile, 'receiptSettingMs', receiptProfileNow() - settingStart);
+  const remainingStart = profile ? receiptProfileNow() : 0;
   let remaining = getRetireRemainingForOwner(cfg, receiptState, owner);
+  if(profile) addReceiptProfile(profile, 'receiptRemainingMs', receiptProfileNow() - remainingStart);
   if(remaining <= 0.0001) return 0;
   let payout = 0;
+  const calcStart = profile ? receiptProfileNow() : 0;
   const lumpFlag = `${setting.key}_lump_done`;
   if((setting.method === "一括" || setting.method === "併用") && !isReceiptFlagOn(receiptState, lumpFlag) && age === setting.lumpAge){
     const ratio = setting.method === "一括" ? 100 : setting.lumpRatio;
@@ -17812,45 +18022,77 @@ function processRetireReceiptForYear(cfg, age, owner, receiptState){
     payout += lump;
     remaining -= lump;
     setReceiptFlag(receiptState, lumpFlag);
+    if(profile) addReceiptProfileCount(profile, 'receiptRetireLumpMatches');
   }
   if((setting.method === "年金" || setting.method === "併用") && age >= setting.pensionStart && age <= setting.pensionEnd && remaining > 0.0001){
     const yearsLeft = Math.max(1, setting.pensionEnd - age + 1);
     const annual = remaining / yearsLeft;
     payout += annual;
     remaining -= annual;
+    if(profile) addReceiptProfileCount(profile, 'receiptRetirePensionMatches');
   }
   setRetireRemainingForOwner(receiptState, owner, remaining);
+  if(profile) addReceiptProfile(profile, 'receiptRetireCalcMs', receiptProfileNow() - calcStart);
   return payout;
 }
-function processDcReceiptForYear(cfg, age, owner, accountType, investments, receiptState){
+function processDcReceiptForYear(cfg, age, owner, accountType, investments, receiptState, profile=null){
+  if(profile) addReceiptProfileCount(profile, 'receiptDcCalls');
+  const settingStart = profile ? receiptProfileNow() : 0;
   const setting = getResolvedReceiptSetting(cfg, owner, accountType);
-  if(age < getIdecoEligibleAge(cfg, owner)) return 0;
+  if(profile) addReceiptProfile(profile, 'receiptSettingMs', receiptProfileNow() - settingStart);
+  const eligibleStart = profile ? receiptProfileNow() : 0;
+  const eligibleAge = getIdecoEligibleAge(cfg, owner);
+  const eligible = age >= eligibleAge;
+  if(profile) addReceiptProfile(profile, 'receiptDcEligibilityMs', receiptProfileNow() - eligibleStart);
+  if(!eligible) return 0;
   let payout = 0;
   const lumpFlag = `${setting.key}_lump_done`;
+  const matchingStart = profile ? receiptProfileNow() : 0;
   let remaining = getMatchingInvestmentTotal(investments, owner, accountType);
+  if(profile) addReceiptProfile(profile, 'receiptDcMatchingMs', receiptProfileNow() - matchingStart);
   if(remaining <= 0.0001) return 0;
   if((setting.method === "一括" || setting.method === "併用") && !isReceiptFlagOn(receiptState, lumpFlag) && age === setting.lumpAge){
     const ratio = setting.method === "一括" ? 100 : setting.lumpRatio;
     const target = remaining * ratio / 100;
+    const liquidateStart = profile ? receiptProfileNow() : 0;
     payout += liquidateMatchingInvestmentsGross(target, investments, owner, accountType);
+    if(profile) addReceiptProfile(profile, 'receiptDcLiquidateMs', receiptProfileNow() - liquidateStart);
     setReceiptFlag(receiptState, lumpFlag);
+    const rematchStart = profile ? receiptProfileNow() : 0;
     remaining = getMatchingInvestmentTotal(investments, owner, accountType);
+    if(profile) addReceiptProfile(profile, 'receiptDcMatchingMs', receiptProfileNow() - rematchStart);
+    if(profile) addReceiptProfileCount(profile, 'receiptDcLumpMatches');
   }
   if((setting.method === "年金" || setting.method === "併用") && age >= setting.pensionStart && age <= setting.pensionEnd && remaining > 0.0001){
     const yearsLeft = Math.max(1, setting.pensionEnd - age + 1);
     const target = remaining / yearsLeft;
+    const liquidateStart = profile ? receiptProfileNow() : 0;
     payout += liquidateMatchingInvestmentsGross(target, investments, owner, accountType);
+    if(profile) addReceiptProfile(profile, 'receiptDcLiquidateMs', receiptProfileNow() - liquidateStart);
+    if(profile) addReceiptProfileCount(profile, 'receiptDcPensionMatches');
   }
   return payout;
 }
-function processReceiptIncomeForYear(cfg, age, investments, receiptState){
+function processReceiptIncomeForYear(cfg, age, investments, receiptState, profile=null){
   let total = 0;
-  total += processRetireReceiptForYear(cfg, age, "本人", receiptState);
-  total += processRetireReceiptForYear(cfg, age, "配偶者", receiptState);
-  total += processDcReceiptForYear(cfg, age, "本人", "iDeCo", investments, receiptState);
-  total += processDcReceiptForYear(cfg, age, "本人", "企業型DC", investments, receiptState);
-  total += processDcReceiptForYear(cfg, age, "配偶者", "iDeCo", investments, receiptState);
-  total += processDcReceiptForYear(cfg, age, "配偶者", "企業型DC", investments, receiptState);
+  const selfRetireStart = profile ? receiptProfileNow() : 0;
+  total += processRetireReceiptForYear(cfg, age, "本人", receiptState, profile);
+  if(profile) addReceiptProfile(profile, 'receiptSelfRetireMs', receiptProfileNow() - selfRetireStart);
+  const spouseRetireStart = profile ? receiptProfileNow() : 0;
+  total += processRetireReceiptForYear(cfg, age, "配偶者", receiptState, profile);
+  if(profile) addReceiptProfile(profile, 'receiptSpouseRetireMs', receiptProfileNow() - spouseRetireStart);
+  const selfIdecoStart = profile ? receiptProfileNow() : 0;
+  total += processDcReceiptForYear(cfg, age, "本人", "iDeCo", investments, receiptState, profile);
+  if(profile) addReceiptProfile(profile, 'receiptSelfIdecoMs', receiptProfileNow() - selfIdecoStart);
+  const selfDcStart = profile ? receiptProfileNow() : 0;
+  total += processDcReceiptForYear(cfg, age, "本人", "企業型DC", investments, receiptState, profile);
+  if(profile) addReceiptProfile(profile, 'receiptSelfCorporateDcMs', receiptProfileNow() - selfDcStart);
+  const spouseIdecoStart = profile ? receiptProfileNow() : 0;
+  total += processDcReceiptForYear(cfg, age, "配偶者", "iDeCo", investments, receiptState, profile);
+  if(profile) addReceiptProfile(profile, 'receiptSpouseIdecoMs', receiptProfileNow() - spouseIdecoStart);
+  const spouseDcStart = profile ? receiptProfileNow() : 0;
+  total += processDcReceiptForYear(cfg, age, "配偶者", "企業型DC", investments, receiptState, profile);
+  if(profile) addReceiptProfile(profile, 'receiptSpouseCorporateDcMs', receiptProfileNow() - spouseDcStart);
   return total;
 }
 function toUtcDateFromParts(parts){
@@ -18228,22 +18470,43 @@ function applyInflation(v, enabled, infl, years){
   if(!enabled) return v;
   return v * Math.pow(1 + infl, Math.max(0, years));
 }
-function getExpenseForYear(cfg, age, yearIndex){
+function getExpenseForYear(cfg, age, yearIndex, profile=null){
+  // v1230 dev-only: optional coarse profiling for reserve/expense lookup hot path.
+  const profileNow = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const addProfile = (key, ms)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(ms) || 0); };
+  const addCount = (key, count=1)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(count) || 0); };
+  const expenseProfileStart = profile ? profileNow() : 0;
+  let t = profile ? profileNow() : 0;
   const life = getProratedRangeMonthlyAnnualAmount(cfg, cfg.lifeRows, age, yearIndex, cfg.inflRate);
+  if(profile){ addProfile('expenseLifeMs', profileNow() - t); t = profileNow(); }
   const rent = getProratedRangeMonthlyAnnualAmount(cfg, cfg.rentRows, age, yearIndex, cfg.inflRate);
+  if(profile){ addProfile('expenseRentMs', profileNow() - t); t = profileNow(); }
   const homeMaint = getProratedRangeAnnualAmount(cfg, cfg.homeMaintRows, age, yearIndex, cfg.inflRate);
+  if(profile){ addProfile('expenseHomeMaintMs', profileNow() - t); t = profileNow(); }
   const insurance = getInsurancePayForYear(cfg, age, yearIndex);
+  if(profile){ addProfile('expenseInsuranceMs', profileNow() - t); t = profileNow(); }
   const periodic = getProratedRangeAnnualAmount(cfg, cfg.periodRows, age, yearIndex, cfg.inflRate);
+  if(profile){ addProfile('expensePeriodicMs', profileNow() - t); t = profileNow(); }
   const extra = getInflatedPointValueForSimulationYear(cfg, cfg.extraRows, age, cfg.inflRate, yearIndex);
+  if(profile){ addProfile('expenseExtraMs', profileNow() - t); t = profileNow(); }
   const eduObj = getEducationCostForYear(cfg, yearIndex);
+  if(profile){ addProfile('expenseEducationBaseMs', profileNow() - t); t = profileNow(); }
   const education = applyInflation(eduObj.total, cfg.infl.edu, cfg.inflRate, getInflationElapsedYears(cfg, yearIndex, yearIndex));
+  if(profile){ addProfile('expenseEducationInflationMs', profileNow() - t); t = profileNow(); }
 
   let loan = 0;
   let down = 0;
   const h = cfg.home;
+  const loanStart = profile ? profileNow() : 0;
   if(h.detail?.enabled){
+    addCount('expenseLoanDetailEnabledCalls', 1);
+    const loanBuildStart = profile ? profileNow() : 0;
     const detail = buildLoanDetailFromConfig(h);
+    if(profile) addProfile('expenseLoanBuildDetailMs', profileNow() - loanBuildStart);
+    const loanSimStart = profile ? profileNow() : 0;
     const detailResult = simulateLoanDetail(detail);
+    if(profile) addProfile('expenseLoanSimDetailMs', profileNow() - loanSimStart);
+    const loanPostStart = profile ? profileNow() : 0;
     const yearInflYears = getInflationElapsedYears(cfg, yearIndex, age - cfg.age);
     const buyInflOffset = cfg.age <= h.age ? getElapsedYearsBeforeDateParts(cfg, {year:Number(h.buyYear) || 0, month:Number(h.buyMonth) || 1, day:1}, h.age - cfg.age) : 0;
     if(cfg.age <= h.age && age === h.age) down = h.down;
@@ -18252,7 +18515,10 @@ function getExpenseForYear(cfg, age, yearIndex){
       const inflYears = Math.max(0, yearInflYears - buyInflOffset);
       loan = applyInflation(baseAnnual, cfg.infl.loan, cfg.inflRate, inflYears);
     }
+    if(profile) addProfile('expenseLoanPostMs', profileNow() - loanPostStart);
   }else if(h.age > 0 && (h.years > 0 || h.down > 0)){
+    addCount('expenseLoanSimpleCalls', 1);
+    const loanSimpleStart = profile ? profileNow() : 0;
     const yearInflYears = getInflationElapsedYears(cfg, yearIndex, age - cfg.age);
     const buyInflOffset = cfg.age <= h.age ? getElapsedYearsBeforeDateParts(cfg, {year:Number(h.buyYear) || 0, month:Number(h.buyMonth) || 1, day:1}, h.age - cfg.age) : 0;
     if(cfg.age <= h.age && age === h.age) down = h.down;
@@ -18268,9 +18534,16 @@ function getExpenseForYear(cfg, age, yearIndex){
         loan = applyInflation(h.payMonth*12, cfg.infl.loan, cfg.inflRate, yearInflYears);
       }
     }
+    if(profile) addProfile('expenseLoanSimpleMs', profileNow() - loanSimpleStart);
   }
+  if(profile){ addProfile('expenseLoanTotalMs', profileNow() - loanStart); t = profileNow(); }
 
   const educationRecurring = getEducationRecurringCostForYear(cfg, yearIndex);
+  if(profile){
+    addProfile('expenseEducationRecurringMs', profileNow() - t);
+    addProfile('expenseTotalMs', profileNow() - expenseProfileStart);
+    addCount('expenseCalls', 1);
+  }
   return {
     total: life + rent + homeMaint + insurance + periodic + extra + education + loan + down,
     parts:{life,rent,homeMaint,insurance,periodic,extra,education,educationRecurring,loan:loan+down,educationByChild:eduObj.byChild}
@@ -19009,11 +19282,12 @@ function buildMonteFinalStatsFromCrashCases(cfgBase, cases, shockTrials){
     const compareData = sanitizeSimulationInputData(cfg, {includeMonteSettings:true});
     const base = (getNormalSimCacheByData(compareData) || setNormalSimCacheByData(compareData, cfg, simulate(cfg, false))).sim;
     const staticSeries = getOrBuildMonteStaticSeries(compareData, cfg);
+    const expenseSeries = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries).values;
     const lifeIndexClamped = Math.max(0, Math.min(base.labels.length - 1, Number(cfg.lifeExpect || 0) - Number(cfg.age || 0)));
     const monteFinals = [];
     let fail = 0;
     for(let i=0;i<(shockTrials || []).length;i++){
-      const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shockTrials[i]});
+      const sim = simulate(cfg, true, {compact:true, staticSeries, expenseSeries, returnShocks:shockTrials[i]});
       const totalAssets = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
       const finalAtLife = Number(totalAssets?.[lifeIndexClamped] ?? totalAssets?.at?.(-1) ?? 0) || 0;
       if(finalAtLife <= 0) fail += 1;
@@ -19038,6 +19312,163 @@ function buildMonteFinalStatsFromCrashCases(cfgBase, cases, shockTrials){
     };
   });
 }
+
+async function buildMonteFinalStatsFromCrashCasesAsync(cfgBase, cases, shockTrials, progressReporter=null, debugInfo=null){
+  const compareCases = Array.isArray(cases) ? cases : [];
+  const shocks = Array.isArray(shockTrials) ? shockTrials : [];
+  const totalWork = Math.max(1, compareCases.length * Math.max(1, shocks.length));
+  let completedWork = 0;
+  const results = [];
+  if(debugInfo){
+    debugInfo.caseTimes = [];
+    debugInfo.statsMs = 0;
+    debugInfo.calcMs = 0;
+    debugInfo.simulateBreakdown = null;
+  }
+  for(let caseIndex=0; caseIndex<compareCases.length; caseIndex++){
+    const compareCase = compareCases[caseIndex];
+    const caseStart = getWithdrawalCompareNow();
+    const cfg = deepClone(cfgBase);
+    cfg.crashTests = normalizeCrashTestsArray(compareCase?.crashTests || []);
+    const compareData = sanitizeSimulationInputData(cfg, {includeMonteSettings:true});
+    const normalStart = getWithdrawalCompareNow();
+    const base = (getNormalSimCacheByData(compareData) || setNormalSimCacheByData(compareData, cfg, simulate(cfg, false))).sim;
+    const normalMs = getWithdrawalCompareNow() - normalStart;
+    const staticStart = getWithdrawalCompareNow();
+    const staticSeries = getOrBuildMonteStaticSeries(compareData, cfg);
+    const staticMs = getWithdrawalCompareNow() - staticStart;
+    const expenseSeriesProfile = {};
+    const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries, expenseSeriesProfile);
+    const expenseSeries = expenseSeriesBundle.values;
+    const lifeIndexClamped = Math.max(0, Math.min(base.labels.length - 1, Number(cfg.lifeExpect || 0) - Number(cfg.age || 0)));
+    const monteFinals = [];
+    let fail = 0;
+    const profileThisCase = false;
+    const simulateBreakdown = profileThisCase ? {
+      caseLabel:compareCase.label || `case${caseIndex + 1}`,
+      caseIndex:caseIndex + 1,
+      profiledTrials:0,
+      expenseSeriesBuildMs:Number(expenseSeriesProfile.expenseSeriesBuildMs || 0) || 0,
+      expenseSeriesLength:Number(expenseSeriesProfile.expenseSeriesLength || 0) || 0,
+      expenseSeriesDirectCalls:Number(expenseSeriesProfile.expenseSeriesDirectCalls || 0) || 0,
+      expenseSeriesHits:0,
+      expenseSeriesMisses:0,
+      expenseSeriesMaxAbsDiff:0,
+      expenseSeriesMismatchCount:0
+    } : null;
+    if(simulateBreakdown){
+      let maxAbsExpenseDiff = 0;
+      let expenseMismatchCount = 0;
+      for(let ei=0; ei<expenseSeries.length; ei++){
+        const cachedTotal = Number(expenseSeries?.[ei]?.total || 0) || 0;
+        const staticTotal = Number(staticSeries?.[ei]?.expenseObj?.total || 0) || 0;
+        const diff = Math.abs(cachedTotal - staticTotal);
+        if(diff > 1e-7) expenseMismatchCount++;
+        if(diff > maxAbsExpenseDiff) maxAbsExpenseDiff = diff;
+      }
+      simulateBreakdown.expenseSeriesMaxAbsDiff = maxAbsExpenseDiff;
+      simulateBreakdown.expenseSeriesMismatchCount = expenseMismatchCount;
+    }
+    const trialStart = getWithdrawalCompareNow();
+    for(let i=0;i<shocks.length;i++){
+      const simProfile = simulateBreakdown ? {} : null;
+      const sim = simulate(cfg, true, {compact:true, staticSeries, expenseSeries, returnShocks:shocks[i], profile:simProfile});
+      if(simulateBreakdown && simProfile){
+        simulateBreakdown.profiledTrials++;
+        Object.entries(simProfile).forEach(([key, value])=>{
+          if(typeof value === 'number' && Number.isFinite(value)){
+            simulateBreakdown[key] = (Number(simulateBreakdown[key]) || 0) + value;
+          }
+        });
+        if(simProfile.scheduledProfileMode) simulateBreakdown.scheduledProfileMode = simProfile.scheduledProfileMode;
+      }
+      const totalAssets = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+      const finalAtLife = Number(totalAssets?.[lifeIndexClamped] ?? totalAssets?.at?.(-1) ?? 0) || 0;
+      if(finalAtLife <= 0) fail += 1;
+      monteFinals.push(finalAtLife);
+      completedWork++;
+      if(progressReporter && (i % 5 === 0 || i === shocks.length - 1)){
+        const detail = `比較 ${caseIndex + 1}/${compareCases.length}・試行 ${i + 1}/${shocks.length}`;
+        await progressReporter(5 + (completedWork / totalWork) * 90, {detail});
+      }
+    }
+    const trialMs = getWithdrawalCompareNow() - trialStart;
+    if(debugInfo && simulateBreakdown && !debugInfo.simulateBreakdown){
+      debugInfo.simulateBreakdown = simulateBreakdown;
+    }
+    const statsStart = getWithdrawalCompareNow();
+    const sorted = monteFinals.slice().sort((a,b)=>a-b);
+    const result = {
+      label:compareCase.label,
+      fullLabel:compareCase.fullLabel || compareCase.label,
+      successProb: 1 - (fail / Math.max(1, monteFinals.length)),
+      bankruptcyProb: fail / Math.max(1, monteFinals.length),
+      best: sorted.at(-1) || 0,
+      p95: percentileFromSorted(sorted, 0.95),
+      p90: percentileFromSorted(sorted, 0.90),
+      fixed: base.totalAssets[lifeIndexClamped] ?? base.totalAssets.at(-1) ?? 0,
+      median: percentileFromSorted(sorted, 0.50),
+      mean: monteFinals.reduce((sum, value)=>sum + value, 0) / Math.max(1, monteFinals.length),
+      p10: percentileFromSorted(sorted, 0.10),
+      p05: percentileFromSorted(sorted, 0.05),
+      worst: sorted[0] || 0,
+      finals: monteFinals
+    };
+    const statsMs = getWithdrawalCompareNow() - statsStart;
+    results.push(result);
+    if(debugInfo){
+      debugInfo.statsMs += statsMs;
+      debugInfo.caseTimes.push({
+        label:compareCase.label,
+        totalMs:getWithdrawalCompareNow() - caseStart,
+        normalMs,
+        staticMs,
+        expenseSeriesBuildMs:Number(expenseSeriesProfile.expenseSeriesBuildMs || 0) || 0,
+        trialMs,
+        statsMs,
+        trialCount:shocks.length
+      });
+    }
+  }
+  return results;
+}
+
+async function runCrashComparisonCalculationAsync(progressReporter=null){
+  const cfgBase = getScenarioFromDOM();
+  cfgBase.crashTests = getCrashCompareRows();
+  const requestedMonteSettings = cfgBase?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
+  const trials = clampMonteTrials(monteSettings?.trials || 80);
+  const cases = getCrashComparisonCases(cfgBase);
+  const debugInfo = {
+    caseCount:cases.length,
+    trials,
+    buildShocksMs:0,
+    cacheMs:0,
+    cacheHit:false,
+    calcMs:0,
+    statsMs:0,
+    caseTimes:[],
+    simulateBreakdown:null
+  };
+  if(!cases.length) return {results:[], debugInfo};
+  const cacheStart = getWithdrawalCompareNow();
+  const cached = getMonteCompareCacheEntry(cfgBase, cases, monteSettings);
+  debugInfo.cacheMs = getWithdrawalCompareNow() - cacheStart;
+  if(cached?.results){
+    debugInfo.cacheHit = true;
+    return {results:cached.results, debugInfo};
+  }
+  const shocksStart = getWithdrawalCompareNow();
+  const shockTrials = buildSharedReturnShocks(cfgBase, trials, cfgBase, monteSettings);
+  debugInfo.buildShocksMs = getWithdrawalCompareNow() - shocksStart;
+  const calcStart = getWithdrawalCompareNow();
+  const results = await buildMonteFinalStatsFromCrashCasesAsync(cfgBase, cases, shockTrials, progressReporter, debugInfo);
+  debugInfo.calcMs = getWithdrawalCompareNow() - calcStart;
+  setMonteCompareCacheEntry(cfgBase, cases, monteSettings, results);
+  return {results, debugInfo};
+}
+
 function runCrashComparisonCalculation(){
   const cfgBase = getScenarioFromDOM();
   cfgBase.crashTests = getCrashCompareRows();
@@ -19265,13 +19696,37 @@ function runCrashComparison(){
   setCrashCompareResultsVisible(false);
   renderCrashCompareHeader([]);
   if(crashCompareChart){ crashCompareChart.destroy(); crashCompareChart = null; }
-  setTimeout(()=>{
+  showCrashCompareProgressOverlay('暴落比較を計算中...', '同一乱数列で比較しています');
+  setTimeout(async ()=>{
+    const totalStart = getWithdrawalCompareNow();
     try{
-      const results = runCrashComparisonCalculation();
+      const {results, debugInfo} = await runCrashComparisonCalculationAsync(reportCrashCompareProgress);
       if(!Array.isArray(results) || !results.length) throw new Error('比較結果を取得できませんでした。');
       crashCompareCache = results;
+      await reportCrashCompareProgress(98, {force:true, detail:'表・グラフを更新中'});
+      const renderStart = getWithdrawalCompareNow();
       renderCrashComparisonResults(results);
+      const renderMs = getWithdrawalCompareNow() - renderStart;
+      await reportCrashCompareProgress(100, {force:true, detail:'完了'});
+      hideCrashCompareProgressOverlay(220);
+      const payload = {
+        totalMs:getWithdrawalCompareNow() - totalStart,
+        calcMs:Number(debugInfo?.calcMs || 0),
+        statsMs:Number(debugInfo?.statsMs || 0),
+        renderMs,
+        cacheMs:Number(debugInfo?.cacheMs || 0),
+        cacheHit:!!debugInfo?.cacheHit,
+        buildShocksMs:Number(debugInfo?.buildShocksMs || 0),
+        caseCount:Number(debugInfo?.caseCount || results.length || 0),
+        trials:Number(debugInfo?.trials || 0),
+        progressReports:crashCompareProgressState.progressReports,
+        uiUpdates:crashCompareProgressState.uiUpdates,
+        yieldedFrames:crashCompareProgressState.yieldedFrames,
+        caseTimes:Array.isArray(debugInfo?.caseTimes) ? debugInfo.caseTimes : [],
+        simulateBreakdown:debugInfo?.simulateBreakdown || null
+      };
     }catch(err){
+      hideCrashCompareProgressOverlay(0);
       console.error(err);
       const msg = err && err.message ? err.message : String(err || '不明なエラー');
       const compareCases = getCrashComparisonCases(getScenarioFromDOM());
@@ -21693,12 +22148,23 @@ function getOrderedSellableInvestments(investments, cfg, age){
     return (b.amount || 0) - (a.amount || 0);
   });
 }
-function sellInvestmentsNetToDeposits(targetNet, deposits, investments, cfg, age, annualState=null, reason="general"){
+function sellInvestmentsNetToDeposits(targetNet, deposits, investments, cfg, age, annualState=null, reason="general", profile=null){
+  const profileNow = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const profileStart = profile ? profileNow() : 0;
+  const addProfile = (key, ms)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(ms) || 0); };
+  const addCount = (key, count=1)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(count) || 0); };
   let remaining = Math.max(0, targetNet || 0);
-  if(remaining <= 0) return 0;
+  if(remaining <= 0){ addProfile('sellTotalMs', profileNow() - profileStart); return 0; }
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   let raised = 0;
+  const orderStart = profile ? profileNow() : 0;
   const ordered = getOrderedSellableInvestments(investments, cfg, age);
+  if(profile){
+    addProfile('sellOrderMs', profileNow() - orderStart);
+    addCount('sellCalls', 1);
+    addCount('sellOrderedAssets', ordered.length);
+  }
+  const sellLoopStart = profile ? profileNow() : 0;
   for(const inv of ordered){
     if(remaining <= 0.0001) break;
     const gainRatio = getGainRatio(inv);
@@ -21722,12 +22188,19 @@ function sellInvestmentsNetToDeposits(targetNet, deposits, investments, cfg, age
       if(!annualState.saleByReason) annualState.saleByReason = {shortfall:0, buffer:0, general:0};
       annualState.saleByReason[reason] = (annualState.saleByReason[reason] || 0) + net;
     }
+    addCount('sellExecutedItems', 1);
+  }
+  if(profile){
+    addProfile('sellLoopMs', profileNow() - sellLoopStart);
+    addProfile('sellTotalMs', profileNow() - profileStart);
   }
   return raised;
 }
-function fundInvestmentFromAssets(targetAmount, deposits, reserveAmount = 0){
+function fundInvestmentFromAssets(targetAmount, deposits, reserveAmount = 0, profile=null){
+  const profileNow = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const profileStart = profile ? profileNow() : 0;
   let remaining = Math.max(0, targetAmount || 0);
-  if(remaining <= 0) return 0;
+  if(remaining <= 0){ if(profile) profile.fundInvestmentMs = (Number(profile.fundInvestmentMs) || 0) + (profileNow() - profileStart); return 0; }
   const reserve = Math.max(0, reserveAmount || 0);
   let funded = 0;
   let totalDeposit = deposits.reduce((s,d)=>s + Math.max(0, d.amount || 0), 0);
@@ -21742,6 +22215,7 @@ function fundInvestmentFromAssets(targetAmount, deposits, reserveAmount = 0){
     funded += use;
     totalDeposit -= use;
   }
+  if(profile) profile.fundInvestmentMs = (Number(profile.fundInvestmentMs) || 0) + (profileNow() - profileStart);
   return funded;
 }
 function createAnnualOwnerState(baseNisaBookCost = 0, baseGrowthNisaBookCost = 0){
@@ -21825,15 +22299,48 @@ function registerContributionUsage(owner, accountType, amount, annualState){
     ownerState.idecoUsed = (ownerState.idecoUsed || 0) + amount;
   }
 }
-function processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState){
+function processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState, profile=null, expenseSeries=null){
+  const profileNow = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const addProfile = (key, ms)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(ms) || 0); };
+  const addCount = (key, count=1)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(count) || 0); };
+  // v1229 dev-only: lightweight profiling. Avoid performance.now() inside every row-level sub-step.
+  const processStart = profile ? profileNow() : 0;
   const futureOffset = cfg.investments.length;
   const sumOffset = futureOffset + (cfg.futureInvestments || []).length;
-  const reserveAmount = Math.max(0, (getExpenseForYear(cfg, age, yearIndex)?.parts?.life || 0) * 2);
+
+  const reserveStart = profile ? profileNow() : 0;
+  const reserveExpenseStart = profile ? profileNow() : 0;
+  let reserveExpense = null;
+  if(expenseSeries && expenseSeries[yearIndex]){
+    reserveExpense = expenseSeries[yearIndex];
+    addCount('expenseSeriesHits', 1);
+  }else{
+    reserveExpense = getExpenseForYear(cfg, age, yearIndex, profile);
+    addCount('expenseSeriesMisses', 1);
+  }
+  if(profile) addProfile('scheduledReserveExpenseLookupMs', profileNow() - reserveExpenseStart);
+  const reserveCalcStart = profile ? profileNow() : 0;
+  const reserveAmount = Math.max(0, (reserveExpense?.parts?.life || 0) * 2);
+  if(profile){
+    addProfile('scheduledReserveCalcMs', profileNow() - reserveCalcStart);
+    addProfile('scheduledReserveMs', profileNow() - reserveStart);
+    addCount('scheduledReserveCalls', 1);
+  }
+
+  const futureLoopStart = profile ? profileNow() : 0;
+  let futureChecks = 0;
+  let futureEligible = 0;
+  let futureFundCalls = 0;
+  let futureFundedCount = 0;
+  let futureFundedTotal = 0;
   (cfg.futureInvestments || []).forEach((plan, idx)=>{
+    futureChecks++;
     if(plan.age !== age || (plan.amount || 0) <= 0) return;
+    futureEligible++;
     const actual = getAllowedContributionAmount(plan, annualState, investments);
     if(actual <= 0) return;
-    const funded = fundInvestmentFromAssets(actual, deposits, reserveAmount);
+    futureFundCalls++;
+    const funded = fundInvestmentFromAssets(actual, deposits, reserveAmount, null);
     if(funded <= 0) return;
     const target = investments[futureOffset + idx];
     if(target){
@@ -21841,14 +22348,34 @@ function processScheduledInvestments(cfg, age, yearIndex, deposits, investments,
       target.cost += funded;
     }
     registerContributionUsage(plan.owner, plan.accountType, funded, annualState);
+    futureFundedCount++;
+    futureFundedTotal += funded;
   });
+  if(profile){
+    addProfile('futureInvestmentPlanMs', profileNow() - futureLoopStart);
+    addCount('futureInvestmentPlanChecks', futureChecks);
+    addCount('futureInvestmentPlanEligible', futureEligible);
+    addCount('futureFundCalls', futureFundCalls);
+    addCount('futureInvestmentFundedCount', futureFundedCount);
+    addCount('futureFundedTotal', futureFundedTotal);
+  }
+
+  const sumLoopStart = profile ? profileNow() : 0;
+  let sumChecks = 0;
+  let sumEligible = 0;
+  let sumFundCalls = 0;
+  let sumFundedCount = 0;
+  let sumFundedTotal = 0;
   (cfg.sumInvestments || []).forEach((plan, idx)=>{
+    sumChecks++;
     if(age < (plan.fromAge || 0) || age > (plan.toAge || 0)) return;
     const requested = (plan.amountMonth || 0) * 12;
     if(requested <= 0) return;
+    sumEligible++;
     const actual = getAllowedContributionAmount({...plan, amount:requested}, annualState, investments);
     if(actual <= 0) return;
-    const funded = fundInvestmentFromAssets(actual, deposits, reserveAmount);
+    sumFundCalls++;
+    const funded = fundInvestmentFromAssets(actual, deposits, reserveAmount, null);
     if(funded <= 0) return;
     const target = investments[sumOffset + idx];
     if(target){
@@ -21856,7 +22383,19 @@ function processScheduledInvestments(cfg, age, yearIndex, deposits, investments,
       target.cost += funded;
     }
     registerContributionUsage(plan.owner, plan.accountType, funded, annualState);
+    sumFundedCount++;
+    sumFundedTotal += funded;
   });
+  if(profile){
+    addProfile('sumInvestmentPlanMs', profileNow() - sumLoopStart);
+    addCount('sumInvestmentPlanChecks', sumChecks);
+    addCount('sumInvestmentPlanEligible', sumEligible);
+    addCount('sumFundCalls', sumFundCalls);
+    addCount('sumInvestmentFundedCount', sumFundedCount);
+    addCount('sumFundedTotal', sumFundedTotal);
+    addProfile('scheduledInvestmentInnerMs', profileNow() - processStart);
+    profile.scheduledProfileMode = 'lightweight-v1229';
+  }
 }
 
 function addAmountToDepositsEvenly(deposits, amount){
@@ -22237,17 +22776,22 @@ function calculateWithdrawalNeeds(cfg, rule, annualNeed, depTotal, invTotal, lia
   const target = need * Math.max(0, Number(rule.currentBufferYears || 0));
   return {floorBuffer:target, targetBuffer:target, allowProactive:true, defensive:false, defenseActive:false, defenseAnchorValue:0, defenseRecoveryTarget:0, defenseTriggerReturn:0, defenseTriggerAge:null};
 }
-function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualNeed, shortageNeed, annualState, ruleNeeds){
+function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualNeed, shortageNeed, annualState, ruleNeeds, profile=null){
+  const profileNow = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const addProfile = (key, ms)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(ms) || 0); };
+  const addCount = (key, count=1)=>{ if(profile) profile[key] = (Number(profile[key]) || 0) + (Number(count) || 0); };
   let remainingNeed = Math.max(0, Number(shortageNeed) || 0);
   if(remainingNeed > 0){
-    const raised = sellInvestmentsNetToDeposits(remainingNeed, deposits, investments, cfg, age, annualState, 'shortfall');
+    const raised = sellInvestmentsNetToDeposits(remainingNeed, deposits, investments, cfg, age, annualState, 'shortfall', profile);
     remainingNeed = consumeDepositsForNeed(remainingNeed, deposits);
     if(remainingNeed > 0){
       liability.value = (Number(liability.value) || 0) + remainingNeed;
       remainingNeed = 0;
     }
   }
+  const depAfterStart = profile ? profileNow() : 0;
   const depAfter = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
+  if(profile) addProfile('applyRuleDepAfterReduceMs', profileNow() - depAfterStart);
   let replenishTarget = 0;
   if(depAfter < ruleNeeds.floorBuffer){
     replenishTarget = ruleNeeds.floorBuffer;
@@ -22259,12 +22803,16 @@ function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualN
     let guard = 0;
     while(replenishNeed > 0.0001 && guard < 10){
       guard += 1;
-      const netCollected = sellInvestmentsNetToDeposits(replenishNeed, deposits, investments, cfg, age, annualState, 'buffer');
+      addCount('applyRuleReplenishIterations', 1);
+      const netCollected = sellInvestmentsNetToDeposits(replenishNeed, deposits, investments, cfg, age, annualState, 'buffer', profile);
+      const nowStart = profile ? profileNow() : 0;
       const now = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
+      if(profile) addProfile('applyRuleReplenishReduceMs', profileNow() - nowStart);
       replenishNeed = Math.max(0, replenishTarget - now);
       if(netCollected <= 0.0001) break;
     }
   }
+  const ruleInfoStart = profile ? profileNow() : 0;
   if(annualState){
     annualState.withdrawalRuleInfo = {
       mode: ruleNeeds.mode || getWithdrawalPolicyConfig(cfg).mode,
@@ -22281,6 +22829,7 @@ function applyWithdrawalRule(cfg, age, deposits, investments, liability, annualN
       bucketDefenseTriggerAge: Number.isFinite(Number(ruleNeeds.defenseTriggerAge)) ? Number(ruleNeeds.defenseTriggerAge) : null
     };
   }
+  if(profile) addProfile('applyRuleInfoMs', profileNow() - ruleInfoStart);
 }
 function buildMonteStaticSeries(cfg){
   const years = Math.max(0, 120 - cfg.age + 1);
@@ -22321,12 +22870,55 @@ function buildMonteStaticSeries(cfg){
   return rows;
 }
 
+// v1236: common annual expense series cache helper for simulation trials.
+function buildAnnualExpenseSeriesForSimulation(cfg, staticSeries=null, profile=null){
+  const now = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const start = now();
+  const rows = Array.isArray(staticSeries) ? staticSeries : null;
+  const years = rows ? rows.length : Math.max(0, 120 - cfg.age + 1);
+  const values = new Array(years);
+  let directCalls = 0;
+  for(let yearIndex=0; yearIndex<years; yearIndex++){
+    let expenseObj = rows?.[yearIndex]?.expenseObj || null;
+    if(!expenseObj){
+      expenseObj = getExpenseForYear(cfg, cfg.age + yearIndex, yearIndex);
+      directCalls++;
+    }
+    values[yearIndex] = expenseObj;
+  }
+  if(profile){
+    profile.expenseSeriesBuildMs = (Number(profile.expenseSeriesBuildMs) || 0) + (now() - start);
+    profile.expenseSeriesLength = values.length;
+    profile.expenseSeriesDirectCalls = (Number(profile.expenseSeriesDirectCalls) || 0) + directCalls;
+  }
+  return {values, meta:{length:values.length, startAge:cfg.age, endAge:cfg.age + values.length - 1, directCalls}};
+}
+
 function simulate(cfg, random=false, opts={}){
   const includeCashflowTable = opts.includeCashflowTable === true;
   const compact = !!opts.compact;
   const finalOnly = !!opts.finalOnly;
   const finalLifeIndex = Math.max(0, Number(opts.lifeIndex) || 0);
+  // v1226 dev-only: coarse simulate() profiling for withdrawal comparison.
+  const simulateProfile = (opts && opts.profile && typeof opts.profile === 'object') ? opts.profile : null;
+  const simulateProfileNow = ()=> (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const simulateProfileStart = simulateProfile ? simulateProfileNow() : 0;
+  const addSimProfile = (key, ms)=>{
+    if(!simulateProfile) return;
+    simulateProfile[key] = (Number(simulateProfile[key]) || 0) + (Number(ms) || 0);
+  };
+  // v1227 dev-only: add counters for detailed scheduled/rebalance profiling.
+  const addSimProfileCount = (key, count=1)=>{
+    if(!simulateProfile) return;
+    simulateProfile[key] = (Number(simulateProfile[key]) || 0) + (Number(count) || 0);
+  };
+  const finishSimProfile = ()=>{
+    if(!simulateProfile) return;
+    simulateProfile.totalMs = (Number(simulateProfile.totalMs) || 0) + (simulateProfileNow() - simulateProfileStart);
+  };
+  const simulateProfileInitStart = simulateProfile ? simulateProfileNow() : 0;
   const staticSeries = Array.isArray(opts.staticSeries) ? opts.staticSeries : null;
+  const expenseSeries = Array.isArray(opts.expenseSeries) ? opts.expenseSeries : (Array.isArray(opts.expenseSeries?.values) ? opts.expenseSeries.values : null);
   const annualNeedSeries = staticSeries || buildMonteStaticSeries(cfg);
   const deposits = deepClone(cfg.deposits);
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
@@ -22382,8 +22974,11 @@ function simulate(cfg, random=false, opts={}){
   let totalIncomeSum = 0;
   let totalExpenseSum = 0;
   let eduCum = 0;
+  if(simulateProfile) addSimProfile('initMs', simulateProfileNow() - simulateProfileInitStart);
 
   for(let age=cfg.age; age<=120; age++){
+    if(simulateProfile) simulateProfile.years = (Number(simulateProfile.years) || 0) + 1;
+    const simulateProfileYearStart = simulateProfile ? simulateProfileNow() : 0;
     const annualState = initializeAnnualContributionState(investments);
     const yearIndex = age - cfg.age;
     annualState.annualNeedBase = annualNeedSeries?.[yearIndex]?.annualNeedBase || 0;
@@ -22397,8 +22992,11 @@ function simulate(cfg, random=false, opts={}){
     const beginningInvTotal = annualState.beginningInvestmentTotal;
     const beginningSafeTotal = currentSafeAssetTotal(safeAssets, age) || 0;
     const beginningTotal = beginningDepTotal + beginningInvTotal + beginningSafeTotal - liability;
+    if(simulateProfile) addSimProfile('yearStartMs', simulateProfileNow() - simulateProfileYearStart);
 
+    const simulateProfileReturnStart = simulateProfile ? simulateProfileNow() : 0;
     const simulationYearFraction = getSimulationYearFraction(cfg, yearIndex);
+    const simulateProfileDepositReturnStart = simulateProfile ? simulateProfileNow() : 0;
     deposits.forEach(d=>{
       const rawRate = (Number(d.rate || 0) || 0);
       const netRate = d.taxOn ? rawRate * (1 - DEPOSIT_INTEREST_TAX_RATE) : rawRate;
@@ -22411,40 +23009,79 @@ function simulate(cfg, random=false, opts={}){
       if(annualState && netInterest > 0) annualState.depositInterest = (annualState.depositInterest || 0) + netInterest;
       if(annualState && interestTax > 0) annualState.interestTax = (annualState.interestTax || 0) + interestTax;
     });
+    if(simulateProfile) addSimProfile('depositReturnMs', simulateProfileNow() - simulateProfileDepositReturnStart);
+    const simulateProfileInvestmentRateStart = simulateProfile ? simulateProfileNow() : 0;
     investments.forEach(inv=>{
+      if(simulateProfile) addSimProfileCount('investmentRateAssetChecks');
+      const baseStart = simulateProfile ? simulateProfileNow() : 0;
       const baseRate = Number(inv.rate || 0) || 0;
       let effectiveRate = baseRate;
-      if(random) effectiveRate = randomizeReturn(effectiveRate, opts?.returnShocks?.[yearIndex]);
+      if(simulateProfile) addSimProfile('investmentRateBaseMs', simulateProfileNow() - baseStart);
+      const randomStart = simulateProfile ? simulateProfileNow() : 0;
+      if(random){
+        effectiveRate = randomizeReturn(effectiveRate, opts?.returnShocks?.[yearIndex]);
+        if(simulateProfile) addSimProfileCount('investmentRateRandomCalls');
+      }
+      if(simulateProfile) addSimProfile('investmentRateRandomMs', simulateProfileNow() - randomStart);
+      const crashStart = simulateProfile ? simulateProfileNow() : 0;
       effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests, cfg?.incomeSelf?.retireAge);
+      if(simulateProfile){
+        addSimProfile('investmentRateCrashMs', simulateProfileNow() - crashStart);
+        addSimProfileCount('investmentRateCrashChecks');
+      }
+      const assignStart = simulateProfile ? simulateProfileNow() : 0;
       inv._effectiveRate = effectiveRate;
+      if(simulateProfile) addSimProfile('investmentRateAssignMs', simulateProfileNow() - assignStart);
     });
+    if(simulateProfile) addSimProfile('investmentRateMs', simulateProfileNow() - simulateProfileInvestmentRateStart);
+    const simulateProfileDividendStart = simulateProfile ? simulateProfileNow() : 0;
     const dividendIncome = processInvestmentDividendsForYear(investments, deposits, simulationYearFraction, annualState);
+    if(simulateProfile) addSimProfile('dividendProcessMs', simulateProfileNow() - simulateProfileDividendStart);
+    if(simulateProfile) addSimProfile('returnDividendMs', simulateProfileNow() - simulateProfileReturnStart);
 
+    const simulateProfileCashflowStart = simulateProfile ? simulateProfileNow() : 0;
     let incomeObj;
     let expenseObj;
     let socialObj;
     let taxObj;
     let annualNeed;
     if(staticSeries && staticSeries[yearIndex]){
+      const simulateProfileStaticReadStart = simulateProfile ? simulateProfileNow() : 0;
       const cached = staticSeries[yearIndex];
       expenseObj = cached.expenseObj;
       socialObj = cached.socialObj;
       taxObj = cached.taxObj;
       annualNeed = cached.annualNeedBase || 0;
-      const retirePay = (receiptState && investments) ? processReceiptIncomeForYear(cfg, age, investments, receiptState) : 0;
+      if(simulateProfile) addSimProfile('cashflowStaticReadMs', simulateProfileNow() - simulateProfileStaticReadStart);
+      const simulateProfileReceiptStart = simulateProfile ? simulateProfileNow() : 0;
+      const retirePay = (receiptState && investments) ? processReceiptIncomeForYear(cfg, age, investments, receiptState, simulateProfile) : 0;
+      if(simulateProfile) addSimProfile('cashflowReceiptMs', simulateProfileNow() - simulateProfileReceiptStart);
+      const simulateProfileIncomeAssembleStart = simulateProfile ? simulateProfileNow() : 0;
       incomeObj = {
         parts:{...cached.incomeParts, retirePay, interest:0, dividend:0},
         total:(cached.baseIncomeTotal || 0) + retirePay
       };
+      if(simulateProfile) addSimProfile('cashflowIncomeAssembleMs', simulateProfileNow() - simulateProfileIncomeAssembleStart);
     }else{
+      const simulateProfileIncomeStart = simulateProfile ? simulateProfileNow() : 0;
       incomeObj = getIncomeForYear(cfg, age, yearIndex, investments, receiptState);
+      if(simulateProfile) addSimProfile('cashflowIncomeMs', simulateProfileNow() - simulateProfileIncomeStart);
+      const simulateProfileExpenseStart = simulateProfile ? simulateProfileNow() : 0;
       expenseObj = getExpenseForYear(cfg, age, yearIndex);
+      if(simulateProfile) addSimProfile('cashflowExpenseMs', simulateProfileNow() - simulateProfileExpenseStart);
+      const simulateProfileSocialTaxStart = simulateProfile ? simulateProfileNow() : 0;
       const socialTaxObj = estimateSocialAndTaxForYear(cfg, age, yearIndex, incomeObj);
       socialObj = socialTaxObj.social;
       taxObj = socialTaxObj.tax;
+      if(simulateProfile) addSimProfile('cashflowSocialTaxMs', simulateProfileNow() - simulateProfileSocialTaxStart);
+      const simulateProfileAnnualNeedStart = simulateProfile ? simulateProfileNow() : 0;
       annualNeed = annualCashBufferNeed(expenseObj.parts) + (socialObj.total || 0) + (taxObj.total || 0);
+      if(simulateProfile) addSimProfile('cashflowAnnualNeedMs', simulateProfileNow() - simulateProfileAnnualNeedStart);
     }
+    const simulateProfileSafeAssetStart = simulateProfile ? simulateProfileNow() : 0;
     const safeAssetObj = processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex, annualState);
+    if(simulateProfile) addSimProfile('cashflowSafeAssetMs', simulateProfileNow() - simulateProfileSafeAssetStart);
+    const simulateProfileCashflowAssembleStart = simulateProfile ? simulateProfileNow() : 0;
     const depositInterestIncome = Number(annualState?.depositInterest || 0);
     const totalInterestIncome = depositInterestIncome + (safeAssetObj.interestIncome || 0);
     incomeObj.parts.interest = totalInterestIncome;
@@ -22453,10 +23090,13 @@ function simulate(cfg, random=false, opts={}){
     let expense = expenseObj.total + (socialObj.total || 0) + (taxObj.total || 0);
     const operating = calculateAnnualOperatingCashflow(income, expenseObj.total, socialObj.total || 0, taxObj.total || 0);
     let net = operating.net;
+    if(simulateProfile) addSimProfile('cashflowAssembleMs', simulateProfileNow() - simulateProfileCashflowAssembleStart);
+    if(simulateProfile) addSimProfile('cashflowTaxMs', simulateProfileNow() - simulateProfileCashflowStart);
 
     totalIncomeSum += income;
     totalExpenseSum += expense;
 
+    const simulateProfileWithdrawalStart = simulateProfile ? simulateProfileNow() : 0;
     if(net >= 0){
       if(liability > 0){
         const repay = Math.min(net, liability);
@@ -22479,18 +23119,39 @@ function simulate(cfg, random=false, opts={}){
         liability = Math.max(0, Number(liabilityRef.value) || 0);
       }
     }
+    if(simulateProfile) addSimProfile('shortageWithdrawalMs', simulateProfileNow() - simulateProfileWithdrawalStart);
 
-    processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState);
+    const simulateProfileRebalanceStart = simulateProfile ? simulateProfileNow() : 0;
+    const simulateProfileScheduledInvestmentStart = simulateProfile ? simulateProfileNow() : 0;
+    processScheduledInvestments(cfg, age, yearIndex, deposits, investments, annualState, simulateProfile, expenseSeries);
+    if(simulateProfile) addSimProfile('scheduledInvestmentMs', simulateProfileNow() - simulateProfileScheduledInvestmentStart);
 
+    const simulateProfileInvestmentReturnStart = simulateProfile ? simulateProfileNow() : 0;
     const annualInvestmentReturn = getInvestmentReturnForYear(annualState, investments);
-    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0), investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0), liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
+    if(simulateProfile) addSimProfile('investmentReturnForRuleMs', simulateProfileNow() - simulateProfileInvestmentReturnStart);
+
+    const simulateProfileRuleTotalsStart = simulateProfile ? simulateProfileNow() : 0;
+    const ruleDepTotal = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
+    const ruleInvTotal = investments.reduce((s,i)=>s + (Number(i.amount) || 0), 0);
+    if(simulateProfile) addSimProfile('ruleTotalsMs', simulateProfileNow() - simulateProfileRuleTotalsStart);
+
+    const simulateProfileWithdrawalNeedsStart = simulateProfile ? simulateProfileNow() : 0;
+    const ruleNeeds = calculateWithdrawalNeeds(cfg, withdrawalPolicy, annualNeed, ruleDepTotal, ruleInvTotal, liability, annualInvestmentReturn, annualState, bucketDefenseState, age);
+    if(simulateProfile) addSimProfile('withdrawalNeedsMs', simulateProfileNow() - simulateProfileWithdrawalNeedsStart);
     ruleNeeds.mode = withdrawalPolicy.mode;
     if(ruleNeeds.targetBuffer > 0 || ruleNeeds.floorBuffer > 0){
+      addSimProfileCount('applyRuleYears', 1);
+      const simulateProfileApplyRuleStart = simulateProfile ? simulateProfileNow() : 0;
       const liabilityRef = {value:liability};
-      applyWithdrawalRule(cfg, age, deposits, investments, liabilityRef, annualNeed, 0, annualState, ruleNeeds);
+      applyWithdrawalRule(cfg, age, deposits, investments, liabilityRef, annualNeed, 0, annualState, ruleNeeds, simulateProfile);
       liability = liabilityRef.value;
+      if(simulateProfile) addSimProfile('applyRuleTotalMs', simulateProfileNow() - simulateProfileApplyRuleStart);
+    }else{
+      addSimProfileCount('applyRuleSkippedYears', 1);
     }
+    if(simulateProfile) addSimProfile('scheduledRebalanceMs', simulateProfileNow() - simulateProfileRebalanceStart);
 
+    const simulateProfileOutputStart = simulateProfile ? simulateProfileNow() : 0;
     if(!annualState.withdrawalRuleInfo){ annualState.withdrawalRuleInfo = {mode:withdrawalPolicy.mode, floorBuffer:0, targetBuffer:0, defensive:false, annualNeed:0, bucketDefenseActive:false, bucketDefenseMode:'', bucketDefenseAnchorValue:0, bucketDefensePeakValue:0, bucketDefenseRecoveryTarget:0, bucketDefenseTriggerReturn:0, bucketDefenseTriggerAge:null}; }
     const depTotal = deposits.reduce((s,d)=>s+d.amount,0);
     const invTotal = investments.reduce((s,i)=>s+i.amount,0);
@@ -22558,8 +23219,10 @@ function simulate(cfg, random=false, opts={}){
         yearlyRows.push(annualRow);
       }
     }
+    if(simulateProfile) addSimProfile('outputMs', simulateProfileNow() - simulateProfileOutputStart);
   }
 
+  finishSimProfile();
   if(finalOnly){
     return {
       finalAtLife: Number.isFinite(finalAtLife) ? finalAtLife : 0,
@@ -25585,15 +26248,16 @@ function getScenarioConfigAndSimForDrawing(scenario, currentScenario, currentCfg
 }
 
 function draw(){
-  ensureScenarioSaved();
+  measureTabSwitchPerfStep('draw.ensureScenarioSaved', ()=>ensureScenarioSaved());
   const graphType = document.getElementById("graphType").value;
   const chartFrameEl = document.getElementById("chartCanvasStickyWrap");
   if(chartFrameEl) chartFrameEl.dataset.graphType = graphType;
+  if(tabSwitchPerfDebugCurrent) tabSwitchPerfDebugCurrent.graphType = graphType;
   if(graphType === "assetProbability"){
-    drawAssetProbabilityShell();
+    measureTabSwitchPerfStep('draw.assetProbabilityShell', ()=>drawAssetProbabilityShell());
     return;
   }
-  updateAssetProbabilityControls();
+  measureTabSwitchPerfStep('draw.updateAssetProbabilityControls', ()=>updateAssetProbabilityControls());
   const overlay = !!workspaceOverlayModeOn && graphType !== "investment";
   const currentScenario = scenarios[currentTab];
   const overlayEntriesBase = overlay ? getOverlayEntriesForTab(currentTab).filter(entry => entry?.style?.visible).slice() : [];
@@ -25616,6 +26280,7 @@ function draw(){
   const lifeGuideEntries = [];
   const educationCumAxisData = [];
 
+  const targetsLoopStart = tabSwitchPerfNow();
   targets.forEach((entry, idx)=>{
     const s = entry.scenario || entry;
     const {cfg, sim} = getScenarioConfigAndSimForDrawing(s, currentScenario, currentCfg, currentSim);
@@ -25647,32 +26312,37 @@ function draw(){
     };
     yData.push(...(arrays[graphType] || [0]));
   });
+  addTabSwitchPerfStep('draw.buildTargetsDatasets', tabSwitchPerfNow() - targetsLoopStart, {targetCount:targets.length, datasetCount:datasets.length});
 
-  updateResultCards(currentCfg, currentSim);
+  measureTabSwitchPerfStep('draw.updateResultCards', ()=>updateResultCards(currentCfg, currentSim));
 
   const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'normal', graphType, overlay, targets}));
   const pendingLegendState = chartLegendVisibilityState.get(String(legendContextKey || '')) || null;
   const pendingLifeGuideState = pendingLegendState?.lifeGuide ? {...pendingLegendState.lifeGuide} : null;
-  if(chart) chart.destroy();
+  measureTabSwitchPerfStep('draw.destroyChart', ()=>{ if(chart) chart.destroy(); });
   const customLegendDisplay = overlay || shouldDrawMainChartLifeGuides(graphType) || ["assetBreakdown","investment","incomeExpense","education"].includes(graphType);
+  const chartCreateStart = tabSwitchPerfNow();
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
     type:"bar",
     data:{datasets},
     options:buildChartOptions(graphType, firstCfg, yData, overlay, {simRef:baseSim, cfgRef:firstCfg, assetBreakdownTooltipEntries, incomeExpenseTooltipEntries, educationTooltipEntries, overlay, educationCumData:(graphType === "education" && educationCumAxisData.length ? educationCumAxisData : getVisibleSeriesValues(baseSim?.labels || [], baseSim?.annualEducationCum || [], firstCfg?.xAxisMax || 120))}),
     plugins:[pluginLines(firstCfg, baseSim, null, overlay ? lifeGuideEntries.slice() : null, pendingLifeGuideState)]
   });
+  addTabSwitchPerfStep('draw.createChart', tabSwitchPerfNow() - chartCreateStart, {datasetCount:datasets.length});
   chart.$lifeGuideEntries = overlay ? lifeGuideEntries.slice() : null;
   chart.$graphType = graphType;
   chart.$overlayMode = overlay;
   chart.$legendContextKey = legendContextKey;
   chart.$useStrictPointTooltip = (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education");
   chart.$educationTooltipEntries = educationTooltipEntries;
-  restoreChartLegendVisibilityState(chart);
+  measureTabSwitchPerfStep('draw.restoreLegendState', ()=>restoreChartLegendVisibilityState(chart));
   if(graphType === 'education') {
-    updateEducationCumulativeDatasets(chart);
-    chart.update('none');
+    measureTabSwitchPerfStep('draw.updateEducationCumulativeDatasets', ()=>{
+      updateEducationCumulativeDatasets(chart);
+      chart.update('none');
+    });
   }
-  renderCustomChartLegend(chart, customLegendDisplay);
+  measureTabSwitchPerfStep('draw.renderCustomLegend', ()=>renderCustomChartLegend(chart, customLegendDisplay));
 }
 
 function getSaveData(){
@@ -27167,6 +27837,266 @@ function simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex){
 function simulateMonteFinalOnly(cfg, staticSeries, returnShocks, lifeIndex){
   return simulateMonteFinalOnlyCore(cfg, staticSeries, returnShocks, lifeIndex);
 }
+
+// ===== v1224 dev-only: withdrawal compare progress/debug helpers =====
+const WITHDRAWAL_COMPARE_PROGRESS_MIN_INTERVAL_MS = 100;
+let withdrawalCompareProgressState = {visible:false, lastUiAt:0, hideTimer:null, uiUpdates:0, yieldedFrames:0, progressReports:0};
+function getWithdrawalCompareNow(){
+  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+function formatWithdrawalCompareDebugMs(ms){
+  const n = Number(ms);
+  if(!Number.isFinite(n)) return '-';
+  if(n >= 1000) return `${(n / 1000).toFixed(2)}秒`;
+  return `${Math.round(n)}ms`;
+}
+function ensureWithdrawalCompareProgressOverlay(){
+  const host = document.getElementById('withdrawalCompareSection');
+  if(!host) return null;
+  let overlay = document.getElementById('withdrawalCompareProgressOverlay');
+  if(overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'withdrawalCompareProgressOverlay';
+  overlay.className = 'asset-probability-progress-overlay withdrawal-compare-progress-overlay';
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.innerHTML = `
+    <div class="asset-probability-progress-card" role="status" aria-label="取り崩し比較を計算中">
+      <div class="asset-probability-progress-ring" data-progress-ring>
+        <div class="asset-probability-progress-percent" data-progress-percent>0%</div>
+      </div>
+      <div class="asset-probability-progress-label" data-progress-label>取り崩し比較を計算中...</div>
+      <div class="asset-probability-progress-detail" data-progress-detail></div>
+    </div>`;
+  host.appendChild(overlay);
+  return overlay;
+}
+function setWithdrawalCompareProgressOverlay(progress, label='取り崩し比較を計算中...', detail=''){
+  const overlay = ensureWithdrawalCompareProgressOverlay();
+  if(!overlay) return;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  const ring = overlay.querySelector('[data-progress-ring]');
+  const percent = overlay.querySelector('[data-progress-percent]');
+  const labelEl = overlay.querySelector('[data-progress-label]');
+  const detailEl = overlay.querySelector('[data-progress-detail]');
+  if(ring){
+    ring.style.setProperty('--progress', String(value));
+    ring.style.setProperty('--progress-deg', `${value * 3.6}deg`);
+  }
+  if(percent) percent.textContent = `${Math.round(value)}%`;
+  if(labelEl) labelEl.textContent = label || '取り崩し比較を計算中...';
+  if(detailEl) detailEl.textContent = detail || '';
+}
+function showWithdrawalCompareProgressOverlay(label='取り崩し比較を計算中...', detail=''){
+  const overlay = ensureWithdrawalCompareProgressOverlay();
+  if(!overlay) return;
+  if(withdrawalCompareProgressState.hideTimer){
+    clearTimeout(withdrawalCompareProgressState.hideTimer);
+    withdrawalCompareProgressState.hideTimer = null;
+  }
+  withdrawalCompareProgressState.visible = true;
+  withdrawalCompareProgressState.lastUiAt = 0;
+  withdrawalCompareProgressState.uiUpdates = 0;
+  withdrawalCompareProgressState.yieldedFrames = 0;
+  withdrawalCompareProgressState.progressReports = 0;
+  setWithdrawalCompareProgressOverlay(0, label, detail);
+  overlay.classList.add('show');
+}
+function hideWithdrawalCompareProgressOverlay(delayMs=180){
+  const overlay = document.getElementById('withdrawalCompareProgressOverlay');
+  if(!overlay) return;
+  if(withdrawalCompareProgressState.hideTimer){
+    clearTimeout(withdrawalCompareProgressState.hideTimer);
+    withdrawalCompareProgressState.hideTimer = null;
+  }
+  withdrawalCompareProgressState.hideTimer = setTimeout(()=>{
+    overlay.classList.remove('show');
+    withdrawalCompareProgressState.visible = false;
+    withdrawalCompareProgressState.hideTimer = null;
+  }, Math.max(0, Number(delayMs) || 0));
+}
+function waitWithdrawalCompareProgressFrame(){
+  return new Promise(resolve=>{
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(()=>resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+async function reportWithdrawalCompareProgress(progress, options={}){
+  withdrawalCompareProgressState.progressReports++;
+  const now = getWithdrawalCompareNow();
+  const force = !!options.force;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  if(force || !withdrawalCompareProgressState.lastUiAt || now - withdrawalCompareProgressState.lastUiAt >= WITHDRAWAL_COMPARE_PROGRESS_MIN_INTERVAL_MS || value >= 100){
+    setWithdrawalCompareProgressOverlay(value, options.label || '取り崩し比較を計算中...', options.detail || '');
+    withdrawalCompareProgressState.lastUiAt = now;
+    withdrawalCompareProgressState.uiUpdates++;
+    await waitWithdrawalCompareProgressFrame();
+    withdrawalCompareProgressState.yieldedFrames++;
+  }
+}
+// ===== v1236 dev-only: crash compare progress/debug helpers =====
+let crashCompareProgressState = {visible:false, lastUiAt:0, hideTimer:null, uiUpdates:0, yieldedFrames:0, progressReports:0};
+function ensureCrashCompareProgressOverlay(){
+  const host = document.getElementById('crashCompareSection');
+  if(!host) return null;
+  if(!host.style.position) host.style.position = 'relative';
+  let overlay = document.getElementById('crashCompareProgressOverlay');
+  if(overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'crashCompareProgressOverlay';
+  overlay.className = 'asset-probability-progress-overlay withdrawal-compare-progress-overlay';
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.innerHTML = `
+    <div class="asset-probability-progress-card" role="status" aria-label="暴落比較を計算中">
+      <div class="asset-probability-progress-ring" data-progress-ring>
+        <div class="asset-probability-progress-percent" data-progress-percent>0%</div>
+      </div>
+      <div class="asset-probability-progress-label" data-progress-label>暴落比較を計算中...</div>
+      <div class="asset-probability-progress-detail" data-progress-detail></div>
+    </div>`;
+  host.appendChild(overlay);
+  return overlay;
+}
+function setCrashCompareProgressOverlay(progress, label='暴落比較を計算中...', detail=''){
+  const overlay = ensureCrashCompareProgressOverlay();
+  if(!overlay) return;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  const ring = overlay.querySelector('[data-progress-ring]');
+  const percent = overlay.querySelector('[data-progress-percent]');
+  const labelEl = overlay.querySelector('[data-progress-label]');
+  const detailEl = overlay.querySelector('[data-progress-detail]');
+  if(ring){
+    ring.style.setProperty('--progress', String(value));
+    ring.style.setProperty('--progress-deg', `${value * 3.6}deg`);
+  }
+  if(percent) percent.textContent = `${Math.round(value)}%`;
+  if(labelEl) labelEl.textContent = label || '暴落比較を計算中...';
+  if(detailEl) detailEl.textContent = detail || '';
+}
+function showCrashCompareProgressOverlay(label='暴落比較を計算中...', detail=''){
+  const overlay = ensureCrashCompareProgressOverlay();
+  if(!overlay) return;
+  if(crashCompareProgressState.hideTimer){
+    clearTimeout(crashCompareProgressState.hideTimer);
+    crashCompareProgressState.hideTimer = null;
+  }
+  crashCompareProgressState.visible = true;
+  crashCompareProgressState.lastUiAt = 0;
+  crashCompareProgressState.uiUpdates = 0;
+  crashCompareProgressState.yieldedFrames = 0;
+  crashCompareProgressState.progressReports = 0;
+  setCrashCompareProgressOverlay(0, label, detail);
+  overlay.classList.add('show');
+}
+function hideCrashCompareProgressOverlay(delay=180){
+  const overlay = document.getElementById('crashCompareProgressOverlay');
+  if(!overlay) return;
+  if(crashCompareProgressState.hideTimer) clearTimeout(crashCompareProgressState.hideTimer);
+  crashCompareProgressState.hideTimer = setTimeout(()=>{
+    overlay.classList.remove('show');
+    crashCompareProgressState.visible = false;
+  }, Math.max(0, Number(delay) || 0));
+}
+function waitCrashCompareProgressFrame(){
+  return new Promise(resolve=>{
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(()=>resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+async function reportCrashCompareProgress(progress, options={}){
+  crashCompareProgressState.progressReports++;
+  const now = getWithdrawalCompareNow();
+  const force = !!options.force;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  if(force || !crashCompareProgressState.lastUiAt || now - crashCompareProgressState.lastUiAt >= WITHDRAWAL_COMPARE_PROGRESS_MIN_INTERVAL_MS || value >= 100){
+    setCrashCompareProgressOverlay(value, options.label || '暴落比較を計算中...', options.detail || '');
+    crashCompareProgressState.lastUiAt = now;
+    crashCompareProgressState.uiUpdates++;
+    await waitCrashCompareProgressFrame();
+    crashCompareProgressState.yieldedFrames++;
+  }
+}
+// ===== v1238 dev-only: monte compare progress/debug helpers =====
+let monteCompareProgressState = {visible:false, lastUiAt:0, hideTimer:null, uiUpdates:0, yieldedFrames:0, progressReports:0};
+function ensureMonteCompareProgressOverlay(){
+  const host = document.getElementById('monteCompareSection');
+  if(!host) return null;
+  if(!host.style.position) host.style.position = 'relative';
+  let overlay = document.getElementById('monteCompareProgressOverlay');
+  if(overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'monteCompareProgressOverlay';
+  overlay.className = 'asset-probability-progress-overlay withdrawal-compare-progress-overlay';
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.innerHTML = `
+    <div class="asset-probability-progress-card" role="status" aria-label="確率比較を計算中">
+      <div class="asset-probability-progress-ring" data-progress-ring>
+        <div class="asset-probability-progress-percent" data-progress-percent>0%</div>
+      </div>
+      <div class="asset-probability-progress-label" data-progress-label>確率比較を計算中...</div>
+      <div class="asset-probability-progress-detail" data-progress-detail></div>
+    </div>`;
+  host.appendChild(overlay);
+  return overlay;
+}
+function setMonteCompareProgressOverlay(progress, label='確率比較を計算中...', detail=''){
+  const overlay = ensureMonteCompareProgressOverlay();
+  if(!overlay) return;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  const ring = overlay.querySelector('[data-progress-ring]');
+  const percent = overlay.querySelector('[data-progress-percent]');
+  const labelEl = overlay.querySelector('[data-progress-label]');
+  const detailEl = overlay.querySelector('[data-progress-detail]');
+  if(ring){
+    ring.style.setProperty('--progress', String(value));
+    ring.style.setProperty('--progress-deg', `${value * 3.6}deg`);
+  }
+  if(percent) percent.textContent = `${Math.round(value)}%`;
+  if(labelEl) labelEl.textContent = label || '確率比較を計算中...';
+  if(detailEl) detailEl.textContent = detail || '';
+}
+function showMonteCompareProgressOverlay(label='確率比較を計算中...', detail=''){
+  const overlay = ensureMonteCompareProgressOverlay();
+  if(!overlay) return;
+  if(monteCompareProgressState.hideTimer){
+    clearTimeout(monteCompareProgressState.hideTimer);
+    monteCompareProgressState.hideTimer = null;
+  }
+  monteCompareProgressState.visible = true;
+  monteCompareProgressState.lastUiAt = 0;
+  monteCompareProgressState.uiUpdates = 0;
+  monteCompareProgressState.yieldedFrames = 0;
+  monteCompareProgressState.progressReports = 0;
+  setMonteCompareProgressOverlay(0, label, detail);
+  overlay.classList.add('show');
+}
+function hideMonteCompareProgressOverlay(delay=180){
+  const overlay = document.getElementById('monteCompareProgressOverlay');
+  if(!overlay) return;
+  if(monteCompareProgressState.hideTimer) clearTimeout(monteCompareProgressState.hideTimer);
+  monteCompareProgressState.hideTimer = setTimeout(()=>{
+    overlay.classList.remove('show');
+    monteCompareProgressState.visible = false;
+  }, Math.max(0, Number(delay) || 0));
+}
+function waitMonteCompareProgressFrame(){
+  return new Promise(resolve=>{
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(()=>resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+async function reportMonteCompareProgress(progress, options={}){
+  monteCompareProgressState.progressReports++;
+  const now = getWithdrawalCompareNow();
+  const force = !!options.force;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  if(force || !monteCompareProgressState.lastUiAt || now - monteCompareProgressState.lastUiAt >= WITHDRAWAL_COMPARE_PROGRESS_MIN_INTERVAL_MS || value >= 100){
+    setMonteCompareProgressOverlay(value, options.label || '確率比較を計算中...', options.detail || '');
+    monteCompareProgressState.lastUiAt = now;
+    monteCompareProgressState.uiUpdates++;
+    await waitMonteCompareProgressFrame();
+    monteCompareProgressState.yieldedFrames++;
+  }
+}
 function buildMonteFinalStatsFromCases(cfgBase, cases, shockTrials){
   return (cases || []).map(compareCase=>{
     const cfg = deepClone(cfgBase);
@@ -27203,6 +28133,276 @@ function buildMonteFinalStatsFromCases(cfgBase, cases, shockTrials){
       finals: monteFinals
     };
   });
+}
+
+async function buildMonteFinalStatsFromCasesAsync(cfgBase, cases, shockTrials, progressReporter=null, debugInfo=null){
+  const compareCases = Array.isArray(cases) ? cases : [];
+  const shocks = Array.isArray(shockTrials) ? shockTrials : [];
+  const totalWork = Math.max(1, compareCases.length * Math.max(1, shocks.length));
+  let completedWork = 0;
+  const results = [];
+  if(debugInfo){
+    debugInfo.caseTimes = [];
+    debugInfo.statsMs = 0;
+    debugInfo.calcMs = 0;
+    debugInfo.simulateBreakdown = null;
+  }
+  for(let caseIndex=0; caseIndex<compareCases.length; caseIndex++){
+    const compareCase = compareCases[caseIndex];
+    const caseStart = getWithdrawalCompareNow();
+    const cfg = deepClone(cfgBase);
+    cfg.withdrawalPolicy = {...(cfg.withdrawalPolicy || {}), ...(compareCase.policyOverride || {}), mode:compareCase.mode};
+    const compareData = sanitizeSimulationInputData(cfg, {includeMonteSettings:true});
+    const normalStart = getWithdrawalCompareNow();
+    const base = (getNormalSimCacheByData(compareData) || setNormalSimCacheByData(compareData, cfg, simulate(cfg, false))).sim;
+    const normalMs = getWithdrawalCompareNow() - normalStart;
+    const staticStart = getWithdrawalCompareNow();
+    const staticSeries = getOrBuildMonteStaticSeries(compareData, cfg);
+    const staticMs = getWithdrawalCompareNow() - staticStart;
+    const expenseSeriesProfile = {};
+    const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries, expenseSeriesProfile);
+    const expenseSeries = expenseSeriesBundle.values;
+    const lifeIndexClamped = Math.max(0, Math.min(base.labels.length - 1, Number(cfg.lifeExpect || 0) - Number(cfg.age || 0)));
+    const monteFinals = [];
+    let fail = 0;
+    // v1226 dev-only: profile only the first comparison case to limit overhead.
+    const profileThisCase = false;
+    const simulateBreakdown = profileThisCase ? {
+      caseLabel:compareCase.label || `case${caseIndex + 1}`,
+      caseIndex:caseIndex + 1,
+      profiledTrials:0,
+      initMs:0,
+      yearStartMs:0,
+      returnDividendMs:0,
+      depositReturnMs:0,
+      investmentRateMs:0,
+      dividendProcessMs:0,
+      investmentRateBaseMs:0,
+      investmentRateRandomMs:0,
+      investmentRateCrashMs:0,
+      investmentRateAssignMs:0,
+      investmentRateAssetChecks:0,
+      investmentRateRandomCalls:0,
+      investmentRateCrashChecks:0,
+      cashflowTaxMs:0,
+      cashflowStaticReadMs:0,
+      cashflowReceiptMs:0,
+      receiptSelfRetireMs:0,
+      receiptSpouseRetireMs:0,
+      receiptSelfIdecoMs:0,
+      receiptSelfCorporateDcMs:0,
+      receiptSpouseIdecoMs:0,
+      receiptSpouseCorporateDcMs:0,
+      receiptSettingMs:0,
+      receiptRemainingMs:0,
+      receiptRetireCalcMs:0,
+      receiptDcEligibilityMs:0,
+      receiptDcMatchingMs:0,
+      receiptDcLiquidateMs:0,
+      receiptRetireCalls:0,
+      receiptDcCalls:0,
+      receiptRetireLumpMatches:0,
+      receiptRetirePensionMatches:0,
+      receiptDcLumpMatches:0,
+      receiptDcPensionMatches:0,
+      cashflowIncomeAssembleMs:0,
+      cashflowIncomeMs:0,
+      cashflowExpenseMs:0,
+      cashflowSocialTaxMs:0,
+      cashflowAnnualNeedMs:0,
+      cashflowSafeAssetMs:0,
+      cashflowAssembleMs:0,
+      shortageWithdrawalMs:0,
+      scheduledRebalanceMs:0,
+      scheduledInvestmentMs:0,
+      scheduledInvestmentInnerMs:0,
+      scheduledReserveMs:0,
+      scheduledReserveExpenseLookupMs:0,
+      scheduledReserveCalcMs:0,
+      scheduledReserveCalls:0,
+      expenseTotalMs:0,
+      expenseLifeMs:0,
+      expenseRentMs:0,
+      expenseHomeMaintMs:0,
+      expenseInsuranceMs:0,
+      expensePeriodicMs:0,
+      expenseExtraMs:0,
+      expenseEducationBaseMs:0,
+      expenseEducationInflationMs:0,
+      expenseEducationRecurringMs:0,
+      expenseLoanTotalMs:0,
+      expenseCalls:0,
+      expenseLoanDetailEnabledCalls:0,
+      expenseLoanSimpleCalls:0,
+      expenseLoanBuildDetailMs:0,
+      expenseLoanSimDetailMs:0,
+      expenseLoanPostMs:0,
+      expenseLoanSimpleMs:0,
+      expenseSeriesBuildMs:0,
+      expenseSeriesLength:0,
+      expenseSeriesDirectCalls:0,
+      expenseSeriesHits:0,
+      expenseSeriesMisses:0,
+      expenseSeriesMaxAbsDiff:0,
+      expenseSeriesMismatchCount:0,
+      scheduledProfileMode:'',
+      futureInvestmentPlanMs:0,
+      sumInvestmentPlanMs:0,
+      fundInvestmentMs:0,
+      futureInvestmentPlanChecks:0,
+      futureInvestmentPlanEligible:0,
+      futureFundCalls:0,
+      futureFundedTotal:0,
+      futureAllowedContributionMs:0,
+      futureFundCallMs:0,
+      futureTargetUpdateMs:0,
+      futureRegisterContributionMs:0,
+      sumInvestmentPlanChecks:0,
+      sumInvestmentPlanEligible:0,
+      sumFundCalls:0,
+      sumFundedTotal:0,
+      sumAllowedContributionMs:0,
+      sumFundCallMs:0,
+      sumTargetUpdateMs:0,
+      sumRegisterContributionMs:0,
+      futureInvestmentFundedCount:0,
+      sumInvestmentFundedCount:0,
+      investmentReturnForRuleMs:0,
+      ruleTotalsMs:0,
+      withdrawalNeedsMs:0,
+      applyRuleTotalMs:0,
+      applyRuleYears:0,
+      applyRuleSkippedYears:0,
+      applyRuleDepAfterReduceMs:0,
+      applyRuleReplenishReduceMs:0,
+      applyRuleReplenishIterations:0,
+      applyRuleInfoMs:0,
+      sellTotalMs:0,
+      sellOrderMs:0,
+      sellLoopMs:0,
+      sellCalls:0,
+      sellOrderedAssets:0,
+      sellExecutedItems:0,
+      outputMs:0,
+      totalMs:0,
+      years:0
+    } : null;
+    if(simulateBreakdown){
+      simulateBreakdown.expenseSeriesBuildMs = Number(expenseSeriesProfile.expenseSeriesBuildMs || 0) || 0;
+      simulateBreakdown.expenseSeriesLength = Number(expenseSeriesProfile.expenseSeriesLength || 0) || 0;
+      simulateBreakdown.expenseSeriesDirectCalls = Number(expenseSeriesProfile.expenseSeriesDirectCalls || 0) || 0;
+      let maxAbsExpenseDiff = 0;
+      let expenseMismatchCount = 0;
+      for(let ei=0; ei<expenseSeries.length; ei++){
+        const cachedTotal = Number(expenseSeries?.[ei]?.total || 0) || 0;
+        const staticTotal = Number(staticSeries?.[ei]?.expenseObj?.total || 0) || 0;
+        const diff = Math.abs(cachedTotal - staticTotal);
+        if(diff > 1e-7) expenseMismatchCount++;
+        if(diff > maxAbsExpenseDiff) maxAbsExpenseDiff = diff;
+      }
+      simulateBreakdown.expenseSeriesMaxAbsDiff = maxAbsExpenseDiff;
+      simulateBreakdown.expenseSeriesMismatchCount = expenseMismatchCount;
+    }
+    const trialStart = getWithdrawalCompareNow();
+    for(let i=0;i<shocks.length;i++){
+      const simProfile = simulateBreakdown ? {} : null;
+      const sim = simulate(cfg, true, {compact:true, staticSeries, expenseSeries, returnShocks:shocks[i], profile:simProfile});
+      if(simulateBreakdown && simProfile){
+        simulateBreakdown.profiledTrials++;
+        ['initMs','yearStartMs','returnDividendMs','depositReturnMs','investmentRateMs','dividendProcessMs','investmentRateBaseMs','investmentRateRandomMs','investmentRateCrashMs','investmentRateAssignMs','investmentRateAssetChecks','investmentRateRandomCalls','investmentRateCrashChecks','cashflowTaxMs','cashflowStaticReadMs','cashflowReceiptMs','receiptSelfRetireMs','receiptSpouseRetireMs','receiptSelfIdecoMs','receiptSelfCorporateDcMs','receiptSpouseIdecoMs','receiptSpouseCorporateDcMs','receiptSettingMs','receiptRemainingMs','receiptRetireCalcMs','receiptDcEligibilityMs','receiptDcMatchingMs','receiptDcLiquidateMs','receiptRetireCalls','receiptDcCalls','receiptRetireLumpMatches','receiptRetirePensionMatches','receiptDcLumpMatches','receiptDcPensionMatches','cashflowIncomeAssembleMs','cashflowIncomeMs','cashflowExpenseMs','cashflowSocialTaxMs','cashflowAnnualNeedMs','cashflowSafeAssetMs','cashflowAssembleMs','shortageWithdrawalMs','scheduledRebalanceMs','scheduledInvestmentMs','scheduledInvestmentInnerMs','scheduledReserveMs','scheduledReserveExpenseLookupMs','scheduledReserveCalcMs','scheduledReserveCalls','expenseTotalMs','expenseLifeMs','expenseRentMs','expenseHomeMaintMs','expenseInsuranceMs','expensePeriodicMs','expenseExtraMs','expenseEducationBaseMs','expenseEducationInflationMs','expenseEducationRecurringMs','expenseLoanTotalMs','expenseCalls','expenseLoanDetailEnabledCalls','expenseLoanSimpleCalls','expenseLoanBuildDetailMs','expenseLoanSimDetailMs','expenseLoanPostMs','expenseLoanSimpleMs','expenseSeriesBuildMs','expenseSeriesLength','expenseSeriesDirectCalls','expenseSeriesHits','expenseSeriesMisses','expenseSeriesMaxAbsDiff','expenseSeriesMismatchCount','futureInvestmentPlanMs','sumInvestmentPlanMs','fundInvestmentMs','futureInvestmentPlanChecks','futureInvestmentPlanEligible','futureFundCalls','futureFundedTotal','futureAllowedContributionMs','futureFundCallMs','futureTargetUpdateMs','futureRegisterContributionMs','sumInvestmentPlanChecks','sumInvestmentPlanEligible','sumFundCalls','sumFundedTotal','sumAllowedContributionMs','sumFundCallMs','sumTargetUpdateMs','sumRegisterContributionMs','futureInvestmentFundedCount','sumInvestmentFundedCount','investmentReturnForRuleMs','ruleTotalsMs','withdrawalNeedsMs','applyRuleTotalMs','applyRuleYears','applyRuleSkippedYears','applyRuleDepAfterReduceMs','applyRuleReplenishReduceMs','applyRuleReplenishIterations','applyRuleInfoMs','sellTotalMs','sellOrderMs','sellLoopMs','sellCalls','sellOrderedAssets','sellExecutedItems','outputMs','totalMs','years'].forEach(key=>{
+          simulateBreakdown[key] = (Number(simulateBreakdown[key]) || 0) + (Number(simProfile[key]) || 0);
+        });
+        if(simProfile.scheduledProfileMode) simulateBreakdown.scheduledProfileMode = simProfile.scheduledProfileMode;
+      }
+      const totalAssets = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
+      const finalAtLife = Number(totalAssets?.[lifeIndexClamped] ?? totalAssets?.at?.(-1) ?? 0) || 0;
+      if(finalAtLife <= 0) fail++;
+      monteFinals.push(finalAtLife);
+      completedWork++;
+      if(progressReporter && (i % 5 === 0 || i === shocks.length - 1)){
+        const detail = `比較 ${caseIndex + 1}/${compareCases.length}・試行 ${i + 1}/${shocks.length}`;
+        await progressReporter(5 + (completedWork / totalWork) * 90, {detail});
+      }
+    }
+    const trialMs = getWithdrawalCompareNow() - trialStart;
+    if(debugInfo && simulateBreakdown && !debugInfo.simulateBreakdown){
+      debugInfo.simulateBreakdown = simulateBreakdown;
+    }
+    const statsStart = getWithdrawalCompareNow();
+    const sorted = monteFinals.slice().sort((a,b)=>a-b);
+    const result = {
+      mode: compareCase.mode,
+      label: compareCase.label,
+      fullLabel: compareCase.fullLabel || compareCase.label,
+      successProb: 1 - (fail / Math.max(1, monteFinals.length)),
+      bankruptcyProb: fail / Math.max(1, monteFinals.length),
+      best: sorted.at(-1) || 0,
+      p95: percentileFromSorted(sorted, 0.95),
+      p90: percentileFromSorted(sorted, 0.90),
+      fixed: base.totalAssets[lifeIndexClamped] ?? base.totalAssets.at(-1) ?? 0,
+      median: percentileFromSorted(sorted, 0.50),
+      mean: monteFinals.reduce((s,v)=>s+v,0) / Math.max(1, monteFinals.length),
+      p10: percentileFromSorted(sorted, 0.10),
+      p05: percentileFromSorted(sorted, 0.05),
+      worst: sorted[0] || 0,
+      finals: monteFinals
+    };
+    const statsMs = getWithdrawalCompareNow() - statsStart;
+    results.push(result);
+    if(debugInfo){
+      debugInfo.statsMs += statsMs;
+      debugInfo.caseTimes.push({
+        label:compareCase.label,
+        mode:compareCase.mode,
+        totalMs:getWithdrawalCompareNow() - caseStart,
+        normalMs,
+        staticMs,
+        expenseSeriesBuildMs:Number(expenseSeriesProfile.expenseSeriesBuildMs || 0) || 0,
+        trialMs,
+        statsMs,
+        trialCount:shocks.length
+      });
+    }
+  }
+  if(debugInfo){
+    debugInfo.calcMs = (debugInfo.caseTimes || []).reduce((sum, c)=>sum + (Number(c.totalMs) || 0), 0);
+  }
+  return results;
+}
+async function runWithdrawalComparisonCalculationAsync(progressReporter=null){
+  const debugInfo = {
+    cacheHit:false,
+    cacheMs:0,
+    buildShocksMs:0,
+    calcMs:0,
+    statsMs:0,
+    caseTimes:[],
+    trials:0,
+    caseCount:0
+  };
+  const cfgBase = getScenarioFromDOM();
+  const requestedMonteSettings = cfgBase?.monteCarlo || getMonteCarloSettingsFromDOM();
+  const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
+  const trials = clampMonteTrials(monteSettings?.trials || 80);
+  const cases = getWithdrawalComparisonCases(cfgBase);
+  debugInfo.trials = trials;
+  debugInfo.caseCount = cases.length;
+  if(!cases.length) return {results:[], debugInfo};
+  const cacheStart = getWithdrawalCompareNow();
+  const cached = getMonteCompareCacheEntry(cfgBase, cases, monteSettings);
+  debugInfo.cacheMs = getWithdrawalCompareNow() - cacheStart;
+  if(cached?.results){
+    debugInfo.cacheHit = true;
+    if(progressReporter) await progressReporter(100, {force:true, detail:'キャッシュ結果を表示中'});
+    return {results:cached.results, debugInfo};
+  }
+  if(progressReporter) await progressReporter(5, {force:true, detail:'乱数列を準備中'});
+  const shockStart = getWithdrawalCompareNow();
+  const shockTrials = buildSharedReturnShocks(cfgBase, trials, cfgBase, monteSettings);
+  debugInfo.buildShocksMs = getWithdrawalCompareNow() - shockStart;
+  const results = await buildMonteFinalStatsFromCasesAsync(cfgBase, cases, shockTrials, progressReporter, debugInfo);
+  setMonteCompareCacheEntry(cfgBase, cases, monteSettings, results);
+  return {results, debugInfo};
 }
 function runWithdrawalComparisonCalculation(){
   const cfgBase = getScenarioFromDOM();
@@ -29167,13 +30367,37 @@ function runWithdrawalComparison(){
   setWithdrawalCompareResultsVisible(false);
   renderWithdrawalCompareHeader([]);
   if(withdrawalCompareChart){ withdrawalCompareChart.destroy(); withdrawalCompareChart = null; }
-  setTimeout(()=>{
+  showWithdrawalCompareProgressOverlay('取り崩し比較を計算中...', '同一乱数列で比較しています');
+  setTimeout(async ()=>{
+    const totalStart = getWithdrawalCompareNow();
     try{
-      const results = runWithdrawalComparisonCalculation();
+      const {results, debugInfo} = await runWithdrawalComparisonCalculationAsync(reportWithdrawalCompareProgress);
       if(!Array.isArray(results) || !results.length) throw new Error('比較結果を取得できませんでした。');
       withdrawalCompareCache = results;
+      await reportWithdrawalCompareProgress(98, {force:true, detail:'表・グラフを更新中'});
+      const renderStart = getWithdrawalCompareNow();
       renderWithdrawalComparisonResults(results);
+      const renderMs = getWithdrawalCompareNow() - renderStart;
+      await reportWithdrawalCompareProgress(100, {force:true, detail:'完了'});
+      hideWithdrawalCompareProgressOverlay(220);
+      const payload = {
+        totalMs:getWithdrawalCompareNow() - totalStart,
+        calcMs:Number(debugInfo?.calcMs || 0),
+        statsMs:Number(debugInfo?.statsMs || 0),
+        renderMs,
+        cacheMs:Number(debugInfo?.cacheMs || 0),
+        cacheHit:!!debugInfo?.cacheHit,
+        buildShocksMs:Number(debugInfo?.buildShocksMs || 0),
+        caseCount:Number(debugInfo?.caseCount || results.length || 0),
+        trials:Number(debugInfo?.trials || 0),
+        progressReports:withdrawalCompareProgressState.progressReports,
+        uiUpdates:withdrawalCompareProgressState.uiUpdates,
+        yieldedFrames:withdrawalCompareProgressState.yieldedFrames,
+        caseTimes:Array.isArray(debugInfo?.caseTimes) ? debugInfo.caseTimes : [],
+        simulateBreakdown:debugInfo?.simulateBreakdown || null
+      };
     }catch(err){
+      hideWithdrawalCompareProgressOverlay(0);
       console.error(err);
       const msg = err && err.message ? err.message : String(err || '不明なエラー');
       const compareCases = getWithdrawalComparisonCases(getScenarioFromDOM());
@@ -30134,6 +31358,174 @@ function buildMonteCompareStatsFromCases(cfgBase, cases){
     };
   });
 }
+
+async function buildMonteCompareStatsFromCasesAsync(cfgBase, cases, progressReporter=null, debugInfo=null){
+  const compareCases = Array.isArray(cases) ? cases : [];
+  const scenarioData = sanitizeSimulationInputData(cfgBase, {includeMonteSettings:true});
+  const baseStart = getWithdrawalCompareNow();
+  const base = simulate(cfgBase, false);
+  const baseMs = getWithdrawalCompareNow() - baseStart;
+  const staticStart = getWithdrawalCompareNow();
+  const staticSeries = getOrBuildMonteStaticSeries(scenarioData, cfgBase);
+  const staticMs = getWithdrawalCompareNow() - staticStart;
+  const caseMeta = compareCases.map(compareCase=>{
+    const settings = compareCase.settings || getMonteCarloSettingsFromDOM();
+    const trials = clampMonteTrials(settings?.trials || 80);
+    return {compareCase, settings, trials};
+  });
+  const totalWork = Math.max(1, caseMeta.reduce((sum, item)=>sum + Math.max(1, item.trials), 0));
+  let completedWork = 0;
+  const results = [];
+  if(debugInfo){
+    debugInfo.caseTimes = [];
+    debugInfo.statsMs = 0;
+    debugInfo.calcMs = 0;
+    debugInfo.baseMs = baseMs;
+    debugInfo.staticMs = staticMs;
+    debugInfo.simulateBreakdown = null;
+    debugInfo.trials = caseMeta.reduce((max, item)=>Math.max(max, item.trials), 0);
+    debugInfo.caseCount = caseMeta.length;
+  }
+  if(progressReporter) await progressReporter(5, {force:true, detail:'確率比較を準備中'});
+  for(let caseIndex=0; caseIndex<caseMeta.length; caseIndex++){
+    const {compareCase, settings, trials} = caseMeta[caseIndex];
+    const caseStart = getWithdrawalCompareNow();
+    const shocksStart = getWithdrawalCompareNow();
+    const shockTrials = buildSharedReturnShocks(cfgBase, trials, scenarioData, settings);
+    const shocksMs = getWithdrawalCompareNow() - shocksStart;
+    const expenseSeriesProfile = {};
+    const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfgBase, staticSeries, expenseSeriesProfile);
+    const expenseSeries = expenseSeriesBundle.values;
+    const lifeIndexClamped = Math.max(0, Math.min((Array.isArray(base?.labels) ? base.labels.length : 1) - 1, Number(cfgBase.lifeExpect || 0) - Number(cfgBase.age || 0)));
+    const monteFinals = [];
+    let fail = 0;
+    const profileThisCase = false;
+    const simulateBreakdown = profileThisCase ? {
+      caseLabel:compareCase.label || `case${caseIndex + 1}`,
+      caseIndex:caseIndex + 1,
+      profiledTrials:0,
+      expenseSeriesBuildMs:Number(expenseSeriesProfile.expenseSeriesBuildMs || 0) || 0,
+      expenseSeriesLength:Number(expenseSeriesProfile.expenseSeriesLength || 0) || 0,
+      expenseSeriesDirectCalls:Number(expenseSeriesProfile.expenseSeriesDirectCalls || 0) || 0,
+      expenseSeriesHits:0,
+      expenseSeriesMisses:0,
+      expenseSeriesMaxAbsDiff:0,
+      expenseSeriesMismatchCount:0,
+      initMs:0,
+      yearStartMs:0,
+      returnDividendMs:0,
+      cashflowTaxMs:0,
+      shortageWithdrawalMs:0,
+      scheduledRebalanceMs:0,
+      outputMs:0,
+      totalMs:0
+    } : null;
+    if(simulateBreakdown){
+      let maxAbsExpenseDiff = 0;
+      let expenseMismatchCount = 0;
+      for(let ei=0; ei<expenseSeries.length; ei++){
+        const cachedTotal = Number(expenseSeries?.[ei]?.total || 0) || 0;
+        const staticTotal = Number(staticSeries?.[ei]?.expenseObj?.total || 0) || 0;
+        const diff = Math.abs(cachedTotal - staticTotal);
+        if(diff > 1e-7) expenseMismatchCount++;
+        if(diff > maxAbsExpenseDiff) maxAbsExpenseDiff = diff;
+      }
+      simulateBreakdown.expenseSeriesMaxAbsDiff = maxAbsExpenseDiff;
+      simulateBreakdown.expenseSeriesMismatchCount = expenseMismatchCount;
+    }
+    const trialStart = getWithdrawalCompareNow();
+    for(let i=0;i<trials;i++){
+      const simProfile = simulateBreakdown ? {} : null;
+      const finalSim = simulate(cfgBase, true, {finalOnly:true, compact:true, staticSeries, returnShocks:shockTrials[i], lifeIndex:lifeIndexClamped, expenseSeries, profile:simProfile});
+      if(simulateBreakdown && simProfile){
+        simulateBreakdown.profiledTrials++;
+        ['initMs','yearStartMs','returnDividendMs','cashflowTaxMs','shortageWithdrawalMs','scheduledRebalanceMs','outputMs','totalMs','expenseSeriesHits','expenseSeriesMisses'].forEach(key=>{
+          simulateBreakdown[key] = (Number(simulateBreakdown[key]) || 0) + (Number(simProfile[key]) || 0);
+        });
+      }
+      const finalValue = Number(finalSim?.finalAtLife || 0) || 0;
+      if(finalValue <= 0) fail++;
+      monteFinals.push(finalValue);
+      completedWork++;
+      if(progressReporter && (i % 5 === 0 || i === trials - 1)){
+        const detail = `比較 ${caseIndex + 1}/${caseMeta.length}・試行 ${i + 1}/${trials}`;
+        await progressReporter(5 + (completedWork / totalWork) * 90, {detail});
+      }
+    }
+    const trialMs = getWithdrawalCompareNow() - trialStart;
+    if(debugInfo && simulateBreakdown && !debugInfo.simulateBreakdown){
+      debugInfo.simulateBreakdown = simulateBreakdown;
+    }
+    const statsStart = getWithdrawalCompareNow();
+    const sorted = monteFinals.slice().sort((a,b)=>a-b);
+    const fixedIndex = Math.max(0, Math.min((Array.isArray(base?.totalAssets) ? base.totalAssets.length : 1) - 1, lifeIndexClamped));
+    const fixed = Number((base?.totalAssets?.[fixedIndex] ?? 0)) || 0;
+    const result = {
+      label:compareCase.label,
+      successProb: 1 - (fail / Math.max(1, monteFinals.length)),
+      bankruptcyProb: fail / Math.max(1, monteFinals.length),
+      best: sorted.at(-1) || 0,
+      p95: percentileFromSorted(sorted, 0.95),
+      p90: percentileFromSorted(sorted, 0.90),
+      fixed,
+      median: percentileFromSorted(sorted, 0.50),
+      mean: monteFinals.reduce((s,v)=>s+(Number(v)||0),0) / Math.max(1, monteFinals.length),
+      p10: percentileFromSorted(sorted, 0.10),
+      p05: percentileFromSorted(sorted, 0.05),
+      worst: sorted[0] || 0,
+      finals: monteFinals
+    };
+    const statsMs = getWithdrawalCompareNow() - statsStart;
+    results.push(result);
+    if(debugInfo){
+      debugInfo.statsMs += statsMs;
+      debugInfo.caseTimes.push({
+        label:compareCase.label,
+        totalMs:getWithdrawalCompareNow() - caseStart,
+        shocksMs,
+        expenseSeriesBuildMs:Number(expenseSeriesProfile.expenseSeriesBuildMs || 0) || 0,
+        trialMs,
+        statsMs,
+        trialCount:trials
+      });
+    }
+  }
+  if(debugInfo){
+    debugInfo.calcMs = (debugInfo.caseTimes || []).reduce((sum, c)=>sum + (Number(c.totalMs) || 0), 0);
+  }
+  return results;
+}
+
+async function runMonteComparisonCalculationAsync(progressReporter=null){
+  const debugInfo = {
+    cacheHit:false,
+    cacheMs:0,
+    calcMs:0,
+    statsMs:0,
+    renderMs:0,
+    caseTimes:[],
+    trials:0,
+    caseCount:0,
+    simulateBreakdown:null
+  };
+  const cfgBase = getScenarioFromDOM();
+  const requestedSettings = buildMonteSettingsFromModal();
+  const settings = normalizeMonteSettingsForAssetProbabilityRun(requestedSettings);
+  const cases = buildMonteComparisonCases(settings);
+  debugInfo.caseCount = cases.length;
+  debugInfo.trials = cases.reduce((max, c)=>Math.max(max, clampMonteTrials(c?.settings?.trials || settings.trials || 80)), 0);
+  const cacheStart = getWithdrawalCompareNow();
+  const cached = getMonteCompareCacheEntry(cfgBase, cases, settings);
+  debugInfo.cacheMs = getWithdrawalCompareNow() - cacheStart;
+  if(cached?.results){
+    debugInfo.cacheHit = true;
+    return {results:cached.results, debugInfo};
+  }
+  const results = await buildMonteCompareStatsFromCasesAsync(cfgBase, cases, progressReporter, debugInfo);
+  setMonteCompareCacheEntry(cfgBase, cases, settings, results);
+  return {results, debugInfo};
+}
+
 function renderMonteCompareChart(results){
   const canvas = document.getElementById('monteCompareChart');
   if(!canvas) return;
@@ -30403,19 +31795,46 @@ function runMonteCompare(){
   if(document.getElementById('monteCompareHead')) document.getElementById('monteCompareHead').innerHTML = '';
   if(document.getElementById('monteCompareBody')) document.getElementById('monteCompareBody').innerHTML = '';
   if(monteCompareChart){ monteCompareChart.destroy(); monteCompareChart = null; }
-  setTimeout(()=>{
+  showMonteCompareProgressOverlay('確率比較を計算中...', '同一乱数列で比較しています');
+  setTimeout(async ()=>{
+    const totalStart = getWithdrawalCompareNow();
     try{
-      const cfgBase = getScenarioFromDOM();
-      const requestedSettings = buildMonteSettingsFromModal();
-      const settings = normalizeMonteSettingsForAssetProbabilityRun(requestedSettings);
-      const cases = buildMonteComparisonCases(settings);
-      const results = buildMonteCompareStatsFromCases(cfgBase, cases);
+      const {results, debugInfo} = await runMonteComparisonCalculationAsync(reportMonteCompareProgress);
+      if(!Array.isArray(results) || !results.length) throw new Error('比較結果を取得できませんでした。');
       monteCompareCache = results;
+      await reportMonteCompareProgress(98, {force:true, detail:'表・グラフを更新中'});
+      const renderStart = getWithdrawalCompareNow();
       renderMonteCompareResults(results);
+      const renderMs = getWithdrawalCompareNow() - renderStart;
+      await reportMonteCompareProgress(100, {force:true, detail:'完了'});
+      hideMonteCompareProgressOverlay(220);
+      const payload = {
+        totalMs:getWithdrawalCompareNow() - totalStart,
+        calcMs:Number(debugInfo?.calcMs || 0),
+        statsMs:Number(debugInfo?.statsMs || 0),
+        renderMs,
+        cacheMs:Number(debugInfo?.cacheMs || 0),
+        cacheHit:!!debugInfo?.cacheHit,
+        baseMs:Number(debugInfo?.baseMs || 0),
+        staticMs:Number(debugInfo?.staticMs || 0),
+        caseCount:Number(debugInfo?.caseCount || results.length || 0),
+        trials:Number(debugInfo?.trials || 0),
+        progressReports:monteCompareProgressState.progressReports,
+        uiUpdates:monteCompareProgressState.uiUpdates,
+        yieldedFrames:monteCompareProgressState.yieldedFrames,
+        caseTimes:Array.isArray(debugInfo?.caseTimes) ? debugInfo.caseTimes : [],
+        simulateBreakdown:debugInfo?.simulateBreakdown || null
+      };
     }catch(err){
+      hideMonteCompareProgressOverlay(0);
       console.error(err);
+      const msg = err && err.message ? err.message : String(err || '不明なエラー');
+      if(status) status.textContent = `比較計算に失敗しました: ${msg}`;
       setMonteCompareResultsVisible(true);
-      if(status) status.textContent = `比較計算に失敗しました: ${err && err.message ? err.message : err}`;
+      renderMonteCompareHeader([]);
+      const body = document.getElementById('monteCompareBody');
+      if(body) body.innerHTML = `<tr><th>結果</th><td colspan="2">比較結果を表示できませんでした。エラー内容: ${escapeHtml(msg)}</td></tr>`;
+      if(monteCompareChart){ monteCompareChart.destroy(); monteCompareChart = null; }
     }
   }, 10);
 }
