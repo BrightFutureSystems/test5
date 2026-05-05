@@ -5482,6 +5482,27 @@ document.addEventListener("scroll", (ev)=>{
     line-height:1.35;
     text-align:center;
   }
+
+  /* ===== v1222 dev-only: asset probability fast route comparison label ===== */
+  .asset-probability-fast-debug-label{
+    position:absolute;
+    right:18px;
+    bottom:16px;
+    z-index:33;
+    max-width:min(420px, calc(100% - 36px));
+    padding:7px 10px;
+    border:1px solid #cbd7e6;
+    border-radius:12px;
+    background:rgba(255,255,255,.94);
+    color:#334155;
+    box-shadow:0 2px 7px rgba(15,23,42,.08);
+    font-size:11px;
+    line-height:1.45;
+    text-align:left;
+    pointer-events:none;
+    white-space:normal;
+  }
+  .asset-probability-fast-debug-label[hidden]{display:none !important;}
   @media (max-width:900px), (pointer:coarse){
     .asset-probability-progress-card{
       min-width:164px;
@@ -5495,67 +5516,6 @@ document.addEventListener("scroll", (ev)=>{
     .asset-probability-progress-ring::before{inset:8px;}
     .asset-probability-progress-percent{font-size:19px;}
     .asset-probability-progress-label{font-size:12px;}
-  }
-</style>
-
-<!-- ===== v1220 dev-only: asset probability progress timing controls ===== -->
-<style>
-  .asset-probability-progress-debug{
-    position:absolute;
-    top:10px;
-    right:12px;
-    z-index:47;
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-    align-items:flex-end;
-    padding:7px 9px;
-    border:1px solid rgba(207,218,232,.92);
-    border-radius:12px;
-    background:rgba(255,255,255,.88);
-    box-shadow:0 4px 12px rgba(15,23,42,.10);
-    color:#475569;
-    font-size:11px;
-    line-height:1.35;
-    pointer-events:auto;
-  }
-  .asset-probability-progress-debug-row{
-    display:flex;
-    align-items:center;
-    justify-content:flex-end;
-    gap:5px;
-    white-space:nowrap;
-  }
-  .asset-probability-progress-debug input{
-    width:58px;
-    height:24px;
-    padding:2px 5px;
-    border:1px solid #cbd7e6;
-    border-radius:8px;
-    background:#fff;
-    color:#122b45;
-    font-size:11px;
-    text-align:right;
-  }
-  .asset-probability-progress-debug-result{
-    max-width:330px;
-    color:#607589;
-    text-align:right;
-    white-space:pre-line;
-  }
-  @media (max-width:900px), (pointer:coarse){
-    .asset-probability-progress-debug{
-      top:8px;
-      right:8px;
-      padding:6px 7px;
-      font-size:10px;
-    }
-    .asset-probability-progress-debug input{
-      width:50px;
-      height:22px;
-      font-size:10px;
-    }
-    .asset-probability-progress-debug-result{max-width:230px;}
   }
 </style>
 
@@ -7410,102 +7370,132 @@ function normalizeMonteSettingsForAssetProbabilityRun(settings){
   return {...base, seedOn:true, seedValue:createMonteAutoSeed(), autoSeed:true, sourceSeedOn:false};
 }
 
-const ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS = 100;
-let assetProbabilityProgressState = {visible:false, lastUiAt:0, hideTimer:null};
-let assetProbabilityProgressDebugState = {runId:0, startedAt:0, intervalMs:ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS, enabled:true, progressReports:0, uiUpdates:0, yieldedFrames:0, phases:{}};
-function nowAssetProbabilityProgressDebugMs(){
+
+// ===== v1222 dev-only: asset probability fast route comparison helpers =====
+const ASSET_PROBABILITY_FAST_COMPARE_DEBUG = true;
+let assetProbabilityFastDebugState = {lastFast:null, compareTimer:null};
+function getAssetProbabilityNow(){
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 }
-function initAssetProbabilityProgressDebugPhases(){
-  return {
-    finalOnlyMs:0,
-    displaySeriesMs:0,
-    displayPercentileMs:0,
-    displayRuinAgeMs:0,
-    displayOtherMs:0,
-    displayTotalMs:0,
-    storedResultMs:0,
-    resultApplyMs:0,
-    cacheReadMs:0
-  };
-}
-function addAssetProbabilityProgressDebugPhase(name, ms){
-  const state = assetProbabilityProgressDebugState || {};
-  if(!state.phases) state.phases = initAssetProbabilityProgressDebugPhases();
-  const value = Math.max(0, Number(ms) || 0);
-  state.phases[name] = (Number(state.phases[name]) || 0) + value;
-}
-function formatAssetProbabilityProgressDebugMs(ms){
-  const value = Math.max(0, Number(ms) || 0);
-  return value >= 1000 ? `${(value / 1000).toFixed(2)}秒` : `${Math.round(value)}ms`;
-}
-function getAssetProbabilityProgressDebugIntervalMs(){
-  const input = document.getElementById('assetProbabilityProgressIntervalInput');
-  const raw = input ? input.value : String(ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS);
-  const parsed = Math.round(Number(raw));
-  if(!Number.isFinite(parsed)) return ASSET_PROBABILITY_PROGRESS_DEFAULT_INTERVAL_MS;
-  return Math.max(0, Math.min(5000, parsed));
-}
-function ensureAssetProbabilityProgressDebugPanel(){
+function ensureAssetProbabilityFastDebugLabel(){
   const host = document.getElementById('chartCanvasStickyWrap');
   if(!host) return null;
-  let panel = document.getElementById('assetProbabilityProgressDebugPanel');
-  if(panel) return panel;
-  panel = document.createElement('div');
-  panel.id = 'assetProbabilityProgressDebugPanel';
-  panel.className = 'asset-probability-progress-debug';
-  panel.innerHTML = `
-    <label class="asset-probability-progress-debug-row">
-      <span>進捗更新</span>
-      <input id="assetProbabilityProgressIntervalInput" type="text" inputmode="numeric" value="100" aria-label="進捗更新間隔ミリ秒">
-      <span>ms</span>
-    </label>
-    <div class="asset-probability-progress-debug-result" id="assetProbabilityProgressDebugResult">0でリングなし</div>`;
-  host.appendChild(panel);
-  return panel;
+  let label = document.getElementById('assetProbabilityFastDebugLabel');
+  if(label) return label;
+  label = document.createElement('div');
+  label.id = 'assetProbabilityFastDebugLabel';
+  label.className = 'asset-probability-fast-debug-label';
+  label.hidden = true;
+  host.appendChild(label);
+  return label;
 }
-function setAssetProbabilityProgressDebugResult(text){
-  ensureAssetProbabilityProgressDebugPanel();
-  const result = document.getElementById('assetProbabilityProgressDebugResult');
-  if(result) result.textContent = text || '';
+function setAssetProbabilityFastDebugLabel(text){
+  const label = ensureAssetProbabilityFastDebugLabel();
+  if(!label) return;
+  label.textContent = text || '';
+  label.hidden = !text;
 }
-function startAssetProbabilityProgressDebugRun(intervalMs, enabled){
-  ensureAssetProbabilityProgressDebugPanel();
-  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  assetProbabilityProgressDebugState = {
-    runId:(Number(assetProbabilityProgressDebugState.runId) || 0) + 1,
-    startedAt:now,
-    intervalMs,
-    enabled,
-    progressReports:0,
-    uiUpdates:0,
-    yieldedFrames:0,
-    phases:initAssetProbabilityProgressDebugPhases()
+function clearAssetProbabilityFastDebugLabel(){
+  setAssetProbabilityFastDebugLabel('');
+}
+function formatAssetProbabilityDebugMs(ms){
+  const n = Number(ms);
+  if(!Number.isFinite(n)) return '-';
+  if(n >= 1000) return `${(n / 1000).toFixed(2)}秒`;
+  return `${Math.round(n)}ms`;
+}
+function getAssetProbabilityFinalPercentile(values, p){
+  const sorted = (Array.isArray(values) ? values : []).map(v=>Number(v)).filter(Number.isFinite).sort((a,b)=>a-b);
+  return sorted.length ? percentileFromSorted(sorted, p) : 0;
+}
+function buildAssetProbabilityRunShellForFastPath(cfg, base, monteSettings){
+  const trials = clampMonteTrials(monteSettings?.trials || 80);
+  const lifeIndex = Math.max(0, Math.min((base?.labels?.length || 1) - 1, Number(cfg.lifeExpect || 0) - Number(cfg.age || 0)));
+  return {
+    lifeIndex,
+    trials,
+    displayCache:{},
+    fastAssetProbabilityShell:true,
+    fixedFinalAtLife:Number(base?.totalAssets?.[lifeIndex] ?? base?.totalAssets?.at?.(-1) ?? 0) || 0
   };
-  setAssetProbabilityProgressDebugResult(enabled ? `計測中... 更新 ${intervalMs}ms` : '計測中... リングなし');
 }
-function finishAssetProbabilityProgressDebugRun(success){
-  const now = nowAssetProbabilityProgressDebugMs();
-  const state = assetProbabilityProgressDebugState || {};
-  const totalMs = Math.max(0, now - (Number(state.startedAt) || now));
-  const totalSec = (totalMs / 1000).toFixed(2);
-  const status = success ? '完了' : '未完了';
-  const mode = state.enabled ? `更新 ${state.intervalMs}ms` : 'リングなし';
-  const phases = {...initAssetProbabilityProgressDebugPhases(), ...(state.phases || {})};
-  setAssetProbabilityProgressDebugResult(`${status}: ${totalSec}秒 / ${mode} / UI ${state.uiUpdates || 0}回
-finalOnly ${formatAssetProbabilityProgressDebugMs(phases.finalOnlyMs)} / 推移 ${formatAssetProbabilityProgressDebugMs(phases.displaySeriesMs)} / 分位 ${formatAssetProbabilityProgressDebugMs(phases.displayPercentileMs)} / 寿命 ${formatAssetProbabilityProgressDebugMs(phases.displayRuinAgeMs)}
-表示その他 ${formatAssetProbabilityProgressDebugMs(phases.displayOtherMs)} / 反映 ${formatAssetProbabilityProgressDebugMs(phases.resultApplyMs)} / cache ${formatAssetProbabilityProgressDebugMs(phases.cacheReadMs)}`);
-  console.log('[AssetProbabilityProgressDebug]', {
-    success:!!success,
-    totalMs:Math.round(totalMs),
-    intervalMs:Number(state.intervalMs) || 0,
-    progressEnabled:!!state.enabled,
-    progressReports:Number(state.progressReports) || 0,
-    uiUpdates:Number(state.uiUpdates) || 0,
-    yieldedFrames:Number(state.yieldedFrames) || 0,
-    phasesMs:Object.fromEntries(Object.entries(phases).map(([key, value])=>[key, Math.round(Number(value) || 0)]))
-  });
+function summarizeAssetProbabilityFinals(finals){
+  const values = (Array.isArray(finals) ? finals : []).map(v=>Number(v)).filter(Number.isFinite);
+  const fail = values.filter(v=>v <= 0).length;
+  return {
+    count:values.length,
+    fail,
+    prob:Math.round(fail / Math.max(1, values.length) * 100),
+    p10:getAssetProbabilityFinalPercentile(values, 0.10),
+    p50:getAssetProbabilityFinalPercentile(values, 0.50),
+    p90:getAssetProbabilityFinalPercentile(values, 0.90)
+  };
 }
+function compareAssetProbabilityFinalArrays(fastFinals, oldFinals){
+  const fast = Array.isArray(fastFinals) ? fastFinals : [];
+  const old = Array.isArray(oldFinals) ? oldFinals : [];
+  const len = Math.min(fast.length, old.length);
+  let maxAbsDiff = 0;
+  let mismatchCount = 0;
+  for(let i=0;i<len;i++){
+    const diff = Math.abs((Number(fast[i]) || 0) - (Number(old[i]) || 0));
+    if(diff > maxAbsDiff) maxAbsDiff = diff;
+    if(diff > 1e-6) mismatchCount++;
+  }
+  return {len, lengthDiff:fast.length - old.length, maxAbsDiff, mismatchCount};
+}
+function scheduleAssetProbabilityFastCompareLog(scenario, cfg, base, monteSettings, fastResult, fastTotalMs){
+  if(!ASSET_PROBABILITY_FAST_COMPARE_DEBUG) return;
+  if(assetProbabilityFastDebugState.compareTimer){
+    clearTimeout(assetProbabilityFastDebugState.compareTimer);
+    assetProbabilityFastDebugState.compareTimer = null;
+  }
+  const scenarioData = scenario?.data || cfg || {};
+  const cfgSnapshot = cfg;
+  const baseSnapshot = base;
+  const settingsSnapshot = JSON.parse(JSON.stringify(monteSettings || {}));
+  const fastFinals = Array.isArray(fastResult?.finalsAtLife) ? fastResult.finalsAtLife.slice() : [];
+  const fastSummary = summarizeAssetProbabilityFinals(fastFinals);
+  setAssetProbabilityFastDebugLabel(`高速完了: ${formatAssetProbabilityDebugMs(fastTotalMs)} / 旧finalOnly比較を計測中...`);
+  assetProbabilityFastDebugState.compareTimer = setTimeout(()=>{
+    const compareStart = getAssetProbabilityNow();
+    let oldRun = null;
+    let error = null;
+    try{
+      oldRun = buildMonteRunResult(cfgSnapshot, baseSnapshot, settingsSnapshot, scenarioData);
+    }catch(err){
+      error = err;
+    }
+    const oldMs = getAssetProbabilityNow() - compareStart;
+    if(error){
+      console.error('[AssetProbabilityFastCompare]', error);
+      setAssetProbabilityFastDebugLabel(`高速: ${formatAssetProbabilityDebugMs(fastTotalMs)} / 旧finalOnly比較エラー`);
+      return;
+    }
+    const oldFinals = Array.isArray(oldRun?.finalsAtLife) ? oldRun.finalsAtLife : [];
+    const oldSummary = summarizeAssetProbabilityFinals(oldFinals);
+    const finalCompare = compareAssetProbabilityFinalArrays(fastFinals, oldFinals);
+    const p50Diff = (Number(fastSummary.p50) || 0) - (Number(oldSummary.p50) || 0);
+    const probDiff = (Number(fastSummary.prob) || 0) - (Number(oldSummary.prob) || 0);
+    const payload = {
+      fastTotalMs,
+      oldFinalOnlyMs:oldMs,
+      expectedSavedMs:oldMs,
+      fastSummary,
+      oldSummary,
+      probDiff,
+      p50Diff,
+      finalCompare,
+      fastLifeIndex:Number(fastResult?.lifeIndex || 0) || 0,
+      oldLifeIndex:Number(oldRun?.lifeIndex || 0) || 0
+    };
+    console.log('[AssetProbabilityFastCompare]', payload);
+    setAssetProbabilityFastDebugLabel(`高速: ${formatAssetProbabilityDebugMs(fastTotalMs)} / 旧finalOnly: ${formatAssetProbabilityDebugMs(oldMs)} / 破綻差 ${probDiff}pt / P50差 ${Math.round(p50Diff).toLocaleString()}万円 / 最大差 ${Math.round(finalCompare.maxAbsDiff).toLocaleString()}万円`);
+  }, 350);
+}
+
+const ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS = 100;
+let assetProbabilityProgressState = {visible:false, lastUiAt:0, hideTimer:null};
 function ensureAssetProbabilityProgressOverlay(){
   const host = document.getElementById('chartCanvasStickyWrap');
   if(!host) return null;
@@ -7574,18 +7564,13 @@ function waitAssetProbabilityProgressFrame(){
   });
 }
 async function reportAssetProbabilityProgress(progress, options={}){
-  assetProbabilityProgressDebugState.progressReports = (Number(assetProbabilityProgressDebugState.progressReports) || 0) + 1;
-  const intervalMs = getAssetProbabilityProgressDebugIntervalMs();
-  if(intervalMs <= 0) return;
   const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   const force = !!options.force;
   const value = Math.max(0, Math.min(100, Number(progress) || 0));
-  if(force || !assetProbabilityProgressState.lastUiAt || now - assetProbabilityProgressState.lastUiAt >= intervalMs || value >= 100){
+  if(force || !assetProbabilityProgressState.lastUiAt || now - assetProbabilityProgressState.lastUiAt >= ASSET_PROBABILITY_PROGRESS_MIN_INTERVAL_MS || value >= 100){
     setAssetProbabilityProgressOverlay(value, options.label || '確率計算中...', options.detail || '');
     assetProbabilityProgressState.lastUiAt = now;
-    assetProbabilityProgressDebugState.uiUpdates = (Number(assetProbabilityProgressDebugState.uiUpdates) || 0) + 1;
     await waitAssetProbabilityProgressFrame();
-    assetProbabilityProgressDebugState.yieldedFrames = (Number(assetProbabilityProgressDebugState.yieldedFrames) || 0) + 1;
   }
 }
 async function buildMonteRunResultAsync(cfg, base, monteSettings, scenarioDataOverride, progressReporter=null){
@@ -7600,7 +7585,6 @@ async function buildMonteRunResultAsync(cfg, base, monteSettings, scenarioDataOv
   let bestIndex = 0;
   let worstIndex = 0;
   if(progressReporter) await progressReporter(5, {force:true, detail:'乱数列を準備中'});
-  const finalOnlyStartMs = nowAssetProbabilityProgressDebugMs();
   for(let i=0;i<trials;i++){
     const finalSim = simulateMonteFinalOnly(cfg, staticSeries, shockTrials[i], plottedLifeIndex);
     const finalValue = Number(finalSim?.finalAtLife || 0) || 0;
@@ -7614,7 +7598,6 @@ async function buildMonteRunResultAsync(cfg, base, monteSettings, scenarioDataOv
       await progressReporter(5 + ((i + 1) / Math.max(1, trials)) * 30, {detail:`試行 ${i + 1}/${trials}`});
     }
   }
-  addAssetProbabilityProgressDebugPhase('finalOnlyMs', nowAssetProbabilityProgressDebugMs() - finalOnlyStartMs);
   const prob = Math.round(fail / Math.max(1, trials) * 100);
   return {
     lifeIndex,
@@ -7629,17 +7612,12 @@ async function buildMonteRunResultAsync(cfg, base, monteSettings, scenarioDataOv
   };
 }
 async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSettings, scenarioDataOverride, progressReporter=null){
-  const displayTotalStartMs = nowAssetProbabilityProgressDebugMs();
-  let displaySeriesMs = 0;
-  let displayPercentileMs = 0;
-  let displayRuinAgeMs = 0;
   const run = monteRun || {};
   const trials = Math.max(1, Number(run.trials || 0) || clampMonteTrials(monteSettings?.trials || 80));
   const drawPaths = Math.max(1, Math.min(trials, Math.round(Number(monteSettings?.drawPaths) || trials)));
   if(!run.displayCache) run.displayCache = {};
   const cacheKey = String(drawPaths);
   if(run.displayCache[cacheKey]){
-    addAssetProbabilityProgressDebugPhase('cacheReadMs', nowAssetProbabilityProgressDebugMs() - displayTotalStartMs);
     if(progressReporter) await progressReporter(96, {force:true, detail:'推移データを準備中'});
     return run.displayCache[cacheKey];
   }
@@ -7648,6 +7626,8 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
   const shockTrials = buildSharedReturnShocks(cfg, trials, scenarioData, monteSettings);
   const displayIndices = pickMonteDisplayIndices(trials, drawPaths);
   const plottedLifeIndex = Math.max(0, Math.min((Array.isArray(base?.labels) ? base.labels.length : 1) - 1, Number(run.lifeIndex) || 0));
+  const progressStart = run.fastAssetProbabilityShell ? 5 : 35;
+  const progressSpan = run.fastAssetProbabilityShell ? 85 : 57;
   const trialSeriesCache = new Map();
   const trialValueCache = new Map();
   let simulatedSeriesCount = 0;
@@ -7655,15 +7635,13 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
     const safeIndex = Math.max(0, Math.min(trials - 1, Number(trialIndex) || 0));
     const key = String(safeIndex);
     if(trialSeriesCache.has(key)) return trialSeriesCache.get(key);
-    const seriesStartMs = nowAssetProbabilityProgressDebugMs();
     const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shockTrials[safeIndex]});
-    displaySeriesMs += nowAssetProbabilityProgressDebugMs() - seriesStartMs;
     const series = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
     trialSeriesCache.set(key, series);
     trialValueCache.set(key, Number(series?.[plottedLifeIndex] ?? 0) || 0);
     simulatedSeriesCount++;
     if(progressReporter && (simulatedSeriesCount % 5 === 0 || simulatedSeriesCount === trials)){
-      await progressReporter(35 + (Math.min(simulatedSeriesCount, trials) / Math.max(1, trials)) * 57, {detail:`推移データ ${Math.min(simulatedSeriesCount, trials)}/${trials}`});
+      await progressReporter(progressStart + (Math.min(simulatedSeriesCount, trials) / Math.max(1, trials)) * progressSpan, {detail:`推移データ ${Math.min(simulatedSeriesCount, trials)}/${trials}`});
     }
     return series;
   };
@@ -7685,6 +7663,8 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
       if(value < finalsAtPlottedLife[worstIndex]) worstIndex = i;
     }
   }
+  const fail = finalsAtPlottedLife.filter(v => (Number(v) || 0) <= 0).length;
+  const prob = Math.round(fail / Math.max(1, trials) * 100);
   const displayResults = [];
   for(const idx of displayIndices){
     displayResults.push(await getSeries(idx));
@@ -7702,7 +7682,6 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
   const percentile50 = [];
   const percentile90 = [];
   const ruinAges = [];
-  const percentileStartMs = nowAssetProbabilityProgressDebugMs();
   for(let pointIndex=0; pointIndex<percentileSourceLength; pointIndex++){
     const values = [];
     for(let trialIndex=0; trialIndex<trials; trialIndex++){
@@ -7718,8 +7697,6 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
       await progressReporter(92 + ((pointIndex + 1) / Math.max(1, percentileSourceLength)) * 4, {detail:'分位点を集計中'});
     }
   }
-  displayPercentileMs += nowAssetProbabilityProgressDebugMs() - percentileStartMs;
-  const ruinAgeStartMs = nowAssetProbabilityProgressDebugMs();
   for(let trialIndex=0; trialIndex<trials; trialIndex++){
     const crossAge = getAssetZeroCrossAgeForGuide({labels:Array.isArray(base?.labels) ? base.labels : [], totalAssets:await getSeries(trialIndex)});
     if(Number.isFinite(Number(crossAge))) ruinAges.push(Number(crossAge));
@@ -7727,7 +7704,6 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
       await progressReporter(96 + ((trialIndex + 1) / Math.max(1, trials)) * 2, {detail:'資産寿命を集計中'});
     }
   }
-  displayRuinAgeMs += nowAssetProbabilityProgressDebugMs() - ruinAgeStartMs;
   ruinAges.sort((a,b)=>a-b);
   const requiredRuinCountForMedian = Math.ceil(trials * 0.5);
   const medianRuinAge = ruinAges.length >= requiredRuinCountForMedian ? ruinAges[requiredRuinCountForMedian - 1] : null;
@@ -7747,17 +7723,13 @@ async function buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSet
     medianRuinAge:Number.isFinite(Number(medianRuinAge)) ? Number(medianRuinAge) : null,
     bestIndex,
     worstIndex,
+    fail,
+    prob,
     finalsAtPlottedLife,
     plottedLifeIndex,
     allSame: allFinalsSameAsFixed && allVisibleSame
   };
   run.displayCache[cacheKey] = bundle;
-  const displayTotalMs = nowAssetProbabilityProgressDebugMs() - displayTotalStartMs;
-  addAssetProbabilityProgressDebugPhase('displaySeriesMs', displaySeriesMs);
-  addAssetProbabilityProgressDebugPhase('displayPercentileMs', displayPercentileMs);
-  addAssetProbabilityProgressDebugPhase('displayRuinAgeMs', displayRuinAgeMs);
-  addAssetProbabilityProgressDebugPhase('displayTotalMs', displayTotalMs);
-  addAssetProbabilityProgressDebugPhase('displayOtherMs', Math.max(0, displayTotalMs - displaySeriesMs - displayPercentileMs - displayRuinAgeMs));
   if(progressReporter) await progressReporter(98, {force:true, detail:'グラフを準備中'});
   return bundle;
 }
@@ -7773,8 +7745,42 @@ async function getOrBuildMonteRunCacheAsync(scenario, cfg, base, monteSettingsOv
   setMonteRunCacheEntry(data, monteSettings, value);
   return value;
 }
+async function buildAssetProbabilityStoredResultFastAsync(scenario, cfg, base, monteSettings, progressReporter=null){
+  const monteRun = buildAssetProbabilityRunShellForFastPath(cfg, base, monteSettings);
+  if(progressReporter) await progressReporter(5, {force:true, detail:'推移データを準備中'});
+  const displayBundle = await buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSettings, scenario?.data || cfg, progressReporter);
+  const labels = Array.isArray(base?.labels) ? base.labels.slice() : [];
+  const displayResults = Array.isArray(displayBundle?.displayResults) ? displayBundle.displayResults : [];
+  const best = Array.isArray(displayBundle?.best) ? displayBundle.best : [];
+  const worst = Array.isArray(displayBundle?.worst) ? displayBundle.worst : [];
+  const finalsAtLife = Array.isArray(displayBundle?.finalsAtPlottedLife) ? displayBundle.finalsAtPlottedLife.slice() : [];
+  const fail = Number(displayBundle?.fail ?? finalsAtLife.filter(v => (Number(v) || 0) <= 0).length) || 0;
+  const ruinProbability = Number.isFinite(Number(displayBundle?.prob)) ? Number(displayBundle.prob) : Math.round(fail / Math.max(1, finalsAtLife.length || 1) * 100);
+  if(progressReporter) await progressReporter(99, {force:true, detail:'結果を反映中'});
+  return {
+    labels,
+    displayedPathIndices:Array.isArray(displayBundle?.displayIndices) ? displayBundle.displayIndices.slice() : [],
+    paths:displayResults.map(series=>Array.isArray(series) ? series.slice() : []),
+    deterministicSeries:Array.isArray(base?.totalAssets) ? base.totalAssets.slice(0, labels.length) : [],
+    percentile10:Array.isArray(displayBundle?.percentile10) ? displayBundle.percentile10.slice(0, labels.length) : [],
+    percentile50:Array.isArray(displayBundle?.percentile50) ? displayBundle.percentile50.slice(0, labels.length) : [],
+    percentile90:Array.isArray(displayBundle?.percentile90) ? displayBundle.percentile90.slice(0, labels.length) : [],
+    medianRuinAge:Number.isFinite(Number(displayBundle?.medianRuinAge)) ? Number(displayBundle.medianRuinAge) : null,
+    bestSeries:Array.isArray(best) ? best.slice(0, labels.length) : [],
+    worstSeries:Array.isArray(worst) ? worst.slice(0, labels.length) : [],
+    finalsAtLife,
+    ruinProbability,
+    trials:clampMonteTrials(monteSettings?.trials || 80),
+    drawPaths:Math.max(1, Math.min(clampMonteTrials(monteSettings?.trials || 80), Math.round(Number(monteSettings?.drawPaths) || 80))),
+    settingsSummary:formatAssetProbabilitySettingsSummary(monteSettings),
+    settingsSnapshot:JSON.parse(JSON.stringify(monteSettings || {})),
+    lifeIndex:Number(monteRun?.lifeIndex || 0) || 0,
+    computedAt:new Date().toISOString(),
+    inputHash:buildMonteCarloInputHashFromData(scenario?.data || cfg),
+    fastFinalOnlyIntegrated:true
+  };
+}
 async function buildAssetProbabilityStoredResultAsync(scenario, cfg, base, monteSettings, progressReporter=null){
-  const storedResultStartMs = nowAssetProbabilityProgressDebugMs();
   const monteRun = await getOrBuildMonteRunCacheAsync(scenario, cfg, base, monteSettings, progressReporter);
   const displayBundle = await buildMonteDisplayBundleFromRunAsync(monteRun, cfg, base, monteSettings, scenario?.data || cfg, progressReporter);
   const labels = Array.isArray(base?.labels) ? base.labels.slice() : [];
@@ -7782,7 +7788,6 @@ async function buildAssetProbabilityStoredResultAsync(scenario, cfg, base, monte
   const best = Array.isArray(displayBundle?.best) ? displayBundle.best : [];
   const worst = Array.isArray(displayBundle?.worst) ? displayBundle.worst : [];
   const finalsAtLife = Array.isArray(displayBundle?.finalsAtPlottedLife) ? displayBundle.finalsAtPlottedLife.slice() : (Array.isArray(monteRun?.finalsAtLife) ? monteRun.finalsAtLife.slice() : []);
-  addAssetProbabilityProgressDebugPhase('storedResultMs', nowAssetProbabilityProgressDebugMs() - storedResultStartMs);
   if(progressReporter) await progressReporter(99, {force:true, detail:'結果を反映中'});
   return {
     labels,
@@ -7847,10 +7852,12 @@ async function runSingleAssetProbabilityCalculation(settingsOverride=null, progr
     const currentCache = getOrBuildNormalScenarioCache(scenario, scenario, currentDisplayCfg, null);
     const requestedMonteSettings = settingsOverride || getMonteCarloSettingsFromDOM();
     const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
-    const result = progressReporter
-      ? await buildAssetProbabilityStoredResultAsync(scenario, currentCache.cfg, currentCache.sim, monteSettings, progressReporter)
-      : buildAssetProbabilityStoredResult(scenario, currentCache.cfg, currentCache.sim, monteSettings);
-    const resultApplyStartMs = nowAssetProbabilityProgressDebugMs();
+    const fastStart = getAssetProbabilityNow();
+    const result = await buildAssetProbabilityStoredResultFastAsync(scenario, currentCache.cfg, currentCache.sim, monteSettings, progressReporter);
+    const fastTotalMs = getAssetProbabilityNow() - fastStart;
+    if(ASSET_PROBABILITY_FAST_COMPARE_DEBUG){
+      scheduleAssetProbabilityFastCompareLog(scenario, currentCache.cfg, currentCache.sim, monteSettings, result, fastTotalMs);
+    }
     result.settingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
     scenario.monteCarloResult = result;
     scenario.monteCarloSettingsSnapshot = JSON.parse(JSON.stringify(requestedMonteSettings || {}));
@@ -7860,7 +7867,6 @@ async function runSingleAssetProbabilityCalculation(settingsOverride=null, progr
     scenario.monteCarloStatus = "idle";
     scenario.monteCarloError = "";
     persistState();
-    addAssetProbabilityProgressDebugPhase('resultApplyMs', nowAssetProbabilityProgressDebugMs() - resultApplyStartMs);
     return true;
   }catch(err){
     console.error(err);
@@ -7935,32 +7941,23 @@ async function runAssetProbabilityOverlayCalculation(settingsOverride=null, prog
 }
 async function runAssetProbabilityCalculation(settingsOverride=null){
   clearScheduledDraw();
+  clearAssetProbabilityFastDebugLabel();
   ensureScenarioSaved();
-  ensureAssetProbabilityProgressDebugPanel();
-  const progressIntervalMs = getAssetProbabilityProgressDebugIntervalMs();
-  const progressEnabled = progressIntervalMs > 0;
-  startAssetProbabilityProgressDebugRun(progressIntervalMs, progressEnabled);
-  if(progressEnabled){
-    showAssetProbabilityProgressOverlay('確率計算中...', workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中');
-    await reportAssetProbabilityProgress(0, {force:true, detail:workspaceOverlayModeOn ? '重ね書き対象を計算中' : '試行を準備中'});
-  }
-  const progressReporter = progressEnabled ? async (progress, options={})=>{
+  showAssetProbabilityProgressOverlay('確率計算中...', workspaceOverlayModeOn ? '重ね書き対象を計算中' : '推移データを準備中');
+  await reportAssetProbabilityProgress(0, {force:true, detail:workspaceOverlayModeOn ? '重ね書き対象を計算中' : '推移データを準備中'});
+  const progressReporter = async (progress, options={})=>{
     await reportAssetProbabilityProgress(progress, {label:'確率計算中...', ...(options || {})});
-  } : null;
-  let success = false;
+  };
   try{
-    success = workspaceOverlayModeOn
+    const success = workspaceOverlayModeOn
       ? await runAssetProbabilityOverlayCalculation(settingsOverride, progressReporter)
       : await runSingleAssetProbabilityCalculation(settingsOverride, progressReporter);
-    if(progressEnabled){
-      if(success) await reportAssetProbabilityProgress(100, {force:true, detail:'完了'});
-      else await reportAssetProbabilityProgress(0, {force:true, label:'計算に失敗しました', detail:'再試行してください'});
-    }
+    if(success) await reportAssetProbabilityProgress(100, {force:true, detail:'完了'});
+    else await reportAssetProbabilityProgress(0, {force:true, label:'計算に失敗しました', detail:'再試行してください'});
   }finally{
     drawAssetProbabilityShell();
     updateAssetProbabilityControls();
-    if(progressEnabled) hideAssetProbabilityProgressOverlay(220);
-    finishAssetProbabilityProgressDebugRun(success);
+    hideAssetProbabilityProgressOverlay(220);
   }
 }
 
@@ -8873,7 +8870,6 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
   updateAssetProbabilityControls();
 }
 function drawAssetProbabilityShell(){
-  ensureAssetProbabilityProgressDebugPanel();
   ensureScenarioSaved();
   const currentScenario = scenarios[currentTab];
   const scenarioState = ensureScenarioMonteCarloState(currentScenario);
