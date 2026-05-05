@@ -20181,7 +20181,10 @@ function runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options){
   const cfg = getScenarioFromDOM();
   if(!options?.applyCrash) cfg.crashTests = [];
   const effectiveRetireTotalMonths = getRetireTotalMonthsFromCfg(cfg, 'self');
-  const sim = simulate(cfg, false, {compact:true});
+  const staticSeries = getOrBuildMonteStaticSeries(trialData, cfg);
+  const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries);
+  const expenseSeries = Array.isArray(expenseSeriesBundle?.values) ? expenseSeriesBundle.values : null;
+  const sim = simulate(cfg, false, {compact:true, staticSeries, expenseSeries});
   const judged = evaluateFireDiagnosisResult(cfg, sim, options);
   return {
     retireAge: effectiveRetireTotalMonths / 12,
@@ -20324,16 +20327,22 @@ function buildInterpolatedFireDiagnosisTrial(requestedRetireTotalMonths, lowerTr
     retireAsset: interpolated.retireAsset
   };
 }
-function runFireDiagnosisTrial(baseData, retireAge, options){
+async function runFireDiagnosisTrial(baseData, retireAge, options){
   const normalizedRetireAge = Math.max(0, Math.round((Number(retireAge) || 0) * 12) / 12);
   const requestedRetireTotalMonths = Math.max(0, Math.round(normalizedRetireAge * 12));
   const retireYears = Math.floor(requestedRetireTotalMonths / 12);
   const retireMonths = requestedRetireTotalMonths % 12;
   if(retireMonths === 0){
-    return runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
+    if(options?.progressReporter) await options.progressReporter(10, {detail:`${retireYears}歳の条件を準備中`});
+    const wholeTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
+    if(options?.progressReporter) await options.progressReporter(100, {detail:`${retireYears}歳の判定完了`});
+    return wholeTrial;
   }
+  if(options?.progressReporter) await options.progressReporter(10, {detail:`${retireYears}歳の条件を準備中`});
   const lowerTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
+  if(options?.progressReporter) await options.progressReporter(55, {detail:`${retireYears + 1}歳の条件を準備中`});
   const upperTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears + 1, options);
+  if(options?.progressReporter) await options.progressReporter(90, {detail:'月単位結果を補間中'});
   return buildInterpolatedFireDiagnosisTrial(requestedRetireTotalMonths, lowerTrial, upperTrial, options);
 }
 function buildFireDiagnosisSuccessPayload(trial, options, checkedFrom, checkedTo){
@@ -20389,7 +20398,7 @@ function buildFireDiagnosisFailurePayload(lastTrial, options, checkedFrom, check
   }
   return base;
 }
-function refineFireAgeWithinYear(baseData, boundary, options){
+async function refineFireAgeWithinYear(baseData, boundary, options){
   const failTrial = boundary?.failTrial || null;
   const successTrial = boundary?.successTrial || null;
   if(!successTrial?.found) return successTrial;
@@ -20399,7 +20408,8 @@ function refineFireAgeWithinYear(baseData, boundary, options){
   if(successMonths - failMonths <= 1) return successTrial;
   let refinedSuccess = successTrial;
   for(let retireMonths = failMonths + 1; retireMonths <= successMonths; retireMonths++){
-    const monthTrial = runFireDiagnosisTrial(baseData, retireMonths / 12, options);
+    const monthTrial = await runFireDiagnosisTrial(baseData, retireMonths / 12, options);
+    if(options?.progressReporter) await options.progressReporter(88 + ((retireMonths - failMonths) / Math.max(1, successMonths - failMonths)) * 8, {detail:'月単位で確認中'});
     if(monthTrial.found){
       refinedSuccess = monthTrial;
       break;
@@ -20407,7 +20417,7 @@ function refineFireAgeWithinYear(baseData, boundary, options){
   }
   return refinedSuccess;
 }
-function findFireAgeBinary(baseData, options){
+async function findFireAgeBinary(baseData, options){
   const checkedFrom = Math.max(0, Math.round(Number(options?.ageFrom) || 0));
   const checkedTo = Math.max(checkedFrom, Math.round(Number(options?.ageTo) || checkedFrom));
   const evalOptions = {
@@ -20415,11 +20425,14 @@ function findFireAgeBinary(baseData, options){
     judgementMode: options?.judgementMode === 'safe' ? 'safe' : 'standard',
     requiredTerminalAsset: Math.max(0, Number(options?.requiredTerminalAsset) || 0)
   };
-  const fromTrial = runFireDiagnosisTrial(baseData, checkedFrom, evalOptions);
+  const progressReporter = options?.progressReporter || null;
+  if(progressReporter) await progressReporter(4, {force:true, detail:'開始年齢を確認中'});
+  const fromTrial = await runFireDiagnosisTrial(baseData, checkedFrom, {...evalOptions, progressReporter:createFireDiagnosisScopedProgress(progressReporter, 4, 8, '開始年齢を確認中')});
   if(fromTrial.found){
     return buildFireDiagnosisSuccessPayload(fromTrial, evalOptions, checkedFrom, checkedTo);
   }
-  const toTrial = checkedTo === checkedFrom ? fromTrial : runFireDiagnosisTrial(baseData, checkedTo, evalOptions);
+  if(progressReporter) await progressReporter(14, {detail:'終了年齢を確認中'});
+  const toTrial = checkedTo === checkedFrom ? fromTrial : await runFireDiagnosisTrial(baseData, checkedTo, {...evalOptions, progressReporter:createFireDiagnosisScopedProgress(progressReporter, 14, 8, '終了年齢を確認中')});
   if(!toTrial.found){
     return buildFireDiagnosisFailurePayload(toTrial, evalOptions, checkedFrom, checkedTo);
   }
@@ -20429,7 +20442,10 @@ function findFireAgeBinary(baseData, options){
   let hiTrial = toTrial;
   while((hiAge - loAge) > 1){
     const midAge = Math.floor((loAge + hiAge) / 2);
-    const midTrial = runFireDiagnosisTrial(baseData, midAge, evalOptions);
+    const searchSpan = Math.max(1, checkedTo - checkedFrom);
+    const localProgress = 24 + ((searchSpan - Math.max(1, hiAge - loAge)) / searchSpan) * 48;
+    if(progressReporter) await progressReporter(localProgress, {detail:`${midAge}歳を確認中`});
+    const midTrial = await runFireDiagnosisTrial(baseData, midAge, {...evalOptions, progressReporter:createFireDiagnosisScopedProgress(progressReporter, localProgress, 6, `${midAge}歳を確認中`)});
     if(midTrial.found){
       hiAge = midAge;
       hiTrial = midTrial;
@@ -20439,13 +20455,16 @@ function findFireAgeBinary(baseData, options){
     }
   }
   if(hiAge - 1 >= checkedFrom){
-    const confirmTrial = (hiAge - 1 === loAge) ? loTrial : runFireDiagnosisTrial(baseData, hiAge - 1, evalOptions);
+    if(progressReporter) await progressReporter(78, {detail:'境界年齢を確認中'});
+    const confirmTrial = (hiAge - 1 === loAge) ? loTrial : await runFireDiagnosisTrial(baseData, hiAge - 1, {...evalOptions, progressReporter:createFireDiagnosisScopedProgress(progressReporter, 78, 6, '境界年齢を確認中')});
     if(confirmTrial.found){
       hiAge = hiAge - 1;
       hiTrial = confirmTrial;
     }
   }
-  const refinedTrial = refineFireAgeWithinYear(baseData, {failTrial: loTrial, successTrial: hiTrial}, evalOptions) || hiTrial;
+  if(progressReporter) await progressReporter(86, {detail:'月単位で補正中'});
+  const refinedTrial = await refineFireAgeWithinYear(baseData, {failTrial: loTrial, successTrial: hiTrial}, {...evalOptions, progressReporter}) || hiTrial;
+  if(progressReporter) await progressReporter(96, {detail:'通常診断を集計中'});
   return buildFireDiagnosisSuccessPayload(refinedTrial, evalOptions, checkedFrom, checkedTo);
 }
 function evaluateFireTrialSuccess(simResult, options){
@@ -20475,19 +20494,26 @@ function buildMonteCarloFireTrialContexts(baseScenario, options){
     restoreActiveInputState(activeState);
   }
 }
-function runMonteCarloFireAtAge(baseScenario, retireAge, options, trialContexts, cache){
+async function runMonteCarloFireAtAge(baseScenario, retireAge, options, trialContexts, cache){
   const safeAge = Math.max(0, Math.round(Number(retireAge) || 0));
   const phase = options?.phase === 'final' ? 'final' : 'coarse';
   const cacheKey = `${phase}:${safeAge}`;
-  if(cache instanceof Map && cache.has(cacheKey)) return cache.get(cacheKey);
+  if(cache instanceof Map && cache.has(cacheKey)){
+    if(options?.progressReporter) await options.progressReporter(100, {detail:`${safeAge}歳は前回結果を使用`});
+    return cache.get(cacheKey);
+  }
   const originalData = migrateLegacyData(deepClone(baseScenario || getAllInputs()));
   const activeState = captureActiveInputState();
   try{
+    if(options?.progressReporter) await options.progressReporter(4, {detail:`${safeAge}歳の条件を準備中`});
     const trialData = buildScenarioDataForRetireAge(originalData, safeAge);
     setAllInputs(trialData);
     const cfg = getScenarioFromDOM();
     if(!(options?.applyCrash)) cfg.crashTests = [];
     const staticSeries = getOrBuildMonteStaticSeries(trialData, cfg);
+    const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries);
+    const expenseSeries = Array.isArray(expenseSeriesBundle?.values) ? expenseSeriesBundle.values : null;
+    if(options?.progressReporter) await options.progressReporter(8, {detail:`${safeAge}歳の支出配列を準備中`});
     const contexts = Array.isArray(trialContexts) ? trialContexts : [];
     const trials = Math.max(1, contexts.length || clampMonteTrials(options?.trials || 80));
     let successCount = 0;
@@ -20495,12 +20521,15 @@ function runMonteCarloFireAtAge(baseScenario, retireAge, options, trialContexts,
     let lastReasonText = '成立';
     for(let i = 0; i < trials; i++){
       const shocks = contexts[i]?.shocks || null;
-      const sim = simulate(cfg, true, {compact:true, staticSeries, returnShocks:shocks});
+      const sim = simulate(cfg, true, {compact:true, staticSeries, expenseSeries, returnShocks:shocks});
       const judged = evaluateFireTrialSuccess({cfg, sim}, options);
       if(judged.success) successCount++;
       else {
         lastReasonCode = judged.reasonCode || lastReasonCode;
         lastReasonText = judged.reasonText || lastReasonText;
+      }
+      if(options?.progressReporter && (i % 5 === 0 || i === trials - 1)){
+        await options.progressReporter(10 + ((i + 1) / Math.max(1, trials)) * 86, {detail:`${safeAge}歳 試行 ${i + 1}/${trials}`});
       }
     }
     const successRate = successCount / Math.max(1, trials) * 100;
@@ -20515,6 +20544,7 @@ function runMonteCarloFireAtAge(baseScenario, retireAge, options, trialContexts,
       reasonCode:found ? 'ok' : (lastReasonCode || 'success_rate_below_threshold'),
       reasonText:found ? `${safeAge}歳から成立` : (lastReasonText || '探索範囲内で成立せず')
     };
+    if(options?.progressReporter) await options.progressReporter(100, {detail:`${safeAge}歳の成功率を集計中`});
     if(cache instanceof Map) cache.set(cacheKey, result);
     return result;
   } finally {
@@ -20522,7 +20552,7 @@ function runMonteCarloFireAtAge(baseScenario, retireAge, options, trialContexts,
     restoreActiveInputState(activeState);
   }
 }
-function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
+async function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
   const checkedFrom = Math.max(0, Math.round(Number(options?.ageFrom) || 0));
   const checkedTo = Math.max(checkedFrom, Math.round(Number(options?.ageTo) || checkedFrom));
   const threshold = Math.max(1, Math.min(100, Number(options?.requiredSuccessRate || 80) || 80));
@@ -20530,13 +20560,15 @@ function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
   const coarseContexts = Array.isArray(trialContexts) ? trialContexts.slice(0, coarseTrials) : [];
   const finalContexts = Array.isArray(trialContexts) ? trialContexts : [];
   const cache = new Map();
-  const runAt = (age, phase)=>runMonteCarloFireAtAge(baseScenario, age, {
+  const progressReporter = options?.progressReporter || null;
+  const runAt = async (age, phase, start=0, span=100)=>runMonteCarloFireAtAge(baseScenario, age, {
     judgementMode: options?.judgementMode,
     requiredTerminalAsset: options?.requiredTerminalAsset,
     requiredSuccessRate: threshold,
     applyCrash: !!options?.applyCrash,
     trials: phase === 'final' ? finalContexts.length : coarseContexts.length,
-    phase
+    phase,
+    progressReporter:createFireDiagnosisScopedProgress(progressReporter, start, span, phase === 'final' ? '本計算中' : '粗探索中')
   }, phase === 'final' ? finalContexts : coarseContexts, cache);
   const buildFoundResult = (age, exact)=>({
     found:true,
@@ -20561,19 +20593,21 @@ function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
     lastCheckedSuccessRate:Number(exact?.successRate || 0) || 0
   });
 
-  const fromTrial = runAt(checkedFrom, 'coarse');
+  if(progressReporter) await progressReporter(3, {force:true, detail:'開始年齢を粗探索中'});
+  const fromTrial = await runAt(checkedFrom, 'coarse', 3, 10);
   if(fromTrial.found){
-    const exact = runAt(checkedFrom, 'final');
+    const exact = await runAt(checkedFrom, 'final', 14, 18);
     if(exact?.found) return buildFoundResult(checkedFrom, exact);
   }
   if(checkedTo === checkedFrom){
-    const exact = runAt(checkedTo, 'final');
+    const exact = await runAt(checkedTo, 'final', 20, 72);
     return exact?.found ? buildFoundResult(checkedTo, exact) : buildNotFoundResult(exact);
   }
 
-  const toTrial = runAt(checkedTo, 'coarse');
+  if(progressReporter) await progressReporter(24, {detail:'終了年齢を粗探索中'});
+  const toTrial = await runAt(checkedTo, 'coarse', 24, 10);
   if(!toTrial.found){
-    const exact = runAt(checkedTo, 'final');
+    const exact = await runAt(checkedTo, 'final', 36, 54);
     if(!exact?.found) return buildNotFoundResult(exact);
   }
 
@@ -20581,16 +20615,21 @@ function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
   let hi = checkedTo;
   while((hi - lo) > 1){
     const mid = Math.floor((lo + hi) / 2);
-    const midTrial = runAt(mid, 'coarse');
+    const searchSpan = Math.max(1, checkedTo - checkedFrom);
+    const localProgress = 36 + ((searchSpan - Math.max(1, hi - lo)) / searchSpan) * 24;
+    if(progressReporter) await progressReporter(localProgress, {detail:`${mid}歳を粗探索中`});
+    const midTrial = await runAt(mid, 'coarse', localProgress, 8);
     if(midTrial.found) hi = mid;
     else lo = mid;
   }
 
   let fireAge = hi;
-  let fireExact = runAt(fireAge, 'final');
+  if(progressReporter) await progressReporter(64, {detail:`${fireAge}歳を本計算中`});
+  let fireExact = await runAt(fireAge, 'final', 64, 18);
   if(!fireExact?.found){
     for(let age = fireAge + 1; age <= checkedTo; age++){
-      const exact = runAt(age, 'final');
+      if(progressReporter) await progressReporter(76, {detail:`${age}歳を本計算中`});
+      const exact = await runAt(age, 'final', 76, 10);
       if(exact?.found){
         fireAge = age;
         fireExact = exact;
@@ -20599,43 +20638,54 @@ function findMonteCarloFireAgeBinary(baseScenario, options, trialContexts){
     }
   }
   if(!fireExact?.found){
-    const exactTo = runAt(checkedTo, 'final');
+    const exactTo = await runAt(checkedTo, 'final', 86, 8);
     return buildNotFoundResult(exactTo);
   }
   while(fireAge > checkedFrom){
-    const prevExact = runAt(fireAge - 1, 'final');
+    if(progressReporter) await progressReporter(82, {detail:`${fireAge - 1}歳を確認中`});
+    const prevExact = await runAt(fireAge - 1, 'final', 82, 10);
     if(!prevExact?.found) break;
     fireAge -= 1;
     fireExact = prevExact;
   }
   return buildFoundResult(fireAge, fireExact);
 }
-function buildMonteCarloFireProbabilitySeries(centerAge, radius, options, baseScenario, trialContexts, cache){
+async function buildMonteCarloFireProbabilitySeries(centerAge, radius, options, baseScenario, trialContexts, cache){
   const ages = [];
   const safeRadius = Math.max(0, Math.round(Number(radius) || 0));
   const minAge = Math.max(Math.round(Number(options?.ageFrom) || 0), Math.max(0, Math.round(Number(centerAge) || 0) - safeRadius));
   const maxAge = Math.min(Math.round(Number(options?.ageTo) || 120), Math.round(Number(centerAge) || 0) + safeRadius);
   for(let age = minAge; age <= maxAge; age++) ages.push(age);
-  return ages.map(age=>{
+  const out = [];
+  const progressReporter = options?.progressReporter || null;
+  for(let idx = 0; idx < ages.length; idx++){
+    const age = ages[idx];
     const key = `final:${age}`;
     const cached = cache instanceof Map ? cache.get(key) : null;
-    const result = cached || runMonteCarloFireAtAge(baseScenario, age, {
+    const localStart = 5 + (idx / Math.max(1, ages.length)) * 90;
+    const localSpan = 90 / Math.max(1, ages.length);
+    const result = cached || await runMonteCarloFireAtAge(baseScenario, age, {
       judgementMode: options?.judgementMode,
       requiredTerminalAsset: options?.requiredTerminalAsset,
       requiredSuccessRate: options?.requiredSuccessRate,
       applyCrash: !!options?.applyCrash,
       trials: Array.isArray(trialContexts) ? trialContexts.length : (options?.trials || 80),
-      phase:'final'
+      phase:'final',
+      progressReporter:createFireDiagnosisScopedProgress(progressReporter, localStart, localSpan, '成功率グラフを準備中')
     }, trialContexts, cache);
-    return {age, successRate:Number(result?.successRate || 0) || 0};
-  });
+    out.push({age, successRate:Number(result?.successRate || 0) || 0});
+    if(progressReporter) await progressReporter(localStart + localSpan, {detail:'成功率グラフを準備中'});
+  }
+  return out;
 }
-function runMonteCarloFireDiagnosis(baseScenario, options){
+async function runMonteCarloFireDiagnosis(baseScenario, options){
   const requestedMonteSettings = options?.monteSettingsOverride || getMonteCarloSettingsFromDOM();
   const monteSettings = normalizeMonteSettingsForAssetProbabilityRun(requestedMonteSettings);
   const applyCrash = options?.mode === 'with_crash';
+  if(options?.progressReporter) await options.progressReporter(3, {force:true, detail:'乱数列を準備中'});
   const contexts = buildMonteCarloFireTrialContexts(baseScenario, {monteSettings, trials:monteSettings.trials, applyCrash});
-  const searchResult = findMonteCarloFireAgeBinary(baseScenario, {
+  if(options?.progressReporter) await options.progressReporter(6, {detail:'FIRE可能年齢を探索中'});
+  const searchResult = await findMonteCarloFireAgeBinary(baseScenario, {
     ageFrom: options?.ageFrom,
     ageTo: options?.ageTo,
     judgementMode: options?.judgementMode,
@@ -20643,7 +20693,8 @@ function runMonteCarloFireDiagnosis(baseScenario, options){
     requiredSuccessRate: options?.requiredSuccessRate,
     coarseTrials: Math.min(24, contexts.length),
     monteSettings,
-    applyCrash
+    applyCrash,
+    progressReporter:createFireDiagnosisScopedProgress(options?.progressReporter, 6, 78, 'FIRE可能年齢を探索中')
   }, contexts);
   const result = {
     diagnosisType:'monte_carlo',
@@ -20666,20 +20717,23 @@ function runMonteCarloFireDiagnosis(baseScenario, options){
     probabilitySeries: []
   };
   if(result.found && options?.showProbabilityGraph !== false && result.fireAgeYears != null){
-    result.probabilitySeries = buildMonteCarloFireProbabilitySeries(result.fireAgeYears, 3, {
+    if(options?.progressReporter) await options.progressReporter(86, {detail:'成功率グラフを準備中'});
+    result.probabilitySeries = await buildMonteCarloFireProbabilitySeries(result.fireAgeYears, 3, {
       ageFrom: result.checkedFrom,
       ageTo: result.checkedTo,
       judgementMode: result.judgementMode,
       requiredTerminalAsset: result.requiredTerminalAsset,
       requiredSuccessRate: result.requiredSuccessRate,
       applyCrash,
-      trials: contexts.length
+      trials: contexts.length,
+      progressReporter:createFireDiagnosisScopedProgress(options?.progressReporter, 86, 10, '成功率グラフを準備中')
     }, baseScenario, contexts, searchResult?.cachedAgeResults);
   }
   if(!result.found && Number.isFinite(Number(searchResult?.lastCheckedAge))){
     result.lastCheckedAge = Number(searchResult.lastCheckedAge);
     result.lastCheckedSuccessRate = Number(searchResult.lastCheckedSuccessRate || 0) || 0;
   }
+  if(options?.progressReporter) await options.progressReporter(98, {detail:'モンテカルロ診断を集計中'});
   return result;
 }
 function getMonteCarloFireProbabilityAxisRange(series, threshold){
@@ -21252,24 +21306,25 @@ function formatFireDiagnosisResultHtml(result){
   lines.push(...formatNormalFireDiagnosisSingleLines(result));
   return lines.join('');
 }
-function runSingleFireDiagnosisCore(baseData, settings){
-  return findFireAgeBinary(baseData, {
+async function runSingleFireDiagnosisCore(baseData, settings){
+  return await findFireAgeBinary(baseData, {
     ageFrom: settings.ageFrom,
     ageTo: settings.ageTo,
     judgementMode: settings.judgementMode,
     requiredTerminalAsset: settings.requiredTerminalAsset,
-    applyCrash: settings.mode === 'with_crash'
+    applyCrash: settings.mode === 'with_crash',
+    progressReporter: settings.progressReporter || null
   });
 }
-function runFireDiagnosisCore(baseData, settings){
+async function runFireDiagnosisCore(baseData, settings){
   const originalData = migrateLegacyData(deepClone(baseData || getAllInputs()));
   const activeState = captureActiveInputState();
   try{
     if(settings.diagnosisType === 'monte_carlo'){
       const monteExecutionSettings = normalizeMonteSettingsForAssetProbabilityRun(getMonteCarloSettingsFromDOM());
       if(settings.mode === 'compare_crash'){
-        const normal = runMonteCarloFireDiagnosis(originalData, {...settings, mode:'normal', monteSettingsOverride:monteExecutionSettings});
-        const withCrash = runMonteCarloFireDiagnosis(originalData, {...settings, mode:'with_crash', monteSettingsOverride:monteExecutionSettings});
+        const normal = await runMonteCarloFireDiagnosis(originalData, {...settings, mode:'normal', monteSettingsOverride:monteExecutionSettings, progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 2, 46, '暴落なしを計算中')});
+        const withCrash = await runMonteCarloFireDiagnosis(originalData, {...settings, mode:'with_crash', monteSettingsOverride:monteExecutionSettings, progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 50, 46, '暴落ありを計算中')});
         return {
           diagnosisType:'monte_carlo',
           mode:'compare_crash',
@@ -21284,11 +21339,11 @@ function runFireDiagnosisCore(baseData, settings){
           withCrash
         };
       }
-      return runMonteCarloFireDiagnosis(originalData, {...settings, monteSettingsOverride:monteExecutionSettings});
+      return await runMonteCarloFireDiagnosis(originalData, {...settings, monteSettingsOverride:monteExecutionSettings, progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 2, 94, 'モンテカルロ診断を計算中')});
     }
     if(settings.mode === 'compare_crash'){
-      const normal = runSingleFireDiagnosisCore(originalData, {...settings, mode:'normal'});
-      const withCrash = runSingleFireDiagnosisCore(originalData, {...settings, mode:'with_crash'});
+      const normal = await runSingleFireDiagnosisCore(originalData, {...settings, mode:'normal', progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 2, 42, '暴落なしを計算中')});
+      const withCrash = await runSingleFireDiagnosisCore(originalData, {...settings, mode:'with_crash', progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 46, 42, '暴落ありを計算中')});
       const bothFound = !!(normal?.found && withCrash?.found);
       const normalMonths = bothFound ? Math.max(0, Math.round(Number(normal.fireAgeTotalMonths ?? ((Number(normal.fireAgeYears) || 0) * 12 + (Number(normal.fireAgeMonths) || 0)))) ) : null;
       const withCrashMonths = bothFound ? Math.max(0, Math.round(Number(withCrash.fireAgeTotalMonths ?? ((Number(withCrash.fireAgeYears) || 0) * 12 + (Number(withCrash.fireAgeMonths) || 0)))) ) : null;
@@ -21301,7 +21356,8 @@ function runFireDiagnosisCore(baseData, settings){
           ageTo: settings.ageTo,
           judgementMode: settings.judgementMode,
           requiredTerminalAsset: settings.requiredTerminalAsset,
-          applyCrash:false
+          applyCrash:false,
+          progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 88, 4, '暴落なしグラフを準備中')
         }, originalData);
       }
       if(withCrash?.found && Number.isFinite(Number(withCrash.fireAgeYears))){
@@ -21310,7 +21366,8 @@ function runFireDiagnosisCore(baseData, settings){
           ageTo: settings.ageTo,
           judgementMode: settings.judgementMode,
           requiredTerminalAsset: settings.requiredTerminalAsset,
-          applyCrash:true
+          applyCrash:true,
+          progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 92, 4, '暴落ありグラフを準備中')
         }, originalData);
       }
       return {
@@ -21329,14 +21386,15 @@ function runFireDiagnosisCore(baseData, settings){
         diffTotalMonths
       };
     }
-    const singleNormalResult = {...runSingleFireDiagnosisCore(originalData, settings), diagnosisType:'normal'};
+    const singleNormalResult = {...await runSingleFireDiagnosisCore(originalData, {...settings, progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 2, 86, '通常診断を計算中')}), diagnosisType:'normal'};
     if(singleNormalResult?.found && Number.isFinite(Number(singleNormalResult.fireAgeYears))){
       singleNormalResult.terminalSeries = buildNormalFireTerminalSeries(getNormalFireGraphAnchorAge(singleNormalResult), 3, {
         ageFrom: settings.ageFrom,
         ageTo: settings.ageTo,
         judgementMode: settings.judgementMode,
         requiredTerminalAsset: settings.requiredTerminalAsset,
-        applyCrash: settings.mode === 'with_crash'
+        applyCrash: settings.mode === 'with_crash',
+        progressReporter:createFireDiagnosisScopedProgress(settings.progressReporter, 88, 8, 'グラフを準備中')
       }, originalData);
     }
     return singleNormalResult;
@@ -21345,7 +21403,7 @@ function runFireDiagnosisCore(baseData, settings){
     restoreActiveInputState(activeState);
   }
 }
-function runFireDiagnosis(){
+async function runFireDiagnosis(){
   const settings = getFireDiagnosisSettingsFromModal();
   setFireDiagnosisStoredSettings(settings);
   syncCurrentScenarioFromDOM(true);
@@ -21370,7 +21428,22 @@ function runFireDiagnosis(){
         : '診断中...（二分探索で計算します）';
     }
   }
-  const result = runFireDiagnosisCore(getAllInputs(), settings);
+  const progressLabel = settings.diagnosisType === 'monte_carlo' ? 'FIREモンテカルロ診断中...' : 'FIRE通常診断中...';
+  const progressDetail = settings.mode === 'compare_crash' ? '暴落なし／ありを順番に計算中' : 'FIRE可能年齢を探索中';
+  showFireDiagnosisProgressOverlay(progressLabel, progressDetail);
+  await reportFireDiagnosisProgress(0, {force:true, label:progressLabel, detail:progressDetail});
+  let result = null;
+  try{
+    result = await runFireDiagnosisCore(getAllInputs(), {...settings, progressReporter:async (progress, options={})=>{
+      await reportFireDiagnosisProgress(progress, {label:progressLabel, ...(options || {})});
+    }});
+    await reportFireDiagnosisProgress(98, {force:true, label:progressLabel, detail:'結果を反映中'});
+  } catch(err){
+    await reportFireDiagnosisProgress(0, {force:true, label:'診断に失敗しました', detail:'再試行してください'});
+    hideFireDiagnosisProgressOverlay(220);
+    console.error(err);
+    throw err;
+  }
   if(result){
     result.requiredTerminalAsset = settings.requiredTerminalAsset;
     result.requiredSuccessRate = settings.requiredSuccessRate;
@@ -21381,6 +21454,8 @@ function runFireDiagnosis(){
   if(resultEl) resultEl.innerHTML = formatFireDiagnosisResultHtml(result);
   if(result?.diagnosisType === 'monte_carlo') renderMonteCarloFireProbabilityChart(result);
   else renderNormalFireTerminalChart(result);
+  await reportFireDiagnosisProgress(100, {force:true, label:progressLabel, detail:'完了'});
+  hideFireDiagnosisProgressOverlay(220);
 }
 function clampMonteTrials(v){ return Math.max(10, Math.min(5000, Math.round(Number(v) || 80))); }
 function clampMonteDrawPaths(v, trials){ return Math.max(10, Math.min(Math.max(10, Number(trials) || 80), Math.round(Number(v) || 80))); }
@@ -28096,6 +28171,105 @@ async function reportMonteCompareProgress(progress, options={}){
     await waitMonteCompareProgressFrame();
     monteCompareProgressState.yieldedFrames++;
   }
+}
+
+// ===== v1256: FIRE diagnosis progress overlay helpers =====
+let fireDiagnosisProgressState = {visible:false, lastUiAt:0, hideTimer:null, uiUpdates:0, yieldedFrames:0, progressReports:0, displayedProgress:0};
+function ensureFireDiagnosisProgressOverlay(){
+  const host = document.querySelector('#fireDiagnosisModal .modal-card');
+  if(!host) return null;
+  if(!host.style.position) host.style.position = 'relative';
+  let overlay = document.getElementById('fireDiagnosisProgressOverlay');
+  if(overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'fireDiagnosisProgressOverlay';
+  overlay.className = 'asset-probability-progress-overlay withdrawal-compare-progress-overlay';
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.innerHTML = `
+    <div class="asset-probability-progress-card" role="status" aria-label="FIRE診断を計算中">
+      <div class="asset-probability-progress-ring" data-progress-ring>
+        <div class="asset-probability-progress-percent" data-progress-percent>0%</div>
+      </div>
+      <div class="asset-probability-progress-label" data-progress-label>FIRE診断を計算中...</div>
+      <div class="asset-probability-progress-detail" data-progress-detail></div>
+    </div>`;
+  host.appendChild(overlay);
+  return overlay;
+}
+function setFireDiagnosisProgressOverlay(progress, label='FIRE診断を計算中...', detail=''){
+  const overlay = ensureFireDiagnosisProgressOverlay();
+  if(!overlay) return;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  const ring = overlay.querySelector('[data-progress-ring]');
+  const percent = overlay.querySelector('[data-progress-percent]');
+  const labelEl = overlay.querySelector('[data-progress-label]');
+  const detailEl = overlay.querySelector('[data-progress-detail]');
+  if(ring){
+    ring.style.setProperty('--progress', String(value));
+    ring.style.setProperty('--progress-deg', `${value * 3.6}deg`);
+  }
+  if(percent) percent.textContent = `${Math.round(value)}%`;
+  if(labelEl) labelEl.textContent = label || 'FIRE診断を計算中...';
+  if(detailEl) detailEl.textContent = detail || '';
+}
+function showFireDiagnosisProgressOverlay(label='FIRE診断を計算中...', detail=''){
+  const overlay = ensureFireDiagnosisProgressOverlay();
+  if(!overlay) return;
+  if(fireDiagnosisProgressState.hideTimer){
+    clearTimeout(fireDiagnosisProgressState.hideTimer);
+    fireDiagnosisProgressState.hideTimer = null;
+  }
+  fireDiagnosisProgressState.visible = true;
+  fireDiagnosisProgressState.lastUiAt = 0;
+  fireDiagnosisProgressState.uiUpdates = 0;
+  fireDiagnosisProgressState.yieldedFrames = 0;
+  fireDiagnosisProgressState.progressReports = 0;
+  fireDiagnosisProgressState.displayedProgress = 0;
+  setFireDiagnosisProgressOverlay(0, label, detail);
+  overlay.classList.add('show');
+}
+function hideFireDiagnosisProgressOverlay(delay=180){
+  const overlay = document.getElementById('fireDiagnosisProgressOverlay');
+  if(!overlay) return;
+  if(fireDiagnosisProgressState.hideTimer) clearTimeout(fireDiagnosisProgressState.hideTimer);
+  fireDiagnosisProgressState.hideTimer = setTimeout(()=>{
+    overlay.classList.remove('show');
+    fireDiagnosisProgressState.visible = false;
+  }, Math.max(0, Number(delay) || 0));
+}
+function waitFireDiagnosisProgressFrame(){
+  return new Promise(resolve=>{
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(()=>resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+async function reportFireDiagnosisProgress(progress, options={}){
+  fireDiagnosisProgressState.progressReports++;
+  const now = getWithdrawalCompareNow();
+  const force = !!options.force;
+  const rawValue = Math.max(0, Math.min(100, Number(progress) || 0));
+  const previousValue = Math.max(0, Math.min(100, Number(fireDiagnosisProgressState.displayedProgress) || 0));
+  const value = Math.max(previousValue, rawValue);
+  if(force || !fireDiagnosisProgressState.lastUiAt || now - fireDiagnosisProgressState.lastUiAt >= WITHDRAWAL_COMPARE_PROGRESS_MIN_INTERVAL_MS || value >= 100){
+    fireDiagnosisProgressState.displayedProgress = value;
+    setFireDiagnosisProgressOverlay(value, options.label || 'FIRE診断を計算中...', options.detail || '');
+    fireDiagnosisProgressState.lastUiAt = now;
+    fireDiagnosisProgressState.uiUpdates++;
+    await waitFireDiagnosisProgressFrame();
+    fireDiagnosisProgressState.yieldedFrames++;
+  }
+}
+function createFireDiagnosisScopedProgress(progressReporter, start, span, defaultDetail=''){
+  if(!progressReporter) return null;
+  const safeStart = Math.max(0, Math.min(100, Number(start) || 0));
+  const safeSpan = Math.max(0, Number(span) || 0);
+  return async (progress, options={})=>{
+    const localValue = Math.max(0, Math.min(100, Number(progress) || 0));
+    await progressReporter(safeStart + (localValue / 100) * safeSpan, {
+      detail: options.detail || defaultDetail,
+      ...(options || {})
+    });
+  };
 }
 function buildMonteFinalStatsFromCases(cfgBase, cases, shockTrials){
   return (cases || []).map(compareCase=>{
