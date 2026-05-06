@@ -20322,12 +20322,24 @@ function openFireDiagnosisModal(){
   applyTabOrder();
   focusModalPrimaryActionButton('fireDiagnosisModal');
 }
-function closeFireDiagnosisModal(){
+function closeFireDiagnosisModal(options={}){
   const modal = document.getElementById('fireDiagnosisModal');
-  modal?.classList.remove('show');
-  modal?.setAttribute('aria-hidden', 'true');
-  setFireDiagnosisModalScrollLock(false);
-  applyTabOrder();
+  if(!modal) return;
+  const animateDown = !!options?.animateDown && isFireDiagnosisTitleSwipeCloseEnabled() && modal.classList.contains('show');
+  const finishClose = ()=>{
+    modal.classList.remove('is-swipe-dismissing');
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    setFireDiagnosisModalScrollLock(false);
+    applyTabOrder();
+  };
+  if(animateDown){
+    if(modal.classList.contains('is-swipe-dismissing')) return;
+    modal.classList.add('is-swipe-dismissing');
+    setTimeout(finishClose, 190);
+    return;
+  }
+  finishClose();
 }
 
 function isFireDiagnosisTitleSwipeCloseEnabled(){
@@ -20380,7 +20392,7 @@ function setupFireDiagnosisTitleSwipeClose(){
     reset();
     if(strongDownSwipe){
       if(e.cancelable) e.preventDefault();
-      closeFireDiagnosisModal();
+      closeFireDiagnosisModal({animateDown:true});
     }
   }, {passive:false});
   title.addEventListener('pointercancel', reset, {passive:true});
@@ -43153,6 +43165,11 @@ body.fire-diagnosis-modal-open{
 }
 #fireDiagnosisModal.show{
   overscroll-behavior:contain;
+}
+#fireDiagnosisModal.is-swipe-dismissing .withdrawal-rule-modal{
+  transition:transform .18s cubic-bezier(.22,.61,.36,1), opacity .18s ease-out !important;
+  transform:translateY(34vh) !important;
+  opacity:0 !important;
 }
 #fireDiagnosisModal .withdrawal-rule-modal{
   padding-top:0 !important;
