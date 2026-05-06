@@ -6905,10 +6905,10 @@ document.addEventListener("scroll", (ev)=>{
     </div>
 
     <div class="section">
-      <h2>社会保険料・公的年金課税（簡易）</h2>
+      <h2>社会保険・年金課税</h2>
       <div class="grid2">
         <div>
-          <div class="subhead subhead-with-action"><span>社会保険料（簡易）</span><button type="button" id="resetSocialSimpleBtn" class="subhead-action-btn">初期化</button></div>
+          <div class="subhead subhead-with-action"><span>社会保険料（標準推計）</span><button type="button" id="resetSocialSimpleBtn" class="subhead-action-btn">初期化</button></div>
           <table class="center-table income-table">
             <tr><th>項目</th><th>入力</th></tr>
             <tr><td>国民年金の支払いを反映</td><td><label class="inline-check"><input id="socialNationalPensionOn" type="checkbox" checked> 反映する</label></td></tr>
@@ -6917,13 +6917,13 @@ document.addEventListener("scroll", (ev)=>{
             <tr><td>退職後健保（本人）</td><td><select id="social_self_healthMode"><option value="kokuho" selected>国保簡易</option><option value="voluntary">任意継続</option><option value="dependent">扶養</option><option value="lateElderly">後期高齢</option></select></td></tr>
             <tr><td>退職後健保（配偶者）</td><td><select id="social_sp_healthMode"><option value="kokuho" selected>国保簡易</option><option value="voluntary">任意継続</option><option value="dependent">扶養</option><option value="lateElderly">後期高齢</option></select></td></tr>
             <tr><td>任意継続年額</td><td><div class="input-unit center"><input id="socialVoluntaryAnnual" type="number" class="moneybox" value="30" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
-            <tr><td>国保簡易 料率</td><td><div class="input-unit center"><input id="socialKokuhoRatePct" type="number" class="ratebox" value="10" step="0.1"><span class="suffix">%</span></div></td></tr>
-            <tr><td>国保簡易 均等割等</td><td><div class="input-unit center"><input id="socialKokuhoBaseAnnual" type="number" class="moneybox" value="8" step="0.1"><span class="suffix">万円 / 年 / 世帯</span></div></td></tr>
-            <tr><td>国保簡易 上限</td><td><div class="input-unit center"><input id="socialKokuhoCapAnnual" type="number" class="moneybox" value="100" step="0.1"><span class="suffix">万円 / 年 / 世帯</span></div></td></tr>
+            <tr><td>国保 所得割率（概算）</td><td><div class="input-unit center"><input id="socialKokuhoRatePct" type="number" class="ratebox" value="8" step="0.1"><span class="suffix">%</span></div></td></tr>
+            <tr><td>国保 固定部分（世帯）</td><td><div class="input-unit center"><input id="socialKokuhoBaseAnnual" type="number" class="moneybox" value="8" step="0.1"><span class="suffix">万円 / 年 / 世帯</span></div></td></tr>
+            <tr><td>国保 上限（概算）</td><td><div class="input-unit center"><input id="socialKokuhoCapAnnual" type="number" class="moneybox" value="100" step="0.1"><span class="suffix">万円 / 年 / 世帯</span></div></td></tr>
             <tr><td>介護保険（65歳以上）</td><td><div class="input-unit center"><input id="socialNursingAnnual" type="number" class="moneybox" value="8" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
-            <tr><td>後期高齢保険料</td><td><div class="input-unit center"><input id="socialLateElderlyAnnual" type="number" class="moneybox" value="12" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
+            <tr><td>後期高齢者医療（参考上限）</td><td><div class="input-unit center"><input id="socialLateElderlyAnnual" type="number" class="moneybox" value="12" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
           </table>
-          <div class="help small">国民年金：20〜59歳の対象者1人あたりの概算年額です。夫婦とも対象なら原則2人分かかります。<br>退職後健保（本人・配偶者）：退職後に使う健康保険の種類をそれぞれ選びます。<br>任意継続年額：任意継続を選んだ本人1人あたりの概算年額です。本人・配偶者とも任意継続を選ぶ場合は、この金額をそれぞれに適用します。<br>国保簡易 料率：国保の所得連動部分を表す簡易率です。自治体差があります。<br>国保簡易 均等割等：均等割・平等割など固定部分をまとめた世帯ベースの概算です。<br>国保簡易 上限：国保年額の簡易上限です。自治体や年度で異なります。<br>介護保険（65歳以上）：65歳以上の対象者1人あたりの概算年額です。夫婦とも65歳以上なら2人分かかり得ます。<br>後期高齢保険料：75歳以上の本人1人あたりの概算年額です。実際の保険料は地域や所得で変わります。</div>
+          <div class="help small">社会保険料は、国民年金、国保、介護保険、後期高齢者医療保険などを標準推計で概算します。実際の保険料は自治体・年度・所得・世帯構成・健康保険の加入状況により異なります。通常は詳細パラメータを変更する必要はありません。給与・賞与などの勤労収入は手取り入力を前提としているため、勤務中の健康保険料・厚生年金保険料は原則として別途計上しません。<br>国民年金：20〜59歳の対象者1人あたりの概算年額です。夫婦とも対象なら原則2人分かかります。<br>退職後健保（本人・配偶者）：退職後に使う健康保険の種類をそれぞれ選びます。<br>任意継続年額：任意継続を選んだ本人1人あたりの概算年額です。本人・配偶者とも任意継続を選ぶ場合は、この金額をそれぞれに適用します。<br>国保 所得割率（概算）：国保の所得連動部分を表す標準推計用の率です。自治体差があります。<br>国保 固定部分（世帯）：均等割・平等割など固定部分をまとめた世帯ベースの概算です。国保加入者が複数いる場合は内部で按分します。<br>国保 上限（概算）：国保年額の簡易上限です。自治体や年度で異なります。<br>介護保険（65歳以上）：65歳以上の対象者1人あたりの概算年額です。所得水準に応じた簡易段階で推計します。<br>後期高齢者医療：75歳以上の対象者について、均等割と所得割を標準推計します。実際の保険料は地域や所得で変わります。</div>
         </div>
         <div>
           <div class="subhead subhead-with-action"><span>公的年金課税（簡易）</span><button type="button" id="resetPensionTaxSimpleBtn" class="subhead-action-btn">初期化</button></div>
@@ -6939,7 +6939,7 @@ document.addEventListener("scroll", (ev)=>{
           <div class="help small">公的年金の税を反映：ONのとき、公的年金のみを簡易課税対象にします。その他の収入は手取り入力済みとして扱います。<br>所得税 基礎控除（簡易）：1人あたりの簡易基礎控除です。現行制度では所得に応じて変動するため、簡易モデルでは代表値を使います。<br>住民税 基礎控除：1人あたりの住民税計算用基礎控除です。<br>公的年金控除（65歳未満）：65歳未満の人1人あたりの簡易控除額です。<br>公的年金控除（65歳以上）：65歳以上の人1人あたりの簡易控除額です。<br>住民税率（簡易）：住民税の所得割部分を表す簡易率です。</div>
         </div>
       </div>
-      <div class="help">まずは退職後の社会保険料と、公的年金に対する簡易課税を年度別収支表へ反映します。勤務中の給与や手取り入力の定期収入・臨時収入は、従来どおり手取り前提です。<br>※ 社会保険料（簡易）は、退職後の国民年金・健康保険・介護保険を概算で反映するための設定です。国民年金・介護保険・任意継続・後期高齢保険料は人ベース、国保簡易は世帯ベースの概算を基本としています。国保・介護・後期高齢の保険料は自治体や所得で変わるため、必要に応じて実額へ調整してください。<br>※ 退職後健保で「国保簡易」を選んだ場合は国保簡易パラメータを使い、「任意継続」を選んだ場合は任意継続年額を最大2年間適用し、その後は国保簡易へ切り替える想定です。「扶養」は健康保険料を0として扱い、「後期高齢」は後期高齢保険料を使います。<br>※ 公的年金課税（簡易）は、当面は公的年金のみを対象とした簡易計算です。給与・定期収入・臨時収入・保険受取などは、原則として手取り入力済みとして扱います。</div>
+      <div class="help">退職後の社会保険料と、公的年金に対する簡易課税を年度別収支表へ反映します。勤務中の給与や手取り入力の定期収入・臨時収入は、従来どおり手取り前提です。<br>※ 社会保険料（標準推計）は、国民年金・国保・介護保険・後期高齢者医療などを標準的な条件で概算します。実際の保険料は自治体・年度・所得・世帯構成・健康保険の加入状況により異なります。通常は詳細パラメータを変更する必要はありません。給与・賞与などの勤労収入は手取り入力を前提としているため、勤務中の健康保険料・厚生年金保険料は原則として別途計上しません。<br>※ 退職後健保で「国保簡易」を選んだ場合は国保の標準推計パラメータを使い、「任意継続」を選んだ場合は任意継続年額を最大2年間適用し、その後は国保推計へ切り替える想定です。「扶養」は健康保険料を0として扱い、「後期高齢」は75歳以上の後期高齢者医療として扱います。<br>※ 公的年金課税（簡易）は、当面は公的年金のみを対象とした簡易計算です。給与・定期収入・臨時収入・保険受取などは、原則として手取り入力済みとして扱います。</div>
     </div>
 
   </div>    </div>
@@ -7003,6 +7003,20 @@ const CASHFLOW_TABLE_COLUMNS = [
   {label:"臨時支出", path:"expense.temporary"},
   {label:"支出合計(B)", path:"expense.total"},
   {label:"社会保険料", path:"social.total"},
+  {label:"　本人 社会保険料", path:"social.detail.self.total"},
+  {label:"　　国民健康保険料（本人）", path:"social.detail.self.nationalHealth"},
+  {label:"　　健康保険料（本人）", path:"social.detail.self.employeeHealth"},
+  {label:"　　後期高齢者医療保険料（本人）", path:"social.detail.self.lateElderlyHealth"},
+  {label:"　　国民年金保険料（本人）", path:"social.detail.self.nationalPension"},
+  {label:"　　厚生年金保険料（本人）", path:"social.detail.self.employeePension"},
+  {label:"　　介護保険料（本人）", path:"social.detail.self.nursingCare"},
+  {label:"　配偶者 社会保険料", path:"social.detail.spouse.total"},
+  {label:"　　国民健康保険料（配偶者）", path:"social.detail.spouse.nationalHealth"},
+  {label:"　　健康保険料（配偶者）", path:"social.detail.spouse.employeeHealth"},
+  {label:"　　後期高齢者医療保険料（配偶者）", path:"social.detail.spouse.lateElderlyHealth"},
+  {label:"　　国民年金保険料（配偶者）", path:"social.detail.spouse.nationalPension"},
+  {label:"　　厚生年金保険料（配偶者）", path:"social.detail.spouse.employeePension"},
+  {label:"　　介護保険料（配偶者）", path:"social.detail.spouse.nursingCare"},
   {label:"所得税・住民税等", path:"tax.total"},
   {label:"税社保合計", path:"cashflow.taxSocialTotal"},
   {label:"年間収支(A-B)", path:"cashflow.gross", className:"cashflow-posneg"},
@@ -13242,7 +13256,7 @@ const SIMPLE_SOCIAL_DEFAULT_OVERRIDES = {
   social_self_healthMode:"kokuho",
   social_sp_healthMode:"kokuho",
   socialVoluntaryAnnual:"30",
-  socialKokuhoRatePct:"10",
+  socialKokuhoRatePct:"8",
   socialKokuhoBaseAnnual:"8",
   socialKokuhoCapAnnual:"100",
   socialNursingAnnual:"8",
@@ -16565,7 +16579,7 @@ function getScenarioFromDOM(){
       nationalPensionOn:!!document.getElementById("socialNationalPensionOn")?.checked,
       healthOn:!!document.getElementById("socialHealthOn")?.checked,
       nationalPensionAnnual:Math.max(0, numInput("socialNationalPensionAnnual", 21.5) || 0),
-      kokuhoRate:Math.max(0, numInput("socialKokuhoRatePct", 10) || 0) / 100,
+      kokuhoRate:Math.max(0, numInput("socialKokuhoRatePct", 8) || 0) / 100,
       kokuhoBaseAnnual:Math.max(0, numInput("socialKokuhoBaseAnnual", 8) || 0),
       kokuhoCapAnnual:Math.max(0, numInput("socialKokuhoCapAnnual", 100) || 0),
       nursingAnnual:Math.max(0, numInput("socialNursingAnnual", 8) || 0),
@@ -22055,10 +22069,34 @@ function calcSimpleIncomeTaxProgressive(taxableIncome){
   if(x <= 4000) return x * 0.40 - 279.6;
   return x * 0.45 - 479.6;
 }
+function estimatePublicPensionMiscIncome(grossIncome, age, cfg){
+  const gross = Math.max(0, Number(grossIncome) || 0);
+  return Math.max(0, gross - getPublicPensionDeductionByAge(age, cfg));
+}
+function estimateStandardNursingCareAnnual(publicPensionGross, age, cfg){
+  if(age < 65) return 0;
+  const miscIncome = estimatePublicPensionMiscIncome(publicPensionGross, age, cfg);
+  const lowAnnual = Math.max(0, Number(cfg?.social?.nursingLowAnnual ?? 3.3) || 0);
+  const standardAnnual = Math.max(0, Number(cfg?.social?.nursingStandardAnnual ?? 5.2) || 0);
+  const highAnnual = Math.max(0, Number(cfg?.social?.nursingHighAnnual ?? cfg?.social?.nursingAnnual ?? 8) || 0);
+  if(miscIncome <= 0) return lowAnnual;
+  if(miscIncome <= 100) return standardAnnual;
+  return highAnnual;
+}
+function estimateStandardLateElderlyHealthAnnual(publicPensionGross, age, cfg){
+  if(age < 75) return 0;
+  const miscIncome = estimatePublicPensionMiscIncome(publicPensionGross, age, cfg);
+  const baseAnnual = Math.max(0, Number(cfg?.social?.lateElderlyBaseAnnual ?? 4.4) || 0);
+  const rate = Math.max(0, Number(cfg?.social?.lateElderlyIncomeRate ?? 0.02) || 0);
+  const cap = Math.max(0, Number(cfg?.social?.lateElderlyCapAnnual ?? 80) || 0);
+  let amount = baseAnnual + miscIncome * rate;
+  if(cap > 0) amount = Math.min(cap, amount);
+  return amount;
+}
 function estimatePublicPensionTax(grossIncome, age, cfg){
   const gross = Math.max(0, Number(grossIncome) || 0);
   if(gross <= 0 || !cfg?.tax?.enabled || !cfg?.tax?.pensionOnly) return {gross, miscIncome:0, taxableIncome:0, residentTaxable:0, incomeTax:0, residentTax:0, total:0};
-  const miscIncome = Math.max(0, gross - getPublicPensionDeductionByAge(age, cfg));
+  const miscIncome = estimatePublicPensionMiscIncome(gross, age, cfg);
   const taxableIncome = Math.max(0, miscIncome - Number(cfg?.tax?.incomeBasicDeduction || 0));
   const residentTaxable = Math.max(0, miscIncome - Number(cfg?.tax?.residentBasicDeduction || 0));
   const incomeTax = calcSimpleIncomeTaxProgressive(taxableIncome);
@@ -22070,35 +22108,73 @@ function getHealthModeForPerson(cfg, personKey, age){
   if(age >= 75) return 'lateElderly';
   return mode || 'kokuho';
 }
-function estimateRetirementSocialForPerson(cfg, personKey, age, workedMonths, publicPensionGross){
-  if(!cfg?.social?.enabled || workedMonths > 0) return {nationalPension:0, healthInsurance:0, nursingCare:0, total:0, mode:'work'};
+function isNationalPensionExemptAsDependent(cfg, personKey, mode, context=null){
+  if(mode !== 'dependent') return false;
+  if(personKey === 'sp'){
+    return Number(context?.selfWorkedMonths || 0) > 0;
+  }
+  return true;
+}
+function estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths){
+  const months = Math.max(0, Number(workedMonths || 0));
+  if(months <= 0) return 0;
+  const incomeCfg = personKey === 'sp' ? cfg?.incomeSp : cfg?.incomeSelf;
+  const curve = buildIncomeCurveSeries(incomeCfg, cfg?.age, age);
+  return Math.max(0, (Number(curve?.salaryMonth || 0) * months) + (Number(curve?.bonusYear || 0) * (months / 12)));
+}
+function estimateRetirementSocialForPerson(cfg, personKey, age, workedMonths, publicPensionGross, context=null){
+  const emptySocial = (mode='work')=>({
+    nationalHealth:0,
+    employeeHealth:0,
+    lateElderlyHealth:0,
+    nationalPension:0,
+    employeePension:0,
+    healthInsurance:0,
+    nursingCare:0,
+    total:0,
+    mode
+  });
+  if(!cfg?.social?.enabled) return emptySocial('none');
   const mode = getHealthModeForPerson(cfg, personKey, age);
+  const hasEmployeeCoverage = estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths) > 0;
+  let nationalHealth = 0;
+  let employeeHealth = 0;
+  let lateElderlyHealth = 0;
   let nationalPension = 0;
+  let employeePension = 0;
   let healthInsurance = 0;
   let nursingCare = 0;
-  if(cfg?.social?.nationalPensionOn && age >= 20 && age < 60 && mode !== 'dependent'){
+  if(cfg?.social?.nationalPensionOn && !hasEmployeeCoverage && age >= 20 && age < 60 && !isNationalPensionExemptAsDependent(cfg, personKey, mode, context)){
     nationalPension = Math.max(0, Number(cfg?.social?.nationalPensionAnnual || 0));
+  }
+  if(hasEmployeeCoverage){
+    const total = nationalPension + employeePension + healthInsurance + nursingCare;
+    return {nationalHealth, employeeHealth, lateElderlyHealth, nationalPension, employeePension, healthInsurance, nursingCare, total, mode:'work'};
   }
   if(cfg?.social?.healthOn){
     if(mode === 'voluntary'){
-      healthInsurance = Math.max(0, Number((personKey === 'self' ? cfg?.social?.self?.voluntaryAnnual : cfg?.social?.spouse?.voluntaryAnnual) || 0));
+      employeeHealth = Math.max(0, Number((personKey === 'self' ? cfg?.social?.self?.voluntaryAnnual : cfg?.social?.spouse?.voluntaryAnnual) || 0));
+      healthInsurance = employeeHealth;
     }else if(mode === 'dependent'){
       healthInsurance = 0;
     }else if(mode === 'lateElderly'){
-      healthInsurance = Math.max(0, Number(cfg?.social?.lateElderlyAnnual || 0));
+      lateElderlyHealth = estimateStandardLateElderlyHealthAnnual(publicPensionGross, age, cfg);
+      healthInsurance = lateElderlyHealth;
+      nursingCare = estimateStandardNursingCareAnnual(publicPensionGross, age, cfg);
     }else{
       const rate = Math.max(0, Number(cfg?.social?.kokuhoRate || 0));
-      const base = Math.max(0, Number(cfg?.social?.kokuhoBaseAnnual || 0));
       const cap = Math.max(0, Number(cfg?.social?.kokuhoCapAnnual || 0));
-      healthInsurance = publicPensionGross * rate + base;
-      if(cap > 0) healthInsurance = Math.min(cap, healthInsurance);
+      const pensionMiscIncome = estimatePublicPensionMiscIncome(publicPensionGross, age, cfg);
+      nationalHealth = pensionMiscIncome * rate;
+      if(cap > 0) nationalHealth = Math.min(cap, nationalHealth);
+      healthInsurance = nationalHealth;
       if(mode === 'kokuho' && age >= 65 && age < 75){
-        nursingCare = Math.max(0, Number(cfg?.social?.nursingAnnual || 0));
+        nursingCare = estimateStandardNursingCareAnnual(publicPensionGross, age, cfg);
       }
     }
   }
-  const total = nationalPension + healthInsurance + nursingCare;
-  return {nationalPension, healthInsurance, nursingCare, total, mode};
+  const total = nationalPension + employeePension + healthInsurance + nursingCare;
+  return {nationalHealth, employeeHealth, lateElderlyHealth, nationalPension, employeePension, healthInsurance, nursingCare, total, mode};
 }
 function getChildrenSnapshotForYear(cfg, yearIndex){
   return (cfg?.children || []).map(child=>({
@@ -22153,7 +22229,11 @@ function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, social
       total:expenseObj.total
     },
     social:{
+      nationalHealth:socialObj.nationalHealth || 0,
+      employeeHealth:socialObj.employeeHealth || 0,
+      lateElderlyHealth:socialObj.lateElderlyHealth || 0,
       nationalPension:socialObj.nationalPension || 0,
+      employeePension:socialObj.employeePension || 0,
       healthInsurance:socialObj.healthInsurance || 0,
       nursingCare:socialObj.nursingCare || 0,
       total:socialObj.total || 0,
@@ -22221,19 +22301,40 @@ function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, social
     }
   };
 }
+function isKokuhoSocialMode(social){
+  return String(social?.mode || '') === 'kokuho';
+}
+function applyHouseholdKokuhoBaseToSocialResults(cfg, selfSocial, spSocial){
+  const members = [selfSocial, spSocial].filter(isKokuhoSocialMode);
+  if(!members.length) return;
+  const base = Math.max(0, Number(cfg?.social?.kokuhoBaseAnnual || 0));
+  if(base <= 0) return;
+  const perMemberBase = base / members.length;
+  members.forEach(social=>{
+    social.nationalHealth = (Number(social.nationalHealth) || 0) + perMemberBase;
+    social.healthInsurance = (Number(social.nationalHealth) || 0) + (Number(social.employeeHealth) || 0) + (Number(social.lateElderlyHealth) || 0);
+    social.total = (Number(social.nationalPension) || 0) + (Number(social.employeePension) || 0) + (Number(social.healthInsurance) || 0) + (Number(social.nursingCare) || 0);
+  });
+}
 function estimateSocialAndTaxForYear(cfg, age, yearIndex, incomeObj){
   const selfWorkedMonths = getWorkedMonthsForYear(cfg, 'self', yearIndex);
   const spWorkedMonths = getWorkedMonthsForYear(cfg, 'sp', yearIndex);
   const selfPension = getPensionAnnualAmountForYear(cfg, 'self', yearIndex);
   const spPension = getPensionAnnualAmountForYear(cfg, 'sp', yearIndex);
-  const selfSocial = estimateRetirementSocialForPerson(cfg, 'self', age, selfWorkedMonths, selfPension);
   const spouseAge = Math.max(0, Number(cfg.spouseAge || 0) + yearIndex);
-  const spSocial = estimateRetirementSocialForPerson(cfg, 'sp', spouseAge, spWorkedMonths, spPension);
+  const socialContext = {selfWorkedMonths, spWorkedMonths};
+  const selfSocial = estimateRetirementSocialForPerson(cfg, 'self', age, selfWorkedMonths, selfPension, socialContext);
+  const spSocial = estimateRetirementSocialForPerson(cfg, 'sp', spouseAge, spWorkedMonths, spPension, socialContext);
+  applyHouseholdKokuhoBaseToSocialResults(cfg, selfSocial, spSocial);
   const selfTax = estimatePublicPensionTax(selfPension, age, cfg);
   const spTax = estimatePublicPensionTax(spPension, spouseAge, cfg);
   return {
     social:{
+      nationalHealth:(selfSocial.nationalHealth || 0) + (spSocial.nationalHealth || 0),
+      employeeHealth:(selfSocial.employeeHealth || 0) + (spSocial.employeeHealth || 0),
+      lateElderlyHealth:(selfSocial.lateElderlyHealth || 0) + (spSocial.lateElderlyHealth || 0),
       nationalPension:(selfSocial.nationalPension || 0) + (spSocial.nationalPension || 0),
+      employeePension:(selfSocial.employeePension || 0) + (spSocial.employeePension || 0),
       healthInsurance:(selfSocial.healthInsurance || 0) + (spSocial.healthInsurance || 0),
       nursingCare:(selfSocial.nursingCare || 0) + (spSocial.nursingCare || 0),
       total:(selfSocial.total || 0) + (spSocial.total || 0),
@@ -23301,7 +23402,7 @@ function buildMonteStaticSeries(cfg){
     const extra = getInflatedPointValueForSimulationYear(cfg, cfg.extraIncome, age, cfg.inflRate, yearIndex);
     const childAllowance = getChildAllowanceForYear(cfg, yearIndex);
     const insurance = getInsuranceReceiveForYear(cfg, age, yearIndex);
-    const incomeParts = {self:selfWork, spouse:spouseWork, pension, regular, extra, childAllowance, insurance};
+    const incomeParts = {self:selfWork, spouse:spouseWork, pension, pensionSelf:selfPension, pensionSpouse:spousePension, regular, extra, childAllowance, insurance};
     const baseIncomeTotal = selfWork + spouseWork + pension + regular + extra + childAllowance + insurance;
     const expenseObj = getExpenseForYear(cfg, age, yearIndex);
     const baseIncomeObj = {total:baseIncomeTotal, parts:{...incomeParts, retirePay:0, interest:0}};
@@ -23403,6 +23504,7 @@ function simulate(cfg, random=false, opts={}){
   const incomePartsSeries = compact ? null : {self:[],spouse:[],pension:[],regular:[],extra:[],childAllowance:[],insurance:[],retirePay:[],interest:[],dividend:[]};
   const incomePensionPartsSeries = compact ? null : {self:[],spouse:[]};
   const expensePartsSeries = compact ? null : {life:[],rent:[],homeMaint:[],insurance:[],education:[],loan:[],periodic:[],extra:[],social:[],tax:[]};
+  const socialPartsSeries = compact ? null : {nationalHealth:[],employeeHealth:[],lateElderlyHealth:[],nationalPension:[],employeePension:[],nursingCare:[]};
   const invSeries = compact ? null : {};
   const principalSeries = compact ? null : {};
   const depositSeries = compact ? null : {};
@@ -23647,6 +23749,7 @@ function simulate(cfg, random=false, opts={}){
       expensePartsSeries.extra.push(expenseObj.parts.extra || 0);
       expensePartsSeries.social.push(socialObj.total || 0);
       expensePartsSeries.tax.push(taxObj.total || 0);
+      Object.keys(socialPartsSeries).forEach(k=>socialPartsSeries[k].push(socialObj[k] || 0));
 
       for(let c=1;c<=dynamicCounts.child;c++) educationByChildSeries[c].push(expenseObj.parts.educationByChild[c] || 0);
       Object.keys(invSeries).forEach(key=>{
@@ -23692,7 +23795,7 @@ function simulate(cfg, random=false, opts={}){
     labels,totalAssets,totalDeposits,totalInvestments,investmentPrincipalTotal,investmentTaxEstimate,investmentAfterTaxValue,totalSafeAssets,totalLiability,
     annualIncome,annualExpense,annualCashflow,
     annualEducation,annualEducationCum,educationByChildSeries,
-    incomePartsSeries,incomePensionPartsSeries,expensePartsSeries,invSeries,principalSeries,depositSeries,
+    incomePartsSeries,incomePensionPartsSeries,expensePartsSeries,socialPartsSeries,invSeries,principalSeries,depositSeries,
     childNames,invNames,invMeta,yearlyRows,calendarYearWindows,
     depletionAge,retireAsset,totalIncomeSum,totalExpenseSum
   };
@@ -24196,7 +24299,8 @@ function getIncomeExpenseCategorySeries(sim, group, category){
   const detailKeys = (category.detail || []).map(item=>item.key);
   if(group === "income"){
     if(category.key === "pension"){
-      if(sim.incomePensionPartsSeries?.self || sim.incomePensionPartsSeries?.spouse) return sumSeriesByKeys(sim.incomePensionPartsSeries, ["self", "spouse"]);
+      const pensionPartsSeries = sumSeriesByKeys(sim.incomePensionPartsSeries, ["self", "spouse"]);
+      if(hasAnyVisibleValue(pensionPartsSeries)) return pensionPartsSeries;
       return sumSeriesByKeys(sim.incomePartsSeries, ["pension"]);
     }
     return sumSeriesByKeys(sim.incomePartsSeries, detailKeys);
@@ -25511,6 +25615,7 @@ function getIncomeExpenseDetailValue(sim, key, idx){
   if(key === "pensionSpouse") return Number(Array.isArray(sim?.incomePensionPartsSeries?.spouse) ? sim.incomePensionPartsSeries.spouse[idx] : 0) || 0;
   if(Object.prototype.hasOwnProperty.call(sim?.incomePartsSeries || {}, key)) return Number(sim.incomePartsSeries[key]?.[idx]) || 0;
   if(Object.prototype.hasOwnProperty.call(sim?.expensePartsSeries || {}, key)) return Number(sim.expensePartsSeries[key]?.[idx]) || 0;
+  if(Object.prototype.hasOwnProperty.call(sim?.socialPartsSeries || {}, key)) return Number(sim.socialPartsSeries[key]?.[idx]) || 0;
   return 0;
 }
 function formatIncomeExpensePct(value, denominator){
@@ -25606,6 +25711,20 @@ function buildIncomeExpenseTooltipHtml(unitSpec, simEntries, ageValue, overlay, 
       const value = getIncomeExpenseDetailValue(sim, detail.key, idx);
       if(!isIncomeExpenseTooltipNonZero(value, unitSpec)) return;
       rows.push(buildIncomeExpenseTooltipRow({label:detail.label, value, pct:formatIncomeExpensePct(value, values.totalExpense), swatch:false, detail:true}, unitSpec));
+      if(cat.key === "taxSocial" && detail.key === "social"){
+        [
+          {key:"nationalHealth", label:"　国民健康保険料"},
+          {key:"employeeHealth", label:"　健康保険料"},
+          {key:"lateElderlyHealth", label:"　後期高齢者医療保険料"},
+          {key:"nationalPension", label:"　国民年金保険料"},
+          {key:"employeePension", label:"　厚生年金保険料"},
+          {key:"nursingCare", label:"　介護保険料"}
+        ].forEach(socialDetail=>{
+          const socialValue = getIncomeExpenseDetailValue(sim, socialDetail.key, idx);
+          if(!isIncomeExpenseTooltipNonZero(socialValue, unitSpec)) return;
+          rows.push(buildIncomeExpenseTooltipRow({label:socialDetail.label, value:socialValue, pct:formatIncomeExpensePct(socialValue, values.totalExpense), swatch:false, detail:true}, unitSpec));
+        });
+      }
     });
   });
   return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body chart-external-tooltip-body-with-pct chart-external-tooltip-income-body">${rows.join("")}</div>`;
@@ -34312,7 +34431,7 @@ document.getElementById('eduBody')?.addEventListener('change', (e)=>{
 });
 document.getElementById('eduCopyBtn')?.addEventListener('click', openEducationCopyModal);
 document.getElementById('resetSocialSimpleBtn')?.addEventListener('click', ()=>{
-  openResetDefaultsConfirmDialog('社会保険料（簡易）の設定を初期値に戻します。現在の値は元に戻せません。実行しますか？', resetSimpleSocialTableToDefaults);
+  openResetDefaultsConfirmDialog('社会保険料（標準推計）の設定を初期値に戻します。現在の値は元に戻せません。実行しますか？', resetSimpleSocialTableToDefaults);
 });
 document.getElementById('resetPensionTaxSimpleBtn')?.addEventListener('click', ()=>{
   openResetDefaultsConfirmDialog('公的年金課税（簡易）の設定を初期値に戻します。現在の値は元に戻せません。実行しますか？', resetSimplePensionTaxTableToDefaults);
