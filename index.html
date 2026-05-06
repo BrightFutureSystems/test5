@@ -43974,26 +43974,13 @@ body.standard-modal-scroll-locked .page{
 
 
 
-<!-- ===== v1311: prevent mobile scroll-to-top while standard modal is open ===== -->
-<style id="v1311-standard-modal-mobile-fixed-scroll-lock">
-/* Scope: smartphone / touch standard modals only. Prevent iOS top-tap scroll-to-top by making the page itself non-scrollable while the modal is open. */
-@media (max-width:900px), (pointer:coarse){
-  body.standard-modal-fixed-scroll-lock{
-    position:fixed !important;
-    top:calc(-1 * var(--standard-modal-lock-y, 0px)) !important;
-    left:calc(-1 * var(--standard-modal-lock-x, 0px)) !important;
-    right:auto !important;
-    width:100% !important;
-    max-width:none !important;
-    overflow:hidden !important;
-    touch-action:none !important;
-  }
-  body.standard-modal-fixed-scroll-lock .modal-backdrop.show{
-    touch-action:auto !important;
-  }
-}
-</style>
-<script id="v1311-standard-modal-mobile-fixed-scroll-lock">
+<!-- ===== v1311: disabled mobile fixed-position scroll lock ===== -->
+<script id="v1311-standard-modal-mobile-fixed-scroll-lock-disabled" type="application/json">
+{"disabled":true,"reason":"Disabled in v1321 because body fixed-position lockedX/lockedY style caused standard modal background right-edge shift on mobile."}
+</script>
+
+<!-- ===== v1321: standard modal scroll-anchor guard without layout mutation ===== -->
+<script id="v1321-standard-modal-scroll-anchor-guard">
 (function(){
   const modalIds = [
     'fireDiagnosisModal',
@@ -44006,9 +43993,10 @@ body.standard-modal-scroll-locked .page{
     'pensionHelperModal',
     'insuranceAssistModal'
   ];
-  let locked = false;
-  let lockedX = 0;
-  let lockedY = 0;
+  let active = false;
+  let anchorX = 0;
+  let anchorY = 0;
+  let restoring = false;
 
   function getOpenStandardModal(){
     for(const id of modalIds){
@@ -44023,50 +44011,53 @@ body.standard-modal-scroll-locked .page{
   function currentY(){
     return window.pageYOffset || document.documentElement.scrollTop || document.body?.scrollTop || 0;
   }
-  function isMobileLockTarget(){
-    try{
-      return window.matchMedia('(max-width:900px), (pointer:coarse)').matches;
-    }catch(_err){
-      return false;
-    }
+  function setWindowScroll(x, y){
+    try{ window.scrollTo(x, y); }catch(_err){}
+    try{ document.documentElement.scrollLeft = x; }catch(_err){}
+    try{ document.body.scrollLeft = x; }catch(_err){}
+    try{ document.documentElement.scrollTop = y; }catch(_err){}
+    try{ document.body.scrollTop = y; }catch(_err){}
   }
-  function lockPage(){
-    if(locked || !isMobileLockTarget()) return;
-    lockedX = currentX();
-    lockedY = currentY();
-    document.body.style.setProperty('--standard-modal-lock-x', lockedX + 'px');
-    document.body.style.setProperty('--standard-modal-lock-y', lockedY + 'px');
-    document.body.classList.add('standard-modal-fixed-scroll-lock');
-    locked = true;
+  function restoreAnchor(){
+    if(!active || restoring) return;
+    const x = currentX();
+    const y = currentY();
+    if(Math.abs(x - anchorX) < 1 && Math.abs(y - anchorY) < 1) return;
+    restoring = true;
+    setWindowScroll(anchorX, anchorY);
+    requestAnimationFrame(()=>{
+      setWindowScroll(anchorX, anchorY);
+      restoring = false;
+    });
   }
-  function unlockPage(){
-    if(!locked) return;
-    document.body.classList.remove('standard-modal-fixed-scroll-lock');
-    document.body.style.removeProperty('--standard-modal-lock-x');
-    document.body.style.removeProperty('--standard-modal-lock-y');
-    try{ window.scrollTo(lockedX, lockedY); }catch(_err){}
-    locked = false;
-    lockedX = 0;
-    lockedY = 0;
+  function activate(){
+    if(active) return;
+    anchorX = currentX();
+    anchorY = currentY();
+    active = true;
   }
-  function syncLockState(){
-    const modal = getOpenStandardModal();
-    if(modal){
-      lockPage();
-      return;
-    }
-    unlockPage();
+  function deactivate(){
+    if(!active) return;
+    active = false;
+    restoring = false;
+    anchorX = 0;
+    anchorY = 0;
+  }
+  function syncState(){
+    if(getOpenStandardModal()) activate();
+    else deactivate();
   }
   function init(){
-    const observer = new MutationObserver(syncLockState);
+    const observer = new MutationObserver(syncState);
     modalIds.forEach(id=>{
       const modal = document.getElementById(id);
       if(modal) observer.observe(modal, {attributes:true, attributeFilter:['class']});
     });
-    window.addEventListener('resize', syncLockState, {passive:true});
-    window.addEventListener('orientationchange', syncLockState, {passive:true});
-    window.addEventListener('pagehide', unlockPage, {passive:true});
-    syncLockState();
+    window.addEventListener('scroll', restoreAnchor, {capture:true, passive:true});
+    window.addEventListener('resize', syncState, {passive:true});
+    window.addEventListener('orientationchange', syncState, {passive:true});
+    window.addEventListener('pagehide', deactivate, {passive:true});
+    syncState();
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
   else init();
