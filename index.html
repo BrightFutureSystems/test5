@@ -20281,31 +20281,45 @@ function getFireDiagnosisSettingsFromModal(){
   const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeToInput')?.value || Math.max(ageFrom,70)) || Math.max(ageFrom,70))));
   return {diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
 }
-let fireDiagnosisModalLockedScrollY = 0;
+function getModalScrollbarGap(){
+  const innerW = Number(window.innerWidth) || 0;
+  const clientW = Number(document.documentElement?.clientWidth) || innerW;
+  return Math.max(0, innerW - clientW);
+}
+function setModalScrollbarGapStyle(body){
+  if(!body) return;
+  const gap = getModalScrollbarGap();
+  body.style.setProperty('--modal-scrollbar-gap', `${gap}px`);
+  const page = document.querySelector('.page');
+  const rect = page?.getBoundingClientRect?.();
+  if(rect && Number.isFinite(rect.left) && Number.isFinite(rect.width)){
+    body.style.setProperty('--modal-page-left', `${rect.left}px`);
+    body.style.setProperty('--modal-page-width', `${rect.width}px`);
+  }
+}
+function clearModalScrollbarGapStyle(body){
+  body?.style?.removeProperty?.('--modal-scrollbar-gap');
+  body?.style?.removeProperty?.('--modal-page-left');
+  body?.style?.removeProperty?.('--modal-page-width');
+}
+function clearStandardModalResidualLayoutLockStyles(body){
+  if(!body) return;
+  body.style.top = '';
+  body.style.overflow = '';
+  body.style.position = '';
+  body.style.width = '';
+  body.style.left = '';
+  body.style.right = '';
+  clearModalScrollbarGapStyle(body);
+}
 function setFireDiagnosisModalScrollLock(locked){
   const body = document.body;
   if(!body) return;
   if(locked){
-    if(body.classList.contains('fire-diagnosis-modal-open')) return;
-    fireDiagnosisModalLockedScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
-    body.style.top = `-${fireDiagnosisModalLockedScrollY}px`;
     body.classList.add('fire-diagnosis-modal-open');
   }else{
-    const restoreY = Math.max(0, Number(fireDiagnosisModalLockedScrollY) || 0);
     body.classList.remove('fire-diagnosis-modal-open');
-    body.style.top = '';
-    body.style.overflow = '';
-    body.style.position = '';
-    body.style.width = '';
-    body.style.left = '';
-    body.style.right = '';
-    fireDiagnosisModalLockedScrollY = 0;
-    try{
-      window.scrollTo(0, restoreY);
-      requestAnimationFrame(()=>{
-        try{ window.scrollTo(0, restoreY); }catch(_err){}
-      });
-    }catch(_err){}
+    clearStandardModalResidualLayoutLockStyles(body);
   }
 }
 function openFireDiagnosisModal(){
@@ -31760,8 +31774,8 @@ document.getElementById("fireDiagnosisModeSelect")?.addEventListener("change", u
 document.getElementById("fireDiagnosisJudgementModeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisRequiredTerminalAssetInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisRequiredSuccessRateInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
-document.getElementById("fireDiagnosisModal")?.addEventListener("mousedown", (e)=>{
-  if(e.target === document.getElementById("fireDiagnosisModal")) closeFireDiagnosisModal();
+document.getElementById("fireDiagnosisModal")?.addEventListener("mousedown", (_e)=>{
+  // v1308: 通常モーダルは外側クリックで閉じない。
 });
 
 
@@ -32659,31 +32673,14 @@ document.querySelectorAll("#overflowMenuBtn, #graphMenuBtn").forEach((btn)=>{
     }
   });
 });
-let cashflowModalLockedScrollY = 0;
 function setCashflowModalScrollLock(locked){
   const body = document.body;
   if(!body) return;
   if(locked){
-    if(body.classList.contains('cashflow-modal-open')) return;
-    cashflowModalLockedScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
-    body.style.top = `-${cashflowModalLockedScrollY}px`;
     body.classList.add('cashflow-modal-open');
   }else{
-    const restoreY = Math.max(0, Number(cashflowModalLockedScrollY) || 0);
     body.classList.remove('cashflow-modal-open');
-    body.style.top = '';
-    body.style.overflow = '';
-    body.style.position = '';
-    body.style.width = '';
-    body.style.left = '';
-    body.style.right = '';
-    cashflowModalLockedScrollY = 0;
-    try{
-      window.scrollTo(0, restoreY);
-      requestAnimationFrame(()=>{
-        try{ window.scrollTo(0, restoreY); }catch(_err){}
-      });
-    }catch(_err){}
+    clearStandardModalResidualLayoutLockStyles(body);
   }
 }
 function isCashflowTitleSwipeCloseEnabled(){
@@ -32864,8 +32861,8 @@ const overlaySettingsModalEl = document.getElementById('overlaySettingsModal');
 const overlaySettingsModalCard = overlaySettingsModalEl?.querySelector('.modal-card');
 if(overlaySettingsModalEl && overlaySettingsModalCard){
   overlaySettingsModalEl.addEventListener('pointerdown', (e)=>{ overlaySettingsBackdropPointerDown = (e.target === overlaySettingsModalEl); }, true);
-  overlaySettingsModalEl.addEventListener('click', (e)=>{
-    if(e.target === overlaySettingsModalEl && overlaySettingsBackdropPointerDown) closeOverlaySettingsModal();
+  overlaySettingsModalEl.addEventListener('click', (_e)=>{
+    // v1308: 通常モーダルは外側クリックで閉じない。
     overlaySettingsBackdropPointerDown = false;
   });
   overlaySettingsModalCard.addEventListener('click', (e)=>{ if(!e.target?.closest?.('.overlay-style-color-wrap')) closeOverlayColorPalettes(); e.stopPropagation(); overlaySettingsBackdropPointerDown = false; });
@@ -32898,13 +32895,9 @@ Object.entries(STANDARD_MODAL_BACKDROP_CLOSE_HANDLERS).forEach(([modalId, closeH
   };
   modal.addEventListener('mousedown', rememberBackdropPointerDown, true);
   modal.addEventListener('touchstart', rememberBackdropPointerDown, {capture:true, passive:true});
-  modal.addEventListener('click', (e)=>{
-    if(e.target !== modal || !backdropPointerDown || typeof closeHandler !== 'function'){
-      backdropPointerDown = false;
-      return;
-    }
+  modal.addEventListener('click', (_e)=>{
+    // v1308: 通常モーダルは外側クリック／タップで閉じない。
     backdropPointerDown = false;
-    closeHandler();
   });
 });
 document.addEventListener("pointerdown", (e)=>{
@@ -43268,9 +43261,9 @@ body.withdrawal-preview-open #detailStickyNav *{
 body.fire-diagnosis-modal-open{
   overflow:hidden !important;
   position:fixed !important;
-  width:100% !important;
+  width:calc(100% - var(--modal-scrollbar-gap, 0px)) !important;
   left:0 !important;
-  right:0 !important;
+  right:auto !important;
 }
 #fireDiagnosisModal.show{
   overscroll-behavior:contain;
@@ -43332,9 +43325,9 @@ body.fire-diagnosis-modal-open{
 body.cashflow-modal-open{
   overflow:hidden !important;
   position:fixed !important;
-  width:100% !important;
+  width:calc(100% - var(--modal-scrollbar-gap, 0px)) !important;
   left:0 !important;
-  right:0 !important;
+  right:auto !important;
 }
 #cashflowModal.show{
   overscroll-behavior:contain;
@@ -43388,9 +43381,9 @@ body.cashflow-modal-open{
 body.standard-modal-scroll-locked{
   overflow:hidden !important;
   position:fixed !important;
-  width:100% !important;
+  width:calc(100% - var(--modal-scrollbar-gap, 0px)) !important;
   left:0 !important;
-  right:0 !important;
+  right:auto !important;
 }
 #incomeCurveModal.show,
 #loanDetailModal.show,
@@ -43514,7 +43507,6 @@ body.standard-modal-scroll-locked{
     {modalId:'pensionHelperModal', titleId:'pensionHelperTitle', cancelId:'cancelPensionHelperBtn'},
     {modalId:'insuranceAssistModal', titleId:'insuranceAssistTitle', cancelId:'cancelInsuranceAssistBtn'}
   ];
-  let lockedScrollY = 0;
   let scrollLocked = false;
   function isTouchViewport(){
     try{ return !!(window.matchMedia && window.matchMedia('(max-width:900px), (pointer:coarse)').matches); }
@@ -43526,28 +43518,15 @@ body.standard-modal-scroll-locked{
   function lockScroll(){
     const body = document.body;
     if(!body || scrollLocked) return;
-    lockedScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
-    body.style.top = `-${lockedScrollY}px`;
     body.classList.add('standard-modal-scroll-locked');
     scrollLocked = true;
   }
   function unlockScroll(){
     const body = document.body;
     if(!body || !scrollLocked) return;
-    const restoreY = Math.max(0, Number(lockedScrollY) || 0);
     body.classList.remove('standard-modal-scroll-locked');
-    body.style.top = '';
-    body.style.overflow = '';
-    body.style.position = '';
-    body.style.width = '';
-    body.style.left = '';
-    body.style.right = '';
-    lockedScrollY = 0;
+    clearStandardModalResidualLayoutLockStyles(body);
     scrollLocked = false;
-    try{
-      window.scrollTo(0, restoreY);
-      requestAnimationFrame(()=>{ try{ window.scrollTo(0, restoreY); }catch(_err){} });
-    }catch(_err){}
   }
   function syncScrollLock(){
     if(anyTargetModalOpen()) lockScroll();
@@ -43658,6 +43637,171 @@ body.standard-modal-scroll-locked{
 #insuranceAssistModal.standard-modal-swipe-dismissing{
   transition:background-color .24s ease-out !important;
   background:rgba(18,35,52,0) !important;
+}
+</style>
+
+
+<!-- ===== v1306: keep main page horizontal position fixed while standard modals are open ===== -->
+<style id="v1306-standard-modal-page-position-lock">
+/* Scope: non-preview standard modals only. Prevent background page right edge from shifting when body scroll is locked. */
+body.fire-diagnosis-modal-open .page,
+body.cashflow-modal-open .page,
+body.standard-modal-scroll-locked .page{
+  width:var(--modal-page-width, auto) !important;
+  max-width:none !important;
+  margin-left:var(--modal-page-left, auto) !important;
+  margin-right:0 !important;
+}
+</style>
+
+
+
+<!-- ===== v1307: prevent background scroll without moving standard modal backdrop page ===== -->
+<style id="v1307-standard-modal-no-layout-shift-scroll-lock">
+/* Scope: non-preview standard modals only. Keep the underlying page layout unchanged while disabling background scroll. */
+body.fire-diagnosis-modal-open,
+body.cashflow-modal-open,
+body.standard-modal-scroll-locked{
+  overflow:visible !important;
+  position:static !important;
+  width:auto !important;
+  left:auto !important;
+  right:auto !important;
+  top:auto !important;
+}
+body.fire-diagnosis-modal-open .page,
+body.cashflow-modal-open .page,
+body.standard-modal-scroll-locked .page{
+  width:auto !important;
+  max-width:var(--maxw) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+</style>
+<script id="v1307-standard-modal-background-scroll-guard">
+(function(){
+  const modalIds = [
+    'fireDiagnosisModal',
+    'cashflowModal',
+    'incomeCurveModal',
+    'loanDetailModal',
+    'educationDetailModal',
+    'educationCopyModal',
+    'overlaySettingsModal',
+    'pensionHelperModal',
+    'insuranceAssistModal'
+  ];
+  const scrollKeys = new Set(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' ']);
+  let lastTouchY = null;
+  function getOpenStandardModal(){
+    for(const id of modalIds){
+      const modal = document.getElementById(id);
+      if(modal?.classList?.contains('show')) return modal;
+    }
+    return null;
+  }
+  function isInsideModal(modal, target){
+    return !!(modal && target && modal.contains(target));
+  }
+  function getScrollableAncestorWithin(modal, target){
+    let el = target instanceof Element ? target : target?.parentElement;
+    while(el && el !== modal && el !== document.body && el !== document.documentElement){
+      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      const oy = style ? style.overflowY : '';
+      const canScroll = /(auto|scroll|overlay)/.test(oy) && el.scrollHeight > el.clientHeight + 1;
+      if(canScroll) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+  function shouldPreventWheel(modal, event){
+    if(!modal) return false;
+    if(!isInsideModal(modal, event.target)) return true;
+    const scroller = getScrollableAncestorWithin(modal, event.target);
+    if(!scroller) return true;
+    const dy = Number(event.deltaY) || 0;
+    if(dy < 0 && scroller.scrollTop <= 0) return true;
+    if(dy > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1) return true;
+    return false;
+  }
+  function onWheel(event){
+    const modal = getOpenStandardModal();
+    if(!modal) return;
+    if(shouldPreventWheel(modal, event) && event.cancelable) event.preventDefault();
+  }
+  function onTouchStart(event){
+    const modal = getOpenStandardModal();
+    if(!modal) return;
+    lastTouchY = event.touches && event.touches.length ? event.touches[0].clientY : null;
+  }
+  function onTouchMove(event){
+    const modal = getOpenStandardModal();
+    if(!modal) return;
+    const currentY = event.touches && event.touches.length ? event.touches[0].clientY : null;
+    if(!isInsideModal(modal, event.target)){
+      if(event.cancelable) event.preventDefault();
+      lastTouchY = currentY;
+      return;
+    }
+    const scroller = getScrollableAncestorWithin(modal, event.target);
+    if(!scroller){
+      if(event.cancelable) event.preventDefault();
+      lastTouchY = currentY;
+      return;
+    }
+    if(Number.isFinite(lastTouchY) && Number.isFinite(currentY)){
+      const dy = currentY - lastTouchY;
+      if(dy > 0 && scroller.scrollTop <= 0){
+        if(event.cancelable) event.preventDefault();
+      }else if(dy < 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1){
+        if(event.cancelable) event.preventDefault();
+      }
+    }
+    lastTouchY = currentY;
+  }
+  function onTouchEnd(){
+    lastTouchY = null;
+  }
+  function onKeyDown(event){
+    const modal = getOpenStandardModal();
+    if(!modal || !scrollKeys.has(event.key)) return;
+    if(!isInsideModal(modal, event.target)){
+      if(event.cancelable) event.preventDefault();
+    }
+  }
+  document.addEventListener('wheel', onWheel, {capture:true, passive:false});
+  document.addEventListener('touchstart', onTouchStart, {capture:true, passive:true});
+  document.addEventListener('touchmove', onTouchMove, {capture:true, passive:false});
+  document.addEventListener('touchend', onTouchEnd, {capture:true, passive:true});
+  document.addEventListener('touchcancel', onTouchEnd, {capture:true, passive:true});
+  document.addEventListener('keydown', onKeyDown, {capture:true});
+})();
+</script>
+
+
+
+<!-- ===== v1308: standard modal background disable without layout mutation ===== -->
+<style id="v1308-standard-modal-no-layout-mutation">
+/* 通常モーダル表示中も、背面ページの位置・幅・overflow は変えない。 */
+body.fire-diagnosis-modal-open,
+body.cashflow-modal-open,
+body.standard-modal-scroll-locked{
+  overflow:visible !important;
+  position:static !important;
+  width:auto !important;
+  left:auto !important;
+  right:auto !important;
+  top:auto !important;
+  padding-right:0 !important;
+}
+body.fire-diagnosis-modal-open .page,
+body.cashflow-modal-open .page,
+body.standard-modal-scroll-locked .page{
+  width:auto !important;
+  max-width:var(--maxw) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  transform:none !important;
 }
 </style>
 
