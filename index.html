@@ -17242,7 +17242,6 @@ function closeEducationCopyModal(){
   const modal = document.getElementById('educationCopyModal');
   modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden', 'true');
-  setFireDiagnosisModalScrollLock(false);
   applyTabOrder();
 }
 const EDUCATION_SIMPLE_COPY_FIELDS = [
@@ -20285,12 +20284,21 @@ function setFireDiagnosisModalScrollLock(locked){
     body.style.top = `-${fireDiagnosisModalLockedScrollY}px`;
     body.classList.add('fire-diagnosis-modal-open');
   }else{
-    if(!body.classList.contains('fire-diagnosis-modal-open')) return;
+    const restoreY = Math.max(0, Number(fireDiagnosisModalLockedScrollY) || 0);
     body.classList.remove('fire-diagnosis-modal-open');
     body.style.top = '';
-    const restoreY = Math.max(0, Number(fireDiagnosisModalLockedScrollY) || 0);
+    body.style.overflow = '';
+    body.style.position = '';
+    body.style.width = '';
+    body.style.left = '';
+    body.style.right = '';
     fireDiagnosisModalLockedScrollY = 0;
-    try{ window.scrollTo(0, restoreY); }catch(_err){}
+    try{
+      window.scrollTo(0, restoreY);
+      requestAnimationFrame(()=>{
+        try{ window.scrollTo(0, restoreY); }catch(_err){}
+      });
+    }catch(_err){}
   }
 }
 function openFireDiagnosisModal(){
@@ -20318,7 +20326,65 @@ function closeFireDiagnosisModal(){
   const modal = document.getElementById('fireDiagnosisModal');
   modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden', 'true');
+  setFireDiagnosisModalScrollLock(false);
   applyTabOrder();
+}
+
+function isFireDiagnosisTitleSwipeCloseEnabled(){
+  try{
+    return !!(window.matchMedia && window.matchMedia('(max-width:900px), (pointer:coarse)').matches);
+  }catch(_err){
+    return false;
+  }
+}
+function setupFireDiagnosisTitleSwipeClose(){
+  const title = document.getElementById('fireDiagnosisTitle');
+  const modal = document.getElementById('fireDiagnosisModal');
+  if(!title || !modal || title.dataset.swipeCloseInit === '1') return;
+  title.dataset.swipeCloseInit = '1';
+  let state = null;
+  const reset = ()=>{ state = null; };
+  title.addEventListener('pointerdown', (e)=>{
+    if(!isFireDiagnosisTitleSwipeCloseEnabled()) return;
+    if(!modal.classList.contains('show')) return;
+    if(e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    state = {
+      pointerId:e.pointerId,
+      startX:e.clientX,
+      startY:e.clientY,
+      lastX:e.clientX,
+      lastY:e.clientY,
+      startAt:performance.now(),
+      dragging:false
+    };
+    try{ title.setPointerCapture?.(e.pointerId); }catch(_err){}
+  }, {passive:true});
+  title.addEventListener('pointermove', (e)=>{
+    if(!state || e.pointerId !== state.pointerId) return;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if(dy > 10 && Math.abs(dy) > Math.abs(dx) * 1.25){
+      state.dragging = true;
+      if(e.cancelable) e.preventDefault();
+    }
+  }, {passive:false});
+  title.addEventListener('pointerup', (e)=>{
+    if(!state || e.pointerId !== state.pointerId) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    const elapsed = Math.max(1, performance.now() - state.startAt);
+    const velocityY = dy / elapsed;
+    const strongDownSwipe = dy >= 72 && dy > Math.abs(dx) * 1.25 && (velocityY >= 0.45 || dy >= 112);
+    reset();
+    if(strongDownSwipe){
+      if(e.cancelable) e.preventDefault();
+      closeFireDiagnosisModal();
+    }
+  }, {passive:false});
+  title.addEventListener('pointercancel', reset, {passive:true});
+  title.addEventListener('lostpointercapture', reset, {passive:true});
 }
 function evaluateFireScore(cfg, sim, options){
   const assets = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
@@ -31668,6 +31734,7 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
 });
 initWithdrawalOrderManualDragUI();
 document.getElementById("cancelFireDiagnosisBtn")?.addEventListener("click", closeFireDiagnosisModal);
+setupFireDiagnosisTitleSwipeClose();
 document.getElementById("runFireDiagnosisBtn")?.addEventListener("click", runFireDiagnosis);
 document.getElementById("fireDiagnosisTypeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisModeSelect")?.addEventListener("change", updateFireDiagnosisJudgementUi);
@@ -43125,6 +43192,9 @@ body.fire-diagnosis-modal-open{
     margin:0 -10px 14px !important;
     padding:4px 22px 0 !important;
     line-height:1.25 !important;
+    touch-action:none !important;
+    -webkit-user-select:none !important;
+    user-select:none !important;
   }
 }
 </style>
