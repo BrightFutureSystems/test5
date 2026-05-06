@@ -43381,5 +43381,266 @@ body.cashflow-modal-open{
 }
 </style>
 
+
+<!-- ===== v1302: common standard modal title swipe, scroll lock, and title alignment ===== -->
+<style id="v1302-standard-modal-title-swipe-common">
+/* Scope: specified standard modals only. */
+body.standard-modal-scroll-locked{
+  overflow:hidden !important;
+  position:fixed !important;
+  width:100% !important;
+  left:0 !important;
+  right:0 !important;
+}
+#incomeCurveModal.show,
+#loanDetailModal.show,
+#educationDetailModal.show,
+#educationCopyModal.show,
+#overlaySettingsModal.show,
+#pensionHelperModal.show,
+#insuranceAssistModal.show{
+  overscroll-behavior:contain;
+}
+#incomeCurveModal.standard-modal-swipe-dismissing .income-curve-modal,
+#loanDetailModal.standard-modal-swipe-dismissing .loan-detail-modal,
+#educationDetailModal.standard-modal-swipe-dismissing .edu-detail-modal,
+#educationCopyModal.standard-modal-swipe-dismissing .edu-copy-modal,
+#overlaySettingsModal.standard-modal-swipe-dismissing .overlay-settings-modal,
+#pensionHelperModal.standard-modal-swipe-dismissing .pension-helper-modal,
+#insuranceAssistModal.standard-modal-swipe-dismissing .insurance-assist-modal{
+  transition:transform .24s cubic-bezier(.22,.61,.36,1), opacity .24s ease-out !important;
+  transform:translateY(46vh) !important;
+  opacity:0 !important;
+}
+#incomeCurveModal .income-curve-modal,
+#loanDetailModal .loan-detail-modal,
+#educationDetailModal .edu-detail-modal,
+#educationCopyModal .edu-copy-modal,
+#overlaySettingsModal .overlay-settings-modal,
+#pensionHelperModal .pension-helper-modal,
+#insuranceAssistModal .insurance-assist-modal{
+  overscroll-behavior:contain;
+  overflow-x:hidden !important;
+}
+#incomeCurveModal #incomeCurveTitle,
+#loanDetailModal #loanDetailTitle,
+#educationDetailModal #educationDetailTitle,
+#educationCopyModal #educationCopyTitle,
+#overlaySettingsModal #overlaySettingsTitle,
+#pensionHelperModal #pensionHelperTitle,
+#insuranceAssistModal #insuranceAssistTitle{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:52px !important;
+  min-height:52px !important;
+  max-height:52px !important;
+  margin:-18px -16px 14px !important;
+  padding:3px 16px 0 !important;
+  line-height:1.25 !important;
+  touch-action:none !important;
+  -webkit-user-select:none !important;
+  user-select:none !important;
+}
+#educationCopyModal,
+#pensionHelperModal{
+  overflow-x:hidden !important;
+}
+#educationCopyModal .edu-copy-grid,
+#educationCopyModal .edu-copy-fields,
+#educationCopyModal .edu-copy-field,
+#pensionHelperModal .pension-helper-grid,
+#pensionHelperModal .pension-helper-fields,
+#pensionHelperModal .pension-helper-field,
+#pensionHelperModal .pension-helper-mode-row{
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #incomeCurveModal,
+  #loanDetailModal,
+  #educationDetailModal,
+  #educationCopyModal,
+  #overlaySettingsModal,
+  #pensionHelperModal,
+  #insuranceAssistModal{
+    padding-left:10px !important;
+    padding-right:10px !important;
+    overscroll-behavior:contain;
+    overflow-x:hidden !important;
+  }
+  #incomeCurveModal .income-curve-modal,
+  #loanDetailModal .loan-detail-modal,
+  #educationDetailModal .edu-detail-modal,
+  #educationCopyModal .edu-copy-modal,
+  #overlaySettingsModal .overlay-settings-modal,
+  #pensionHelperModal .pension-helper-modal,
+  #insuranceAssistModal .insurance-assist-modal{
+    max-width:calc(100vw - 20px) !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+  }
+  #incomeCurveModal #incomeCurveTitle,
+  #loanDetailModal #loanDetailTitle,
+  #educationDetailModal #educationDetailTitle,
+  #educationCopyModal #educationCopyTitle,
+  #overlaySettingsModal #overlaySettingsTitle,
+  #pensionHelperModal #pensionHelperTitle,
+  #insuranceAssistModal #insuranceAssistTitle{
+    height:52px !important;
+    min-height:52px !important;
+    max-height:52px !important;
+    margin:-14px -10px 14px !important;
+    padding:4px 16px 0 !important;
+    line-height:1.25 !important;
+    touch-action:none !important;
+    -webkit-user-select:none !important;
+    user-select:none !important;
+  }
+}
+</style>
+<script id="v1302-standard-modal-title-swipe-common-script">
+(function(){
+  const targets = [
+    {modalId:'incomeCurveModal', titleId:'incomeCurveTitle', cancelId:'cancelIncomeCurveBtn'},
+    {modalId:'loanDetailModal', titleId:'loanDetailTitle', cancelId:'cancelLoanDetailBtn'},
+    {modalId:'educationDetailModal', titleId:'educationDetailTitle', cancelId:'cancelEducationDetailBtn'},
+    {modalId:'educationCopyModal', titleId:'educationCopyTitle', cancelId:'cancelEducationCopyBtn'},
+    {modalId:'overlaySettingsModal', titleId:'overlaySettingsTitle', cancelId:'cancelOverlaySettingsBtn'},
+    {modalId:'pensionHelperModal', titleId:'pensionHelperTitle', cancelId:'cancelPensionHelperBtn'},
+    {modalId:'insuranceAssistModal', titleId:'insuranceAssistTitle', cancelId:'cancelInsuranceAssistBtn'}
+  ];
+  let lockedScrollY = 0;
+  let scrollLocked = false;
+  function isTouchViewport(){
+    try{ return !!(window.matchMedia && window.matchMedia('(max-width:900px), (pointer:coarse)').matches); }
+    catch(_err){ return false; }
+  }
+  function anyTargetModalOpen(){
+    return targets.some(item=>document.getElementById(item.modalId)?.classList.contains('show'));
+  }
+  function lockScroll(){
+    const body = document.body;
+    if(!body || scrollLocked) return;
+    lockedScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
+    body.style.top = `-${lockedScrollY}px`;
+    body.classList.add('standard-modal-scroll-locked');
+    scrollLocked = true;
+  }
+  function unlockScroll(){
+    const body = document.body;
+    if(!body || !scrollLocked) return;
+    const restoreY = Math.max(0, Number(lockedScrollY) || 0);
+    body.classList.remove('standard-modal-scroll-locked');
+    body.style.top = '';
+    body.style.overflow = '';
+    body.style.position = '';
+    body.style.width = '';
+    body.style.left = '';
+    body.style.right = '';
+    lockedScrollY = 0;
+    scrollLocked = false;
+    try{
+      window.scrollTo(0, restoreY);
+      requestAnimationFrame(()=>{ try{ window.scrollTo(0, restoreY); }catch(_err){} });
+    }catch(_err){}
+  }
+  function syncScrollLock(){
+    if(anyTargetModalOpen()) lockScroll();
+    else unlockScroll();
+  }
+  function closeByCancelWithAnimation(item){
+    const modal = document.getElementById(item.modalId);
+    const cancelBtn = document.getElementById(item.cancelId);
+    if(!modal || !cancelBtn || !modal.classList.contains('show')) return;
+    if(modal.classList.contains('standard-modal-swipe-dismissing')) return;
+    modal.classList.add('standard-modal-swipe-dismissing');
+    setTimeout(()=>{
+      try{ cancelBtn.click(); }catch(_err){}
+      modal.classList.remove('standard-modal-swipe-dismissing');
+      requestAnimationFrame(syncScrollLock);
+    }, 250);
+  }
+  function setupTitleSwipe(item){
+    const modal = document.getElementById(item.modalId);
+    const title = document.getElementById(item.titleId);
+    if(!modal || !title || title.dataset.standardSwipeCloseInit === '1') return;
+    title.dataset.standardSwipeCloseInit = '1';
+    let state = null;
+    const reset = ()=>{ state = null; };
+    title.addEventListener('pointerdown', (e)=>{
+      if(!isTouchViewport()) return;
+      if(!modal.classList.contains('show')) return;
+      if(e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+      state = {
+        pointerId:e.pointerId,
+        startX:e.clientX,
+        startY:e.clientY,
+        lastX:e.clientX,
+        lastY:e.clientY,
+        startAt:performance.now(),
+        dragging:false
+      };
+      try{ title.setPointerCapture?.(e.pointerId); }catch(_err){}
+    }, {passive:true});
+    title.addEventListener('pointermove', (e)=>{
+      if(!state || e.pointerId !== state.pointerId) return;
+      state.lastX = e.clientX;
+      state.lastY = e.clientY;
+      const dx = e.clientX - state.startX;
+      const dy = e.clientY - state.startY;
+      if(dy > 10 && Math.abs(dy) > Math.abs(dx) * 1.25){
+        state.dragging = true;
+        if(e.cancelable) e.preventDefault();
+      }
+    }, {passive:false});
+    title.addEventListener('pointerup', (e)=>{
+      if(!state || e.pointerId !== state.pointerId) return;
+      const dx = e.clientX - state.startX;
+      const dy = e.clientY - state.startY;
+      const elapsed = Math.max(1, performance.now() - state.startAt);
+      const velocityY = dy / elapsed;
+      const strongDownSwipe = dy >= 72 && dy > Math.abs(dx) * 1.25 && (velocityY >= 0.45 || dy >= 112);
+      reset();
+      if(strongDownSwipe){
+        if(e.cancelable) e.preventDefault();
+        closeByCancelWithAnimation(item);
+      }
+    }, {passive:false});
+    title.addEventListener('pointercancel', reset, {passive:true});
+    title.addEventListener('lostpointercapture', reset, {passive:true});
+  }
+  function init(){
+    targets.forEach(setupTitleSwipe);
+    const observer = new MutationObserver(syncScrollLock);
+    targets.forEach(item=>{
+      const modal = document.getElementById(item.modalId);
+      if(modal) observer.observe(modal, {attributes:true, attributeFilter:['class']});
+    });
+    window.addEventListener('pagehide', unlockScroll, {passive:true});
+    syncScrollLock();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
+</script>
+
+
+
+<!-- ===== v1303: remove mobile white rim around selected standard modal title bands ===== -->
+<style id="v1303-selected-standard-modal-title-white-rim-fix">
+@media (max-width:900px), (pointer:coarse){
+  #overlaySettingsModal #overlaySettingsTitle,
+  #pensionHelperModal #pensionHelperTitle,
+  #educationCopyModal #educationCopyTitle{
+    margin:-18px -18px 14px !important;
+  }
+}
+</style>
+
 </body>
 </html>
