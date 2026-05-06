@@ -20336,7 +20336,7 @@ function closeFireDiagnosisModal(options={}){
   if(animateDown){
     if(modal.classList.contains('is-swipe-dismissing')) return;
     modal.classList.add('is-swipe-dismissing');
-    setTimeout(finishClose, 190);
+    setTimeout(finishClose, 250);
     return;
   }
   finishClose();
@@ -43329,9 +43329,18 @@ body.cashflow-modal-open{
   overscroll-behavior:contain;
 }
 #cashflowModal.is-swipe-dismissing .cashflow-modal{
-  transition:transform .18s cubic-bezier(.22,.61,.36,1), opacity .18s ease-out !important;
-  transform:translateY(34vh) !important;
+  transition:transform .24s cubic-bezier(.22,.61,.36,1), opacity .24s ease-out !important;
+  transform:translateY(46vh) !important;
   opacity:0 !important;
+}
+#cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+#cashflowModalTitle{
+  height:52px !important;
+  min-height:52px !important;
+  max-height:52px !important;
+  margin:0 -14px 14px !important;
+  padding:3px 22px 0 !important;
+  line-height:1.25 !important;
 }
 @media (max-width:900px), (pointer:coarse){
   #cashflowModal{
