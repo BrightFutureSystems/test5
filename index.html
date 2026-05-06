@@ -43780,6 +43780,104 @@ body.standard-modal-scroll-locked .page{
 
 
 
+<!-- ===== v1310: keep window scroll position while standard modal is open ===== -->
+<script id="v1310-standard-modal-window-scroll-position-guard">
+(function(){
+  const modalIds = [
+    'fireDiagnosisModal',
+    'cashflowModal',
+    'incomeCurveModal',
+    'loanDetailModal',
+    'educationDetailModal',
+    'educationCopyModal',
+    'overlaySettingsModal',
+    'pensionHelperModal',
+    'insuranceAssistModal'
+  ];
+  let locked = false;
+  let lockedX = 0;
+  let lockedY = 0;
+  let restoring = false;
+  let restoreRaf = 0;
+
+  function getOpenStandardModal(){
+    for(const id of modalIds){
+      const modal = document.getElementById(id);
+      if(modal?.classList?.contains('show')) return modal;
+    }
+    return null;
+  }
+  function currentX(){
+    return window.pageXOffset || document.documentElement.scrollLeft || document.body?.scrollLeft || 0;
+  }
+  function currentY(){
+    return window.pageYOffset || document.documentElement.scrollTop || document.body?.scrollTop || 0;
+  }
+  function capturePosition(){
+    lockedX = currentX();
+    lockedY = currentY();
+  }
+  function restorePosition(){
+    if(!locked || !getOpenStandardModal()) return;
+    const x = currentX();
+    const y = currentY();
+    if(Math.abs(x - lockedX) < 1 && Math.abs(y - lockedY) < 1) return;
+    restoring = true;
+    try{ window.scrollTo(lockedX, lockedY); }catch(_err){}
+    restoring = false;
+  }
+  function scheduleRestore(){
+    if(restoreRaf) cancelAnimationFrame(restoreRaf);
+    restoreRaf = requestAnimationFrame(()=>{
+      restoreRaf = 0;
+      restorePosition();
+    });
+  }
+  function syncLockState(){
+    const modal = getOpenStandardModal();
+    if(modal && !locked){
+      capturePosition();
+      locked = true;
+      scheduleRestore();
+      return;
+    }
+    if(!modal && locked){
+      locked = false;
+      if(restoreRaf){
+        cancelAnimationFrame(restoreRaf);
+        restoreRaf = 0;
+      }
+    }
+  }
+  function onWindowScroll(){
+    if(restoring) return;
+    if(!locked){
+      syncLockState();
+      return;
+    }
+    if(!getOpenStandardModal()){
+      syncLockState();
+      return;
+    }
+    restorePosition();
+    scheduleRestore();
+  }
+  function init(){
+    const observer = new MutationObserver(syncLockState);
+    modalIds.forEach(id=>{
+      const modal = document.getElementById(id);
+      if(modal) observer.observe(modal, {attributes:true, attributeFilter:['class']});
+    });
+    window.addEventListener('scroll', onWindowScroll, {capture:true, passive:true});
+    window.addEventListener('pagehide', ()=>{ locked = false; }, {passive:true});
+    syncLockState();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
+</script>
+
+
 <!-- ===== v1308: standard modal background disable without layout mutation ===== -->
 <style id="v1308-standard-modal-no-layout-mutation">
 /* 通常モーダル表示中も、背面ページの位置・幅・overflow は変えない。 */
