@@ -1953,26 +1953,25 @@ document.addEventListener("scroll", (ev)=>{
     white-space:nowrap;
   }
   .fire-probability-legend-line{
-    display:inline-block;
-    width:42px;
-    height:0;
-    border-top:3px solid #2563eb;
-    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:58px;
+    height:12px;
     flex:0 0 auto;
   }
-  .fire-probability-legend-line.is-threshold{
-    width:42px;
-    height:3px;
-    border-top:none;
-    border-radius:0;
-    background:repeating-linear-gradient(to right, #dc2626 0 10px, transparent 10px 16px);
+  .fire-probability-legend-svg{
+    display:block;
+    width:58px;
+    height:12px;
+    overflow:visible;
   }
   .fire-probability-axis-note{
     margin-top:8px;
     color:var(--muted);
     font-size:12px;
     line-height:1.5;
-    text-align:center;
+    text-align:left;
   }
 
   .crash-test-table th:nth-child(1),.crash-test-table td:nth-child(1){width:108px;min-width:108px;}
@@ -8245,7 +8244,7 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife")) return;
     const geom = getExpectedLifeGeometry(chartInstance);
     if(!geom) return;
-    const {ctx, x, y, px} = geom;
+    const {ctx, x, y, area, px} = geom;
     const probValue = Number(monteInfo?.prob || 0) || 0;
     const probText = Math.abs(probValue - Math.round(probValue)) < 1e-9 ? String(Math.round(probValue)) : formatNumberJP(probValue, 1);
     const text = `破綻確率 ${probText}%`;
@@ -8259,6 +8258,12 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
     const rawLabelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14);
     const labelY = reserveSingleGuideLabelBox(labelX, rawLabelY, labelW, labelH, y);
+    const alpha = getGuideLabelFadeAlpha(px, area, 28);
+    if(alpha <= 0.05){
+      ctx.restore();
+      return;
+    }
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(254,242,242,0.78)";
     ctx.strokeStyle = "rgba(220,38,38,0.16)";
     ctx.lineWidth = 1;
@@ -8328,18 +8333,25 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     const area = chartInstance?.chartArea;
     if(!ctx || !x || !y || !area || !Number.isFinite(px) || px < area.left || px > area.right) return;
     const labelStroke = opts.labelStroke || "rgba(148,163,184,0.34)";
+    const compactGuideLabels = isCompactLifeGuideLabel();
     ctx.save();
-    ctx.font = "12px Arial";
+    ctx.font = compactGuideLabels ? "11px Arial" : "12px Arial";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    const padX = 6;
+    const padX = compactGuideLabels ? 5 : 6;
     const labelW = ctx.measureText(label).width + padX * 2;
-    const labelH = 20;
+    const labelH = compactGuideLabels ? 18 : 20;
     const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
     const rawLabelY = yPos === "bottom"
       ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14)
       : Math.min(y.bottom - labelH / 2 - 4, y.top + 14);
     const labelY = yPos === "bottom" ? reserveSingleGuideLabelBox(labelX, rawLabelY, labelW, labelH, y) : rawLabelY;
+    const alpha = getGuideLabelFadeAlpha(px, area, 28);
+    if(alpha <= 0.05){
+      ctx.restore();
+      return;
+    }
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(255,255,255,0.90)";
     ctx.strokeStyle = labelStroke;
     ctx.lineWidth = 1;
@@ -8704,13 +8716,15 @@ function buildAssetProbabilityOverlayGuidePlugin(entries){
         .slice()
         .sort((a,b)=>Number(a.overlayIndex) - Number(b.overlayIndex));
       if(!visibleEntries.length) return;
+      const compactGuideLabels = isCompactLifeGuideLabel();
       ctx.save();
-      ctx.font = "12px Arial";
+      ctx.font = compactGuideLabels ? "11px Arial" : "12px Arial";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      const padX = 6;
-      const labelH = 20;
+      const padX = compactGuideLabels ? 5 : 6;
+      const labelH = compactGuideLabels ? 18 : 20;
       const labelGap = 4;
+      const slotStep = compactGuideLabels ? 20 : 24;
       const placedRightBySlot = [];
       const labelEntries = visibleEntries.map(entry=>{
         const px = x.getPixelForValue(entry.age);
@@ -8746,10 +8760,16 @@ function buildAssetProbabilityOverlayGuidePlugin(entries){
         ctx.stroke();
         ctx.restore();
         ctx.save();
-        ctx.font = "12px Arial";
+        ctx.font = compactGuideLabels ? "11px Arial" : "12px Arial";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        const labelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14 - item.slot * 24);
+        const labelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14 - item.slot * slotStep);
+        const alpha = getGuideLabelFadeAlpha(px, area, 28);
+        if(alpha <= 0.05){
+          ctx.restore();
+          return;
+        }
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = "rgba(255,255,255,0.90)";
         ctx.strokeStyle = hexToRgbaString(color, 0.24);
         ctx.lineWidth = 1;
@@ -17222,6 +17242,7 @@ function closeEducationCopyModal(){
   const modal = document.getElementById('educationCopyModal');
   modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden', 'true');
+  setFireDiagnosisModalScrollLock(false);
   applyTabOrder();
 }
 const EDUCATION_SIMPLE_COPY_FIELDS = [
@@ -19703,7 +19724,7 @@ function renderCrashComparisonTable(results){
 function renderCrashComparisonChart(results){
   const canvas = document.getElementById('crashCompareChart');
   if(!canvas) return;
-  const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
+  const palettes = COMPARE_CHART_TRACE_COLORS;
   const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
   const histograms = results.map(r=>buildHistogramSeries(r.finals, getAdaptiveHistogramBinCount(r.finals.length)));
   const densityAxisMeta = formatDensityAxisMeta(chooseDensityDisplayWindow(histograms));
@@ -19715,7 +19736,8 @@ function renderCrashComparisonChart(results){
     backgroundColor:palettes[idx % palettes.length],
     tension:0.25,
     pointRadius:0,
-    borderWidth:2,
+    pointStyle:'line',
+    borderWidth:COMPARE_CHART_TRACE_WIDTH,
     fill:false,
     order: results.length - idx
   }));
@@ -19740,14 +19762,14 @@ function renderCrashComparisonChart(results){
   };
   setCompareChartAutoBounds('crash', autoBounds);
   const effectiveBounds = getCompareChartEffectiveBounds('crash') || autoBounds;
-  const xTickStep = getNiceTickStepForBounds(effectiveBounds.xMin, effectiveBounds.xMax, 7);
+  const xTickStep = getNiceTickStepForBounds(effectiveBounds.xMin, effectiveBounds.xMax, 12);
   const yTickStep = getNiceTickStepForBounds(effectiveBounds.yMin, effectiveBounds.yMax, 6);
   const moneyDisplayMeta = getCompareMoneyDisplayMeta(Math.max(Math.abs(effectiveBounds.xMin), Math.abs(effectiveBounds.xMax), ...allFinals.map(v=>Math.abs(Number(v) || 0))));
   const medianGuides = results.map((r, idx)=>({
     x:Number(r.median) || 0,
     color:palettes[idx % palettes.length],
     label:`中央値：${formatCompareMoney(r.median)}`,
-    labelOffsetY: idx * 20
+    labelOffsetY: idx * 22
   }));
   if(crashCompareChart) crashCompareChart.destroy();
   crashCompareChart = new Chart(canvas.getContext('2d'), {
@@ -19756,42 +19778,7 @@ function renderCrashComparisonChart(results){
     plugins:[{
       id:'crashCompareMedianGuides',
       afterDatasetsDraw(chart){
-        const guides = chart?.options?.plugins?.crashCompareMedianGuides?.guides || [];
-        if(!guides.length) return;
-        const {ctx, chartArea, scales} = chart;
-        const xScale = scales?.x;
-        const yScale = scales?.y;
-        if(!xScale || !yScale || !chartArea) return;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
-        ctx.clip();
-        ctx.textBaseline = 'top';
-        ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
-        guides.forEach((guide, idx)=>{
-          const valueX = Number(guide?.x);
-          if(!Number.isFinite(valueX)) return;
-          const px = xScale.getPixelForValue(valueX);
-          if(!Number.isFinite(px)) return;
-          if(px < chartArea.left || px > chartArea.right) return;
-          const color = guide?.color || '#2563eb';
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4,4]);
-          ctx.beginPath();
-          ctx.moveTo(px, chartArea.top);
-          ctx.lineTo(px, chartArea.bottom);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = color;
-          const text = String(guide?.label || '中央値');
-          const textWidth = ctx.measureText(text).width;
-          let labelX = px + 6;
-          if(labelX + textWidth > chartArea.right - 4) labelX = Math.max(chartArea.left + 4, px - textWidth - 6);
-          const labelY = chartArea.top + 6 + (Number(guide?.labelOffsetY) || idx * 20);
-          ctx.fillText(text, labelX, labelY);
-        });
-        ctx.restore();
+        drawCompareMedianGuides(chart, 'crashCompareMedianGuides');
       }
     }, buildCompareChartSelectionGuidePlugin('crash')],
     options:{
@@ -19800,10 +19787,7 @@ function renderCrashComparisonChart(results){
       maintainAspectRatio:false,
       layout:{padding:{right:28}},
       plugins:{
-        legend:{
-          display:true,
-          labels:{ sort(a, b){ return (Number(a?.datasetIndex) || 0) - (Number(b?.datasetIndex) || 0); } }
-        },
+        legend:getCompareChartLegendOptions(),
         crashCompareMedianGuides:{guides:medianGuides}
       },
       scales:{
@@ -19813,15 +19797,16 @@ function renderCrashComparisonChart(results){
           min: effectiveBounds.xMin,
           max: effectiveBounds.xMax,
           afterBuildTicks(axis){
-            const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 7);
+            const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 12);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
                     ticks:{
             autoSkip:false,
             includeBounds:false,
+            padding:10,
             callback:function(v, idx, ticks){
               if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
-              const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 7);
+              const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 12);
               return formatCompareMoneyByMeta(
                 v,
                 moneyDisplayMeta,
@@ -19831,19 +19816,11 @@ function renderCrashComparisonChart(results){
             }
           },
           grid:{
-            color:(ctx)=>{
-              const scale = ctx?.scale;
-              const value = Number(ctx?.tick?.value);
-              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
-              return value === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)';
-            },
-            lineWidth:(ctx)=>{
-              const scale = ctx?.scale;
-              const value = Number(ctx?.tick?.value);
-              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
-              return value === 0 ? 2 : 1;
-            }
-          }
+            tickLength:0,
+            color:getCompareChartGridColor,
+            lineWidth:getCompareChartGridLineWidth
+          },
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
         y:{
           beginAtZero:true,
@@ -19857,8 +19834,11 @@ function renderCrashComparisonChart(results){
           ticks:{
             autoSkip:false,
             includeBounds:false,
+            padding:10,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
-          }
+          },
+          grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         }
       }
     }
@@ -20295,6 +20275,24 @@ function getFireDiagnosisSettingsFromModal(){
   const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeToInput')?.value || Math.max(ageFrom,70)) || Math.max(ageFrom,70))));
   return {diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
 }
+let fireDiagnosisModalLockedScrollY = 0;
+function setFireDiagnosisModalScrollLock(locked){
+  const body = document.body;
+  if(!body) return;
+  if(locked){
+    if(body.classList.contains('fire-diagnosis-modal-open')) return;
+    fireDiagnosisModalLockedScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
+    body.style.top = `-${fireDiagnosisModalLockedScrollY}px`;
+    body.classList.add('fire-diagnosis-modal-open');
+  }else{
+    if(!body.classList.contains('fire-diagnosis-modal-open')) return;
+    body.classList.remove('fire-diagnosis-modal-open');
+    body.style.top = '';
+    const restoreY = Math.max(0, Number(fireDiagnosisModalLockedScrollY) || 0);
+    fireDiagnosisModalLockedScrollY = 0;
+    try{ window.scrollTo(0, restoreY); }catch(_err){}
+  }
+}
 function openFireDiagnosisModal(){
   updateScenarioScopedModalTitles();
   loadFireDiagnosisDraftToModal();
@@ -20310,6 +20308,7 @@ function openFireDiagnosisModal(){
   const modal = document.getElementById('fireDiagnosisModal');
   modal?.classList.add('show');
   modal?.setAttribute('aria-hidden', 'false');
+  setFireDiagnosisModalScrollLock(true);
   resetModalScrollPosition('fireDiagnosisModal');
   resetModalInnerScrollPositions('fireDiagnosisModal');
   applyTabOrder();
@@ -20980,15 +20979,12 @@ function getMonteCarloFireProbabilityAxisRange(series, threshold){
 }
 function buildFireDiagnosisProbabilityLegendHtml(items){
   return (Array.isArray(items) ? items : []).map(item=>{
-    const isDashed = !!(item?.dashed || item?.threshold);
-    const classes = ['fire-probability-legend-line'];
-    if(isDashed) classes.push('is-threshold');
-    const styleParts = [];
-    if(item?.color && !isDashed) styleParts.push(`border-top-color:${item.color};`);
-    if(item?.color && isDashed) styleParts.push(`background:repeating-linear-gradient(to right, ${item.color} 0 10px, transparent 10px 16px);`);
-    if(item?.width) styleParts.push(`border-top-width:${Number(item.width) || 3}px;`);
-    const style = styleParts.length ? ` style="${styleParts.join(' ')}"` : '';
-    return `<div class="fire-probability-legend-item"><span class="${classes.join(' ')}"${style}></span><span>${item?.label || ''}</span></div>`;
+    const color = String(item?.color || '#4f8eff');
+    const width = Math.max(1, Number(item?.width) || 2.4);
+    const dash = String(item?.dash || ((item?.dashed || item?.threshold) ? '6 4' : '')).trim();
+    const linecap = dash ? 'butt' : 'round';
+    const svg = `<svg class="fire-probability-legend-svg" width="58" height="12" viewBox="0 0 58 12" aria-hidden="true" focusable="false"><line x1="1" y1="6" x2="57" y2="6" stroke="${color}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}"` : ''} stroke-linecap="${linecap}" fill="none"/></svg>`;
+    return `<div class="fire-probability-legend-item"><span class="fire-probability-legend-line">${svg}</span><span>${item?.label || ''}</span></div>`;
   }).join('');
 }
 function getNormalFireTerminalAxisRange(seriesList, requiredTerminalAsset){
@@ -21055,6 +21051,50 @@ function getNormalFireGraphAnchorAge(result){
   }
   return null;
 }
+function getNormalFireGraphMarkerAge(result){
+  if(!result?.found) return null;
+  const totalMonthsRaw = Number(result.fireAgeTotalMonths);
+  if(Number.isFinite(totalMonthsRaw) && totalMonthsRaw >= 0){
+    return Math.max(0, totalMonthsRaw / 12);
+  }
+  const years = Number(result.fireAgeYears ?? result.firePossibleAge);
+  const months = Number(result.fireAgeMonths);
+  if(Number.isFinite(years)){
+    return Math.max(0, years + (Number.isFinite(months) ? months / 12 : 0));
+  }
+  return null;
+}
+function buildFireDiagnosisLinePoints(series, valueKey){
+  return (Array.isArray(series) ? series : []).map(item=>({
+    x:Number(item?.age),
+    y:Number(item?.[valueKey] || 0) || 0
+  })).filter(point=>Number.isFinite(point.x) && Number.isFinite(point.y));
+}
+function getMonteCarloFireGraphMarkerAge(result){
+  if(!result?.found) return null;
+  const age = Math.round(Number(result.fireAgeYears ?? result.firePossibleAge));
+  return Number.isFinite(age) ? age : null;
+}
+function buildFireDiagnosisMarkerDataset(label, x, y, color){
+  const markerX = Number(x);
+  const markerY = Number(y);
+  if(!Number.isFinite(markerX) || !Number.isFinite(markerY)) return null;
+  return {
+    label,
+    data:[{x:markerX, y:markerY}],
+    borderColor:color,
+    backgroundColor:'#ffffff',
+    pointBackgroundColor:'#ffffff',
+    pointBorderColor:color,
+    pointBorderWidth:2,
+    pointRadius:5,
+    pointHoverRadius:6,
+    pointHitRadius:7,
+    showLine:false,
+    borderWidth:0,
+    order:-10
+  };
+}
 function getFireDiagnosisAssetYAxisUnitSpec(values){
   const nums = (values || []).filter(v=>Number.isFinite(v)).map(v=>Math.abs(Number(v) || 0));
   const absMax = nums.length ? Math.max(...nums) : 0;
@@ -21080,14 +21120,14 @@ function renderNormalFireTerminalChart(result){
     legendEl?.classList.add('withdrawal-rule-hidden');
     axisNoteEl?.classList.add('withdrawal-rule-hidden');
     if(legendEl) legendEl.innerHTML = '';
-    if(axisNoteEl) axisNoteEl.textContent = '';
+    if(axisNoteEl) axisNoteEl.innerHTML = '';
     return;
   }
   wrap.classList.remove('withdrawal-rule-hidden');
   legendEl?.classList.remove('withdrawal-rule-hidden');
   axisNoteEl?.classList.remove('withdrawal-rule-hidden');
   if(axisNoteEl){
-    axisNoteEl.textContent = '横軸の各年齢は、その年齢の誕生日時点で退職するケースを表します。グラフは寿命時残高の推移を示し、標準判定でも期間中最低残高は別途判定しています。';
+    axisNoteEl.innerHTML = '横軸の各年齢は、その年齢の誕生日時点で退職するケースを表します。グラフは各退職年齢における寿命時残高の推移を示します。<br>FIRE可能年齢は月単位で判定しています。判定では、退職後から想定寿命までの間に資産が基準を下回らないかもあわせて確認しています。小さな丸印は計算点、白抜き丸印は各条件で判定条件を初めて満たす月単位の成立点を示します。'
   }
   const axisRange = getNormalFireTerminalAxisRange(availableSeries, threshold);
   const normalFireAxisValues = availableSeries.flat().map(item=>Number(item?.terminalAsset || 0) || 0);
@@ -21100,70 +21140,81 @@ function renderNormalFireTerminalChart(result){
     normalSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     withCrashSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     const ages = Array.from(ageSet).sort((a,b)=>a-b);
-    labels = ages.map(age=>`${age}`);
-    const normalMap = new Map(normalSeries.map(item=>[Math.round(Number(item?.age) || 0), Number(item?.terminalAsset || 0) || 0]));
-    const withCrashMap = new Map(withCrashSeries.map(item=>[Math.round(Number(item?.age) || 0), Number(item?.terminalAsset || 0) || 0]));
-    const normalFireAge = getNormalFireGraphAnchorAge(result?.normal);
-    const withCrashFireAge = getNormalFireGraphAnchorAge(result?.withCrash);
+    labels = [];
+    const normalFireAge = getNormalFireGraphMarkerAge(result?.normal);
+    const withCrashFireAge = getNormalFireGraphMarkerAge(result?.withCrash);
     datasets = [
       {
         label:'暴落なし',
-        data:ages.map(age=>normalMap.has(age) ? normalMap.get(age) : null),
-        borderColor:'#2563eb',
-        backgroundColor:'rgba(37,99,235,0.10)',
-        pointRadius:ages.map(age=>normalMap.has(age) ? (age === normalFireAge ? 5 : 3) : 0),
-        pointHoverRadius:ages.map(age=>normalMap.has(age) ? (age === normalFireAge ? 6 : 4) : 0),
-        pointBackgroundColor:ages.map(age=>age === normalFireAge ? '#2563eb' : '#2563eb'),
-        pointBorderColor:ages.map(age=>age === normalFireAge ? '#2563eb' : '#2563eb'),
-        borderWidth:2,
+        data:buildFireDiagnosisLinePoints(normalSeries, 'terminalAsset'),
+        borderColor:'#4f8eff',
+        backgroundColor:'rgba(79,142,255,0.10)',
+        pointBackgroundColor:'#4f8eff',
+        pointBorderColor:'#4f8eff',
+        pointBorderWidth:1,
+        pointRadius:3,
+        pointHoverRadius:4,
+        pointHitRadius:5,
+        borderWidth:2.4,
         tension:0.2,
         fill:false,
         spanGaps:false
       },
       {
         label:'暴落あり',
-        data:ages.map(age=>withCrashMap.has(age) ? withCrashMap.get(age) : null),
-        borderColor:'#d97706',
-        backgroundColor:'rgba(217,119,6,0.10)',
-        pointRadius:ages.map(age=>withCrashMap.has(age) ? (age === withCrashFireAge ? 5 : 3) : 0),
-        pointHoverRadius:ages.map(age=>withCrashMap.has(age) ? (age === withCrashFireAge ? 6 : 4) : 0),
-        pointBackgroundColor:ages.map(age=>age === withCrashFireAge ? '#d97706' : '#d97706'),
-        pointBorderColor:ages.map(age=>age === withCrashFireAge ? '#d97706' : '#d97706'),
-        borderWidth:2,
+        data:buildFireDiagnosisLinePoints(withCrashSeries, 'terminalAsset'),
+        borderColor:'#f1a43a',
+        backgroundColor:'rgba(241,164,58,0.10)',
+        pointBackgroundColor:'#f1a43a',
+        pointBorderColor:'#f1a43a',
+        pointBorderWidth:1,
+        pointRadius:3,
+        pointHoverRadius:4,
+        pointHitRadius:5,
+        borderWidth:2.4,
         tension:0.2,
         fill:false,
         spanGaps:false
       }
     ];
+    const normalMarker = buildFireDiagnosisMarkerDataset('暴落なし 成立点', normalFireAge, Number(result?.normal?.terminalAsset), '#4f8eff');
+    const withCrashMarker = buildFireDiagnosisMarkerDataset('暴落あり 成立点', withCrashFireAge, Number(result?.withCrash?.terminalAsset), '#f1a43a');
+    if(normalMarker) datasets.push(normalMarker);
+    if(withCrashMarker) datasets.push(withCrashMarker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:'暴落なし', color:'#2563eb'},
-        {label:'暴落あり', color:'#d97706'},
-        {label:`成立しきい値 (${Math.round(threshold).toLocaleString()}万円)`, color:'#dc2626', dashed:true}
+        {label:'暴落なし', color:'#4f8eff', width:2.4},
+        {label:'暴落あり', color:'#f1a43a', width:2.4},
+        {label:`成立しきい値 (${Math.round(threshold).toLocaleString()}万円)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
   } else {
-    const fireAge = getNormalFireGraphAnchorAge(result);
-    labels = singleSeries.map(item=>`${item.age}`);
+    const lineColor = result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff';
+    const fireAge = getNormalFireGraphMarkerAge(result);
+    labels = [];
     datasets = [
       {
         label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし',
-        data:singleSeries.map(item=>Number(item?.terminalAsset || 0) || 0),
-        borderColor:result?.mode === 'with_crash' ? '#d97706' : '#2563eb',
-        backgroundColor:result?.mode === 'with_crash' ? 'rgba(217,119,6,0.10)' : 'rgba(37,99,235,0.12)',
-        pointRadius:singleSeries.map(item=>item.age === fireAge ? 5 : 3),
-        pointHoverRadius:singleSeries.map(item=>item.age === fireAge ? 6 : 4),
-        pointBackgroundColor:singleSeries.map(item=>item.age === fireAge ? '#dc2626' : (result?.mode === 'with_crash' ? '#d97706' : '#2563eb')),
-        pointBorderColor:singleSeries.map(item=>item.age === fireAge ? '#dc2626' : (result?.mode === 'with_crash' ? '#d97706' : '#2563eb')),
-        borderWidth:2,
+        data:buildFireDiagnosisLinePoints(singleSeries, 'terminalAsset'),
+        borderColor:lineColor,
+        backgroundColor:result?.mode === 'with_crash' ? 'rgba(241,164,58,0.10)' : 'rgba(79,142,255,0.12)',
+        pointBackgroundColor:lineColor,
+        pointBorderColor:lineColor,
+        pointBorderWidth:1,
+        pointRadius:3,
+        pointHoverRadius:4,
+        pointHitRadius:5,
+        borderWidth:2.4,
         tension:0.2,
         fill:false
       }
     ];
+    const marker = buildFireDiagnosisMarkerDataset(`${result?.mode === 'with_crash' ? '暴落あり' : '暴落なし'} 成立点`, fireAge, Number(result?.terminalAsset), lineColor);
+    if(marker) datasets.push(marker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#d97706' : '#2563eb'},
-        {label:`成立しきい値 (${Math.round(threshold).toLocaleString()}万円)`, color:'#dc2626', dashed:true}
+        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff', width:2.4},
+        {label:`成立しきい値 (${Math.round(threshold).toLocaleString()}万円)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
   }
@@ -21180,8 +21231,8 @@ function renderNormalFireTerminalChart(result){
       drawCommonZeroLine(ctx, xScale, yScale);
       ctx.save();
       ctx.beginPath();
-      ctx.strokeStyle = '#dc2626';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#d95b6a';
+      ctx.lineWidth = 1.8;
       ctx.setLineDash([6,4]);
       ctx.lineCap = 'butt';
       ctx.moveTo(left, thresholdY);
@@ -21211,11 +21262,12 @@ function renderNormalFireTerminalChart(result){
         y:{
           min:axisRange.min,
           max:axisRange.max,
-          grid:makeGridWithoutZeroLine({}),
+          grid:makeGridWithoutZeroLine({tickLength:0, color:COMMON_MAIN_GRID_LINE_COLOR, lineWidth:1}),
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1},
           title:{display:true,text:`寿命時残高（${normalFireYAxisUnitSpec.label}）`},
-          ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / (Number(normalFireYAxisUnitSpec?.divisor) || 1)); }}
+          ticks:{padding:10, callback(value){ return formatScaledAxisNumber((Number(value) || 0) / (Number(normalFireYAxisUnitSpec?.divisor) || 1)); }}
         },
-        x:{title:{display:true,text:'退職年齢（歳）'}}
+        x:{type:'linear', title:{display:true,text:'退職年齢（歳）'}, ticks:{padding:10, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
@@ -21246,7 +21298,7 @@ function renderMonteCarloFireProbabilityChart(result){
   legendEl?.classList.remove('withdrawal-rule-hidden');
   axisNoteEl?.classList.remove('withdrawal-rule-hidden');
   if(axisNoteEl){
-    axisNoteEl.textContent = '横軸の各年齢は、その年齢の誕生日時点で退職するケースを表します。';
+    axisNoteEl.innerHTML = '横軸の各年齢は、その年齢の誕生日時点で退職するケースを表します。グラフは各退職年齢における成功率の推移を示します。成功率は、各試行で退職後から想定寿命まで資産が基準を下回らずに成立した割合です。<br>FIRE可能年齢は年単位で判定しています。小さな丸印は計算点、白抜き丸印は各条件で必要成功率を初めて満たす年単位の成立点を示します。'
   }
   const axisRange = getMonteCarloFireProbabilityAxisRange(availableSeries.flat(), threshold);
   let labels = [];
@@ -21256,71 +21308,85 @@ function renderMonteCarloFireProbabilityChart(result){
     normalSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     withCrashSeries.forEach(item=> ageSet.add(Math.round(Number(item?.age) || 0)));
     const ages = Array.from(ageSet).sort((a,b)=>a-b);
-    labels = ages.map(age=>`${age}`);
+    labels = [];
     const normalMap = new Map(normalSeries.map(item=>[Math.round(Number(item?.age) || 0), Math.round((Number(item?.successRate || 0) || 0) * 10) / 10]));
     const withCrashMap = new Map(withCrashSeries.map(item=>[Math.round(Number(item?.age) || 0), Math.round((Number(item?.successRate || 0) || 0) * 10) / 10]));
-    const normalFireAge = Math.round(Number(result?.normal?.fireAgeYears) || 0);
-    const withCrashFireAge = Math.round(Number(result?.withCrash?.fireAgeYears) || 0);
+    const normalFireAge = getMonteCarloFireGraphMarkerAge(result?.normal);
+    const withCrashFireAge = getMonteCarloFireGraphMarkerAge(result?.withCrash);
     datasets = [
       {
         label:'暴落なし',
-        data:ages.map(age=>normalMap.has(age) ? normalMap.get(age) : null),
-        borderColor:'#2563eb',
-        backgroundColor:'rgba(37,99,235,0.10)',
-        pointRadius:ages.map(age=>normalMap.has(age) ? (age === normalFireAge ? 5 : 3) : 0),
-        pointHoverRadius:ages.map(age=>normalMap.has(age) ? (age === normalFireAge ? 6 : 4) : 0),
-        pointBackgroundColor:ages.map(age=>age === normalFireAge ? '#2563eb' : '#2563eb'),
-        pointBorderColor:ages.map(age=>age === normalFireAge ? '#2563eb' : '#2563eb'),
-        borderWidth:2,
+        data:buildFireDiagnosisLinePoints(normalSeries, 'successRate'),
+        borderColor:'#4f8eff',
+        backgroundColor:'rgba(79,142,255,0.10)',
+        pointBackgroundColor:'#4f8eff',
+        pointBorderColor:'#4f8eff',
+        pointBorderWidth:1,
+        pointRadius:3,
+        pointHoverRadius:4,
+        pointHitRadius:5,
+        borderWidth:2.4,
         tension:0.2,
         fill:false,
         spanGaps:false
       },
       {
         label:'暴落あり',
-        data:ages.map(age=>withCrashMap.has(age) ? withCrashMap.get(age) : null),
-        borderColor:'#d97706',
-        backgroundColor:'rgba(217,119,6,0.10)',
-        pointRadius:ages.map(age=>withCrashMap.has(age) ? (age === withCrashFireAge ? 5 : 3) : 0),
-        pointHoverRadius:ages.map(age=>withCrashMap.has(age) ? (age === withCrashFireAge ? 6 : 4) : 0),
-        pointBackgroundColor:ages.map(age=>age === withCrashFireAge ? '#d97706' : '#d97706'),
-        pointBorderColor:ages.map(age=>age === withCrashFireAge ? '#d97706' : '#d97706'),
-        borderWidth:2,
+        data:buildFireDiagnosisLinePoints(withCrashSeries, 'successRate'),
+        borderColor:'#f1a43a',
+        backgroundColor:'rgba(241,164,58,0.10)',
+        pointBackgroundColor:'#f1a43a',
+        pointBorderColor:'#f1a43a',
+        pointBorderWidth:1,
+        pointRadius:3,
+        pointHoverRadius:4,
+        pointHitRadius:5,
+        borderWidth:2.4,
         tension:0.2,
         fill:false,
         spanGaps:false
       }
     ];
+    const normalMarker = buildFireDiagnosisMarkerDataset('暴落なし 成立点', normalFireAge, normalMap.get(normalFireAge), '#4f8eff');
+    const withCrashMarker = buildFireDiagnosisMarkerDataset('暴落あり 成立点', withCrashFireAge, withCrashMap.get(withCrashFireAge), '#f1a43a');
+    if(normalMarker) datasets.push(normalMarker);
+    if(withCrashMarker) datasets.push(withCrashMarker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:'暴落なし', color:'#2563eb'},
-        {label:'暴落あり', color:'#d97706'},
-        {label:`成立しきい値 (${threshold}%)`, threshold:true}
+        {label:'暴落なし', color:'#4f8eff', width:2.4},
+        {label:'暴落あり', color:'#f1a43a', width:2.4},
+        {label:`成立しきい値 (${threshold}%)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
   } else {
-    const fireAge = Math.round(Number(result.fireAgeYears) || 0);
-    labels = singleSeries.map(item=>`${item.age}`);
+    const lineColor = result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff';
+    const fireAge = getMonteCarloFireGraphMarkerAge(result);
+    labels = [];
     const successRates = singleSeries.map(item=>Math.round((Number(item.successRate || 0) || 0) * 10) / 10);
+    const successRateByAge = new Map(singleSeries.map(item=>[Math.round(Number(item?.age) || 0), Math.round((Number(item?.successRate || 0) || 0) * 10) / 10]));
     datasets = [
       {
         label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし',
-        data:successRates,
-        borderColor:result?.mode === 'with_crash' ? '#d97706' : '#2563eb',
-        backgroundColor:result?.mode === 'with_crash' ? 'rgba(217,119,6,0.12)' : 'rgba(37,99,235,0.12)',
-        pointRadius:singleSeries.map(item=>item.age === fireAge ? 5 : 3),
-        pointHoverRadius:singleSeries.map(item=>item.age === fireAge ? 6 : 4),
-        pointBackgroundColor:singleSeries.map(item=>item.age === fireAge ? '#dc2626' : (result?.mode === 'with_crash' ? '#d97706' : '#2563eb')),
-        pointBorderColor:singleSeries.map(item=>item.age === fireAge ? '#dc2626' : (result?.mode === 'with_crash' ? '#d97706' : '#2563eb')),
-        borderWidth:2,
+        data:buildFireDiagnosisLinePoints(singleSeries, 'successRate'),
+        borderColor:lineColor,
+        backgroundColor:result?.mode === 'with_crash' ? 'rgba(241,164,58,0.12)' : 'rgba(79,142,255,0.12)',
+        pointBackgroundColor:lineColor,
+        pointBorderColor:lineColor,
+        pointBorderWidth:1,
+        pointRadius:3,
+        pointHoverRadius:4,
+        pointHitRadius:5,
+        borderWidth:2.4,
         tension:0.2,
         fill:false
       }
     ];
+    const marker = buildFireDiagnosisMarkerDataset(`${result?.mode === 'with_crash' ? '暴落あり' : '暴落なし'} 成立点`, fireAge, successRateByAge.get(fireAge), lineColor);
+    if(marker) datasets.push(marker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#d97706' : '#2563eb'},
-        {label:`成立しきい値 (${threshold}%)`, threshold:true}
+        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff', width:2.4},
+        {label:`成立しきい値 (${threshold}%)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
   }
@@ -21336,8 +21402,8 @@ function renderMonteCarloFireProbabilityChart(result){
       const ctx = chart.ctx;
       ctx.save();
       ctx.beginPath();
-      ctx.strokeStyle = '#dc2626';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#d95b6a';
+      ctx.lineWidth = 1.8;
       ctx.setLineDash([6,4]);
       ctx.lineCap = 'butt';
       ctx.moveTo(left, thresholdY);
@@ -21368,13 +21434,15 @@ function renderMonteCarloFireProbabilityChart(result){
           min:axisRange.min,
           max:axisRange.max,
           title:{display:true,text:'成功率（%）'},
-          ticks:{callback(value){
+          grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1},
+          ticks:{padding:10, callback(value){
             const num = Number(value);
             if(!Number.isFinite(num)) return '';
             return formatScaledAxisNumber(num);
           }}
         },
-        x:{title:{display:true,text:'退職年齢（歳）'}}
+        x:{type:'linear', title:{display:true,text:'退職年齢（歳）'}, ticks:{padding:10, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
@@ -24501,7 +24569,17 @@ function isCompactLifeGuideLabel(){
   }
 }
 function formatLifeGuideLabelForChart(type, age, overlay=false){
+  const graphType = document.getElementById("graphType")?.value || "";
+  if(String(type || "") === "asset"){
+    if(graphType === "assetProbability") return `資産寿命中央値 ${age}歳`;
+    return `資産寿命 ${age}歳`;
+  }
   return `${age}歳`;
+}
+function getGuideLabelFadeAlpha(rawX, chartArea, fadeEdge=28){
+  if(!chartArea || !Number.isFinite(rawX)) return 1;
+  const distanceToEdge = Math.min(rawX - chartArea.left, chartArea.right - rawX);
+  return Math.max(0, Math.min(1, distanceToEdge / Math.max(1, fadeEdge)));
 }
 function buildLifeGuideLegendSample(key, overlay=false){
   const color = key === "expected" ? "#5b7c99" : (overlay ? colorToRgba("#1f2937", 0.55) : "#1f2937");
@@ -24635,18 +24713,25 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
         if(!Number.isFinite(px) || px < area.left || px > area.right) return;
         const labelStroke = opts.labelStroke || "rgba(148,163,184,0.34)";
         const stackIndex = Math.max(0, Number(opts.stackIndex) || 0);
+        const compactGuideLabels = isCompactLifeGuideLabel();
         ctx.save();
-        ctx.font = "12px Arial";
+        ctx.font = compactGuideLabels ? "11px Arial" : "12px Arial";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        const padX = 6;
+        const padX = compactGuideLabels ? 5 : 6;
         const labelW = ctx.measureText(label).width + padX * 2;
-        const labelH = 20;
+        const labelH = compactGuideLabels ? 18 : 20;
         const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
-        const offsetStep = 24;
+        const offsetStep = compactGuideLabels ? 20 : 24;
         const labelY = yPos === "bottom"
           ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14 - stackIndex * offsetStep)
           : Math.min(y.bottom - labelH / 2 - 4, y.top + 14 + stackIndex * offsetStep);
+        const alpha = getGuideLabelFadeAlpha(px, area, 28);
+        if(alpha <= 0.05){
+          ctx.restore();
+          return;
+        }
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = "rgba(255,255,255,0.90)";
         ctx.strokeStyle = labelStroke;
         ctx.lineWidth = 1;
@@ -29963,10 +30048,121 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   return false;
 }
 
+const COMPARE_CHART_TRACE_COLORS = ['#d95b6a','#4f8eff','#22a16f','#f1a43a','#7a63f6'];
+const COMPARE_CHART_TRACE_WIDTH = 2.4;
+const COMPARE_CHART_MEDIAN_LINE_WIDTH = 1.8;
+const COMPARE_CHART_GRID_COLOR = 'rgba(15,23,42,0.08)';
+const COMPARE_CHART_ZERO_LINE_COLOR = 'rgba(15,23,42,0.38)';
+const COMPARE_CHART_AXIS_BORDER_COLOR = 'rgba(15,23,42,0.30)';
+
+function getCompareChartSeriesColor(index){
+  return COMPARE_CHART_TRACE_COLORS[(Number(index) || 0) % COMPARE_CHART_TRACE_COLORS.length];
+}
+function getCompareChartLegendOptions(){
+  return {
+    display:true,
+    labels:{
+      usePointStyle:true,
+      pointStyle:'line',
+      boxWidth:50,
+      pointStyleWidth:50,
+      boxHeight:10,
+      padding:14,
+      sort(a, b){
+        return (Number(a?.datasetIndex) || 0) - (Number(b?.datasetIndex) || 0);
+      }
+    }
+  };
+}
+function drawRoundedCompareMedianLabel(ctx, text, rawX, rawY, chartArea, color){
+  const paddingX = 7;
+  const paddingY = 4;
+  const radius = 7;
+  const textWidth = ctx.measureText(text).width;
+  const boxWidth = textWidth + paddingX * 2;
+  const boxHeight = 20;
+  const fadeEdge = 28;
+  const x = Math.max(chartArea.left + 6, Math.min(rawX + 8, chartArea.right - boxWidth - 6));
+  const distanceToEdge = Math.min(rawX - chartArea.left, chartArea.right - rawX);
+  const alpha = Math.max(0, Math.min(1, distanceToEdge / fadeEdge));
+  if(alpha <= 0.05) return;
+  const y = Math.max(chartArea.top + 4, Math.min(rawY, chartArea.bottom - boxHeight - 4));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + boxWidth - radius, y);
+  ctx.quadraticCurveTo(x + boxWidth, y, x + boxWidth, y + radius);
+  ctx.lineTo(x + boxWidth, y + boxHeight - radius);
+  ctx.quadraticCurveTo(x + boxWidth, y + boxHeight, x + boxWidth - radius, y + boxHeight);
+  ctx.lineTo(x + radius, y + boxHeight);
+  ctx.quadraticCurveTo(x, y + boxHeight, x, y + boxHeight - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,0.86)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.fillText(text, x + paddingX, y + paddingY);
+  ctx.restore();
+}
+function drawCompareMedianGuides(chart, pluginKey){
+  const guides = chart?.options?.plugins?.[pluginKey]?.guides || [];
+  if(!guides.length) return;
+  const {ctx, chartArea, scales} = chart;
+  const xScale = scales?.x;
+  const yScale = scales?.y;
+  if(!xScale || !yScale || !chartArea) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+  ctx.clip();
+  ctx.textBaseline = 'top';
+  ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
+  guides.forEach((guide, idx)=>{
+    if(typeof chart.isDatasetVisible === 'function' && !chart.isDatasetVisible(idx)) return;
+    const valueX = Number(guide?.x);
+    if(!Number.isFinite(valueX)) return;
+    const px = xScale.getPixelForValue(valueX);
+    if(!Number.isFinite(px)) return;
+    if(px < chartArea.left || px > chartArea.right) return;
+    const color = guide?.color || getCompareChartSeriesColor(idx);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = COMPARE_CHART_MEDIAN_LINE_WIDTH;
+    ctx.setLineDash([5,4]);
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(px, chartArea.top);
+    ctx.lineTo(px, chartArea.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const text = String(guide?.label || '中央値');
+    const labelY = chartArea.top + 6 + (Number(guide?.labelOffsetY) || idx * 24);
+    drawRoundedCompareMedianLabel(ctx, text, px, labelY, chartArea, color);
+  });
+  ctx.restore();
+}
+function getCompareChartGridColor(ctx){
+  const scale = ctx?.scale;
+  const value = Number(ctx?.tick?.value);
+  if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
+  return Math.abs(value) < 1e-9 ? COMPARE_CHART_ZERO_LINE_COLOR : COMPARE_CHART_GRID_COLOR;
+}
+function getCompareChartGridLineWidth(ctx){
+  const scale = ctx?.scale;
+  const value = Number(ctx?.tick?.value);
+  if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
+  return Math.abs(value) < 1e-9 ? 1.4 : 1;
+}
+
 function isCompareXAxisTickPastLeftEdge(scale, value){
   if(!scale) return false;
   const n = Number(value);
   if(!Number.isFinite(n)) return false;
+  if(n <= 0) return false;
   const px = Number(scale.getPixelForValue?.(n));
   const left = Number(scale.left);
   if(!Number.isFinite(px) || !Number.isFinite(left)) return false;
@@ -30449,7 +30645,7 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
 function renderWithdrawalComparisonChart(results){
   const canvas = document.getElementById('withdrawalCompareChart');
   if(!canvas) return;
-  const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
+  const palettes = COMPARE_CHART_TRACE_COLORS;
   const allFinals = results.flatMap(r => (r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
   const sharedHistogramMin = allFinals.length ? Math.min(...allFinals) : 0;
   const sharedHistogramMax = allFinals.length ? Math.max(...allFinals) : 0;
@@ -30463,7 +30659,8 @@ function renderWithdrawalComparisonChart(results){
     backgroundColor:palettes[idx % palettes.length],
     tension:0.25,
     pointRadius:0,
-    borderWidth:2,
+    pointStyle:'line',
+    borderWidth:COMPARE_CHART_TRACE_WIDTH,
     fill:false,
     order: results.length - idx
   }));
@@ -30489,14 +30686,14 @@ function renderWithdrawalComparisonChart(results){
   };
   setCompareChartAutoBounds('withdrawal', autoBounds);
   const effectiveBounds = getCompareChartEffectiveBounds('withdrawal') || autoBounds;
-  const xTickStep = getNiceTickStepForBounds(effectiveBounds.xMin, effectiveBounds.xMax, 7);
+  const xTickStep = getNiceTickStepForBounds(effectiveBounds.xMin, effectiveBounds.xMax, 12);
   const yTickStep = getNiceTickStepForBounds(effectiveBounds.yMin, effectiveBounds.yMax, 6);
   const moneyDisplayMeta = getCompareMoneyDisplayMeta(Math.max(Math.abs(effectiveBounds.xMin), Math.abs(effectiveBounds.xMax), ...allFinals.map(v=>Math.abs(Number(v) || 0))));
   const medianGuides = results.map((r, idx)=>({
     x:Number(r.median) || 0,
     color:palettes[idx % palettes.length],
     label:`中央値：${formatCompareMoney(r.median)}`,
-    labelOffsetY: idx * 20
+    labelOffsetY: idx * 22
   }));
   if(withdrawalCompareChart) withdrawalCompareChart.destroy();
   withdrawalCompareChart = new Chart(canvas.getContext('2d'), {
@@ -30505,42 +30702,7 @@ function renderWithdrawalComparisonChart(results){
     plugins:[{
       id:'withdrawalCompareMedianGuides',
       afterDatasetsDraw(chart){
-        const guides = chart?.options?.plugins?.withdrawalCompareMedianGuides?.guides || [];
-        if(!guides.length) return;
-        const {ctx, chartArea, scales} = chart;
-        const xScale = scales?.x;
-        const yScale = scales?.y;
-        if(!xScale || !yScale || !chartArea) return;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
-        ctx.clip();
-        ctx.textBaseline = 'top';
-        ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
-        guides.forEach((guide, idx)=>{
-          const valueX = Number(guide?.x);
-          if(!Number.isFinite(valueX)) return;
-          const px = xScale.getPixelForValue(valueX);
-          if(!Number.isFinite(px)) return;
-          if(px < chartArea.left || px > chartArea.right) return;
-          const color = guide?.color || '#2563eb';
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4,4]);
-          ctx.beginPath();
-          ctx.moveTo(px, chartArea.top);
-          ctx.lineTo(px, chartArea.bottom);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = color;
-          const text = String(guide?.label || '中央値');
-          const textWidth = ctx.measureText(text).width;
-          let labelX = px + 6;
-          if(labelX + textWidth > chartArea.right - 4) labelX = Math.max(chartArea.left + 4, px - textWidth - 6);
-          const labelY = chartArea.top + 6 + (Number(guide?.labelOffsetY) || idx * 20);
-          ctx.fillText(text, labelX, labelY);
-        });
-        ctx.restore();
+        drawCompareMedianGuides(chart, 'withdrawalCompareMedianGuides');
       }
     }, buildCompareChartSelectionGuidePlugin('withdrawal')],
     options:{
@@ -30549,14 +30711,7 @@ function renderWithdrawalComparisonChart(results){
       maintainAspectRatio:false,
       layout:{padding:{right:28}},
       plugins:{
-        legend:{
-          display:true,
-          labels:{
-            sort(a, b){
-              return (Number(a?.datasetIndex) || 0) - (Number(b?.datasetIndex) || 0);
-            }
-          }
-        },
+        legend:getCompareChartLegendOptions(),
         withdrawalCompareMedianGuides:{guides:medianGuides}
       },
       scales:{
@@ -30566,15 +30721,16 @@ function renderWithdrawalComparisonChart(results){
           min: effectiveBounds.xMin,
           max: effectiveBounds.xMax,
           afterBuildTicks(axis){
-            const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 7);
+            const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 12);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
                     ticks:{
             autoSkip:false,
             includeBounds:false,
+            padding:10,
             callback:function(v, idx, ticks){
               if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
-              const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 7);
+              const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 12);
               return formatCompareMoneyByMeta(
                 v,
                 moneyDisplayMeta,
@@ -30584,19 +30740,11 @@ function renderWithdrawalComparisonChart(results){
             }
           },
           grid:{
-            color:(ctx)=>{
-              const scale = ctx?.scale;
-              const value = Number(ctx?.tick?.value);
-              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
-              return value === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)';
-            },
-            lineWidth:(ctx)=>{
-              const scale = ctx?.scale;
-              const value = Number(ctx?.tick?.value);
-              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
-              return value === 0 ? 2 : 1;
-            }
-          }
+            tickLength:0,
+            color:getCompareChartGridColor,
+            lineWidth:getCompareChartGridLineWidth
+          },
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
         y:{
           beginAtZero:true,
@@ -30610,8 +30758,11 @@ function renderWithdrawalComparisonChart(results){
           ticks:{
             autoSkip:false,
             includeBounds:false,
+            padding:10,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
-          }
+          },
+          grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         }
       }
     }
@@ -31923,7 +32074,7 @@ async function runMonteComparisonCalculationAsync(progressReporter=null){
 function renderMonteCompareChart(results){
   const canvas = document.getElementById('monteCompareChart');
   if(!canvas) return;
-  const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
+  const palettes = COMPARE_CHART_TRACE_COLORS;
   const allFinals = results.flatMap(r=>(r.finals || []).map(v=>Number(v)).filter(v=>Number.isFinite(v)));
   const histograms = results.map(r=>buildHistogramSeries(r.finals, getAdaptiveHistogramBinCount(r.finals.length)));
   const densityAxisMeta = formatDensityAxisMeta(chooseDensityDisplayWindow(histograms));
@@ -31954,7 +32105,7 @@ function renderMonteCompareChart(results){
     x:Number(r.median) || 0,
     color:palettes[idx % palettes.length],
     label:`中央値：${formatCompareMoney(r.median)}`,
-    labelOffsetY: idx * 20
+    labelOffsetY: idx * 22
   }));
   const datasets = displayHistograms.map((hist, idx)=>({
     label:results[idx].label,
@@ -31963,7 +32114,8 @@ function renderMonteCompareChart(results){
     backgroundColor:palettes[idx % palettes.length],
     tension:0.25,
     pointRadius:0,
-    borderWidth:2,
+    pointStyle:'line',
+    borderWidth:COMPARE_CHART_TRACE_WIDTH,
     fill:false,
     order: results.length - idx
   }));
@@ -31974,39 +32126,7 @@ function renderMonteCompareChart(results){
     plugins:[{
       id:'monteCompareMedianGuides',
       afterDatasetsDraw(chart){
-        const guides = chart?.options?.plugins?.monteCompareMedianGuides?.guides || [];
-        if(!guides.length) return;
-        const {ctx, chartArea, scales} = chart;
-        const xScale = scales?.x;
-        if(!xScale || !chartArea) return;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
-        ctx.clip();
-        ctx.textBaseline = 'top';
-        ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
-        guides.forEach((guide, idx)=>{
-          const px = xScale.getPixelForValue(Number(guide?.x));
-          if(!Number.isFinite(px)) return;
-          if(px < chartArea.left || px > chartArea.right) return;
-          const color = guide?.color || '#2563eb';
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4,4]);
-          ctx.beginPath();
-          ctx.moveTo(px, chartArea.top);
-          ctx.lineTo(px, chartArea.bottom);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = color;
-          const text = String(guide?.label || '中央値');
-          const textWidth = ctx.measureText(text).width;
-          let labelX = px + 6;
-          if(labelX + textWidth > chartArea.right - 4) labelX = Math.max(chartArea.left + 4, px - textWidth - 6);
-          const labelY = chartArea.top + 6 + (Number(guide?.labelOffsetY) || idx * 20);
-          ctx.fillText(text, labelX, labelY);
-        });
-        ctx.restore();
+        drawCompareMedianGuides(chart, 'monteCompareMedianGuides');
       }
     }, buildCompareChartSelectionGuidePlugin('monte')],
     options:{
@@ -32015,7 +32135,7 @@ function renderMonteCompareChart(results){
       maintainAspectRatio:false,
       layout:{padding:{right:28}},
       plugins:{
-        legend:{display:true, labels:{sort(a,b){ return (Number(a?.datasetIndex) || 0) - (Number(b?.datasetIndex) || 0); }}},
+        legend:getCompareChartLegendOptions(),
         monteCompareMedianGuides:{guides:medianGuides}
       },
       scales:{
@@ -32025,32 +32145,25 @@ function renderMonteCompareChart(results){
           min: effectiveBounds.xMin,
           max: effectiveBounds.xMax,
           afterBuildTicks(axis){
-            const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 7);
+            const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 12);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
                     ticks:{
             autoSkip:false,
             includeBounds:false,
+            padding:10,
             callback:function(v, idx, ticks){
               if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
-              const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 7);
+              const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 12);
               return formatCompareMoneyByMeta(v, moneyDisplayMeta, false, getCompareMoneyTickDecimals(moneyDisplayMeta, dynamicStep, ticks));
             }
           },
           grid:{
-            color:(ctx)=>{
-              const scale = ctx?.scale;
-              const value = Number(ctx?.tick?.value);
-              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 'rgba(0,0,0,0)';
-              return value === 0 ? '#6b7280' : 'rgba(0,0,0,0.12)';
-            },
-            lineWidth:(ctx)=>{
-              const scale = ctx?.scale;
-              const value = Number(ctx?.tick?.value);
-              if(isCompareXAxisTickPastLeftEdge(scale, value)) return 0;
-              return value === 0 ? 2 : 1;
-            }
-          }
+            tickLength:0,
+            color:getCompareChartGridColor,
+            lineWidth:getCompareChartGridLineWidth
+          },
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
         y:{
           beginAtZero:true,
@@ -32064,8 +32177,11 @@ function renderMonteCompareChart(results){
           ticks:{
             autoSkip:false,
             includeBounds:false,
+            padding:10,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
-          }
+          },
+          grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
+          border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         }
       }
     }
@@ -42957,5 +43073,60 @@ body.withdrawal-preview-open #detailStickyNav *{
 }
 </style>
 
+
+<!-- ===== v1294: FIRE diagnosis modal title spacing and mobile scroll lock ===== -->
+<style id="v1294-fire-diagnosis-modal-title-scroll-fix">
+/* Scope: FIRE診断モーダルのみ。 */
+body.fire-diagnosis-modal-open{
+  overflow:hidden !important;
+  position:fixed !important;
+  width:100% !important;
+  left:0 !important;
+  right:0 !important;
+}
+#fireDiagnosisModal.show{
+  overscroll-behavior:contain;
+}
+#fireDiagnosisModal .withdrawal-rule-modal{
+  padding-top:0 !important;
+  overflow-x:hidden !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  max-width:calc(100vw - 20px) !important;
+}
+#fireDiagnosisModal #fireDiagnosisTitle{
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  height:52px !important;
+  min-height:52px !important;
+  max-height:52px !important;
+  margin:0 -16px 14px !important;
+  padding:3px 22px 0 !important;
+  line-height:1.25 !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #fireDiagnosisModal{
+    padding-left:10px !important;
+    padding-right:10px !important;
+    overscroll-behavior:contain;
+  }
+  #fireDiagnosisModal .withdrawal-rule-modal{
+    max-width:calc(100vw - 20px) !important;
+    overflow-x:hidden !important;
+    touch-action:pan-y;
+  }
+  #fireDiagnosisModal #fireDiagnosisTitle{
+    height:52px !important;
+    min-height:52px !important;
+    max-height:52px !important;
+    margin:0 -10px 14px !important;
+    padding:4px 22px 0 !important;
+    line-height:1.25 !important;
+  }
+}
+</style>
 </body>
 </html>
