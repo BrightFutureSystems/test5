@@ -5528,6 +5528,13 @@ document.addEventListener("scroll", (ev)=>{
   }
 </style>
 
+<style>
+/* v1301: preview sheet title swipe-dismiss hit area */
+#withdrawalRuleTitle,#crashTestTitle,#monteCarloSettingsTitle,#chartAxisTitle{
+  touch-action:none;
+  cursor:ns-resize;
+}
+</style>
 </head>
 <body>
 <div class="page">
@@ -34274,9 +34281,13 @@ document.getElementById("savePensionHelperBtn")?.addEventListener("click", saveP
 document.querySelector("#pensionHelperModal .pension-helper-modal")?.addEventListener("click", (e)=>e.stopPropagation());
 
 document.querySelector('#withdrawalRuleModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
+document.querySelector('#withdrawalRuleTitle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 document.querySelector('#crashTestModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
+document.querySelector('#crashTestTitle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 document.querySelector('#monteCarloSettingsModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
+document.querySelector('#monteCarloSettingsTitle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 document.querySelector('#chartAxisModal .withdrawal-preview-handle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
+document.querySelector('#chartAxisTitle')?.addEventListener('pointerdown', startWithdrawalPreviewHandleDrag);
 window.addEventListener('resize', ()=>{ if(isAnyPreviewSheetOpen()) ensureWithdrawalPreviewHeight(); updateWithdrawalPreviewTopVar(); });
 window.addEventListener('scroll', ()=>{ if(isAnyPreviewSheetOpen()) updateWithdrawalPreviewTopVar(); }, {passive:true});
 const withdrawalRuleModalCard = document.querySelector("#withdrawalRuleModal .withdrawal-rule-modal");
@@ -43286,7 +43297,7 @@ body.fire-diagnosis-modal-open{
   min-height:52px !important;
   max-height:52px !important;
   margin:0 -16px 14px !important;
-  padding:3px 22px 0 !important;
+  padding:3px 16px 0 !important;
   line-height:1.25 !important;
 }
 @media (max-width:900px), (pointer:coarse){
@@ -43305,7 +43316,7 @@ body.fire-diagnosis-modal-open{
     min-height:52px !important;
     max-height:52px !important;
     margin:0 -10px 14px !important;
-    padding:4px 22px 0 !important;
+    padding:4px 16px 0 !important;
     line-height:1.25 !important;
     touch-action:none !important;
     -webkit-user-select:none !important;
@@ -43339,7 +43350,7 @@ body.cashflow-modal-open{
   min-height:52px !important;
   max-height:52px !important;
   margin:0 -14px 14px !important;
-  padding:3px 22px 0 !important;
+  padding:3px 16px 0 !important;
   line-height:1.25 !important;
 }
 @media (max-width:900px), (pointer:coarse){
@@ -43361,7 +43372,7 @@ body.cashflow-modal-open{
     min-height:52px !important;
     max-height:52px !important;
     margin:0 -10px 14px !important;
-    padding:4px 22px 0 !important;
+    padding:4px 16px 0 !important;
     line-height:1.25 !important;
     touch-action:none !important;
     -webkit-user-select:none !important;
