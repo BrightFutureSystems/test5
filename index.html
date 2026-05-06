@@ -43780,101 +43780,9 @@ body.standard-modal-scroll-locked .page{
 
 
 
-<!-- ===== v1310: keep window scroll position while standard modal is open ===== -->
-<script id="v1310-standard-modal-window-scroll-position-guard">
-(function(){
-  const modalIds = [
-    'fireDiagnosisModal',
-    'cashflowModal',
-    'incomeCurveModal',
-    'loanDetailModal',
-    'educationDetailModal',
-    'educationCopyModal',
-    'overlaySettingsModal',
-    'pensionHelperModal',
-    'insuranceAssistModal'
-  ];
-  let locked = false;
-  let lockedX = 0;
-  let lockedY = 0;
-  let restoring = false;
-  let restoreRaf = 0;
-
-  function getOpenStandardModal(){
-    for(const id of modalIds){
-      const modal = document.getElementById(id);
-      if(modal?.classList?.contains('show')) return modal;
-    }
-    return null;
-  }
-  function currentX(){
-    return window.pageXOffset || document.documentElement.scrollLeft || document.body?.scrollLeft || 0;
-  }
-  function currentY(){
-    return window.pageYOffset || document.documentElement.scrollTop || document.body?.scrollTop || 0;
-  }
-  function capturePosition(){
-    lockedX = currentX();
-    lockedY = currentY();
-  }
-  function restorePosition(){
-    if(!locked || !getOpenStandardModal()) return;
-    const x = currentX();
-    const y = currentY();
-    if(Math.abs(x - lockedX) < 1 && Math.abs(y - lockedY) < 1) return;
-    restoring = true;
-    try{ window.scrollTo(lockedX, lockedY); }catch(_err){}
-    restoring = false;
-  }
-  function scheduleRestore(){
-    if(restoreRaf) cancelAnimationFrame(restoreRaf);
-    restoreRaf = requestAnimationFrame(()=>{
-      restoreRaf = 0;
-      restorePosition();
-    });
-  }
-  function syncLockState(){
-    const modal = getOpenStandardModal();
-    if(modal && !locked){
-      capturePosition();
-      locked = true;
-      scheduleRestore();
-      return;
-    }
-    if(!modal && locked){
-      locked = false;
-      if(restoreRaf){
-        cancelAnimationFrame(restoreRaf);
-        restoreRaf = 0;
-      }
-    }
-  }
-  function onWindowScroll(){
-    if(restoring) return;
-    if(!locked){
-      syncLockState();
-      return;
-    }
-    if(!getOpenStandardModal()){
-      syncLockState();
-      return;
-    }
-    restorePosition();
-    scheduleRestore();
-  }
-  function init(){
-    const observer = new MutationObserver(syncLockState);
-    modalIds.forEach(id=>{
-      const modal = document.getElementById(id);
-      if(modal) observer.observe(modal, {attributes:true, attributeFilter:['class']});
-    });
-    window.addEventListener('scroll', onWindowScroll, {capture:true, passive:true});
-    window.addEventListener('pagehide', ()=>{ locked = false; }, {passive:true});
-    syncLockState();
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
-  else init();
-})();
+<!-- ===== v1310: disabled restore-after-scroll guard ===== -->
+<script id="v1310-standard-modal-window-scroll-position-guard" type="application/json">
+{"disabled":true,"reason":"Replaced by v1311 fixed-position scroll lock to avoid visible scroll-to-top restoration on mobile."}
 </script>
 
 
@@ -43903,5 +43811,105 @@ body.standard-modal-scroll-locked .page{
 }
 </style>
 
+
+
+<!-- ===== v1311: prevent mobile scroll-to-top while standard modal is open ===== -->
+<style id="v1311-standard-modal-mobile-fixed-scroll-lock">
+/* Scope: smartphone / touch standard modals only. Prevent iOS top-tap scroll-to-top by making the page itself non-scrollable while the modal is open. */
+@media (max-width:900px), (pointer:coarse){
+  body.standard-modal-fixed-scroll-lock{
+    position:fixed !important;
+    top:calc(-1 * var(--standard-modal-lock-y, 0px)) !important;
+    left:calc(-1 * var(--standard-modal-lock-x, 0px)) !important;
+    right:auto !important;
+    width:100% !important;
+    max-width:none !important;
+    overflow:hidden !important;
+    touch-action:none !important;
+  }
+  body.standard-modal-fixed-scroll-lock .modal-backdrop.show{
+    touch-action:auto !important;
+  }
+}
+</style>
+<script id="v1311-standard-modal-mobile-fixed-scroll-lock">
+(function(){
+  const modalIds = [
+    'fireDiagnosisModal',
+    'cashflowModal',
+    'incomeCurveModal',
+    'loanDetailModal',
+    'educationDetailModal',
+    'educationCopyModal',
+    'overlaySettingsModal',
+    'pensionHelperModal',
+    'insuranceAssistModal'
+  ];
+  let locked = false;
+  let lockedX = 0;
+  let lockedY = 0;
+
+  function getOpenStandardModal(){
+    for(const id of modalIds){
+      const modal = document.getElementById(id);
+      if(modal?.classList?.contains('show')) return modal;
+    }
+    return null;
+  }
+  function currentX(){
+    return window.pageXOffset || document.documentElement.scrollLeft || document.body?.scrollLeft || 0;
+  }
+  function currentY(){
+    return window.pageYOffset || document.documentElement.scrollTop || document.body?.scrollTop || 0;
+  }
+  function isMobileLockTarget(){
+    try{
+      return window.matchMedia('(max-width:900px), (pointer:coarse)').matches;
+    }catch(_err){
+      return false;
+    }
+  }
+  function lockPage(){
+    if(locked || !isMobileLockTarget()) return;
+    lockedX = currentX();
+    lockedY = currentY();
+    document.body.style.setProperty('--standard-modal-lock-x', lockedX + 'px');
+    document.body.style.setProperty('--standard-modal-lock-y', lockedY + 'px');
+    document.body.classList.add('standard-modal-fixed-scroll-lock');
+    locked = true;
+  }
+  function unlockPage(){
+    if(!locked) return;
+    document.body.classList.remove('standard-modal-fixed-scroll-lock');
+    document.body.style.removeProperty('--standard-modal-lock-x');
+    document.body.style.removeProperty('--standard-modal-lock-y');
+    try{ window.scrollTo(lockedX, lockedY); }catch(_err){}
+    locked = false;
+    lockedX = 0;
+    lockedY = 0;
+  }
+  function syncLockState(){
+    const modal = getOpenStandardModal();
+    if(modal){
+      lockPage();
+      return;
+    }
+    unlockPage();
+  }
+  function init(){
+    const observer = new MutationObserver(syncLockState);
+    modalIds.forEach(id=>{
+      const modal = document.getElementById(id);
+      if(modal) observer.observe(modal, {attributes:true, attributeFilter:['class']});
+    });
+    window.addEventListener('resize', syncLockState, {passive:true});
+    window.addEventListener('orientationchange', syncLockState, {passive:true});
+    window.addEventListener('pagehide', unlockPage, {passive:true});
+    syncLockState();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
+</script>
 </body>
 </html>
