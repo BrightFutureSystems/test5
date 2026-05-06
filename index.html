@@ -43642,5 +43642,24 @@ body.standard-modal-scroll-locked{
 }
 </style>
 
+
+
+<!-- ===== v1304: standard modal swipe backdrop fade-out ===== -->
+<style id="v1304-standard-modal-swipe-backdrop-fade">
+/* Scope: non-preview modal swipe-dismiss only. Preview sheets are intentionally untouched. */
+#fireDiagnosisModal.is-swipe-dismissing,
+#cashflowModal.is-swipe-dismissing,
+#incomeCurveModal.standard-modal-swipe-dismissing,
+#loanDetailModal.standard-modal-swipe-dismissing,
+#educationDetailModal.standard-modal-swipe-dismissing,
+#educationCopyModal.standard-modal-swipe-dismissing,
+#overlaySettingsModal.standard-modal-swipe-dismissing,
+#pensionHelperModal.standard-modal-swipe-dismissing,
+#insuranceAssistModal.standard-modal-swipe-dismissing{
+  transition:background-color .24s ease-out !important;
+  background:rgba(18,35,52,0) !important;
+}
+</style>
+
 </body>
 </html>
