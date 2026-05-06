@@ -32652,6 +32652,89 @@ document.querySelectorAll("#overflowMenuBtn, #graphMenuBtn").forEach((btn)=>{
     }
   });
 });
+let cashflowModalLockedScrollY = 0;
+function setCashflowModalScrollLock(locked){
+  const body = document.body;
+  if(!body) return;
+  if(locked){
+    if(body.classList.contains('cashflow-modal-open')) return;
+    cashflowModalLockedScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
+    body.style.top = `-${cashflowModalLockedScrollY}px`;
+    body.classList.add('cashflow-modal-open');
+  }else{
+    const restoreY = Math.max(0, Number(cashflowModalLockedScrollY) || 0);
+    body.classList.remove('cashflow-modal-open');
+    body.style.top = '';
+    body.style.overflow = '';
+    body.style.position = '';
+    body.style.width = '';
+    body.style.left = '';
+    body.style.right = '';
+    cashflowModalLockedScrollY = 0;
+    try{
+      window.scrollTo(0, restoreY);
+      requestAnimationFrame(()=>{
+        try{ window.scrollTo(0, restoreY); }catch(_err){}
+      });
+    }catch(_err){}
+  }
+}
+function isCashflowTitleSwipeCloseEnabled(){
+  try{
+    return !!(window.matchMedia && window.matchMedia('(max-width:900px), (pointer:coarse)').matches);
+  }catch(_err){
+    return false;
+  }
+}
+function setupCashflowTitleSwipeClose(){
+  const title = document.getElementById('cashflowModalTitle');
+  const modal = document.getElementById('cashflowModal');
+  if(!title || !modal || title.dataset.swipeCloseInit === '1') return;
+  title.dataset.swipeCloseInit = '1';
+  let state = null;
+  const reset = ()=>{ state = null; };
+  title.addEventListener('pointerdown', (e)=>{
+    if(!isCashflowTitleSwipeCloseEnabled()) return;
+    if(!modal.classList.contains('show')) return;
+    if(e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    state = {
+      pointerId:e.pointerId,
+      startX:e.clientX,
+      startY:e.clientY,
+      lastX:e.clientX,
+      lastY:e.clientY,
+      startAt:performance.now(),
+      dragging:false
+    };
+    try{ title.setPointerCapture?.(e.pointerId); }catch(_err){}
+  }, {passive:true});
+  title.addEventListener('pointermove', (e)=>{
+    if(!state || e.pointerId !== state.pointerId) return;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if(dy > 10 && Math.abs(dy) > Math.abs(dx) * 1.25){
+      state.dragging = true;
+      if(e.cancelable) e.preventDefault();
+    }
+  }, {passive:false});
+  title.addEventListener('pointerup', (e)=>{
+    if(!state || e.pointerId !== state.pointerId) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    const elapsed = Math.max(1, performance.now() - state.startAt);
+    const velocityY = dy / elapsed;
+    const strongDownSwipe = dy >= 72 && dy > Math.abs(dx) * 1.25 && (velocityY >= 0.45 || dy >= 112);
+    reset();
+    if(strongDownSwipe){
+      if(e.cancelable) e.preventDefault();
+      closeCashflowModal({animateDown:true});
+    }
+  }, {passive:false});
+  title.addEventListener('pointercancel', reset, {passive:true});
+  title.addEventListener('lostpointercapture', reset, {passive:true});
+}
 function openCashflowModal(){
   updateScenarioScopedModalTitles();
   const modal = document.getElementById("cashflowModal");
@@ -32663,6 +32746,7 @@ function openCashflowModal(){
   }
   modal?.classList.add("show");
   modal?.setAttribute("aria-hidden", "false");
+  setCashflowModalScrollLock(true);
   resetModalScrollPosition("cashflowModal");
   resetModalInnerScrollPositions("cashflowModal");
   requestAnimationFrame(()=>{
@@ -32673,11 +32757,24 @@ function openCashflowModal(){
   applyTabOrder();
   focusModalPrimaryActionButton("cashflowModal");
 }
-function closeCashflowModal(){
+function closeCashflowModal(options={}){
   const modal = document.getElementById("cashflowModal");
-  modal?.classList.remove("show");
-  modal?.setAttribute("aria-hidden", "true");
-  applyTabOrder();
+  if(!modal) return;
+  const animateDown = !!options?.animateDown && isCashflowTitleSwipeCloseEnabled() && modal.classList.contains('show');
+  const finishClose = ()=>{
+    modal.classList.remove('is-swipe-dismissing');
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+    setCashflowModalScrollLock(false);
+    applyTabOrder();
+  };
+  if(animateDown){
+    if(modal.classList.contains('is-swipe-dismissing')) return;
+    modal.classList.add('is-swipe-dismissing');
+    setTimeout(finishClose, 190);
+    return;
+  }
+  finishClose();
 }
 
 document.getElementById("overflowMenuAxisBtn")?.addEventListener("click", ()=>{
@@ -32907,6 +33004,7 @@ rebuildWithdrawalParameterCases(true);
 ensureWithdrawalCompareRuleSelectionState();
 updateWithdrawalCompareModeUI();
 document.getElementById("closeCashflowModalBtn")?.addEventListener("click", closeCashflowModal);
+setupCashflowTitleSwipeClose();
 /* unified modal keyboard handler: cashflowModal */
 document.getElementById("cancelMonteSettingsBtn")?.addEventListener("click", cancelMonteSettingsModal);
 document.getElementById("saveMonteSettingsBtn")?.addEventListener("click", saveMonteSettingsModal);
@@ -43215,5 +43313,53 @@ body.fire-diagnosis-modal-open{
   }
 }
 </style>
+
+
+<!-- ===== v1298: cashflow modal mobile title position, scroll lock, and swipe dismiss ===== -->
+<style id="v1298-cashflow-modal-mobile-swipe-fix">
+/* Scope: 年度別収支表モーダルのみ。 */
+body.cashflow-modal-open{
+  overflow:hidden !important;
+  position:fixed !important;
+  width:100% !important;
+  left:0 !important;
+  right:0 !important;
+}
+#cashflowModal.show{
+  overscroll-behavior:contain;
+}
+#cashflowModal.is-swipe-dismissing .cashflow-modal{
+  transition:transform .18s cubic-bezier(.22,.61,.36,1), opacity .18s ease-out !important;
+  transform:translateY(34vh) !important;
+  opacity:0 !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  #cashflowModal{
+    padding-left:10px !important;
+    padding-right:10px !important;
+    overscroll-behavior:contain;
+  }
+  #cashflowModal .modal-card.cashflow-modal{
+    max-width:calc(100vw - 20px) !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+  }
+  #cashflowModal .modal-card.cashflow-modal > #cashflowModalTitle,
+  #cashflowModalTitle{
+    height:52px !important;
+    min-height:52px !important;
+    max-height:52px !important;
+    margin:0 -10px 14px !important;
+    padding:4px 22px 0 !important;
+    line-height:1.25 !important;
+    touch-action:none !important;
+    -webkit-user-select:none !important;
+    user-select:none !important;
+  }
+}
+</style>
+
 </body>
 </html>
