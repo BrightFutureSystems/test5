@@ -1952,6 +1952,22 @@ document.addEventListener("scroll", (ev)=>{
     gap:8px;
     white-space:nowrap;
   }
+  .fire-probability-legend-item[data-fire-legend-key]{
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    color:inherit;
+  }
+  .fire-probability-legend-item[data-fire-legend-key]:hover{
+    color:#0f172a;
+  }
+  .fire-probability-legend-item[data-fire-legend-key].is-hidden{
+    opacity:.42;
+  }
+  .fire-probability-legend-item[data-fire-legend-key].is-hidden .fire-probability-legend-label{
+    text-decoration:line-through;
+    text-decoration-thickness:1.5px;
+  }
   .fire-probability-legend-line{
     display:inline-flex;
     align-items:center;
@@ -13297,6 +13313,14 @@ const SIMPLE_PENSION_TAX_DEFAULT_OVERRIDES = {
   taxResidentRatePct:"10"
 };
 const SIMPLE_EDUCATION_STAGE_KEYS = ["preschool","elem","junior","high","uni","grad"];
+const SIMPLE_EDUCATION_DEFAULT_TYPES = {
+  preschool:"標準",
+  elem:"公立",
+  junior:"公立",
+  high:"公立",
+  uni:"国公立大（自宅）",
+  grad:"なし"
+};
 let resetDefaultsConfirmAction = null;
 function setElementValueFromStoredDefault(el, value){
   if(!el) return;
@@ -13321,10 +13345,11 @@ function resetEducationRowToDefaults(childIndex){
     const extraId = `c${idx}_${stage}_extra`;
     const typeEl = document.getElementById(typeId);
     const extraEl = document.getElementById(extraId);
-    const defaultType = defaults[typeId] ?? (typeEl?.options?.[0]?.value || '');
+    const defaultType = defaults[typeId] ?? SIMPLE_EDUCATION_DEFAULT_TYPES[stage] ?? (typeEl?.options?.[0]?.value || '');
     setElementValueFromStoredDefault(typeEl, defaultType);
     if(typeEl) typeEl.dataset.prevType = String(defaultType || '');
-    setElementValueFromStoredDefault(extraEl, defaults[extraId] ?? getSimpleEducationExtraInputValue(stage, defaultType, ''));
+    const defaultExtra = defaults[extraId] ?? getSimpleEducationExtraInputValue(stage, defaultType, '');
+    setElementValueFromStoredDefault(extraEl, defaultExtra);
   });
   setElementValueFromStoredDefault(document.getElementById(`c${idx}_abroad_type`), defaults[`c${idx}_abroad_type`] ?? 'なし');
   setElementValueFromStoredDefault(document.getElementById(`c${idx}_abroad_amount`), defaults[`c${idx}_abroad_amount`] ?? '0');
@@ -21173,9 +21198,49 @@ function buildFireDiagnosisProbabilityLegendHtml(items){
     const width = Math.max(1, Number(item?.width) || 2.4);
     const dash = String(item?.dash || ((item?.dashed || item?.threshold) ? '6 4' : '')).trim();
     const linecap = dash ? 'butt' : 'round';
+    const key = String(item?.key || '').trim();
     const svg = `<svg class="fire-probability-legend-svg" width="58" height="12" viewBox="0 0 58 12" aria-hidden="true" focusable="false"><line x1="1" y1="6" x2="57" y2="6" stroke="${color}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}"` : ''} stroke-linecap="${linecap}" fill="none"/></svg>`;
-    return `<div class="fire-probability-legend-item"><span class="fire-probability-legend-line">${svg}</span><span>${item?.label || ''}</span></div>`;
+    const keyAttrs = key ? ` data-fire-legend-key="${key}" role="button" tabindex="0" aria-pressed="true"` : '';
+    return `<div class="fire-probability-legend-item"${keyAttrs}><span class="fire-probability-legend-line">${svg}</span><span class="fire-probability-legend-label">${item?.label || ''}</span></div>`;
   }).join('');
+}
+function setupFireDiagnosisProbabilityLegendToggle(chart, legendEl){
+  if(!chart || !legendEl) return;
+  const items = Array.from(legendEl.querySelectorAll('[data-fire-legend-key]'));
+  if(!items.length) return;
+  const updateItemState = (item)=>{
+    const key = String(item.dataset.fireLegendKey || '').trim();
+    if(!key) return;
+    const datasetIndexes = chart.data.datasets
+      .map((dataset, index)=>({dataset, index}))
+      .filter(entry=>String(entry.dataset?.fireLegendKey || '') === key)
+      .map(entry=>entry.index);
+    const visible = datasetIndexes.some(index=>chart.isDatasetVisible(index));
+    item.classList.toggle('is-hidden', !visible);
+    item.setAttribute('aria-pressed', visible ? 'true' : 'false');
+  };
+  const toggleItem = (item)=>{
+    const key = String(item.dataset.fireLegendKey || '').trim();
+    if(!key) return;
+    const datasetIndexes = chart.data.datasets
+      .map((dataset, index)=>({dataset, index}))
+      .filter(entry=>String(entry.dataset?.fireLegendKey || '') === key)
+      .map(entry=>entry.index);
+    if(!datasetIndexes.length) return;
+    const shouldShow = !datasetIndexes.some(index=>chart.isDatasetVisible(index));
+    datasetIndexes.forEach(index=>chart.setDatasetVisibility(index, shouldShow));
+    chart.update();
+    items.forEach(updateItemState);
+  };
+  items.forEach(item=>{
+    updateItemState(item);
+    item.addEventListener('click', ()=>toggleItem(item));
+    item.addEventListener('keydown', ev=>{
+      if(ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      toggleItem(item);
+    });
+  });
 }
 function getNormalFireTerminalAxisRange(seriesList, requiredTerminalAsset){
   const values = [0, Number(requiredTerminalAsset) || 0];
@@ -21265,12 +21330,13 @@ function getMonteCarloFireGraphMarkerAge(result){
   const age = Math.round(Number(result.fireAgeYears ?? result.firePossibleAge));
   return Number.isFinite(age) ? age : null;
 }
-function buildFireDiagnosisMarkerDataset(label, x, y, color){
+function buildFireDiagnosisMarkerDataset(label, x, y, color, legendKey=''){
   const markerX = Number(x);
   const markerY = Number(y);
   if(!Number.isFinite(markerX) || !Number.isFinite(markerY)) return null;
   return {
     label,
+    fireLegendKey:String(legendKey || '').trim(),
     data:[{x:markerX, y:markerY}],
     borderColor:color,
     backgroundColor:'#ffffff',
@@ -21336,6 +21402,7 @@ function renderNormalFireTerminalChart(result){
     datasets = [
       {
         label:'暴落なし',
+        fireLegendKey:'normal',
         data:buildFireDiagnosisLinePoints(normalSeries, 'terminalAsset'),
         borderColor:'#4f8eff',
         backgroundColor:'rgba(79,142,255,0.10)',
@@ -21352,6 +21419,7 @@ function renderNormalFireTerminalChart(result){
       },
       {
         label:'暴落あり',
+        fireLegendKey:'withCrash',
         data:buildFireDiagnosisLinePoints(withCrashSeries, 'terminalAsset'),
         borderColor:'#f1a43a',
         backgroundColor:'rgba(241,164,58,0.10)',
@@ -21367,14 +21435,14 @@ function renderNormalFireTerminalChart(result){
         spanGaps:false
       }
     ];
-    const normalMarker = buildFireDiagnosisMarkerDataset('暴落なし 成立点', normalFireAge, Number(result?.normal?.terminalAsset), '#4f8eff');
-    const withCrashMarker = buildFireDiagnosisMarkerDataset('暴落あり 成立点', withCrashFireAge, Number(result?.withCrash?.terminalAsset), '#f1a43a');
+    const normalMarker = buildFireDiagnosisMarkerDataset('暴落なし 成立点', normalFireAge, Number(result?.normal?.terminalAsset), '#4f8eff', 'normal');
+    const withCrashMarker = buildFireDiagnosisMarkerDataset('暴落あり 成立点', withCrashFireAge, Number(result?.withCrash?.terminalAsset), '#f1a43a', 'withCrash');
     if(normalMarker) datasets.push(normalMarker);
     if(withCrashMarker) datasets.push(withCrashMarker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:'暴落なし', color:'#4f8eff', width:2.4},
-        {label:'暴落あり', color:'#f1a43a', width:2.4},
+        {label:'暴落なし', color:'#4f8eff', width:2.4, key:'normal'},
+        {label:'暴落あり', color:'#f1a43a', width:2.4, key:'withCrash'},
         {label:`成立しきい値 (${Math.round(threshold).toLocaleString()}万円)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
@@ -21385,6 +21453,7 @@ function renderNormalFireTerminalChart(result){
     datasets = [
       {
         label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし',
+        fireLegendKey:'single',
         data:buildFireDiagnosisLinePoints(singleSeries, 'terminalAsset'),
         borderColor:lineColor,
         backgroundColor:result?.mode === 'with_crash' ? 'rgba(241,164,58,0.10)' : 'rgba(79,142,255,0.12)',
@@ -21399,11 +21468,11 @@ function renderNormalFireTerminalChart(result){
         fill:false
       }
     ];
-    const marker = buildFireDiagnosisMarkerDataset(`${result?.mode === 'with_crash' ? '暴落あり' : '暴落なし'} 成立点`, fireAge, Number(result?.terminalAsset), lineColor);
+    const marker = buildFireDiagnosisMarkerDataset(`${result?.mode === 'with_crash' ? '暴落あり' : '暴落なし'} 成立点`, fireAge, Number(result?.terminalAsset), lineColor, 'single');
     if(marker) datasets.push(marker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff', width:2.4},
+        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff', width:2.4, key:'single'},
         {label:`成立しきい値 (${Math.round(threshold).toLocaleString()}万円)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
@@ -21439,7 +21508,7 @@ function renderNormalFireTerminalChart(result){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:28, top:16, bottom:16}},
+      layout:{padding:{right:12, top:8, bottom:4, left:0}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label(ctx){
@@ -21454,13 +21523,14 @@ function renderNormalFireTerminalChart(result){
           max:axisRange.max,
           grid:makeGridWithoutZeroLine({tickLength:0, color:COMMON_MAIN_GRID_LINE_COLOR, lineWidth:1}),
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1},
-          title:{display:true,text:`寿命時残高（${normalFireYAxisUnitSpec.label}）`},
-          ticks:{padding:10, callback(value){ return formatScaledAxisNumber((Number(value) || 0) / (Number(normalFireYAxisUnitSpec?.divisor) || 1)); }}
+          title:{display:true,text:`寿命時残高（${normalFireYAxisUnitSpec.label}）`, padding:{top:0,bottom:2}},
+          ticks:{padding:4, callback(value){ return formatScaledAxisNumber((Number(value) || 0) / (Number(normalFireYAxisUnitSpec?.divisor) || 1)); }}
         },
-        x:{type:'linear', title:{display:true,text:'退職年齢（歳）'}, ticks:{padding:10, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'退職年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
+  setupFireDiagnosisProbabilityLegendToggle(fireDiagnosisProbabilityChart, legendEl);
 }
 function renderMonteCarloFireProbabilityChart(result){
   const wrap = document.getElementById('fireDiagnosisProbabilityChartWrap');
@@ -21506,6 +21576,7 @@ function renderMonteCarloFireProbabilityChart(result){
     datasets = [
       {
         label:'暴落なし',
+        fireLegendKey:'normal',
         data:buildFireDiagnosisLinePoints(normalSeries, 'successRate'),
         borderColor:'#4f8eff',
         backgroundColor:'rgba(79,142,255,0.10)',
@@ -21522,6 +21593,7 @@ function renderMonteCarloFireProbabilityChart(result){
       },
       {
         label:'暴落あり',
+        fireLegendKey:'withCrash',
         data:buildFireDiagnosisLinePoints(withCrashSeries, 'successRate'),
         borderColor:'#f1a43a',
         backgroundColor:'rgba(241,164,58,0.10)',
@@ -21537,14 +21609,14 @@ function renderMonteCarloFireProbabilityChart(result){
         spanGaps:false
       }
     ];
-    const normalMarker = buildFireDiagnosisMarkerDataset('暴落なし 成立点', normalFireAge, normalMap.get(normalFireAge), '#4f8eff');
-    const withCrashMarker = buildFireDiagnosisMarkerDataset('暴落あり 成立点', withCrashFireAge, withCrashMap.get(withCrashFireAge), '#f1a43a');
+    const normalMarker = buildFireDiagnosisMarkerDataset('暴落なし 成立点', normalFireAge, normalMap.get(normalFireAge), '#4f8eff', 'normal');
+    const withCrashMarker = buildFireDiagnosisMarkerDataset('暴落あり 成立点', withCrashFireAge, withCrashMap.get(withCrashFireAge), '#f1a43a', 'withCrash');
     if(normalMarker) datasets.push(normalMarker);
     if(withCrashMarker) datasets.push(withCrashMarker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:'暴落なし', color:'#4f8eff', width:2.4},
-        {label:'暴落あり', color:'#f1a43a', width:2.4},
+        {label:'暴落なし', color:'#4f8eff', width:2.4, key:'normal'},
+        {label:'暴落あり', color:'#f1a43a', width:2.4, key:'withCrash'},
         {label:`成立しきい値 (${threshold}%)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
@@ -21557,6 +21629,7 @@ function renderMonteCarloFireProbabilityChart(result){
     datasets = [
       {
         label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし',
+        fireLegendKey:'single',
         data:buildFireDiagnosisLinePoints(singleSeries, 'successRate'),
         borderColor:lineColor,
         backgroundColor:result?.mode === 'with_crash' ? 'rgba(241,164,58,0.12)' : 'rgba(79,142,255,0.12)',
@@ -21571,11 +21644,11 @@ function renderMonteCarloFireProbabilityChart(result){
         fill:false
       }
     ];
-    const marker = buildFireDiagnosisMarkerDataset(`${result?.mode === 'with_crash' ? '暴落あり' : '暴落なし'} 成立点`, fireAge, successRateByAge.get(fireAge), lineColor);
+    const marker = buildFireDiagnosisMarkerDataset(`${result?.mode === 'with_crash' ? '暴落あり' : '暴落なし'} 成立点`, fireAge, successRateByAge.get(fireAge), lineColor, 'single');
     if(marker) datasets.push(marker);
     if(legendEl){
       legendEl.innerHTML = buildFireDiagnosisProbabilityLegendHtml([
-        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff', width:2.4},
+        {label:result?.mode === 'with_crash' ? '暴落あり' : '暴落なし', color:result?.mode === 'with_crash' ? '#f1a43a' : '#4f8eff', width:2.4, key:'single'},
         {label:`成立しきい値 (${threshold}%)`, color:'#d95b6a', width:1.8, dash:'6 4'}
       ]);
     }
@@ -21610,7 +21683,7 @@ function renderMonteCarloFireProbabilityChart(result){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:28}},
+      layout:{padding:{right:12, top:8, bottom:4, left:0}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label(ctx){
@@ -21623,19 +21696,20 @@ function renderMonteCarloFireProbabilityChart(result){
         y:{
           min:axisRange.min,
           max:axisRange.max,
-          title:{display:true,text:'成功率（%）'},
+          title:{display:true,text:'成功率（%）', padding:{top:0,bottom:2}},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1},
-          ticks:{padding:10, callback(value){
+          ticks:{padding:4, callback(value){
             const num = Number(value);
             if(!Number.isFinite(num)) return '';
             return formatScaledAxisNumber(num);
           }}
         },
-        x:{type:'linear', title:{display:true,text:'退職年齢（歳）'}, ticks:{padding:10, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'退職年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
+  setupFireDiagnosisProbabilityLegendToggle(fireDiagnosisProbabilityChart, legendEl);
 }
 function formatFireDiagnosisMetric(label, value){
   return `<div>${label}：${value}</div>`;
@@ -27816,6 +27890,7 @@ function drawIncomeCurveChart(){
   salaryPoints.push({x:retireAge, y:terminalSalary}, {x:retireAge, y:0}, {x:xAxisRange.max, y:0});
   bonusPoints.push({x:retireAge, y:terminalBonus}, {x:retireAge, y:0}, {x:xAxisRange.max, y:0});
   const ctx = document.getElementById("incomeCurveChart").getContext("2d");
+  const isIncomeCurveCompact = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
   if(incomeCurveChart) incomeCurveChart.destroy();
   incomeCurveChart = new Chart(ctx, {
     type:"line",
@@ -27827,14 +27902,15 @@ function drawIncomeCurveChart(){
     },
     options:{
       animation:false,responsive:true,maintainAspectRatio:false,
-      layout:{padding:{top:12, right:42, bottom:12}},
+      layout:{padding:{top:8, right:isIncomeCurveCompact ? 28 : 32, bottom:4}},
       plugins:{legend:{display:true, labels:{
         usePointStyle:true,
         pointStyle:"line",
-        boxWidth:50,
+        boxWidth:isIncomeCurveCompact ? 34 : 50,
         boxHeight:10,
-        pointStyleWidth:50,
-        padding:14,
+        pointStyleWidth:isIncomeCurveCompact ? 34 : 50,
+        padding:isIncomeCurveCompact ? 8 : 12,
+        font:{size:isIncomeCurveCompact ? 11 : 12},
         generateLabels(chart){
           const base = Chart.defaults.plugins.legend.labels.generateLabels(chart) || [];
           return base.map(item=>{
@@ -27860,17 +27936,17 @@ function drawIncomeCurveChart(){
           type:"linear",
           min:xAxisRange.min,
           max:xAxisRange.max,
-          title:{display:true,text:"年齢（歳)".replace(')', '）')},
-          ticks:{stepSize:xTickStep, maxRotation:0, minRotation:0, autoSkip:false, padding:10, callback(value){ return formatScaledAxisNumber(Number(value)); }},
+          title:{display:true,text:"年齢（歳)".replace(')', '）'), padding:{top:2, bottom:0}},
+          ticks:{stepSize:xTickStep, maxRotation:0, minRotation:0, autoSkip:false, padding:5, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
         y:{
           position:"left",
-          title:{display:true,text:"月手取り（万円）"},
+          title:{display:true,text:"月手取り（万円）", padding:{top:0, bottom:2}},
           beginAtZero:true,
           grace:"12%",
-          ticks:{padding:10},
+          ticks:{padding:5},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
@@ -27879,7 +27955,7 @@ function drawIncomeCurveChart(){
           title:{display:false,text:"年間ボーナス（万円）"},
           beginAtZero:true,
           grace:"12%",
-          ticks:{padding:10},
+          ticks:{padding:5},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1, drawOnChartArea:false},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         }
@@ -27898,7 +27974,7 @@ function drawIncomeCurveChart(){
           ctx.font = "12px Arial, 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          const x = Math.min(chart.width - 10, y1.right + 20);
+          const x = Math.min(chart.width - 6, y1.right + (isIncomeCurveCompact ? 9 : 12));
           const y = (area.top + area.bottom) / 2;
           ctx.translate(x, y);
           ctx.rotate(-Math.PI / 2);
