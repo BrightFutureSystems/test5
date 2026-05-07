@@ -8231,20 +8231,30 @@ function buildAssetProbabilityLifeMedianInfo(result, cfg){
 }
 function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
   const singleGuideLabelBoxes = [];
-  const resetSingleGuideLabelBoxes = ()=>{ singleGuideLabelBoxes.length = 0; };
+  const getSingleGuideLabelBoxes = (chartInstance)=>Array.isArray(chartInstance?.$verticalGuideLabelBoxes) ? chartInstance.$verticalGuideLabelBoxes : singleGuideLabelBoxes;
+  const resetSingleGuideLabelBoxes = (chartInstance)=>{
+    if(Array.isArray(chartInstance?.$verticalGuideLabelBoxes)) return;
+    singleGuideLabelBoxes.length = 0;
+  };
   const labelsOverlap = (a, b)=>!(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-  const reserveSingleGuideLabelBox = (labelX, labelY, labelW, labelH, yScale)=>{
+  const reserveSingleGuideLabelBox = (chartInstance, labelX, labelY, labelW, labelH, yScale, direction="up")=>{
+    const boxes = getSingleGuideLabelBoxes(chartInstance);
     let adjustedY = labelY;
     let box = {left:labelX, right:labelX + labelW, top:adjustedY - labelH / 2, bottom:adjustedY + labelH / 2};
     let guard = 0;
-    while(singleGuideLabelBoxes.some(existing=>labelsOverlap(existing, box)) && guard < 8){
-      const nextY = adjustedY - (labelH + 4);
-      if(nextY - labelH / 2 < yScale.top + 4) break;
+    const step = labelH + 4;
+    while(boxes.some(existing=>labelsOverlap(existing, box)) && guard < 8){
+      const nextY = direction === "down" ? adjustedY + step : adjustedY - step;
+      if(direction === "down"){
+        if(nextY + labelH / 2 > yScale.bottom - 4) break;
+      }else if(nextY - labelH / 2 < yScale.top + 4){
+        break;
+      }
       adjustedY = nextY;
       box = {left:labelX, right:labelX + labelW, top:adjustedY - labelH / 2, bottom:adjustedY + labelH / 2};
       guard++;
     }
-    singleGuideLabelBoxes.push(box);
+    boxes.push(box);
     return adjustedY;
   };
   const getExpectedLifeGeometry = (chartInstance)=>{
@@ -8276,8 +8286,16 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     ctx.stroke();
     ctx.restore();
   };
-  const drawRuinProbabilityLabel = (chartInstance)=>{
+  const drawExpectedLifeLabel = (chartInstance)=>{
     if(!isAssetProbabilityKindVisible(chartInstance, "expectedLife")) return;
+    const geom = getExpectedLifeGeometry(chartInstance);
+    if(!geom) return;
+    drawVerticalGuideLabel(chartInstance, geom.px, "想定寿命", "#5b7c99", "top", {
+      labelStroke:"rgba(91,124,153,0.18)"
+    });
+  };
+  const drawRuinProbabilityLabel = (chartInstance)=>{
+    if(!isAssetProbabilityKindVisible(chartInstance, "distribution")) return;
     const geom = getExpectedLifeGeometry(chartInstance);
     if(!geom) return;
     const {ctx, x, y, area, px} = geom;
@@ -8293,7 +8311,7 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     const labelH = 18;
     const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
     const rawLabelY = Math.max(y.top + labelH / 2 + 4, y.bottom - 14);
-    const labelY = reserveSingleGuideLabelBox(labelX, rawLabelY, labelW, labelH, y);
+    const labelY = reserveSingleGuideLabelBox(chartInstance, labelX, rawLabelY, labelW, labelH, y, "up");
     const alpha = getGuideLabelFadeAlpha(px, area, 28);
     if(alpha <= 0.05){
       ctx.restore();
@@ -8381,7 +8399,7 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     const rawLabelY = yPos === "bottom"
       ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14)
       : Math.min(y.bottom - labelH / 2 - 4, y.top + 14);
-    const labelY = yPos === "bottom" ? reserveSingleGuideLabelBox(labelX, rawLabelY, labelW, labelH, y) : rawLabelY;
+    const labelY = reserveSingleGuideLabelBox(chartInstance, labelX, rawLabelY, labelW, labelH, y, yPos === "bottom" ? "up" : "down");
     const alpha = getGuideLabelFadeAlpha(px, area, 28);
     if(alpha <= 0.05){
       ctx.restore();
@@ -8432,9 +8450,10 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     id:"assetProbabilityExpectedLifeGuide",
     beforeDatasetsDraw:drawExpectedLifeLine,
     afterDatasetsDraw(chartInstance){
-      resetSingleGuideLabelBoxes();
+      resetSingleGuideLabelBoxes(chartInstance);
       drawMedianDistributionGuide(chartInstance);
       drawMedianRuinAgeLine(chartInstance);
+      drawExpectedLifeLabel(chartInstance);
       drawRuinProbabilityLabel(chartInstance);
     }
   };
@@ -25219,6 +25238,28 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
       const y = scales.y;
       const area = chart.chartArea;
       if(!x || !y || !area) return;
+      const verticalGuideLabelBoxes = [];
+      chart.$verticalGuideLabelBoxes = verticalGuideLabelBoxes;
+      const guideLabelsOverlap = (a, b)=>!(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+      const reserveVerticalGuideLabelBox = (labelX, labelY, labelW, labelH, direction)=>{
+        let adjustedY = labelY;
+        let box = {left:labelX, right:labelX + labelW, top:adjustedY - labelH / 2, bottom:adjustedY + labelH / 2};
+        let guard = 0;
+        const step = labelH + 4;
+        while(verticalGuideLabelBoxes.some(existing=>guideLabelsOverlap(existing, box)) && guard < 8){
+          const nextY = direction === "down" ? adjustedY + step : adjustedY - step;
+          if(direction === "down"){
+            if(nextY + labelH / 2 > y.bottom - 4) break;
+          }else if(nextY - labelH / 2 < y.top + 4){
+            break;
+          }
+          adjustedY = nextY;
+          box = {left:labelX, right:labelX + labelW, top:adjustedY - labelH / 2, bottom:adjustedY + labelH / 2};
+          guard++;
+        }
+        verticalGuideLabelBoxes.push(box);
+        return adjustedY;
+      };
 
       function drawVerticalGuideLabel(px, label, color, yPos, opts={}){
         if(!Number.isFinite(px) || px < area.left || px > area.right) return;
@@ -25234,9 +25275,10 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
         const labelH = compactGuideLabels ? 18 : 20;
         const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
         const offsetStep = compactGuideLabels ? 20 : 24;
-        const labelY = yPos === "bottom"
+        const rawLabelY = yPos === "bottom"
           ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14 - stackIndex * offsetStep)
           : Math.min(y.bottom - labelH / 2 - 4, y.top + 14 + stackIndex * offsetStep);
+        const labelY = reserveVerticalGuideLabelBox(labelX, rawLabelY, labelW, labelH, yPos === "bottom" ? "up" : "down");
         const alpha = getGuideLabelFadeAlpha(px, area, 28);
         if(alpha <= 0.05){
           ctx.restore();
@@ -25318,6 +25360,15 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
           });
         }
       }else{
+        if(isLifeGuideVisible(chart, "expected")){
+          const expectedLifeAge = Number(cfg?.lifeExpect);
+          const pxExpectedLife = Number.isFinite(expectedLifeAge) ? x.getPixelForValue(expectedLifeAge) : null;
+          if(Number.isFinite(pxExpectedLife) && pxExpectedLife >= area.left && pxExpectedLife <= area.right){
+            drawVerticalGuideLabel(pxExpectedLife, "想定寿命", "#5b7c99", "top", {
+              labelStroke:"rgba(91,124,153,0.18)"
+            });
+          }
+        }
         const assetZeroCrossAge = getAssetZeroCrossAgeForGuide(sim);
         const assetLifeLabelAge = formatAssetLifeLabelAge(assetZeroCrossAge);
         let pxD = null;
