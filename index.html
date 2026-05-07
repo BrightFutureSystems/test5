@@ -2030,7 +2030,7 @@ document.addEventListener("scroll", (ev)=>{
 
   @media (max-width:900px){
     .withdrawal-compare-subcontrols{grid-template-columns:1fr;}
-    .cashflow-table-shell{--cashflow-item-col-width:120px;}
+    .cashflow-table-shell{--cashflow-item-col-width:108px;}
     .cashflow-table-wrap{overflow:auto;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:328px;}
     .cashflow-top-scroll{display:none !important;-webkit-overflow-scrolling:touch;}
     .cashflow-table .cashflow-sticky-mobile-off > th,
@@ -7019,25 +7019,25 @@ const CASHFLOW_TABLE_COLUMNS = [
   {label:"支出合計(B)", path:"expense.total"},
   {label:"社会保険料", path:"social.total"},
   {label:"　本人 社会保険料", path:"social.detail.self.total"},
-  {label:"　　国民健康保険料（本人）", path:"social.detail.self.nationalHealth"},
-  {label:"　　健康保険料（本人）", path:"social.detail.self.employeeHealth"},
-  {label:"　　後期高齢者医療保険料（本人）", path:"social.detail.self.lateElderlyHealth"},
-  {label:"　　国民年金保険料（本人）", path:"social.detail.self.nationalPension"},
-  {label:"　　厚生年金保険料（本人）", path:"social.detail.self.employeePension"},
-  {label:"　　介護保険料（本人）", path:"social.detail.self.nursingCare"},
+  {label:"　　国民健康保険", path:"social.detail.self.nationalHealth"},
+  {label:"　　健康保険", path:"social.detail.self.employeeHealth"},
+  {label:"　　後期高齢者医療", path:"social.detail.self.lateElderlyHealth"},
+  {label:"　　国民年金", path:"social.detail.self.nationalPension"},
+  {label:"　　厚生年金", path:"social.detail.self.employeePension"},
+  {label:"　　介護保険", path:"social.detail.self.nursingCare"},
   {label:"　配偶者 社会保険料", path:"social.detail.spouse.total"},
-  {label:"　　国民健康保険料（配偶者）", path:"social.detail.spouse.nationalHealth"},
-  {label:"　　健康保険料（配偶者）", path:"social.detail.spouse.employeeHealth"},
-  {label:"　　後期高齢者医療保険料（配偶者）", path:"social.detail.spouse.lateElderlyHealth"},
-  {label:"　　国民年金保険料（配偶者）", path:"social.detail.spouse.nationalPension"},
-  {label:"　　厚生年金保険料（配偶者）", path:"social.detail.spouse.employeePension"},
-  {label:"　　介護保険料（配偶者）", path:"social.detail.spouse.nursingCare"},
+  {label:"　　国民健康保険", path:"social.detail.spouse.nationalHealth"},
+  {label:"　　健康保険", path:"social.detail.spouse.employeeHealth"},
+  {label:"　　後期高齢者医療", path:"social.detail.spouse.lateElderlyHealth"},
+  {label:"　　国民年金", path:"social.detail.spouse.nationalPension"},
+  {label:"　　厚生年金", path:"social.detail.spouse.employeePension"},
+  {label:"　　介護保険", path:"social.detail.spouse.nursingCare"},
   {label:"所得税・住民税等", path:"tax.total"},
   {label:"税社保合計", path:"cashflow.taxSocialTotal"},
   {label:"年間収支(A-B)", path:"cashflow.gross", className:"cashflow-posneg"},
   {label:"税社保反映後収支", path:"cashflow.afterTaxSocial", className:"cashflow-posneg"},
-  {label:"資産運用：投資額(C)", path:"investment.contribution"},
-  {label:"資産運用：取崩し額(D)", path:"investment.withdrawal"},
+  {label:"資産運用：投資額", path:"investment.contribution"},
+  {label:"資産運用：取崩し額", path:"investment.withdrawal"},
   {label:"生活費不足の売却額", path:"investment.sales.shortfall"},
   {label:"バッファ補充の売却額", path:"investment.sales.buffer"},
   {label:"総売却額（税引後）", path:"investment.sales.totalNet"},
@@ -8492,7 +8492,8 @@ function renderAssetProbabilityLegend(chartInstance, display){
       buildAssetProbabilityOverlayKindLegendItemHtml(chartInstance, "median", "中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#334155", "solid", medianLegendWidth, 50, [])}</span>`)
     ];
     const hasMedianRuinAge = Array.isArray(chartInstance.$assetProbabilityOverlayGuideEntries) && chartInstance.$assetProbabilityOverlayGuideEntries.length > 0;
-    const lifeItems = hasMedianRuinAge ? [buildAssetProbabilityOverlayKindLegendItemHtml(chartInstance, "medianRuinAge", "資産寿命中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#334155", "dashed", 1.6, 50, [6,4])}</span>`)] : [];
+    const lifeItems = [buildAssetProbabilityOverlayKindLegendItemHtml(chartInstance, "retire", "リタイア", buildLifeGuideLegendSample("retire", true))];
+    if(hasMedianRuinAge) lifeItems.push(buildAssetProbabilityOverlayKindLegendItemHtml(chartInstance, "medianRuinAge", "資産寿命中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#334155", "dashed", 1.6, 50, [6,4])}</span>`));
     legendEl.innerHTML = `<div class="chart-legend-stacked"><div class="chart-legend-row chart-legend-scenario-row">${items.join("")}</div><div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row">${kindItems.join("")}</div></div>${lifeItems.length ? `<div class="chart-legend-category-block"><div class="chart-legend-separator" aria-hidden="true"></div><div class="chart-legend-row chart-legend-category-row chart-life-guide-legend-row">${lifeItems.join("")}</div></div>` : ""}</div>`;
     legendEl.querySelectorAll("[data-asset-probability-overlay-scenario]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
@@ -8534,7 +8535,7 @@ function renderAssetProbabilityLegend(chartInstance, display){
   if(hasKind("deterministic")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "deterministic", "一定利率", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#374151", "solid", 2.0, 50, [])}</span>`));
   if(hasKind("median")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "median", "中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#2563eb", "solid", 2.2, 50, [])}</span>`));
   if(hasKind("distribution")) items.push(buildAssetProbabilityLegendItemHtml(chartInstance, "distribution", "分布", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#d97706", "solid", 1.8, 50, [])}</span>`));
-  const lifeItems = [buildAssetProbabilityLegendItemHtml(chartInstance, "expectedLife", "想定寿命", buildLifeGuideLegendSample("expected", false))];
+  const lifeItems = [buildAssetProbabilityLegendItemHtml(chartInstance, "retire", "リタイア", buildLifeGuideLegendSample("retire", false)), buildAssetProbabilityLegendItemHtml(chartInstance, "expectedLife", "想定寿命", buildLifeGuideLegendSample("expected", false))];
   const medianRuinAge = Number(chartInstance?.$assetProbabilityResult?.medianRuinAge);
   if(Number.isFinite(medianRuinAge)){
     lifeItems.push(buildAssetProbabilityLegendItemHtml(chartInstance, "medianRuinAge", "資産寿命中央値", `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup("#1f2937", "dashed", 1.6, 50, [6,4])}</span>`));
@@ -8906,6 +8907,18 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
     }
   });
   const legendTargets = readyEntries.map(entry=>({scenario:entry.scenario, index:entry.index, style:entry.style}));
+  const assetProbabilityOverlayLifeGuideEntries = readyEntries.map((entry, idx)=>{
+    const overlayIndex = Number.isFinite(Number(entry.index)) ? Number(entry.index) : idx;
+    const resolved = getScenarioConfigAndSimForDrawing(entry.scenario, currentScenario, currentCfg, currentSim);
+    return {
+      cfg:resolved.cfg,
+      sim:resolved.sim,
+      color:normalizeColorHex(entry.style?.color) || getDefaultOverlayColorByIndex(overlayIndex),
+      style:entry.style || {},
+      overlayIndex,
+      name:entry.scenario?.name
+    };
+  });
   const legendContextKey = prepareChartLegendContext(buildChartLegendContextKey({mode:'assetProbabilityOverlay', graphType:'assetProbability', overlay:true, targets:legendTargets}));
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById("chart").getContext("2d"), {
@@ -8927,12 +8940,13 @@ function drawAssetProbabilityOverlayShell(currentScenario, currentCfg, currentSi
       },
       scales:assetProbabilitySideOptions.scales
     },
-    plugins:[pluginLines(currentCfg, currentSim, {assetProbabilityMode:true, settingsSummary:getAssetProbabilityOverlayStatusText(entries), dirtyMessage:''}), buildAssetProbabilityOverlayRuinSummaryPlugin(ruinSummaryEntries), buildAssetProbabilityOverlayGuidePlugin(medianRuinEntries)]
+    plugins:[pluginLines(currentCfg, currentSim, {assetProbabilityMode:true, settingsSummary:getAssetProbabilityOverlayStatusText(entries), dirtyMessage:''}, assetProbabilityOverlayLifeGuideEntries), buildAssetProbabilityOverlayRuinSummaryPlugin(ruinSummaryEntries), buildAssetProbabilityOverlayGuidePlugin(medianRuinEntries)]
   });
   chart.$graphType = "assetProbability";
   chart.$overlayMode = true;
   chart.$assetProbabilityOverlayMode = true;
   chart.$assetProbabilityOverlayEntries = readyEntries;
+  chart.$lifeGuideEntries = assetProbabilityOverlayLifeGuideEntries;
   chart.$assetProbabilityOverlayGuideEntries = medianRuinEntries;
   chart.$assetProbabilityOverlayRuinEntries = ruinSummaryEntries;
   chart.$assetProbabilityOverlayStyles = {};
@@ -19907,15 +19921,16 @@ function renderCrashComparisonChart(results){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:28}},
+      layout:{padding:{right:12, top:4, bottom:2, left:0}},
       plugins:{
         legend:getCompareChartLegendOptions(),
+        tooltip:{enabled:false},
         crashCompareMedianGuides:{guides:medianGuides}
       },
       scales:{
         x:{
           type:'linear',
-          title:{display:true, text:`想定寿命時の総資産（${moneyDisplayMeta.unit}）`},
+          title:{display:true, text:`想定寿命時の総資産（${moneyDisplayMeta.unit}）`, padding:{top:2,bottom:0}},
           min: effectiveBounds.xMin,
           max: effectiveBounds.xMax,
           afterBuildTicks(axis){
@@ -19925,7 +19940,7 @@ function renderCrashComparisonChart(results){
                     ticks:{
             autoSkip:false,
             includeBounds:false,
-            padding:10,
+            padding:4,
             callback:function(v, idx, ticks){
               if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
               const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 12);
@@ -19952,11 +19967,11 @@ function renderCrashComparisonChart(results){
             const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 6);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
-          title:{display:true, text:densityAxisMeta.title},
+          title:{display:true, text:densityAxisMeta.title, padding:{top:0,bottom:2}},
           ticks:{
             autoSkip:false,
             includeBounds:false,
-            padding:10,
+            padding:4,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
           },
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
@@ -22634,11 +22649,25 @@ function updateCashflowColumnSizing(){
       }
     });
   });
+  const isMobileCashflow = window.matchMedia('(max-width: 900px), (pointer:coarse)').matches;
   let itemWidth = 0;
+  const itemMeasure = document.createElement('span');
+  itemMeasure.style.position = 'absolute';
+  itemMeasure.style.left = '-9999px';
+  itemMeasure.style.top = '-9999px';
+  itemMeasure.style.visibility = 'hidden';
+  itemMeasure.style.whiteSpace = 'nowrap';
+  document.body.appendChild(itemMeasure);
   table.querySelectorAll('.cashflow-item-col').forEach(cell=>{
-    itemWidth = Math.max(itemWidth, Math.ceil(cell.scrollWidth) + 2);
+    const cs = window.getComputedStyle(cell);
+    itemMeasure.style.font = cs.font;
+    itemMeasure.textContent = cell.textContent || '';
+    const contentWidth = Math.ceil(itemMeasure.getBoundingClientRect().width);
+    const paddingWidth = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    itemWidth = Math.max(itemWidth, Math.ceil(contentWidth + paddingWidth + 6));
   });
-  itemWidth = Math.max(76, itemWidth);
+  itemMeasure.remove();
+  itemWidth = Math.max(isMobileCashflow ? 96 : 76, itemWidth);
   shell.style.setProperty('--cashflow-item-col-width', `${itemWidth}px`);
   const colCount = Math.max(...allRows.map(row => row.children.length));
   for(let colIdx = 1; colIdx < colCount; colIdx += 1){
@@ -24909,6 +24938,55 @@ function buildDatasetsByGraphType(sim, graphType, color, overlay, labelPrefix=""
 function shouldDrawMainChartLifeGuides(graphType){
   return ["asset", "assetBreakdown", "investment", "incomeExpense", "cashflow", "education"].includes(graphType);
 }
+function shouldDrawMainChartRetireGuide(graphType){
+  return ["asset", "assetBreakdown", "assetProbability", "investment", "incomeExpense", "cashflow", "education"].includes(graphType);
+}
+function getRetireGuideXValue(cfg){
+  const candidates = [
+    cfg?.incomeSelf?.retireAge,
+    cfg?.self_retire_age,
+    cfg?.retireAge
+  ];
+  for(const raw of candidates){
+    const value = Number(raw);
+    if(Number.isFinite(value) && value >= 0 && value < 200) return value;
+  }
+  return null;
+}
+function getRetireGuideSingleStyle(){
+  return {color:colorToRgba("#b45b6a", 0.72), labelColor:colorToRgba("#8f4654", 0.92), width:1.6, dash:[6,4]};
+}
+function getRetireGuideOverlayStyle(color){
+  const raw = color || "#64748b";
+  return {color:colorToRgba(raw, 0.58), labelColor:colorToRgba(raw, 0.78), width:1.35, dash:[6,4]};
+}
+function isRetireGuideVisible(chartInstance){
+  if(!chartInstance) return true;
+  if(chartInstance.$graphType === "assetProbability"){
+    return chartInstance.$assetProbabilityOverlayMode
+      ? isAssetProbabilityOverlayKindVisible(chartInstance, "retire")
+      : isAssetProbabilityKindVisible(chartInstance, "retire");
+  }
+  return isLifeGuideVisible(chartInstance, "retire");
+}
+function drawRetireGuideLine(ctx, xScale, yScale, chartArea, xValue, style){
+  const px = xScale?.getPixelForValue(Number(xValue));
+  if(!ctx || !xScale || !yScale || !chartArea || !Number.isFinite(px) || px < chartArea.left || px > chartArea.right) return null;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+  ctx.clip();
+  ctx.strokeStyle = style?.color || "#b45b6a";
+  ctx.lineWidth = Number(style?.width) || 1.8;
+  ctx.setLineDash(Array.isArray(style?.dash) ? style.dash : [6,4]);
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+  ctx.moveTo(Math.round(px) + 0.5, yScale.top);
+  ctx.lineTo(Math.round(px) + 0.5, yScale.bottom);
+  ctx.stroke();
+  ctx.restore();
+  return px;
+}
 function getAssetZeroCrossAgeForGuide(sim){
   const labels = Array.isArray(sim?.labels) ? sim.labels : [];
   const values = Array.isArray(sim?.totalAssets) ? sim.totalAssets : [];
@@ -24955,10 +25033,11 @@ function isOverlayGuideEntryVisible(chart, overlayIndex){
 }
 
 function ensureLifeGuideLegendState(chartInstance){
-  if(!chartInstance) return {expected:true, asset:true};
+  if(!chartInstance) return {retire:true, expected:true, asset:true};
   if(!chartInstance.$lifeGuideLegendState){
-    chartInstance.$lifeGuideLegendState = {expected:true, asset:true};
+    chartInstance.$lifeGuideLegendState = {retire:true, expected:true, asset:true};
   }
+  if(typeof chartInstance.$lifeGuideLegendState.retire !== "boolean") chartInstance.$lifeGuideLegendState.retire = true;
   if(typeof chartInstance.$lifeGuideLegendState.expected !== "boolean") chartInstance.$lifeGuideLegendState.expected = true;
   if(typeof chartInstance.$lifeGuideLegendState.asset !== "boolean") chartInstance.$lifeGuideLegendState.asset = true;
   return chartInstance.$lifeGuideLegendState;
@@ -24997,6 +25076,11 @@ function getGuideLabelFadeAlpha(rawX, chartArea, fadeEdge=28){
   return Math.max(0, Math.min(1, distanceToEdge / Math.max(1, fadeEdge)));
 }
 function buildLifeGuideLegendSample(key, overlay=false){
+  if(key === "retire"){
+    const singleStyle = getRetireGuideSingleStyle();
+    const color = overlay ? colorToRgba("#64748b", 0.58) : singleStyle.color;
+    return `<span class="chart-line-legend-sample chart-svg-line-legend-sample">${buildLegendLineSvgMarkup(color, "dashed", overlay ? 1.35 : singleStyle.width, 50, [6,4])}</span>`;
+  }
   const color = key === "expected" ? "#5b7c99" : (overlay ? colorToRgba("#1f2937", 0.55) : "#1f2937");
   const lineStyle = key === "expected" ? "dashed" : "solid";
   const lineWidth = key === "expected" ? 1.25 : 1.6;
@@ -25011,9 +25095,13 @@ function buildLifeGuideLegendHtml(chartInstance){
     .filter(shouldShowDatasetInLegend)
     .length;
   const suppressSeparator = !overlay && (graphType === "asset" || graphType === "cashflow" || (graphType === "education" && !hasDatasetLegendItems));
-  const items = overlay
-    ? [{key:"asset", label:"資産寿命"}]
-    : [{key:"expected", label:"想定寿命"}, {key:"asset", label:"資産寿命"}];
+  const items = [];
+  if(shouldDrawMainChartRetireGuide(graphType)) items.push({key:"retire", label:"リタイア"});
+  if(overlay){
+    items.push({key:"asset", label:"資産寿命"});
+  }else{
+    items.push({key:"expected", label:"想定寿命"}, {key:"asset", label:"資産寿命"});
+  }
   const buttons = items.map(item=>{
     const visible = isLifeGuideVisible(chartInstance, item.key);
     return `<button type="button" class="chart-line-legend-item${visible ? "" : " is-hidden"}" data-life-guide="${escapeAttr(item.key)}" aria-pressed="${visible ? "true" : "false"}">${buildLifeGuideLegendSample(item.key, overlay)}<span class="chart-line-legend-label">${escapeAttr(item.label)}</span></button>`;
@@ -25042,7 +25130,7 @@ function attachLifeGuideLegendHandlers(chartInstance, display){
 
 function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLifeGuideState=null){
   const configuredLifeGuideEntries = Array.isArray(lifeGuideEntries) ? lifeGuideEntries.slice() : null;
-  const configuredLifeGuideState = initialLifeGuideState ? {expected:initialLifeGuideState.expected !== false, asset:initialLifeGuideState.asset !== false} : null;
+  const configuredLifeGuideState = initialLifeGuideState ? {retire:initialLifeGuideState.retire !== false, expected:initialLifeGuideState.expected !== false, asset:initialLifeGuideState.asset !== false} : null;
   const seedConfiguredLifeGuideState = (chart)=>{
     if(!chart || !configuredLifeGuideState || chart.$lifeGuideLegendState) return;
     chart.$lifeGuideLegendState = {...configuredLifeGuideState};
@@ -25086,6 +25174,14 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
         ctx.restore();
       }
       drawCommonZeroLine(ctx, x, y);
+      const shouldDrawRetireGuideHere = shouldDrawMainChartRetireGuide(graphType) && (!monteInfo || graphType === "assetProbability");
+      const allRetireGuideEntries = getConfiguredLifeGuideEntries(chart);
+      if(shouldDrawRetireGuideHere && isRetireGuideVisible(chart) && !allRetireGuideEntries){
+        const retireXValue = getRetireGuideXValue(cfg);
+        if(retireXValue != null){
+          drawRetireGuideLine(ctx, x, y, chart.chartArea, retireXValue, getRetireGuideSingleStyle());
+        }
+      }
       const shouldDrawLifeGuidesHere = shouldDrawMainChartLifeGuides(graphType) && (!monteInfo || graphType === "asset");
       if(shouldDrawLifeGuidesHere){
         const area = chart.chartArea;
@@ -25117,7 +25213,7 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
       seedConfiguredLifeGuideState(chart);
       const graphType = document.getElementById("graphType")?.value || "";
       const shouldDrawLifeGuidesHere = shouldDrawMainChartLifeGuides(graphType) && (!monteInfo || graphType === "asset");
-      if(!shouldDrawLifeGuidesHere) return;
+      const shouldDrawRetireGuideHere = shouldDrawMainChartRetireGuide(graphType) && (!monteInfo || graphType === "assetProbability");
       const {ctx,scales} = chart;
       const x = scales.x;
       const y = scales.y;
@@ -25165,6 +25261,30 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
       ctx.clip();
 
       const allOverlayGuideEntries = getConfiguredLifeGuideEntries(chart);
+      if(shouldDrawRetireGuideHere && isRetireGuideVisible(chart)){
+        const overlayRetireGuideEntries = allOverlayGuideEntries ? allOverlayGuideEntries.filter(entry=>entry && (graphType === "assetProbability" ? isAssetProbabilityOverlayScenarioVisible(chart, entry.overlayIndex) : isOverlayGuideEntryVisible(chart, entry.overlayIndex))) : null;
+        if(overlayRetireGuideEntries){
+          overlayRetireGuideEntries.forEach(entry=>{
+            const xValue = getRetireGuideXValue(entry.cfg || cfg);
+            if(xValue == null) return;
+            drawRetireGuideLine(ctx, x, y, area, xValue, getRetireGuideOverlayStyle(entry.color));
+          });
+        }else{
+          const retireXValue = getRetireGuideXValue(cfg);
+          const retireStyle = getRetireGuideSingleStyle();
+          const retirePx = retireXValue != null ? x.getPixelForValue(Number(retireXValue)) : null;
+          if(Number.isFinite(retirePx) && retirePx >= area.left && retirePx <= area.right){
+            drawVerticalGuideLabel(retirePx, "リタイア", retireStyle.labelColor, "top", {
+              labelStroke:"rgba(180,91,106,0.18)"
+            });
+          }
+        }
+      }
+      if(!shouldDrawLifeGuidesHere){
+        ctx.restore();
+        return;
+      }
+
       const overlayGuideEntries = allOverlayGuideEntries ? allOverlayGuideEntries.filter(entry=>entry && isOverlayGuideEntryVisible(chart, entry.overlayIndex)) : null;
       if(allOverlayGuideEntries){
         if(isLifeGuideVisible(chart, "asset")){
@@ -26402,7 +26522,7 @@ function saveCurrentChartLegendVisibilityState(chartInstance){
   if(!state || !chartInstance) return;
   if(shouldShowLifeGuideLegend(chartInstance)){
     const lifeState = ensureLifeGuideLegendState(chartInstance);
-    state.lifeGuide = {expected:lifeState.expected !== false, asset:lifeState.asset !== false};
+    state.lifeGuide = {retire:lifeState.retire !== false, expected:lifeState.expected !== false, asset:lifeState.asset !== false};
   }
   state.datasets = {};
   (chartInstance.data?.datasets || []).forEach((ds, idx)=>{
@@ -26453,6 +26573,7 @@ function restoreChartLegendVisibilityState(chartInstance){
   if(!state || !chartInstance) return;
   if(shouldShowLifeGuideLegend(chartInstance) && state.lifeGuide){
     const lifeState = ensureLifeGuideLegendState(chartInstance);
+    if(typeof state.lifeGuide.retire === 'boolean') lifeState.retire = state.lifeGuide.retire;
     if(typeof state.lifeGuide.expected === 'boolean') lifeState.expected = state.lifeGuide.expected;
     if(typeof state.lifeGuide.asset === 'boolean') lifeState.asset = state.lifeGuide.asset;
   }
@@ -30631,9 +30752,9 @@ function shouldHideCompareXAxisEdgeTick(scale, value, index, ticks){
   return false;
 }
 
-const COMPARE_CHART_TRACE_COLORS = ['#d95b6a','#4f8eff','#22a16f','#f1a43a','#7a63f6'];
-const COMPARE_CHART_TRACE_WIDTH = 2.4;
-const COMPARE_CHART_MEDIAN_LINE_WIDTH = 1.8;
+const COMPARE_CHART_TRACE_COLORS = ['#cf616d','#3f73cf','#2b8b5f','#db953a','#7d5ed6'];
+const COMPARE_CHART_TRACE_WIDTH = 2.0;
+const COMPARE_CHART_MEDIAN_LINE_WIDTH = 1.25;
 const COMPARE_CHART_GRID_COLOR = 'rgba(15,23,42,0.08)';
 const COMPARE_CHART_ZERO_LINE_COLOR = 'rgba(15,23,42,0.38)';
 const COMPARE_CHART_AXIS_BORDER_COLOR = 'rgba(15,23,42,0.30)';
@@ -30647,10 +30768,10 @@ function getCompareChartLegendOptions(){
     labels:{
       usePointStyle:true,
       pointStyle:'line',
-      boxWidth:50,
-      pointStyleWidth:50,
-      boxHeight:10,
-      padding:14,
+      boxWidth:44,
+      pointStyleWidth:44,
+      boxHeight:8,
+      padding:12,
       sort(a, b){
         return (Number(a?.datasetIndex) || 0) - (Number(b?.datasetIndex) || 0);
       }
@@ -30658,18 +30779,20 @@ function getCompareChartLegendOptions(){
   };
 }
 function drawRoundedCompareMedianLabel(ctx, text, rawX, rawY, chartArea, color){
-  const paddingX = 7;
-  const paddingY = 4;
-  const radius = 7;
+  const paddingX = 6;
+  const paddingY = 3;
+  const radius = 6;
   const textWidth = ctx.measureText(text).width;
   const boxWidth = textWidth + paddingX * 2;
-  const boxHeight = 20;
+  const boxHeight = 18;
   const fadeEdge = 28;
   const x = Math.max(chartArea.left + 6, Math.min(rawX + 8, chartArea.right - boxWidth - 6));
   const distanceToEdge = Math.min(rawX - chartArea.left, chartArea.right - rawX);
   const alpha = Math.max(0, Math.min(1, distanceToEdge / fadeEdge));
   if(alpha <= 0.05) return;
   const y = Math.max(chartArea.top + 4, Math.min(rawY, chartArea.bottom - boxHeight - 4));
+  const labelStroke = colorToRgba(color, 0.22);
+  const labelTextColor = colorToRgba(color, 0.96);
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.beginPath();
@@ -30683,12 +30806,13 @@ function drawRoundedCompareMedianLabel(ctx, text, rawX, rawY, chartArea, color){
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(255,255,255,0.86)';
-  ctx.strokeStyle = color;
+  ctx.fillStyle = 'rgba(255,255,255,0.90)';
+  ctx.strokeStyle = labelStroke;
   ctx.lineWidth = 1;
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = color;
+  ctx.globalAlpha = Math.max(alpha, 0.86);
+  ctx.fillStyle = labelTextColor;
   ctx.fillText(text, x + paddingX, y + paddingY);
   ctx.restore();
 }
@@ -30704,7 +30828,7 @@ function drawCompareMedianGuides(chart, pluginKey){
   ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
   ctx.clip();
   ctx.textBaseline = 'top';
-  ctx.font = 'bold 12px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
+  ctx.font = '11px Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif';
   guides.forEach((guide, idx)=>{
     if(typeof chart.isDatasetVisible === 'function' && !chart.isDatasetVisible(idx)) return;
     const valueX = Number(guide?.x);
@@ -30713,9 +30837,9 @@ function drawCompareMedianGuides(chart, pluginKey){
     if(!Number.isFinite(px)) return;
     if(px < chartArea.left || px > chartArea.right) return;
     const color = guide?.color || getCompareChartSeriesColor(idx);
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = colorToRgba(color, 0.72);
     ctx.lineWidth = COMPARE_CHART_MEDIAN_LINE_WIDTH;
-    ctx.setLineDash([5,4]);
+    ctx.setLineDash([7,5]);
     ctx.lineCap = 'butt';
     ctx.beginPath();
     ctx.moveTo(px, chartArea.top);
@@ -31292,15 +31416,16 @@ function renderWithdrawalComparisonChart(results){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:28}},
+      layout:{padding:{right:12, top:4, bottom:2, left:0}},
       plugins:{
         legend:getCompareChartLegendOptions(),
+        tooltip:{enabled:false},
         withdrawalCompareMedianGuides:{guides:medianGuides}
       },
       scales:{
         x:{
           type:'linear',
-          title:{display:true, text:`想定寿命時の総資産（${moneyDisplayMeta.unit}）`},
+          title:{display:true, text:`想定寿命時の総資産（${moneyDisplayMeta.unit}）`, padding:{top:2,bottom:0}},
           min: effectiveBounds.xMin,
           max: effectiveBounds.xMax,
           afterBuildTicks(axis){
@@ -31310,7 +31435,7 @@ function renderWithdrawalComparisonChart(results){
                     ticks:{
             autoSkip:false,
             includeBounds:false,
-            padding:10,
+            padding:4,
             callback:function(v, idx, ticks){
               if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
               const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 12);
@@ -31337,11 +31462,11 @@ function renderWithdrawalComparisonChart(results){
             const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 6);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
-          title:{display:true, text:densityAxisMeta.title},
+          title:{display:true, text:densityAxisMeta.title, padding:{top:0,bottom:2}},
           ticks:{
             autoSkip:false,
             includeBounds:false,
-            padding:10,
+            padding:4,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
           },
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
@@ -32717,15 +32842,16 @@ function renderMonteCompareChart(results){
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:28}},
+      layout:{padding:{right:12, top:4, bottom:2, left:0}},
       plugins:{
         legend:getCompareChartLegendOptions(),
+        tooltip:{enabled:false},
         monteCompareMedianGuides:{guides:medianGuides}
       },
       scales:{
         x:{
           type:'linear',
-          title:{display:true, text:`想定寿命時の総資産（${moneyDisplayMeta.unit}）`},
+          title:{display:true, text:`想定寿命時の総資産（${moneyDisplayMeta.unit}）`, padding:{top:2,bottom:0}},
           min: effectiveBounds.xMin,
           max: effectiveBounds.xMax,
           afterBuildTicks(axis){
@@ -32735,7 +32861,7 @@ function renderMonteCompareChart(results){
                     ticks:{
             autoSkip:false,
             includeBounds:false,
-            padding:10,
+            padding:4,
             callback:function(v, idx, ticks){
               if(isCompareXAxisTickPastLeftEdge(this, v)) return '';
               const dynamicStep = getNiceTickStepForBounds(this.min, this.max, 12);
@@ -32757,11 +32883,11 @@ function renderMonteCompareChart(results){
             const dynamicStep = getNiceTickStepForBounds(axis.min, axis.max, 6);
             axis.ticks = buildNiceLinearScaleTicks(axis.min, axis.max, dynamicStep, 0);
           },
-          title:{display:true, text:densityAxisMeta.title},
+          title:{display:true, text:densityAxisMeta.title, padding:{top:0,bottom:2}},
           ticks:{
             autoSkip:false,
             includeBounds:false,
-            padding:10,
+            padding:4,
             callback:(v)=>formatDensityPercent(v, densityAxisMeta.windowWidth)
           },
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
