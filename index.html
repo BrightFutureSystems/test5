@@ -5669,7 +5669,7 @@ document.addEventListener("scroll", (ev)=>{
             <label><input id="incomeCurveBonusLinkedOn" type="checkbox"> ボーナス（年）を年間手取り額の <input id="incomeCurveBonusLinkedPct" type="number" class="ratebox" value="33" step="0.1"><span class="suffix">%</span> で計算する</label>
           </div>
         </div>
-        <div class="income-curve-note">※ 初期状態では「現在年齢」と「リタイア時点」の2点のみ表示します。必要に応じて中間点を追加してください。補間は線形です。年齢の点はその年齢ちょうどを表し、例：50.0歳は50歳の誕生日時点です。ボーナス比率の既定値33%は「賞与が月給4か月分」の簡易換算です。手取りベースでは35%前後が実感に近い場合もあります。</div>
+        <div class="income-curve-note">初期状態では「現在年齢」と「リタイア時点」の2点を表示します。必要に応じて中間点を追加してください。<br>各点の間は線形補間し、年齢の点はその年齢ちょうどを表します。例：50.0歳は50歳の誕生日時点です。<br>ボーナス比率の既定値33%は「賞与が月給4か月分」の簡易換算です。手取りベースでは実際の賞与比率に合わせて調整してください。</div>
       </div>
       <div class="modal-actions" style="margin-top:14px;">
         <button type="button" id="cancelIncomeCurveBtn">キャンセル</button>
@@ -5682,7 +5682,7 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card pension-helper-modal" role="dialog" aria-modal="true" aria-labelledby="pensionHelperTitle">
       <div id="pensionHelperTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">年金入力補助</div>
       <div class="pension-helper-grid">
-        <div class="pension-helper-note">※ 直接入力のまま使うことも、ねんきん定期便ベースで月額へ換算して反映することもできます。</div>
+        <div class="pension-helper-note">公的年金は、税・社会保険料控除前の額面年金額を入力します。<br>直接入力のまま使うことも、ねんきん定期便ベースで月額へ換算して反映することもできます。</div>
         <div class="pension-helper-mode-row">
           <label><input type="radio" name="pensionHelperMode" id="pensionHelperModeDirect" value="direct" checked> 直接入力</label>
           <label><input type="radio" name="pensionHelperMode" id="pensionHelperModeNotice" value="nenkin_notice"> ねんきん定期便ベース</label>
@@ -5703,7 +5703,7 @@ document.addEventListener("scroll", (ev)=>{
             <div class="pension-helper-field"><label>年額合計</label><div id="pensionHelperAnnualTotal" class="pension-helper-static">0 万円 / 年</div></div>
             <div class="pension-helper-field"><label>月額換算</label><div id="pensionHelperMonthlyTotal" class="pension-helper-static">0 万円 / 月</div></div>
           </div>
-          <div class="pension-helper-inline-note">※ ねんきん定期便などの見込み額を年額で入力してください。月額換算して収入表へ反映します。</div>
+          <div class="pension-helper-inline-note">ねんきん定期便などの見込み額を、税・社会保険料控除前の年額で入力してください。月額に換算して収入表へ反映します。</div>
         </div>
       </div>
       <div class="modal-actions" style="margin-top:14px;">
@@ -5717,7 +5717,7 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card loan-detail-modal" role="dialog" aria-modal="true" aria-labelledby="loanDetailTitle">
       <div id="loanDetailTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">住宅ローン詳細設定</div>
       <div class="loan-detail-grid">
-        <div class="loan-detail-note">※ 詳細モードでは、入力内容から返済額と返済期間見込みを計算し、住宅ローン表に反映します。詳細モードON中は、住宅ローン表の4項目は直接編集できません。</div>
+        <div class="loan-detail-note">詳細モードでは、入力内容から返済額と返済期間の見込みを計算し、住宅ローン表へ反映します。<br>詳細モードON中は、住宅ローン表の購入年月・頭金・返済額・返済年数を直接編集できません。</div>
         <div class="loan-detail-section">
           <div class="loan-detail-section-title">基本条件</div>
           <div class="loan-detail-fields">
@@ -5767,14 +5767,14 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card edu-detail-modal" role="dialog" aria-modal="true" aria-labelledby="educationDetailTitle">
       <div id="educationDetailTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">教育費詳細</div>
       <div class="edu-detail-grid">
-        <div class="edu-detail-note">※ 各学校段階の標準値を表示しつつ編集できます。入学一時金は、入学金に加え、制服代・教材初期費用など標準的な入学時費用を含む想定です。</div>
+        <div class="edu-detail-note">各学校段階の標準値を確認しながら編集できます。<br>入学一時金は、入学金に加え、制服代・教材初期費用など標準的な入学時費用を含む想定です。</div>
         <div class="edu-detail-section">
           <div class="edu-detail-section-title">簡単モードの要約</div>
           <div id="educationDetailSimpleSummary" class="edu-detail-summary"></div>
         </div>
         <div id="educationDetailPreschoolBlock" class="edu-detail-section edu-detail-block">
           <label class="edu-detail-block-toggle"><input id="eduDetailPreschoolEnabled" type="checkbox"> 未就学詳細を使用する</label>
-          <div class="edu-detail-inline-note">0〜5歳の各年齢ごとに、施設種別・入園金・年額・追加費用を設定できます。</div>
+          <div class="edu-detail-inline-note">0〜5歳の各年齢ごとに、施設種別・入園金・年額・追加費用（月）を設定できます。</div>
           <div class="edu-detail-preschool-table-wrap">
             <table class="edu-detail-preschool-table">
               <thead><tr><th>年齢</th><th>施設種別</th><th>標準入園金</th><th>入園金（編集可）</th><th>標準年額</th><th>年額（編集可）</th><th>追加費用（月）</th></tr></thead>
@@ -5895,7 +5895,7 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card edu-copy-modal" role="dialog" aria-modal="true" aria-labelledby="educationCopyTitle">
       <div id="educationCopyTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">教育費設定のコピー</div>
       <div class="edu-copy-grid">
-        <div class="edu-copy-note">※ コピー元の教育費設定（簡単設定＋詳細設定）をコピー先へ上書きします。現在の学校・年齢・子どもの有無は変更しません。</div>
+        <div class="edu-copy-note">コピー元の教育費設定（簡単設定＋詳細設定）をコピー先へ上書きします。<br>現在の学校区分・年齢・子どもの有無は変更しません。</div>
         <div class="edu-copy-fields">
           <div class="edu-copy-field">
             <label for="eduCopyFrom">コピー元</label>
@@ -5919,7 +5919,7 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card insurance-assist-modal" role="dialog" aria-modal="true" aria-labelledby="insuranceAssistTitle">
       <div id="insuranceAssistTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">保険入力補助</div>
       <div class="insurance-assist-grid">
-        <div class="insurance-assist-note">※ 1契約分の入力から、保険料支払い表と保険受取表へ初期値を自動登録します。条件付き受取（入院・診断・死亡など）は自動反映しません。登録後は表で自由に編集できます。</div>
+        <div class="insurance-assist-note">1契約分の入力から、保険料支払い表と保険金・年金受取表へ初期値を自動登録します。<br>条件付き給付は自動登録しません。登録後は表で自由に編集できます。</div>
         <div class="insurance-assist-section">
           <div class="insurance-assist-section-title">保険タイプ</div>
           <div class="insurance-assist-type-row">
@@ -5966,7 +5966,7 @@ document.addEventListener("scroll", (ev)=>{
           <div class="insurance-assist-section-title">医療保険・がん保険の設定</div>
           <div class="insurance-assist-fields">
             <div class="insurance-assist-field"><label for="insuranceAssistMedicalSubtype">保険種類</label><select id="insuranceAssistMedicalSubtype"><option value="医療保険・がん保険">医療保険・がん保険</option><option value="医療保険">医療保険</option><option value="がん保険">がん保険</option></select></div>
-            <div class="insurance-assist-field insurance-assist-field-wide"><label>受取の扱い</label><div class="insurance-assist-inline-note">医療保険・がん保険の給付金は、入院・診断など条件付きのため、この補助では保険料支払いのみ登録します。</div></div>
+            <div class="insurance-assist-field insurance-assist-field-wide"><label>受取の扱い</label><div class="insurance-assist-inline-note">入院・診断などの条件付き給付は、この補助では登録しません。必要な場合は、確定した受取として保険金・年金受取表に入力してください。</div></div>
           </div>
         </div>
         <div class="insurance-assist-section">
@@ -6601,13 +6601,13 @@ document.addEventListener("scroll", (ev)=>{
         </div>
         <div class="basic-children-pane">
           <table class="center-table basic-table child-date-table">
-            <tr><th>子</th><th>有無</th><th>生年月日</th><th>学校</th></tr>
+            <tr><th>子</th><th>有無</th><th>生年月日</th><th>学校区分</th></tr>
             <tbody id="childRows"></tbody>
           </table>
           <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="child">＋</button></div>
         </div>
       </div>
-      <div class="help">基準年月日はシミュレーションの開始日です。本人・配偶者・子どもの年齢は、この日時点で自動計算されます。子どもの学校は、生年月日と基準年月日から自動選択されますが、必要に応じて手動で変更できます。為替レートはドル建資産・収入の円換算に、インフレ率は各項目でONにした将来金額の増減に使います。</div>
+      <div class="help">基準年月日はシミュレーションの開始日です。本人・配偶者・子どもの年齢は、この日時点で自動計算されます。<br>子どもの学校区分は、生年月日と基準年月日から自動選択されます。必要に応じて手動で変更できます。<br>為替レートはドル建資産・収入の円換算に、インフレ率は各項目でONにした将来金額の増減に使います。</div>
     </div>
 
         </div>
@@ -6618,7 +6618,7 @@ document.addEventListener("scroll", (ev)=>{
     <div id="detailModePanel" class="mode-panel" hidden>
 <div class="section">
       <h2>資産</h2>
-      <div class="help">預貯金・現在の運用資産・今後の投資・積立投資に分けて入力します。現在保有分は「現在の運用資産」、将来の一括投資予定は「今後の投資」、継続積立は「積立投資」へ入力してください。</div>
+      <div class="help">資産は、預貯金・安全資産・現在の運用資産・今後の投資・積立投資に分けて入力します。<br>現在保有している投資資産は「現在の運用資産」、将来の一括投資予定は「今後の投資」、継続的な積立は「積立投資」に入力してください。</div>
       <div class="subhead">預貯金</div>
       <div class="table-scroll">
       <table class="center-table deposit-table">
@@ -6627,11 +6627,11 @@ document.addEventListener("scroll", (ev)=>{
       </table>
       </div>
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="dep">＋</button></div>
-      <div class="stack-note">収支プラス分や臨時収入等で増えた現金は、預貯金行に均等配分されます。各行には、それぞれ設定した金利が翌年以降反映されます。利息課税ON時は、利息に対して20.315%の税引後で計算します。</div>
+      <div class="stack-note">収支プラス分や臨時収入などで増えた現金は、預貯金行に均等配分されます。<br>各行の金利は翌年以降に反映し、利息課税ON時は利息に20.315%の簡易税率を適用します。</div>
 
       <div class="subhead">安全資産</div>
-      <div class="help">定期預金・国債・社債・外貨建て定期預金など、満期や償還を持つ低リスク資産を入力します。年利は税引前で入力し、利息課税は必要に応じて各行で考慮できます。</div>
-      <div class="help">利息は収入として預貯金へ入金します。元本は満期・償還時に預貯金へ移すか、定期預金のみ自動継続できます。初期実装では中途解約・途中売却は考慮しません。</div>
+      <div class="help">定期預金・国債・社債・外貨建て定期預金など、満期や償還を持つ低リスク資産を入力します。<br>年利は税引前で入力し、利息課税は必要に応じて各行で反映できます。</div>
+      <div class="help">利息は収入として預貯金へ入金します。元本は満期・償還時に預貯金へ移すか、定期預金のみ自動継続できます。<br>中途解約・途中売却は考慮しません。</div>
       <div class="table-scroll">
       <table class="center-table safe-asset-table">
         <tr><th>項目</th><th>名義</th><th>商品種別</th><th>元本</th><th>通貨</th><th>年利</th><th>開始</th><th>期間</th><th>満期後</th><th>利息課税</th></tr>
@@ -6641,7 +6641,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="safeAsset">＋</button></div>
 
       <div class="subhead">現在の運用資産</div>
-      <div class="help">元本は取得額、現在額は現在の評価額を入力してください。</div>
+      <div class="help">元本には取得額、現在額には現在の評価額を入力してください。</div>
       <div class="table-scroll">
       <table class="center-table asset-invest-table current-invest-table">
         <tr><th>項目</th><th>名義</th><th>口座</th><th>元本</th><th>現在額</th><th>通貨</th><th>利回り</th><th>配当率</th><th>iDeCo区分</th></tr>
@@ -6661,7 +6661,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="futureInv">＋</button></div>
 
       <div class="subhead">積立投資</div>
-      <div class="help">積立投資は、その時点の預貯金から拠出する想定です。資金不足時は積立額が減額または停止されます。</div>
+      <div class="help">積立投資は、その時点の預貯金から拠出します。資金不足時は積立額が減額または停止されます。</div>
       <div class="table-scroll">
       <table class="center-table asset-invest-table sum-invest-table">
         <tr><th>項目</th><th>名義</th><th>口座</th><th>積立期間</th><th>積立額</th><th>通貨</th><th>利回り</th><th>配当率</th><th>iDeCo区分</th></tr>
@@ -6670,8 +6670,8 @@ document.addEventListener("scroll", (ev)=>{
       </div>
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="sumInv">＋</button></div>
 
-      <div class="stack-note">配当率は利回りの一部として扱います。課税口座の配当は簡易税率 20.315% で税引後に預貯金へ入金し、売却益などの運用益も同じ簡易税率で計算します。NISA等の非課税口座は非課税で扱います。配当は自動再投資しません。iDeCo・企業型DCの配当は口座外へ入金せず、制度内で内部成長として扱います。</div>
-      <div class="stack-note">取り崩し方法は上部の「取り崩し設定」に従います。</div>
+      <div class="stack-note">配当率は利回りの一部として扱い、配当は自動再投資せず預貯金へ入金します。<br>課税口座の配当・売却益は20.315%の簡易税率で計算し、NISA・その他は本ツール上は非課税で扱います。<br>iDeCo・企業型DCの配当は口座外へ入金せず、制度内の内部成長として扱います。</div>
+      <div class="stack-note">取り崩し方法は、三点メニュー内の「取り崩し設定」に従います。</div>
 
       <div class="subhead">DC加入歴設定</div>
       <table class="center-table income-table">
@@ -6679,7 +6679,7 @@ document.addEventListener("scroll", (ev)=>{
         <tr><td>本人</td><td><div class="input-unit center"><input id="self_ideco_years" type="number" class="agebox" value="0" step="0.1"><span class="suffix">年</span></div></td></tr>
         <tr><td>配偶者</td><td><div class="input-unit center"><input id="sp_ideco_years" type="number" class="agebox" value="0" step="0.1"><span class="suffix">年</span></div></td></tr>
       </table>
-      <div class="stack-note">※ 既加入年数は「現在時点ですでに通算加入者等期間に算入される年数」を入力。iDeCo・企業型DCの受給判定に使います。未入力時は0年として扱います。</div>
+      <div class="stack-note">既加入年数には、現在時点ですでに通算加入者等期間に算入される年数を入力してください。<br>iDeCo・企業型DCの受給可能年齢の判定に使います。未入力時は0年として扱います。</div>
 
       <div class="subhead">DC・退職金 受取方法設定</div>
       <div class="table-scroll">
@@ -6693,15 +6693,15 @@ document.addEventListener("scroll", (ev)=>{
         <tr><td>配偶者 退職金</td><td><select id="receipt_sp_retire_method"><option selected>一括</option><option>年金</option><option>併用</option></select></td><td><div class="input-unit center"><input id="receipt_sp_retire_lumpAge" type="number" class="agebox" value="0"><span class="suffix">歳</span></div></td><td><div class="input-unit center"><input id="receipt_sp_retire_lumpRatio" type="number" class="ratebox" value="50" step="0.1"><span class="suffix">%</span></div></td><td><div class="input-unit center"><input id="receipt_sp_retire_pensionStart" type="number" class="agebox" value="0"><span class="suffix">歳</span></div></td><td><div class="input-unit center"><input id="receipt_sp_retire_pensionEnd" type="number" class="agebox" value="0"><span class="suffix">歳</span></div></td></tr>
       </table>
       </div>
-      <div class="stack-note">※ 一括年齢・年金開始/終了が0のときは自動設定を使います。iDeCo・企業型DCは受給可能年齢、退職金はリタイア時点を基準にします。税計算はまだ受取時課税まで反映していません。</div>
+      <div class="stack-note">一括年齢・年金開始/終了が0のときは自動設定を使います。iDeCo・企業型DCは受給可能年齢、退職金はリタイア時点を基準にします。<br>税計算は、受取時課税を反映していません。</div>
     </div>
 
     <div class="section">
       <h2>収入</h2>
-      <div class="stack-note">※ 収入は手取りベースで入力してください。</div>
-      <div class="stack-note">※ 退職金・DC受取は上の専用表で受取方法を管理します。</div>
-      <div class="stack-note">※ 公的年金は「年金入力補助」から、ねんきん定期便ベースでも入力できます。</div>
-      <div class="stack-note">※ 月収はリタイア年月の月まで含めて計上します。ボーナス（年）は、その年に働いた月数に応じて比例計算します。年金は年金開始年齢の誕生月から受給開始として按分計上します。そのため、リタイア年と年金開始年が同じ場合、同一年内で給与・ボーナスと年金が併存することがあります。</div>
+      <div class="stack-note">公的年金以外の収入は、原則として手取りベースで入力してください。</div>
+      <div class="stack-note">公的年金は、税・社会保険料控除前の額面年金額を入力してください。「年金入力補助」から、ねんきん定期便ベースでも入力できます。</div>
+      <div class="stack-note">退職金・DC受取は、上の専用表で受取方法を管理します。</div>
+      <div class="stack-note">月収はリタイア年月の月まで計上し、ボーナス（年）はその年に働いた月数で按分します。年金は年金開始年齢の誕生月から受給開始として按分計上します。</div>
       <div class="grid2">
         <div>
           <div class="subhead">本人</div>
@@ -6734,7 +6734,7 @@ document.addEventListener("scroll", (ev)=>{
       </div>
 
       <div class="subhead">定期収入</div>
-      <div class="help">定期収入には、家賃収入・副業収入・私的年金・継続的な仕送りなど、一定期間継続して見込む収入を入力してください。</div>
+      <div class="help">定期収入には、家賃収入・副業収入・私的年金・継続的な仕送りなど、一定期間継続して見込む手取り収入を入力してください。</div>
       <div class="table-scroll">
       <table class="center-table reginc-table">
         <tr><th>項目</th><th>期間</th><th>金額</th><th>インフレ連動</th></tr>
@@ -6744,7 +6744,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="reginc">＋</button></div>
 
       <div class="subhead">臨時収入</div>
-      <div class="help">臨時収入には、相続・贈与・補助金・一時金など、単発で発生する収入を入力してください。退職金・DC受取は上の専用設定を使ってください。</div>
+      <div class="help">臨時収入には、相続・贈与・補助金・一時金など、単発で発生する手取り収入を入力してください。退職金・DC受取は上の専用設定を使ってください。</div>
       <div class="table-scroll">
       <table class="center-table inc-table">
         <tr><th>項目</th><th>時点</th><th>金額</th><th>インフレ連動</th></tr>
@@ -6757,17 +6757,17 @@ document.addEventListener("scroll", (ev)=>{
       <div class="checkbox-row">
         <label><input id="childAllowanceOn" type="checkbox" checked> 計算に含める</label>
       </div>
-      <div class="help">本人年齢ごとの1年間に支給される、子ども別の児童手当年額を表示します。単位：万円 / 年</div>
+      <div class="help">各年に支給される児童手当の年額を、子ども別に表示します。児童手当は非課税収入として扱います。単位：万円 / 年</div>
       <div id="childAllowanceSummaryWrap" class="child-allowance-wrap"></div>
     </div>
 
     <div class="section">
       <h2>保険</h2>
-      <div class="help">保険では、保険料の支払いと、将来確定している受取を管理します。死亡・入院・介護発生などの条件付き受取は、現時点では反映しません。</div>
+      <div class="help">保険では、保険料の支払いと、将来確定している受取予定を管理します。<br>入院・診断・死亡などの条件付き給付は、確定した受取として入力した場合のみ反映します。<br>生命保険料控除などの税控除は反映しません。</div>
       <div class="insurance-assist-row"><button type="button" id="insuranceAssistBtn" class="add-row-btn insurance-assist-btn">保険入力補助</button></div>
 
       <div class="subhead">保険料支払い</div>
-      <div class="help">生命保険・医療保険・学資保険・個人年金保険など、継続して支払う保険料を入力してください。月払い・年払いのどちらにも対応します。</div>
+      <div class="help">生命保険・医療保険・学資保険・個人年金保険など、継続して支払う保険料を入力してください。月払い・年払いに対応します。</div>
       <div class="table-scroll">
       <table class="center-table insurance-pay-table">
         <tr><th>項目</th><th>保険種類</th><th>契約者</th><th>被保険者</th><th>支払期間</th><th>金額</th><th>支払単位</th><th>インフレ連動</th></tr>
@@ -6777,7 +6777,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="insPay">＋</button></div>
 
       <div class="subhead">保険金・年金受取</div>
-      <div class="help">学資金・満期保険金・個人年金など、将来の受取予定を入力してください。一時金は開始年齢のみ、年金形式は受取期間を設定してください。</div>
+      <div class="help">学資金・満期保険金・個人年金など、将来確定している受取予定を入力してください。一時金は開始年齢のみ、年金形式は受取期間を設定してください。</div>
       <div class="table-scroll">
       <table class="center-table insurance-recv-table">
         <tr><th>項目</th><th>保険種類</th><th>受取種類</th><th>受取人</th><th>受取開始</th><th>受取終了</th><th>金額</th><th>受取単位</th><th>インフレ連動</th></tr>
@@ -6789,6 +6789,7 @@ document.addEventListener("scroll", (ev)=>{
 
     <div class="section">
       <h2>支出</h2>
+      <div class="help">支出は、住居費・教育費・生活費・定期支出・臨時支出に分けて入力します。毎月の通常生活費は「生活費」、毎年・数年ごとの支出は「定期支出」、1回限りの大きな支出は「臨時支出」に入力してください。</div>
 
       <div class="subhead">家賃</div>
       <div class="table-scroll">
@@ -6835,7 +6836,7 @@ document.addEventListener("scroll", (ev)=>{
 
       <div class="subhead">持ち家維持費</div>
       <div class="help">持ち家維持費には、固定資産税・都市計画税、火災保険・地震保険、修繕・メンテナンス、管理費・修繕積立金など、住宅保有に伴う継続費を入力してください。</div>
-      <div class="help">住宅以外の支出や、生活費・定期支出としてまとめたいものは、該当ブロックへ入力してください。</div>
+      <div class="help">住宅以外の継続支出は、「生活費」または「定期支出」へ入力してください。</div>
       <div class="table-scroll">
       <table class="center-table expense-range-table">
         <tr><th>項目</th><th>期間</th><th>金額</th><th>インフレ連動</th></tr>
@@ -6845,14 +6846,14 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="homeMaint">＋</button></div>
 
       <div class="subhead">教育費</div>
+      <div class="help">学校種別を選択すると、標準教育費が自動で反映されます。必要に応じて詳細設定で学校段階ごとの金額を調整できます。</div>
       <div class="help">追加費用（月）は、塾・習い事・教材費・通学費・部活費など、標準値に含めない上乗せ分を入力してください。</div>
       <div class="help">大学・大学院の自宅外費用は標準値側で見込むため、追加費用（月）にはその超過分のみ入力してください。</div>
-      <div class="help">詳細設定は各段階ごとに独立して使えます。初回のみ簡単設定から初期値を作成し、その後は独立保持します。</div>
       <div class="edu-wrap">
         <table>
           <tr>
             <th>子</th>
-            <th>現在の学校</th>
+            <th>現在の学校区分</th>
             <th>未就学</th>
             <th>小学校</th>
             <th>中学校</th>
@@ -6871,8 +6872,8 @@ document.addEventListener("scroll", (ev)=>{
       </div>
 
       <div class="subhead">生活費</div>
-      <div class="help">生活費には、食費・日用品・光熱費・通信費・衣服費・通常医療費・交際費など、毎月の通常生活で継続的にかかる支出を含めてください。</div>
-      <div class="help">旅行・車検・帰省・家電買い替え準備など、毎月ではない支出は「定期支出」へ入力してください。</div>
+      <div class="help">生活費には、食費・日用品・光熱費・通信費・衣服費・通常医療費・交際費など、毎月の通常生活で継続的にかかる支出を入力してください。</div>
+      <div class="help">毎月ではない支出は、必要に応じて「定期支出」または「臨時支出」へ入力してください。</div>
       <div class="table-scroll">
       <table class="center-table expense-range-table">
         <tr><th>項目</th><th>期間</th><th>金額</th><th>インフレ連動</th></tr>
@@ -6882,7 +6883,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="life">＋</button></div>
 
       <div class="subhead">定期支出</div>
-      <div class="help">定期支出は、生活費とは別に見込む年単位・季節単位の支出を入力する欄です。例：車検、自動車保険、帰省、旅行、家電買い替え準備など。</div>
+      <div class="help">定期支出には、生活費とは別に見込む年単位・季節単位の支出を入力してください。例：車検、自動車保険、帰省、旅行、家電買い替え準備など。</div>
       <div class="help">固定資産税・火災保険・修繕費・管理費などを分けて管理したい場合は、「持ち家維持費」へ入力してください。</div>
       <div class="table-scroll">
       <table class="center-table expense-range-table">
@@ -6893,8 +6894,8 @@ document.addEventListener("scroll", (ev)=>{
       <div class="add-row-wrap"><button type="button" class="add-row-btn" data-add-row="period">＋</button></div>
 
       <div class="subhead">臨時支出</div>
-      <div class="help">臨時支出には、車購入・大規模リフォーム・引っ越し費用・特別な医療費など、単発で発生する大きな支出を入力してください。</div>
-      <div class="help">毎年・数年ごとに見込む支出は「定期支出」、1回限りの大きな支出は「臨時支出」へ入力してください。</div>
+      <div class="help">臨時支出には、車購入・大規模リフォーム・引っ越し費用・特別な医療費など、1回限りの大きな支出を入力してください。</div>
+      <div class="help">毎年・数年ごとに見込む支出は「定期支出」へ入力してください。</div>
       <div class="table-scroll">
       <table class="center-table expense-point-table">
         <tr><th>項目</th><th>時点</th><th>金額</th><th>インフレ連動</th></tr>
@@ -6906,6 +6907,7 @@ document.addEventListener("scroll", (ev)=>{
 
     <div class="section">
       <h2>社会保険・年金課税</h2>
+      <div class="help">通常は初期設定のままで利用できます。実際の保険料・税額は自治体、年度、所得、世帯構成、各種控除により異なるため、必要な場合のみ詳細パラメータを調整してください。</div>
       <div class="grid2">
         <div>
           <div class="subhead subhead-with-action"><span>社会保険料（標準推計）</span><button type="button" id="resetSocialSimpleBtn" class="subhead-action-btn">初期化</button></div>
@@ -6923,7 +6925,7 @@ document.addEventListener("scroll", (ev)=>{
             <tr><td>介護保険（65歳以上）</td><td><div class="input-unit center"><input id="socialNursingAnnual" type="number" class="moneybox" value="8" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
             <tr><td>後期高齢者医療（参考上限）</td><td><div class="input-unit center"><input id="socialLateElderlyAnnual" type="number" class="moneybox" value="12" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
           </table>
-          <div class="help small">社会保険料は、国民年金、国保、介護保険、後期高齢者医療保険などを標準推計で概算します。実際の保険料は自治体・年度・所得・世帯構成・健康保険の加入状況により異なります。通常は詳細パラメータを変更する必要はありません。給与・賞与などの勤労収入は手取り入力を前提としているため、勤務中の健康保険料・厚生年金保険料は原則として別途計上しません。<br>国民年金：20〜59歳の対象者1人あたりの概算年額です。夫婦とも対象なら原則2人分かかります。<br>退職後健保（本人・配偶者）：退職後に使う健康保険の種類をそれぞれ選びます。<br>任意継続年額：任意継続を選んだ本人1人あたりの概算年額です。本人・配偶者とも任意継続を選ぶ場合は、この金額をそれぞれに適用します。<br>国保 所得割率（概算）：国保の所得連動部分を表す標準推計用の率です。自治体差があります。<br>国保 固定部分（世帯）：均等割・平等割など固定部分をまとめた世帯ベースの概算です。国保加入者が複数いる場合は内部で按分します。<br>国保 上限（概算）：国保年額の簡易上限です。自治体や年度で異なります。<br>介護保険（65歳以上）：65歳以上の対象者1人あたりの概算年額です。所得水準に応じた簡易段階で推計します。<br>後期高齢者医療：75歳以上の対象者について、均等割と所得割を標準推計します。実際の保険料は地域や所得で変わります。</div>
+          <div class="help small">社会保険料は、国民年金、国保、介護保険、後期高齢者医療などを標準推計で概算します。<br>退職後健保の選択に応じて、国保簡易、任意継続、扶養、後期高齢者医療を簡易反映します。<br>実際の保険料は自治体・年度・所得・世帯構成・加入制度により異なります。<br>給与・賞与などの勤労収入は手取り入力を前提としているため、勤務中の健康保険料・厚生年金保険料は原則として別途計上しません。</div>
         </div>
         <div>
           <div class="subhead subhead-with-action"><span>公的年金課税（簡易）</span><button type="button" id="resetPensionTaxSimpleBtn" class="subhead-action-btn">初期化</button></div>
@@ -6932,14 +6934,11 @@ document.addEventListener("scroll", (ev)=>{
             <tr><td>公的年金の税を反映</td><td><label class="inline-check"><input id="taxOn" type="checkbox" checked> 反映する</label></td></tr>
             <tr><td>所得税 基礎控除（簡易）</td><td><div class="input-unit center"><input id="taxIncomeBasicDeduction" type="number" class="moneybox" value="58" step="0.1"><span class="suffix">万円 / 人</span></div></td></tr>
             <tr><td>住民税 基礎控除</td><td><div class="input-unit center"><input id="taxResidentBasicDeduction" type="number" class="moneybox" value="43" step="0.1"><span class="suffix">万円 / 人</span></div></td></tr>
-            <tr><td>公的年金控除（65歳未満）</td><td><div class="input-unit center"><input id="taxPublicPensionDeductionUnder65" type="number" class="moneybox" value="60" step="0.1"><span class="suffix">万円 / 人</span></div></td></tr>
-            <tr><td>公的年金控除（65歳以上）</td><td><div class="input-unit center"><input id="taxPublicPensionDeduction65Plus" type="number" class="moneybox" value="110" step="0.1"><span class="suffix">万円 / 人</span></div></td></tr>
             <tr><td>住民税率（簡易）</td><td><div class="input-unit center"><input id="taxResidentRatePct" type="number" class="ratebox" value="10" step="0.1"><span class="suffix">%</span></div></td></tr>
           </table>
-          <div class="help small">公的年金の税を反映：ONのとき、公的年金のみを簡易課税対象にします。その他の収入は手取り入力済みとして扱います。<br>所得税 基礎控除（簡易）：1人あたりの簡易基礎控除です。現行制度では所得に応じて変動するため、簡易モデルでは代表値を使います。<br>住民税 基礎控除：1人あたりの住民税計算用基礎控除です。<br>公的年金控除（65歳未満）：65歳未満の人1人あたりの簡易控除額です。<br>公的年金控除（65歳以上）：65歳以上の人1人あたりの簡易控除額です。<br>住民税率（簡易）：住民税の所得割部分を表す簡易率です。</div>
+          <div class="help small">公的年金のみを簡易課税対象とし、その他収入は手取り入力済みとして扱います。<br>公的年金等控除、復興特別所得税、社会保険料控除、住民税所得割の非課税判定を簡易反映します。<br>実際の税額は、他所得、扶養・配偶者控除、住民税均等割、各種控除、自治体・年度・制度改正により異なります。</div>
         </div>
       </div>
-      <div class="help">退職後の社会保険料と、公的年金に対する簡易課税を年度別収支表へ反映します。勤務中の給与や手取り入力の定期収入・臨時収入は、従来どおり手取り前提です。<br>※ 社会保険料（標準推計）は、国民年金・国保・介護保険・後期高齢者医療などを標準的な条件で概算します。実際の保険料は自治体・年度・所得・世帯構成・健康保険の加入状況により異なります。通常は詳細パラメータを変更する必要はありません。給与・賞与などの勤労収入は手取り入力を前提としているため、勤務中の健康保険料・厚生年金保険料は原則として別途計上しません。<br>※ 退職後健保で「国保簡易」を選んだ場合は国保の標準推計パラメータを使い、「任意継続」を選んだ場合は任意継続年額を最大2年間適用し、その後は国保推計へ切り替える想定です。「扶養」は健康保険料を0として扱い、「後期高齢」は75歳以上の後期高齢者医療として扱います。<br>※ 公的年金課税（簡易）は、当面は公的年金のみを対象とした簡易計算です。給与・定期収入・臨時収入・保険受取などは、原則として手取り入力済みとして扱います。</div>
     </div>
 
   </div>    </div>
@@ -9195,7 +9194,7 @@ function enforceOverlaySafeActiveScenario(preferredIndex = currentTab, opts = {}
   }
   if(syncInputs && currentTab >= 0 && scenarios[currentTab]){
     const tSet = tabSwitchPerfNow();
-    setAllInputs(scenarios[currentTab].data);
+    setAllInputs(scenarios[currentTab].data, {resetTabScopedControls:true});
     addTabSwitchPerfStep('enforce.setAllInputs', tabSwitchPerfNow() - tSet, {scenario:scenarios[currentTab]?.name || ''});
     const tPeriod = tabSwitchPerfNow();
     updatePeriodDisplays();
@@ -11151,7 +11150,8 @@ function migrateLegacyData(data){
     if(data[`safeAsset${i}_rollover`] == null || data[`safeAsset${i}_rollover`] === "") data[`safeAsset${i}_rollover`] = "deposit";
     if(data[`safeAsset${i}_taxOn`] == null || data[`safeAsset${i}_taxOn`] === "") data[`safeAsset${i}_taxOn`] = true;
   }
-  delete data.taxOn;
+  if(data.taxOn == null || data.taxOn === "") data.taxOn = true;
+  else data.taxOn = parseStoredCheckboxValue(data.taxOn, true);
   return data;
 }
 function syncDynamicCountsFromData(data){
@@ -11618,11 +11618,11 @@ function updateInsuranceAssistPreview(){
   if(!preview) return;
   const modal = getInsuranceAssistModalData();
   const payLine = `保険料支払い：1行追加（${escapeHtml(modal.name || (INSURANCE_ASSIST_TYPE_LABELS[modal.type] || '保険'))} / ${escapeHtml(modal.owner)} / ${escapeHtml(modal.insured)} / ${modal.startYear || '-'}年${modal.startMonth || '-'}月〜${modal.payEndAge || '-'}歳 / ${formatMoneyForDisplay(modal.premium)}万円 / ${modal.payUnit === 'year' ? '年払い' : '月払い'}）`;
-  let recvLine = '保険受取：追加なし';
+  let recvLine = '保険金・年金受取：追加なし';
   if(modal.type === 'scholarship'){
-    recvLine = `保険受取：1行追加（学資保険 / ${escapeHtml(modal.scholarshipReceiver)} / ${modal.scholarshipReceiveStartAge}歳〜${modal.scholarshipReceiveEndAge}歳 / ${formatMoneyForDisplay(modal.scholarshipReceiveAmount)}万円 / ${modal.scholarshipReceiveType === 'year' ? '年次受取' : '一時金'}）`;
+    recvLine = `保険金・年金受取：1行追加（学資保険 / ${escapeHtml(modal.scholarshipReceiver)} / ${modal.scholarshipReceiveStartAge}歳〜${modal.scholarshipReceiveEndAge}歳 / ${formatMoneyForDisplay(modal.scholarshipReceiveAmount)}万円 / ${modal.scholarshipReceiveType === 'year' ? '年次受取' : '一時金'}）`;
   }else if(modal.type === 'personal_pension'){
-    recvLine = `保険受取：1行追加（個人年金保険 / ${escapeHtml(modal.pensionReceiver)} / ${modal.pensionStartAge}歳〜${modal.pensionEndAge}歳 / ${formatMoneyForDisplay(modal.pensionAmount)}万円 / ${modal.pensionUnit === 'month' ? '月額' : '年額'}）`;
+    recvLine = `保険金・年金受取：1行追加（個人年金保険 / ${escapeHtml(modal.pensionReceiver)} / ${modal.pensionStartAge}歳〜${modal.pensionEndAge}歳 / ${formatMoneyForDisplay(modal.pensionAmount)}万円 / ${modal.pensionUnit === 'month' ? '月額' : '年額'}）`;
   }
   preview.innerHTML = `<div>${payLine}</div><div>${recvLine}</div>`;
 }
@@ -12122,6 +12122,33 @@ function getEducationDetailForChildFromData(data, i){
   }
   return buildEducationDetailInitialFromSimple(data, i);
 }
+function getEducationCurrentSchoolForDisplay(data = {}, i){
+  const domSchool = document.getElementById(`child${i}_school`)?.value || "";
+  const dataSchool = String(data[`child${i}_school`] ?? "").trim();
+  const legacySchool = String(data[`c${i}_current_school`] ?? "").trim();
+  const schoolVal = dataSchool || domSchool || legacySchool;
+  const manualRaw = data[`child${i}_schoolManual`] ?? document.getElementById(`child${i}_schoolManual`)?.value ?? "false";
+  const manual = parseStoredCheckboxValue(manualRaw, false);
+  const birthDate = data[`child${i}_birthDate`] ?? document.getElementById(`child${i}_birthDate`)?.value ?? "";
+  const baseDate = data.baseDate ?? document.getElementById("baseDate")?.value ?? "";
+  if(!manual){
+    const autoSchool = calcSchoolOptionFromBirthDate(birthDate, baseDate);
+    if(autoSchool) return autoSchool;
+  }
+  return schoolVal || "年少未満";
+}
+function refreshEducationCurrentSchoolDisplayForChild(index, data = null){
+  const row = document.querySelector(`#eduBody tr[data-edu-child-index="${index}"]`);
+  if(!row) return;
+  const cell = row.querySelector('td:nth-child(2) .edu-cell-readonly');
+  if(!cell) return;
+  cell.textContent = getEducationCurrentSchoolForDisplay(data || {}, index);
+}
+function refreshEducationCurrentSchoolDisplays(data = null){
+  const body = document.getElementById("eduBody");
+  if(!body) return;
+  for(let i=1;i<=dynamicCounts.child;i++) refreshEducationCurrentSchoolDisplayForChild(i, data);
+}
 function buildEducationGrid(data = {}){
   const body = document.getElementById("eduBody");
   if(!body) return;
@@ -12136,7 +12163,7 @@ function buildEducationGrid(data = {}){
     const eduRowClass = childEnabled ? "" : "edu-disabled-row";
     const eduDisabledAttr = childEnabled ? "" : " disabled aria-disabled=\"true\"";
     const childLabel = escapeHtml(getRowLabel(data || {}, "child", i));
-    const currentSchool = data[`child${i}_school`] ?? data[`c${i}_current_school`] ?? "年少未満";
+    const currentSchool = getEducationCurrentSchoolForDisplay(data, i);
     const detailRaw = String(data[`c${i}_detail_json`] || '').trim();
     let detailBtnLabel = "詳細";
     let detailHiddenValue = '';
@@ -12805,6 +12832,7 @@ function syncChildDerivedFields(index, options = {}){
     if(option) schoolEl.value = option;
     if(manualEl) manualEl.value = "false";
   }
+  refreshEducationCurrentSchoolDisplayForChild(index);
 }
 function syncAllBirthDateDerivedFields(options = {}){
   syncBaseDateDerivedFields();
@@ -13207,7 +13235,7 @@ function getAllInputs(){
     const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
     const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
     if(((inSimplePanel && !inSimpleBasicInfo)) || (el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal") || el.closest("#chartAxisModal") || el.closest("#cashflowModal")))) return;
-    if(el.type === "checkbox"){
+    if(el.type === "checkbox" || el.type === "radio"){
       data[el.id] = el.checked;
       return;
     }
@@ -13247,7 +13275,7 @@ const SIMPLE_SOCIAL_INPUT_IDS = [
   "socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"
 ];
 const SIMPLE_PENSION_TAX_INPUT_IDS = [
-  "taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxPublicPensionDeductionUnder65","taxPublicPensionDeduction65Plus","taxResidentRatePct"
+  "taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxResidentRatePct"
 ];
 const SIMPLE_SOCIAL_DEFAULT_OVERRIDES = {
   socialNationalPensionOn:true,
@@ -13266,8 +13294,6 @@ const SIMPLE_PENSION_TAX_DEFAULT_OVERRIDES = {
   taxOn:true,
   taxIncomeBasicDeduction:"58",
   taxResidentBasicDeduction:"43",
-  taxPublicPensionDeductionUnder65:"60",
-  taxPublicPensionDeduction65Plus:"110",
   taxResidentRatePct:"10"
 };
 const SIMPLE_EDUCATION_STAGE_KEYS = ["preschool","elem","junior","high","uni","grad"];
@@ -13355,7 +13381,44 @@ function refreshRowLabelTexts(){
     if(hidden) btn.textContent = hidden.value || defaultRowLabel(type, +index || 1);
   });
 }
-function setAllInputs(data){
+function resetTabScopedControlsBeforeSetAllInputs(data){
+  const source = data || {};
+  [
+    "self_salary_mode_normal","self_bonus_mode_normal",
+    "sp_salary_mode_normal","sp_bonus_mode_normal"
+  ].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.checked = true;
+  });
+  [
+    "self_salary_mode_custom","self_bonus_mode_custom",
+    "sp_salary_mode_custom","sp_bonus_mode_custom"
+  ].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.checked = false;
+  });
+  const taxOn = document.getElementById("taxOn");
+  if(taxOn && !Object.prototype.hasOwnProperty.call(source, "taxOn")) taxOn.checked = true;
+}
+function applyTabScopedControlsAfterSetAllInputs(data){
+  const source = data || {};
+  const taxOn = document.getElementById("taxOn");
+  if(taxOn){
+    taxOn.checked = Object.prototype.hasOwnProperty.call(source, "taxOn")
+      ? parseStoredCheckboxValue(source.taxOn, true)
+      : true;
+  }
+}
+function applyCurrentScenarioTaxOnToDOM(){
+  if(!(scenarios.length && currentTab >= 0 && scenarios[currentTab])) return;
+  const taxOn = document.getElementById("taxOn");
+  if(!taxOn) return;
+  const data = scenarios[currentTab].data || {};
+  taxOn.checked = Object.prototype.hasOwnProperty.call(data, "taxOn")
+    ? parseStoredCheckboxValue(data.taxOn, true)
+    : true;
+}
+function setAllInputs(data, options = {}){
   const __setAllInputsPerfActive = !!tabSwitchPerfDebugCurrent;
   const __setAllInputsStart = tabSwitchPerfNow();
   let __setAllInputsLast = __setAllInputsStart;
@@ -13368,6 +13431,7 @@ function setAllInputs(data){
   const __dynamicCountsBefore = {...dynamicCounts};
   const __dynamicSignatureBefore = getDynamicCountsSignature(__dynamicCountsBefore);
   const migrated = syncDynamicCountsFromData(data || {});
+  if(options?.resetTabScopedControls) resetTabScopedControlsBeforeSetAllInputs(migrated);
   const __dynamicSignatureAfter = getDynamicCountsSignature(dynamicCounts);
   __setAllInputsMark('syncDynamicCountsFromData', {before:__dynamicSignatureBefore, after:__dynamicSignatureAfter});
   const __canSkipDynamicRender = (__dynamicSignatureBefore === __dynamicSignatureAfter) && dynamicSectionDomMatchesCounts(dynamicCounts);
@@ -13396,9 +13460,10 @@ function setAllInputs(data){
       el.value = globalMode;
       return;
     }
-    if(el.type === "checkbox") el.checked = parseStoredCheckboxValue(val, false);
+    if(el.type === "checkbox" || el.type === "radio") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
+  if(options?.resetTabScopedControls) applyTabScopedControlsAfterSetAllInputs(migrated);
   __setAllInputsMark('applyValues', {entries:__valueEntries, applied:__valueApplied});
   updateEducationGridChildEnabledStates();
   __setAllInputsMark('updateEducationGridChildEnabledStates');
@@ -13406,6 +13471,8 @@ function setAllInputs(data){
   __setAllInputsMark('refreshRowLabelTexts');
   syncAllBirthDateDerivedFields();
   __setAllInputsMark('syncAllBirthDateDerivedFields');
+  refreshEducationCurrentSchoolDisplays(migrated);
+  __setAllInputsMark('refreshEducationCurrentSchoolDisplays');
   syncLoanBuyFieldsFromYearMonth();
   __setAllInputsMark('syncLoanBuyFieldsFromYearMonth');
   enhanceNumericInputs(document);
@@ -14024,7 +14091,7 @@ const SIMPLE_MODE_BLOCKS = [
     fields:[
       {key:"salaryMonth", label:"退職までの手取り（月）", unit:"万円 / 月", min:0, max:200, step:1, help:"手取りをカスタム設定中は、簡単モードでは変更できません。"},
       {key:"bonusYear", label:"退職までのボーナス（年・手取り）", unit:"万円 / 年", min:0, max:400, step:1, help:"ボーナスをカスタム設定中は、簡単モードでは変更できません。"},
-      {key:"lifeBefore", label:"退職までの生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1, help:"生活費には家賃・教育費を含めません。子どもの人数・年齢に応じた標準的な教育費は、自動的に計算へ含まれます。"},
+      {key:"lifeBefore", label:"退職までの生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1, help:"生活費には家賃・教育費を含めません。子どもの人数・年齢に応じた標準的な教育費は、自動的に計算に含まれます。"},
       {key:"rent", label:"家賃（現役期・老後共通）", unit:"万円 / 月", min:0, max:50, step:0.5, help:"家賃は現役期・老後共通です。"}
     ]
   },
@@ -15723,6 +15790,8 @@ function switchTab(i){
     renderTabs();
   }
   requestDraw({immediate:true});
+  applyCurrentScenarioTaxOnToDOM();
+  requestAnimationFrame(applyCurrentScenarioTaxOnToDOM);
 }
 function openTabContextMenu(tabIndex, x, y){
   const menu = document.getElementById("tabContextMenu");
@@ -16593,8 +16662,6 @@ function getScenarioFromDOM(){
       pensionOnly:!!document.getElementById("taxOn")?.checked,
       incomeBasicDeduction:Math.max(0, numInput("taxIncomeBasicDeduction", 58) || 0),
       residentBasicDeduction:Math.max(0, numInput("taxResidentBasicDeduction", 43) || 0),
-      publicPensionDeductionUnder65:Math.max(0, numInput("taxPublicPensionDeductionUnder65", 60) || 0),
-      publicPensionDeduction65Plus:Math.max(0, numInput("taxPublicPensionDeduction65Plus", 110) || 0),
       residentRate:Math.max(0, numInput("taxResidentRatePct", 10) || 0) / 100
     },
     withdrawalPolicy:{
@@ -16778,7 +16845,7 @@ function getScenarioFromDOM(){
 function getEducationSimpleSummaryItems(childIndex){
   const data = migrateLegacyData(getAllInputs());
   return [
-    ["現在の学校", data[`child${childIndex}_school`] ?? ""],
+    ["現在の学校区分", getEducationCurrentSchoolForDisplay(data, childIndex)],
     ["未就学", data[`c${childIndex}_preschool_type`] ?? ""],
     ["小学校", `${data[`c${childIndex}_elem_type`] ?? ""} / 追加${attrValue(data[`c${childIndex}_elem_extra`],0)}万`],
     ["中学校", `${data[`c${childIndex}_junior_type`] ?? ""} / 追加${attrValue(data[`c${childIndex}_junior_extra`],0)}万`],
@@ -17306,7 +17373,7 @@ function confirmEducationCopy(){
     alert('コピー元とコピー先は別の子を選択してください。');
     return;
   }
-  const ok = confirm(`「${toItem.label}」の教育費設定を、「${fromItem.label}」の内容で上書きします。現在の学校は変更しません。実行しますか？`);
+  const ok = confirm(`「${toItem.label}」の教育費設定を、「${fromItem.label}」の内容で上書きします。現在の学校区分は変更しません。実行しますか？`);
   if(!ok) return;
   if(copyEducationSettings(fromItem.index, toItem.index)) closeEducationCopyModal();
 }
@@ -22055,9 +22122,21 @@ function formatAssetProbabilitySettingsSummary(settings){
   const phiText = model === 'mean_reverting' ? `｜持続性 ${formatNumberJP(settings.meanRevPhi, 2)}` : '';
   return `${modelLabel}｜ボラ ${volText}%${phiText}｜計算 ${trials}回｜表示 ${drawPaths}本`;
 }
-function getPublicPensionDeductionByAge(age, cfg){
-  const tax = cfg?.tax || {};
-  return age >= 65 ? Number(tax.publicPensionDeduction65Plus || 0) : Number(tax.publicPensionDeductionUnder65 || 0);
+function getPublicPensionDeduction(grossIncome, age, cfg){
+  const gross = Math.max(0, Number(grossIncome) || 0);
+  if(gross <= 0) return 0;
+  if(Number(age || 0) >= 65){
+    if(gross < 330) return 110;
+    if(gross < 410) return gross * 0.25 + 27.5;
+    if(gross < 770) return gross * 0.15 + 68.5;
+    if(gross < 1000) return gross * 0.05 + 145.5;
+    return 195.5;
+  }
+  if(gross < 130) return 60;
+  if(gross < 410) return gross * 0.25 + 27.5;
+  if(gross < 770) return gross * 0.15 + 68.5;
+  if(gross < 1000) return gross * 0.05 + 145.5;
+  return 195.5;
 }
 function calcSimpleIncomeTaxProgressive(taxableIncome){
   const x = Math.max(0, Number(taxableIncome) || 0);
@@ -22071,7 +22150,20 @@ function calcSimpleIncomeTaxProgressive(taxableIncome){
 }
 function estimatePublicPensionMiscIncome(grossIncome, age, cfg){
   const gross = Math.max(0, Number(grossIncome) || 0);
-  return Math.max(0, gross - getPublicPensionDeductionByAge(age, cfg));
+  return Math.max(0, gross - getPublicPensionDeduction(gross, age, cfg));
+}
+function getResidentIncomeTaxExemptThreshold(dependentCount=0){
+  const count = Math.max(0, Math.floor(Number(dependentCount) || 0));
+  return count > 0 ? (35 * (count + 1) + 42) : 45;
+}
+function isResidentIncomeTaxExempt(totalIncome, dependentCount=0){
+  const income = Math.max(0, Number(totalIncome) || 0);
+  return income <= getResidentIncomeTaxExemptThreshold(dependentCount);
+}
+function getResidentDependentCountForPerson(personKey, selfMiscIncome, spMiscIncome){
+  if(personKey !== 'self') return 0;
+  const spouseIncome = Math.max(0, Number(spMiscIncome) || 0);
+  return spouseIncome <= 48 ? 1 : 0;
 }
 function estimateStandardNursingCareAnnual(publicPensionGross, age, cfg){
   if(age < 65) return 0;
@@ -22093,15 +22185,41 @@ function estimateStandardLateElderlyHealthAnnual(publicPensionGross, age, cfg){
   if(cap > 0) amount = Math.min(cap, amount);
   return amount;
 }
-function estimatePublicPensionTax(grossIncome, age, cfg){
+function makeEmptyPublicPensionTaxResult(gross=0, socialInsuranceDeduction=0, residentDependentCount=0){
+  const residentCount = Math.max(0, Math.floor(Number(residentDependentCount) || 0));
+  return {
+    gross:Math.max(0, Number(gross) || 0),
+    deduction:0,
+    miscIncome:0,
+    socialInsuranceDeduction:Math.max(0, Number(socialInsuranceDeduction) || 0),
+    taxableIncome:0,
+    baseIncomeTax:0,
+    reconstructionTax:0,
+    incomeTax:0,
+    residentTaxable:0,
+    residentDependentCount:residentCount,
+    residentIncomeTaxExemptThreshold:getResidentIncomeTaxExemptThreshold(residentCount),
+    residentIncomeTaxExempt:true,
+    residentTax:0,
+    total:0
+  };
+}
+function estimatePublicPensionTax(grossIncome, age, cfg, socialInsuranceDeduction=0, options={}){
   const gross = Math.max(0, Number(grossIncome) || 0);
-  if(gross <= 0 || !cfg?.tax?.enabled || !cfg?.tax?.pensionOnly) return {gross, miscIncome:0, taxableIncome:0, residentTaxable:0, incomeTax:0, residentTax:0, total:0};
-  const miscIncome = estimatePublicPensionMiscIncome(gross, age, cfg);
-  const taxableIncome = Math.max(0, miscIncome - Number(cfg?.tax?.incomeBasicDeduction || 0));
-  const residentTaxable = Math.max(0, miscIncome - Number(cfg?.tax?.residentBasicDeduction || 0));
-  const incomeTax = calcSimpleIncomeTaxProgressive(taxableIncome);
-  const residentTax = residentTaxable * (Number(cfg?.tax?.residentRate || 0) || 0);
-  return {gross, miscIncome, taxableIncome, residentTaxable, incomeTax, residentTax, total:incomeTax + residentTax};
+  const socialDeduction = Math.max(0, Number(socialInsuranceDeduction) || 0);
+  const residentDependentCount = Math.max(0, Math.floor(Number(options?.residentDependentCount) || 0));
+  if(gross <= 0 || !cfg?.tax?.enabled || !cfg?.tax?.pensionOnly) return makeEmptyPublicPensionTaxResult(gross, socialDeduction, residentDependentCount);
+  const deduction = getPublicPensionDeduction(gross, age, cfg);
+  const miscIncome = Math.max(0, gross - deduction);
+  const taxableIncome = Math.max(0, miscIncome - Number(cfg?.tax?.incomeBasicDeduction || 0) - socialDeduction);
+  const residentTaxable = Math.max(0, miscIncome - Number(cfg?.tax?.residentBasicDeduction || 0) - socialDeduction);
+  const baseIncomeTax = calcSimpleIncomeTaxProgressive(taxableIncome);
+  const reconstructionTax = baseIncomeTax * 0.021;
+  const incomeTax = baseIncomeTax + reconstructionTax;
+  const residentIncomeTaxExemptThreshold = getResidentIncomeTaxExemptThreshold(residentDependentCount);
+  const residentIncomeTaxExempt = isResidentIncomeTaxExempt(miscIncome, residentDependentCount);
+  const residentTax = residentIncomeTaxExempt ? 0 : residentTaxable * (Number(cfg?.tax?.residentRate || 0) || 0);
+  return {gross, deduction, miscIncome, socialInsuranceDeduction:socialDeduction, taxableIncome, baseIncomeTax, reconstructionTax, incomeTax, residentTaxable, residentDependentCount, residentIncomeTaxExemptThreshold, residentIncomeTaxExempt, residentTax, total:incomeTax + residentTax};
 }
 function getHealthModeForPerson(cfg, personKey, age){
   const mode = personKey === 'self' ? cfg?.social?.self?.healthMode : cfg?.social?.spouse?.healthMode;
@@ -22241,6 +22359,8 @@ function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, social
     },
     tax:{
       incomeTax:taxObj.incomeTax || 0,
+      baseIncomeTax:taxObj.baseIncomeTax || 0,
+      reconstructionTax:taxObj.reconstructionTax || 0,
       residentTax:taxObj.residentTax || 0,
       interestWithholding:Number(annualState?.interestTax || 0),
       dividendWithholding:Number(annualState?.dividendTax || 0),
@@ -22326,8 +22446,12 @@ function estimateSocialAndTaxForYear(cfg, age, yearIndex, incomeObj){
   const selfSocial = estimateRetirementSocialForPerson(cfg, 'self', age, selfWorkedMonths, selfPension, socialContext);
   const spSocial = estimateRetirementSocialForPerson(cfg, 'sp', spouseAge, spWorkedMonths, spPension, socialContext);
   applyHouseholdKokuhoBaseToSocialResults(cfg, selfSocial, spSocial);
-  const selfTax = estimatePublicPensionTax(selfPension, age, cfg);
-  const spTax = estimatePublicPensionTax(spPension, spouseAge, cfg);
+  const selfMiscIncomeForResidentExempt = estimatePublicPensionMiscIncome(selfPension, age, cfg);
+  const spMiscIncomeForResidentExempt = estimatePublicPensionMiscIncome(spPension, spouseAge, cfg);
+  const selfResidentDependentCount = getResidentDependentCountForPerson('self', selfMiscIncomeForResidentExempt, spMiscIncomeForResidentExempt);
+  const spResidentDependentCount = getResidentDependentCountForPerson('sp', selfMiscIncomeForResidentExempt, spMiscIncomeForResidentExempt);
+  const selfTax = estimatePublicPensionTax(selfPension, age, cfg, selfSocial.total, {residentDependentCount:selfResidentDependentCount});
+  const spTax = estimatePublicPensionTax(spPension, spouseAge, cfg, spSocial.total, {residentDependentCount:spResidentDependentCount});
   return {
     social:{
       nationalHealth:(selfSocial.nationalHealth || 0) + (spSocial.nationalHealth || 0),
@@ -22342,7 +22466,10 @@ function estimateSocialAndTaxForYear(cfg, age, yearIndex, incomeObj){
     },
     tax:{
       incomeTax:(selfTax.incomeTax || 0) + (spTax.incomeTax || 0),
+      baseIncomeTax:(selfTax.baseIncomeTax || 0) + (spTax.baseIncomeTax || 0),
+      reconstructionTax:(selfTax.reconstructionTax || 0) + (spTax.reconstructionTax || 0),
       residentTax:(selfTax.residentTax || 0) + (spTax.residentTax || 0),
+      residentIncomeTaxExempt:(!!selfTax.residentIncomeTaxExempt && !!spTax.residentIncomeTaxExempt),
       total:(selfTax.total || 0) + (spTax.total || 0),
       detail:{self:selfTax, spouse:spTax}
     }
@@ -22361,8 +22488,9 @@ function formatCashflowDisplayValue(value, type='money'){
 function getCashflowRowHighlightClass(label){
   if(label === '収入合計(A)') return 'cashflow-highlight-income';
   if(label === '支出合計(B)') return 'cashflow-highlight-expense';
-  if(label === '税社保合計') return 'cashflow-highlight-tax';
   if(label === '年間収支(A-B)' || label === '税社保反映後収支' || label === '年末の現預金額') return 'cashflow-highlight-balance';
+  if(label === '所得税・住民税等') return '';
+  if(label === '税社保合計' || String(label || '').includes('税金') || String(label || '').includes('所得税') || String(label || '').includes('住民税') || String(label || '').includes('源泉税')) return 'cashflow-highlight-tax';
   if(label === '年末の総資産額') return 'cashflow-highlight-asset';
   return '';
 }
@@ -33413,7 +33541,7 @@ document.getElementById("childRows")?.addEventListener("change", (e)=>{
   }
   updateEducationGridChildEnabledStates();
 });
-["taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxPublicPensionDeductionUnder65","taxPublicPensionDeduction65Plus","taxResidentRatePct","socialNationalPensionOn","socialHealthOn","socialNationalPensionAnnual","social_self_healthMode","social_sp_healthMode","socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"].forEach(id=>{
+["taxOn","taxIncomeBasicDeduction","taxResidentBasicDeduction","taxResidentRatePct","socialNationalPensionOn","socialHealthOn","socialNationalPensionAnnual","social_self_healthMode","social_sp_healthMode","socialVoluntaryAnnual","socialKokuhoRatePct","socialKokuhoBaseAnnual","socialKokuhoCapAnnual","socialNursingAnnual","socialLateElderlyAnnual"].forEach(id=>{
   const el = document.getElementById(id);
   if(!el) return;
   const handler = ()=>{
@@ -34029,8 +34157,10 @@ document.addEventListener("input", (e)=>{
   }
   if(/^child\d+_school$/.test(el.id)){
     const m = el.id.match(/^child(\d+)_school$/);
-    const manualEl = document.getElementById(`child${m?.[1]}_schoolManual`);
+    const childIndex = Number(m?.[1] || 0);
+    const manualEl = document.getElementById(`child${childIndex}_schoolManual`);
     if(manualEl) manualEl.value = "true";
+    if(childIndex > 0) refreshEducationCurrentSchoolDisplayForChild(childIndex);
   }
   if(el.id === "age" || el.id === "currentBaseYear" || el.id === "baseDate"){
     const nextContext = {currentAge: currentAgeValue(), baseYear: currentBaseYearValue()};
@@ -34145,8 +34275,10 @@ function commitMainInputChange(e){
   }
   if(/^child\d+_school$/.test(el.id)){
     const m = el.id.match(/^child(\d+)_school$/);
-    const manualEl = document.getElementById(`child${m?.[1]}_schoolManual`);
+    const childIndex = Number(m?.[1] || 0);
+    const manualEl = document.getElementById(`child${childIndex}_schoolManual`);
     if(manualEl) manualEl.value = "true";
+    if(childIndex > 0) refreshEducationCurrentSchoolDisplayForChild(childIndex);
   }
   if(el.id === "age" || el.id === "currentBaseYear" || el.id === "baseDate"){
     const nextContext = {currentAge: currentAgeValue(), baseYear: currentBaseYearValue()};
@@ -34199,6 +34331,20 @@ document.addEventListener("focusin", (e)=>{
 }, true);
 document.addEventListener("change", commitMainInputChange);
 document.addEventListener("focusout", commitMainInputChange, true);
+
+document.getElementById("taxOn")?.addEventListener("change", ()=>{
+  if(!(scenarios.length && currentTab >= 0 && scenarios[currentTab])) return;
+  const scenario = scenarios[currentTab];
+  const prevData = scenario.data || {};
+  const nextData = migrateLegacyData(prevData);
+  const preservedOverlayStyles = scenario.overlayStyles || prevData.overlayStyles;
+  nextData.taxOn = !!document.getElementById("taxOn")?.checked;
+  if(preservedOverlayStyles) nextData.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
+  if(isMonteCarloRelevantDataChanged(prevData, nextData)) markScenarioMonteCarloDirty(scenario);
+  scenario.data = nextData;
+  if(preservedOverlayStyles) scenario.overlayStyles = JSON.parse(JSON.stringify(preservedOverlayStyles));
+  persistState();
+});
 
 function previewBirthDateDerivedFieldsOnInput(el){
   if(!(el instanceof HTMLInputElement) || el.type !== "date") return;
