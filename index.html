@@ -27583,6 +27583,16 @@ window.addEventListener("beforeunload", ()=>{ flushPersistState(); });
 let incomeCurveChart = null;
 let activeIncomeCurveOwner = null;
 let incomeCurveDraft = null;
+const incomeCurveViewState = {
+  autoBounds:null,
+  overrideBounds:null,
+  selectionGuide:null,
+  zoomState:null,
+  panState:null,
+  suppressClickUntil:0,
+  lastTapTime:0,
+  lastTapPoint:null
+};
 function getIncomeOwnerConfig(owner){
   const prefix = owner === "sp" ? "sp" : "self";
   return {
@@ -28343,6 +28353,401 @@ function buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, key, xAxi
   return points;
 }
 
+
+function cloneIncomeCurveBounds(bounds){
+  if(!bounds) return null;
+  const xMin = Number(bounds.xMin), xMax = Number(bounds.xMax);
+  const yMin = Number(bounds.yMin), yMax = Number(bounds.yMax);
+  const y1Min = Number(bounds.y1Min), y1Max = Number(bounds.y1Max);
+  if(!Number.isFinite(xMin) || !Number.isFinite(xMax) || !Number.isFinite(yMin) || !Number.isFinite(yMax) || !Number.isFinite(y1Min) || !Number.isFinite(y1Max)) return null;
+  return {xMin, xMax, yMin, yMax, y1Min, y1Max};
+}
+function getIncomeCurveEffectiveBounds(){
+  return cloneIncomeCurveBounds(incomeCurveViewState.overrideBounds || incomeCurveViewState.autoBounds);
+}
+function getIncomeCurveNiceMax(points, minFallback=1){
+  let maxVal = 0;
+  (points || []).forEach(p=>{
+    const y = Number(p?.y);
+    if(Number.isFinite(y)) maxVal = Math.max(maxVal, y);
+  });
+  const raw = Math.max(Number(minFallback) || 1, maxVal * 1.12);
+  if(raw <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / pow;
+  const step = n <= 1.2 ? 0.2 : n <= 2.5 ? 0.5 : n <= 5 ? 1 : 2;
+  return Math.ceil(n / step) * step * pow;
+}
+function updateIncomeCurveAutoBounds(bounds){
+  const next = cloneIncomeCurveBounds(bounds);
+  if(!next) return;
+  incomeCurveViewState.autoBounds = next;
+  const over = cloneIncomeCurveBounds(incomeCurveViewState.overrideBounds);
+  if(over){
+    const clamp = (v, lo, hi)=>Math.max(lo, Math.min(hi, v));
+    const normalized = {
+      xMin:clamp(over.xMin, next.xMin, next.xMax),
+      xMax:clamp(over.xMax, next.xMin, next.xMax),
+      yMin:clamp(over.yMin, next.yMin, next.yMax),
+      yMax:clamp(over.yMax, next.yMin, next.yMax),
+      y1Min:clamp(over.y1Min, next.y1Min, next.y1Max),
+      y1Max:clamp(over.y1Max, next.y1Min, next.y1Max)
+    };
+    if(normalized.xMax - normalized.xMin < 0.2){ normalized.xMin = next.xMin; normalized.xMax = next.xMax; }
+    if(normalized.yMax - normalized.yMin < 0.1){ normalized.yMin = next.yMin; normalized.yMax = next.yMax; }
+    if(normalized.y1Max - normalized.y1Min < 0.1){ normalized.y1Min = next.y1Min; normalized.y1Max = next.y1Max; }
+    incomeCurveViewState.overrideBounds = normalized;
+  }
+}
+function applyIncomeCurveBoundsToOptions(options){
+  const bounds = getIncomeCurveEffectiveBounds();
+  if(!bounds || !options?.scales) return;
+  options.scales.x.min = bounds.xMin;
+  options.scales.x.max = bounds.xMax;
+  options.scales.y.min = bounds.yMin;
+  options.scales.y.max = bounds.yMax;
+  options.scales.y1.min = bounds.y1Min;
+  options.scales.y1.max = bounds.y1Max;
+}
+function isIncomeCurveZoomed(){
+  const auto = incomeCurveViewState.autoBounds;
+  const over = incomeCurveViewState.overrideBounds;
+  if(!auto || !over) return false;
+  return Math.abs(auto.xMin - over.xMin) > 1e-9 || Math.abs(auto.xMax - over.xMax) > 1e-9
+    || Math.abs(auto.yMin - over.yMin) > 1e-9 || Math.abs(auto.yMax - over.yMax) > 1e-9
+    || Math.abs(auto.y1Min - over.y1Min) > 1e-9 || Math.abs(auto.y1Max - over.y1Max) > 1e-9;
+}
+function resetIncomeCurveZoom(){
+  incomeCurveViewState.overrideBounds = null;
+  incomeCurveViewState.selectionGuide = null;
+  incomeCurveViewState.zoomState = null;
+  incomeCurveViewState.panState = null;
+  if(incomeCurveChart){
+    applyIncomeCurveBoundsToOptions(incomeCurveChart.options);
+    incomeCurveChart.update('none');
+  }
+}
+function buildIncomeCurveSelectionGuidePlugin(){
+  return {
+    id:'incomeCurveSelectionGuide',
+    afterDatasetsDraw(chart){
+      const guide = incomeCurveViewState.selectionGuide;
+      if(!guide?.axis || !chart?.chartArea) return;
+      const {ctx, chartArea:area} = chart;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+      ctx.lineWidth = 1.5;
+      ctx.fillStyle = 'rgba(37,99,235,0.18)';
+      ctx.strokeStyle = 'rgba(37,99,235,0.95)';
+      if(guide.axis === 'x'){
+        const left = Math.max(area.left, Math.min(area.right, Math.min(guide.startPx, guide.currentPx)));
+        const right = Math.max(area.left, Math.min(area.right, Math.max(guide.startPx, guide.currentPx)));
+        ctx.fillRect(left, area.top, Math.max(1, right - left), area.bottom - area.top);
+        ctx.beginPath(); ctx.moveTo(left, area.top); ctx.lineTo(left, area.bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(right, area.top); ctx.lineTo(right, area.bottom); ctx.stroke();
+      }else{
+        const top = Math.max(area.top, Math.min(area.bottom, Math.min(guide.startPx, guide.currentPx)));
+        const bottom = Math.max(area.top, Math.min(area.bottom, Math.max(guide.startPx, guide.currentPx)));
+        ctx.fillRect(area.left, top, area.right - area.left, Math.max(1, bottom - top));
+        ctx.beginPath(); ctx.moveTo(area.left, top); ctx.lineTo(area.right, top); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(area.left, bottom); ctx.lineTo(area.right, bottom); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  };
+}
+function setupIncomeCurveChartInteractions(){
+  const canvas = document.getElementById('incomeCurveChart');
+  if(!(canvas instanceof HTMLCanvasElement)) return;
+  if(canvas.dataset.incomeCurveZoomInit === '1') return;
+  canvas.dataset.incomeCurveZoomInit = '1';
+  const AXIS_X_BAND = 30;
+  const AXIS_Y_BAND = 38;
+  const MIN_DRAG_PX = 6;
+  const getChart = ()=>incomeCurveChart;
+  const getPointFromClient = (clientX, clientY)=>{
+    const rect = canvas.getBoundingClientRect();
+    return {x:clientX - rect.left, y:clientY - rect.top};
+  };
+  const getPoint = (e)=>getPointFromClient(e.clientX, e.clientY);
+  const getAxisZone = (pt)=>{
+    const chart = getChart();
+    const area = chart?.chartArea;
+    if(!chart?.scales?.x || !chart?.scales?.y || !chart?.scales?.y1 || !area) return null;
+    if(pt.x >= area.left && pt.x <= area.right && pt.y >= area.bottom && pt.y <= area.bottom + AXIS_X_BAND) return 'x';
+    if(pt.x >= Math.max(0, area.left - AXIS_Y_BAND) && pt.x <= area.left && pt.y >= area.top && pt.y <= area.bottom) return 'y';
+    if(pt.x >= area.right && pt.x <= area.right + AXIS_Y_BAND && pt.y >= area.top && pt.y <= area.bottom) return 'y1';
+    return null;
+  };
+  const isInsideChartArea = (pt)=>{
+    const area = getChart()?.chartArea;
+    return !!area && pt.x >= area.left && pt.x <= area.right && pt.y >= area.top && pt.y <= area.bottom;
+  };
+  const normalizeBounds = (bounds)=>{
+    const auto = incomeCurveViewState.autoBounds;
+    if(!auto || !bounds) return null;
+    const clampRange = (min, max, aMin, aMax, minRange)=>{
+      let lo = Number(min), hi = Number(max);
+      if(!Number.isFinite(lo) || !Number.isFinite(hi)) return {min:aMin, max:aMax};
+      if(lo > hi){ const t = lo; lo = hi; hi = t; }
+      const outer = Math.max(minRange, aMax - aMin);
+      let range = Math.max(minRange, Math.min(outer, hi - lo));
+      if(range >= outer * 0.985) return {min:aMin, max:aMax};
+      if(lo < aMin){ hi += aMin - lo; lo = aMin; }
+      if(hi > aMax){ lo -= hi - aMax; hi = aMax; }
+      lo = Math.max(aMin, lo); hi = Math.min(aMax, hi);
+      if(hi - lo < range - 1e-9){
+        if(lo <= aMin + 1e-9) hi = Math.min(aMax, lo + range);
+        else if(hi >= aMax - 1e-9) lo = Math.max(aMin, hi - range);
+      }
+      return {min:lo, max:hi};
+    };
+    const x = clampRange(bounds.xMin, bounds.xMax, auto.xMin, auto.xMax, 0.2);
+    const y = clampRange(bounds.yMin, bounds.yMax, auto.yMin, auto.yMax, Math.max(0.1, (auto.yMax - auto.yMin) * 0.02));
+    const y1 = clampRange(bounds.y1Min, bounds.y1Max, auto.y1Min, auto.y1Max, Math.max(0.1, (auto.y1Max - auto.y1Min) * 0.02));
+    return {xMin:x.min, xMax:x.max, yMin:y.min, yMax:y.max, y1Min:y1.min, y1Max:y1.max};
+  };
+  const applyBounds = (bounds)=>{
+    const next = normalizeBounds(bounds);
+    if(!next) return;
+    const auto = incomeCurveViewState.autoBounds;
+    const nearlyAuto = auto && Math.abs(next.xMin-auto.xMin)<1e-9 && Math.abs(next.xMax-auto.xMax)<1e-9
+      && Math.abs(next.yMin-auto.yMin)<1e-9 && Math.abs(next.yMax-auto.yMax)<1e-9
+      && Math.abs(next.y1Min-auto.y1Min)<1e-9 && Math.abs(next.y1Max-auto.y1Max)<1e-9;
+    incomeCurveViewState.overrideBounds = nearlyAuto ? null : next;
+    const chart = getChart();
+    if(chart){
+      applyIncomeCurveBoundsToOptions(chart.options);
+      chart.update('none');
+    }
+  };
+  const finishSelectionZoom = ()=>{
+    const state = incomeCurveViewState.zoomState;
+    incomeCurveViewState.zoomState = null;
+    incomeCurveViewState.selectionGuide = null;
+    const chart = getChart();
+    if(chart) chart.update('none');
+    if(!state?.moved || !chart?.scales) return;
+    const bounds = cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds());
+    if(!bounds) return;
+    if(state.axis === 'x'){
+      const scale = chart.scales.x;
+      const minPx = Math.max(scale.left, Math.min(scale.right, Math.min(state.startPx, state.currentPx)));
+      const maxPx = Math.max(scale.left, Math.min(scale.right, Math.max(state.startPx, state.currentPx)));
+      if(maxPx - minPx < MIN_DRAG_PX) return;
+      const a = scale.getValueForPixel(minPx), b = scale.getValueForPixel(maxPx);
+      if(Number.isFinite(a) && Number.isFinite(b) && Math.abs(a-b)>1e-9){ bounds.xMin = Math.min(a,b); bounds.xMax = Math.max(a,b); }
+    }else if(state.axis === 'y' || state.axis === 'y1'){
+      const scale = chart.scales[state.axis];
+      const minPx = Math.max(scale.top, Math.min(scale.bottom, Math.min(state.startPx, state.currentPx)));
+      const maxPx = Math.max(scale.top, Math.min(scale.bottom, Math.max(state.startPx, state.currentPx)));
+      if(maxPx - minPx < MIN_DRAG_PX) return;
+      const a = scale.getValueForPixel(minPx), b = scale.getValueForPixel(maxPx);
+      if(Number.isFinite(a) && Number.isFinite(b) && Math.abs(a-b)>1e-9){
+        if(state.axis === 'y'){ bounds.yMin = Math.min(a,b); bounds.yMax = Math.max(a,b); }
+        else { bounds.y1Min = Math.min(a,b); bounds.y1Max = Math.max(a,b); }
+      }
+    }
+    applyBounds(bounds);
+    incomeCurveViewState.suppressClickUntil = Date.now() + 250;
+  };
+  const finishPan = ()=>{
+    const moved = !!incomeCurveViewState.panState?.moved;
+    incomeCurveViewState.panState = null;
+    canvas.classList.remove('chart-pan-active');
+    if(moved) incomeCurveViewState.suppressClickUntil = Date.now() + 250;
+  };
+  canvas.addEventListener('mousedown', (e)=>{
+    if(e.button !== 0 || !isFinePointerDevice()) return;
+    const chart = getChart();
+    if(!chart?.chartArea || !chart?.scales?.x || !chart?.scales?.y || !chart?.scales?.y1) return;
+    const pt = getPoint(e);
+    const axis = getAxisZone(pt);
+    if(axis){
+      incomeCurveViewState.zoomState = {axis, startPx:axis === 'x' ? pt.x : pt.y, currentPx:axis === 'x' ? pt.x : pt.y, moved:false};
+      incomeCurveViewState.selectionGuide = {axis, startPx:incomeCurveViewState.zoomState.startPx, currentPx:incomeCurveViewState.zoomState.currentPx};
+      chart.update('none');
+      e.preventDefault();
+      return;
+    }
+    if(!isIncomeCurveZoomed()) return;
+    const bounds = cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds());
+    if(!bounds) return;
+    const panAxis = getAxisZone(pt);
+    if(!isInsideChartArea(pt) && panAxis !== 'y' && panAxis !== 'y1') return;
+    incomeCurveViewState.panState = {startX:pt.x, startY:pt.y, bounds, axis:panAxis || 'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
+    canvas.classList.add('chart-pan-active');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e)=>{
+    const chart = getChart();
+    if(incomeCurveViewState.zoomState){
+      const pt = getPoint(e);
+      const coord = incomeCurveViewState.zoomState.axis === 'x' ? pt.x : pt.y;
+      if(!incomeCurveViewState.zoomState.moved && Math.abs(coord - incomeCurveViewState.zoomState.startPx) < MIN_DRAG_PX) return;
+      incomeCurveViewState.zoomState.moved = true;
+      incomeCurveViewState.zoomState.currentPx = coord;
+      incomeCurveViewState.selectionGuide = {axis:incomeCurveViewState.zoomState.axis, startPx:incomeCurveViewState.zoomState.startPx, currentPx:coord};
+      if(chart) chart.update('none');
+      e.preventDefault();
+      return;
+    }
+    const pan = incomeCurveViewState.panState;
+    if(!pan || !chart?.chartArea) return;
+    const pt = getPoint(e);
+    const dx = pt.x - pan.startX;
+    const dy = pt.y - pan.startY;
+    if(!pan.moved && Math.abs(dx)+Math.abs(dy) < MIN_DRAG_PX) return;
+    pan.moved = true;
+    const next = {...pan.bounds};
+    const auto = incomeCurveViewState.autoBounds || pan.bounds;
+    const xZoomed = Math.abs(pan.bounds.xMin-auto.xMin)>1e-9 || Math.abs(pan.bounds.xMax-auto.xMax)>1e-9;
+    const yZoomed = Math.abs(pan.bounds.yMin-auto.yMin)>1e-9 || Math.abs(pan.bounds.yMax-auto.yMax)>1e-9;
+    const y1Zoomed = Math.abs(pan.bounds.y1Min-auto.y1Min)>1e-9 || Math.abs(pan.bounds.y1Max-auto.y1Max)>1e-9;
+    if((pan.axis === 'plot' || pan.axis === 'x') && xZoomed){
+      const range = pan.bounds.xMax - pan.bounds.xMin;
+      const dv = -dx * range / Math.max(1, pan.plotWidth);
+      next.xMin = pan.bounds.xMin + dv; next.xMax = pan.bounds.xMax + dv;
+    }
+    if((pan.axis === 'plot' || pan.axis === 'y') && yZoomed){
+      const range = pan.bounds.yMax - pan.bounds.yMin;
+      const dv = dy * range / Math.max(1, pan.plotHeight);
+      next.yMin = pan.bounds.yMin + dv; next.yMax = pan.bounds.yMax + dv;
+    }
+    if((pan.axis === 'plot' || pan.axis === 'y1') && y1Zoomed){
+      const range = pan.bounds.y1Max - pan.bounds.y1Min;
+      const dv = dy * range / Math.max(1, pan.plotHeight);
+      next.y1Min = pan.bounds.y1Min + dv; next.y1Max = pan.bounds.y1Max + dv;
+    }
+    applyBounds(next);
+    e.preventDefault();
+  }, {passive:false});
+  window.addEventListener('mouseup', ()=>finishPan());
+  window.addEventListener('mouseleave', ()=>{ finishSelectionZoom(); finishPan(); });
+  window.addEventListener('mouseup', ()=>finishSelectionZoom());
+  canvas.addEventListener('dblclick', (e)=>{ resetIncomeCurveZoom(); e.preventDefault(); }, true);
+  canvas.addEventListener('click', (e)=>{
+    if(Date.now() < incomeCurveViewState.suppressClickUntil){ e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  const getTouchPoints = (e)=>Array.from(e.touches || []).map(t=>getPointFromClient(t.clientX, t.clientY));
+  const dist = (a,b)=>Math.hypot(b.x-a.x, b.y-a.y);
+  const touchCenter = (a,b)=>({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
+  const applyPinch = (touchState, pts)=>{
+    const chart = getChart();
+    if(!chart?.chartArea || pts.length < 2) return;
+    const [a,b] = pts;
+    const center = touchCenter(a,b);
+    const dx0 = Math.max(1, Math.abs(touchState.startPts[1].x - touchState.startPts[0].x));
+    const dy0 = Math.max(1, Math.abs(touchState.startPts[1].y - touchState.startPts[0].y));
+    const dx1 = Math.max(1, Math.abs(b.x - a.x));
+    const dy1 = Math.max(1, Math.abs(b.y - a.y));
+    const next = {...touchState.bounds};
+    const zoomAround = (min,max,centerValue,ratio)=>{
+      const range = Math.max(1e-9, (max-min) / Math.max(0.15, ratio));
+      const rel = (centerValue - min) / Math.max(1e-9, max-min);
+      return {min:centerValue - range * rel, max:centerValue + range * (1-rel)};
+    };
+    if(touchState.axes.x){
+      const cx = chart.scales.x.getValueForPixel(Math.max(chart.chartArea.left, Math.min(chart.chartArea.right, center.x)));
+      const r = zoomAround(touchState.bounds.xMin, touchState.bounds.xMax, cx, dx1/dx0);
+      next.xMin = r.min; next.xMax = r.max;
+    }
+    if(touchState.axes.y){
+      const cy = chart.scales.y.getValueForPixel(Math.max(chart.chartArea.top, Math.min(chart.chartArea.bottom, center.y)));
+      const r = zoomAround(touchState.bounds.yMin, touchState.bounds.yMax, cy, dy1/dy0);
+      next.yMin = r.min; next.yMax = r.max;
+    }
+    if(touchState.axes.y1){
+      const cy = chart.scales.y1.getValueForPixel(Math.max(chart.chartArea.top, Math.min(chart.chartArea.bottom, center.y)));
+      const r = zoomAround(touchState.bounds.y1Min, touchState.bounds.y1Max, cy, dy1/dy0);
+      next.y1Min = r.min; next.y1Max = r.max;
+    }
+    touchState.moved = true;
+    applyBounds(next);
+  };
+  let touchState = null;
+  canvas.addEventListener('touchstart', (e)=>{
+    const pts = getTouchPoints(e);
+    const chart = getChart();
+    if(!chart?.chartArea) return;
+    if(pts.length === 1){
+      const now = Date.now();
+      const last = incomeCurveViewState.lastTapPoint;
+      const nearLast = last && Math.hypot(pts[0].x-last.x, pts[0].y-last.y) < 28;
+      if(now - (incomeCurveViewState.lastTapTime || 0) < 320 && nearLast){
+        resetIncomeCurveZoom();
+        incomeCurveViewState.lastTapTime = 0;
+        incomeCurveViewState.lastTapPoint = null;
+        e.preventDefault();
+        return;
+      }
+      incomeCurveViewState.lastTapTime = now;
+      incomeCurveViewState.lastTapPoint = pts[0];
+      if(isIncomeCurveZoomed()){
+        const axis = getAxisZone(pts[0]);
+        if(isInsideChartArea(pts[0]) || axis === 'y' || axis === 'y1'){
+          touchState = {mode:'pan', start:pts[0], bounds:cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds()), axis:axis || 'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
+          e.preventDefault();
+        }
+      }
+    }else if(pts.length >= 2){
+      const center = touchCenter(pts[0], pts[1]);
+      const area = chart.chartArea;
+      const axis = getAxisZone(center);
+      const axes = {x:false, y:false, y1:false};
+      if(axis === 'x') axes.x = true;
+      else if(axis === 'y') axes.y = true;
+      else if(axis === 'y1') axes.y1 = true;
+      else if(center.x >= area.left && center.x <= area.right && center.y >= area.top && center.y <= area.bottom){ axes.x = true; axes.y = true; }
+      if(axes.x || axes.y || axes.y1){
+        touchState = {mode:'pinch', startPts:[pts[0], pts[1]], bounds:cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds()), axes, moved:false};
+        e.preventDefault();
+      }
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchmove', (e)=>{
+    if(!touchState) return;
+    const pts = getTouchPoints(e);
+    if(touchState.mode === 'pinch' && pts.length >= 2){
+      applyPinch(touchState, pts);
+      e.preventDefault();
+    }else if(touchState.mode === 'pan' && pts.length === 1){
+      const chart = getChart();
+      const pt = pts[0];
+      const dx = pt.x - touchState.start.x;
+      const dy = pt.y - touchState.start.y;
+      if(!touchState.moved && Math.abs(dx)+Math.abs(dy) < MIN_DRAG_PX) return;
+      touchState.moved = true;
+      const next = {...touchState.bounds};
+      const auto = incomeCurveViewState.autoBounds || touchState.bounds;
+      const xZoomed = Math.abs(touchState.bounds.xMin-auto.xMin)>1e-9 || Math.abs(touchState.bounds.xMax-auto.xMax)>1e-9;
+      const yZoomed = Math.abs(touchState.bounds.yMin-auto.yMin)>1e-9 || Math.abs(touchState.bounds.yMax-auto.yMax)>1e-9;
+      const y1Zoomed = Math.abs(touchState.bounds.y1Min-auto.y1Min)>1e-9 || Math.abs(touchState.bounds.y1Max-auto.y1Max)>1e-9;
+      if((touchState.axis === 'plot' || touchState.axis === 'x') && xZoomed){
+        const range = touchState.bounds.xMax - touchState.bounds.xMin;
+        const dv = -dx * range / Math.max(1, touchState.plotWidth);
+        next.xMin = touchState.bounds.xMin + dv; next.xMax = touchState.bounds.xMax + dv;
+      }
+      if((touchState.axis === 'plot' || touchState.axis === 'y') && yZoomed){
+        const range = touchState.bounds.yMax - touchState.bounds.yMin;
+        const dv = dy * range / Math.max(1, touchState.plotHeight);
+        next.yMin = touchState.bounds.yMin + dv; next.yMax = touchState.bounds.yMax + dv;
+      }
+      if((touchState.axis === 'plot' || touchState.axis === 'y1') && y1Zoomed){
+        const range = touchState.bounds.y1Max - touchState.bounds.y1Min;
+        const dv = dy * range / Math.max(1, touchState.plotHeight);
+        next.y1Min = touchState.bounds.y1Min + dv; next.y1Max = touchState.bounds.y1Max + dv;
+      }
+      applyBounds(next);
+      e.preventDefault();
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchend', ()=>{ touchState = null; }, {passive:true});
+  canvas.addEventListener('touchcancel', ()=>{ touchState = null; }, {passive:true});
+}
+
 function drawIncomeCurveChart(){
   if(!activeIncomeCurveOwner || !incomeCurveDraft) return;
   syncIncomeCurveDraftFromModal();
@@ -28358,6 +28763,16 @@ function drawIncomeCurveChart(){
   const bonusPoints = buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, "bonus", xAxisRange.max);
   const ctx = document.getElementById("incomeCurveChart").getContext("2d");
   const isIncomeCurveCompact = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+  const autoBounds = {
+    xMin:xAxisRange.min,
+    xMax:xAxisRange.max,
+    yMin:0,
+    yMax:getIncomeCurveNiceMax(salaryPoints, Math.max(1, Number(seriesCfg.salaryMonth || 0) || 1)),
+    y1Min:0,
+    y1Max:getIncomeCurveNiceMax(bonusPoints, Math.max(1, Number(seriesCfg.bonusYear || 0) || 1))
+  };
+  updateIncomeCurveAutoBounds(autoBounds);
+  const incomeCurveBounds = getIncomeCurveEffectiveBounds() || autoBounds;
   if(incomeCurveChart) incomeCurveChart.destroy();
   incomeCurveChart = new Chart(ctx, {
     type:"line",
@@ -28427,8 +28842,8 @@ function drawIncomeCurveChart(){
       scales:{
         x:{
           type:"linear",
-          min:xAxisRange.min,
-          max:xAxisRange.max,
+          min:incomeCurveBounds.xMin,
+          max:incomeCurveBounds.xMax,
           title:{display:true,text:"年齢（歳)".replace(')', '）'), padding:{top:2, bottom:0}},
           ticks:{stepSize:xTickStep, maxRotation:0, minRotation:0, autoSkip:false, padding:5, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
@@ -28438,6 +28853,8 @@ function drawIncomeCurveChart(){
           position:"left",
           title:{display:true,text:"月手取り（万円）", padding:{top:0, bottom:2}},
           beginAtZero:true,
+          min:incomeCurveBounds.yMin,
+          max:incomeCurveBounds.yMax,
           grace:"12%",
           ticks:{padding:5},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
@@ -28447,6 +28864,8 @@ function drawIncomeCurveChart(){
           position:"right",
           title:{display:false,text:"年間ボーナス（万円）"},
           beginAtZero:true,
+          min:incomeCurveBounds.y1Min,
+          max:incomeCurveBounds.y1Max,
           grace:"12%",
           ticks:{padding:5},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1, drawOnChartArea:false},
@@ -28455,6 +28874,7 @@ function drawIncomeCurveChart(){
       }
     },
     plugins:[
+      buildIncomeCurveSelectionGuidePlugin(),
       {
         id:"incomeCurveRightAxisTitle180",
         afterDraw(chart){
@@ -28483,10 +28903,13 @@ function drawIncomeCurveChart(){
           const area=chart.chartArea;
           const px=xScale.getPixelForValue(retireAge);
           const ctx=chart.ctx;
-          if(!Number.isFinite(px) || px < area.left || px > area.right) return;
+          if(!Number.isFinite(px)) return;
           const retireStyle = typeof getRetireGuideSingleStyle === "function" ? getRetireGuideSingleStyle() : {color:"rgba(180,91,106,0.72)", labelColor:"rgba(143,70,84,0.92)", width:1.6, dash:[6,4]};
-          drawRetireGuideLine(ctx, xScale, yScale, area, retireAge, retireStyle);
+          if(px >= area.left && px <= area.right) drawRetireGuideLine(ctx, xScale, yScale, area, retireAge, retireStyle);
+          const alpha = typeof getGuideLabelFadeAlpha === "function" ? getGuideLabelFadeAlpha(px, area, 36) : (px < area.left || px > area.right ? 0 : 1);
+          if(alpha <= 0.02) return;
           ctx.save();
+          ctx.globalAlpha = alpha;
           ctx.font = isIncomeCurveCompact ? "11px Arial" : "12px Arial";
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
@@ -28510,6 +28933,7 @@ function drawIncomeCurveChart(){
       }
     ]
   });
+  setupIncomeCurveChartInteractions();
 }
 
 function addIncomeCurvePoint(){
