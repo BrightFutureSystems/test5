@@ -1383,6 +1383,19 @@ document.addEventListener("scroll", (ev)=>{
   .income-curve-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;}
   .income-curve-checks{display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
   .income-curve-checks label{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .income-curve-interpolation{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .income-curve-interpolation-title{font-weight:700;color:#374151;}
+  .income-curve-interpolation.is-disabled{opacity:.55;}
+  .income-curve-growth-block{display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+  .income-curve-checks label.income-curve-growth-main{display:inline-flex;align-items:flex-start;gap:8px;flex-wrap:nowrap;}
+  .income-curve-growth-main input{flex:0 0 auto;margin-top:2px;}
+  .income-curve-growth-main span{display:inline-block;flex:1 1 auto;min-width:0;}
+  .income-curve-checks label.income-curve-bonus-link-main{display:inline-flex;align-items:flex-start;gap:8px;flex-wrap:nowrap;}
+  .income-curve-bonus-link-main input[type=checkbox]{flex:0 0 auto;margin-top:2px;}
+  .income-curve-bonus-link-main .income-curve-bonus-link-text{display:inline-block;flex:1 1 auto;min-width:0;}
+  .income-curve-growth-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:24px;}
+  .income-curve-growth-controls label{display:inline-flex;align-items:center;gap:4px;}
+  .income-curve-growth-controls .month-select{width:auto;min-width:72px;}
   .income-curve-note{color:var(--muted);font-size:.92rem;line-height:1.5;}
 
   .insurance-assist-row{margin:8px 0 10px;display:flex;justify-content:flex-start;}
@@ -5681,11 +5694,23 @@ document.addEventListener("scroll", (ev)=>{
         <div class="income-curve-controls">
           <button type="button" id="incomeCurveAddPointBtn" class="add-row-btn">＋中間点追加</button>
           <div class="income-curve-checks">
-            <label><input id="incomeCurveSalaryGrowthOn" type="checkbox"> 手取り（月）を毎年一定率で増加させる <input id="incomeCurveSalaryGrowthPct" type="number" class="ratebox" value="3" step="0.1"><span class="suffix">%</span></label>
-            <label><input id="incomeCurveBonusLinkedOn" type="checkbox"> ボーナス（年）を年間手取り額の <input id="incomeCurveBonusLinkedPct" type="number" class="ratebox" value="33" step="0.1"><span class="suffix">%</span> で計算する</label>
+            <div id="incomeCurveInterpolationWrap" class="income-curve-interpolation">
+              <span class="income-curve-interpolation-title">補間方法：</span>
+              <label><input id="incomeCurveInterpolationLinear" name="incomeCurveInterpolation" type="radio" value="linear" checked> 線形補間</label>
+              <label><input id="incomeCurveInterpolationStep" name="incomeCurveInterpolation" type="radio" value="step"> 階段補間</label>
+            </div>
+            <div class="income-curve-growth-block">
+              <label class="income-curve-growth-main"><input id="incomeCurveSalaryGrowthOn" type="checkbox"><span>手取り（月）とボーナス（年）を毎年一定率で増加させる</span></label>
+              <div class="income-curve-growth-controls">
+                <label>年増加率：<input id="incomeCurveSalaryGrowthPct" type="number" class="ratebox" value="3" step="0.1"><span class="suffix">%</span></label>
+                <label>増加月：<select id="incomeCurveSalaryGrowthMonth" class="month-select"><option value="1" >1月</option><option value="2" >2月</option><option value="3" >3月</option><option value="4" selected>4月</option><option value="5" >5月</option><option value="6" >6月</option><option value="7" >7月</option><option value="8" >8月</option><option value="9" >9月</option><option value="10" >10月</option><option value="11" >11月</option><option value="12" >12月</option></select></label>
+                <button type="button" id="incomeCurveCreateAnnualPointsBtn" class="subtle-btn">毎年の中間点を作成</button>
+              </div>
+            </div>
+            <label class="income-curve-bonus-link-main"><input id="incomeCurveBonusLinkedOn" type="checkbox"><span class="income-curve-bonus-link-text">ボーナス（年）を年間手取り額の <input id="incomeCurveBonusLinkedPct" type="number" class="ratebox" value="33" step="0.1"><span class="suffix">%</span> で計算する</span></label>
           </div>
         </div>
-        <div class="income-curve-note">初期状態では「現在年齢」と「リタイア時点」の2点を表示します。必要に応じて中間点を追加してください。<br>各点の間は線形補間し、年齢の点はその年齢ちょうどを表します。例：50.0歳は50歳の誕生日時点です。<br>ボーナス比率の既定値33%は「賞与が月給4か月分」の簡易換算です。手取りベースでは実際の賞与比率に合わせて調整してください。</div>
+        <div class="income-curve-note">初期状態では「現在年齢」と「リタイア時点」の2点を表示します。必要に応じて中間点を追加してください。<br>線形補間では各点の間を直線で補間し、階段補間では指定した年齢に到達した時点で金額が切り替わります。年齢の点はその年齢ちょうどを表します。例：50.0歳は50歳の誕生日時点です。<br>ボーナス比率の既定値33%は「賞与が月給4か月分」の簡易換算です。手取りベースでは実際の賞与比率に合わせて調整してください。</div>
       </div>
       <div class="modal-actions" style="margin-top:14px;">
         <button type="button" id="cancelIncomeCurveBtn">キャンセル</button>
@@ -16805,6 +16830,7 @@ function getScenarioFromDOM(){
       salaryMode:document.getElementById("self_salary_mode_custom")?.checked ? "custom" : "normal",
       bonusMode:document.getElementById("self_bonus_mode_custom")?.checked ? "custom" : "normal",
       incomeCurve:parseIncomeCurveJson(document.getElementById("self_income_curve_json")?.value),
+      birthMonth:(parseDateInput(document.getElementById("selfBirthDate")?.value || "")?.month || 1),
       retireYear:numInput("self_retire_year", 0),
       retireMonth:numInput("self_retire_month", 0),
       retireAge:numInput("self_retire_age", 200)||200,
@@ -16818,6 +16844,7 @@ function getScenarioFromDOM(){
       salaryMode:document.getElementById("sp_salary_mode_custom")?.checked ? "custom" : "normal",
       bonusMode:document.getElementById("sp_bonus_mode_custom")?.checked ? "custom" : "normal",
       incomeCurve:parseIncomeCurveJson(document.getElementById("sp_income_curve_json")?.value),
+      birthMonth:(parseDateInput(document.getElementById("spouseBirthDate")?.value || "")?.month || 1),
       retireYear:numInput("sp_retire_year", 0),
       retireMonth:numInput("sp_retire_month", 0),
       retireAge:numInput("sp_retire_age", 200)||200,
@@ -18733,10 +18760,22 @@ function normalizeIncomeCurveConfig(curve, currentAge, retireAge, salaryMonth, b
   ));
   points.unshift({age:currentAge, salary:salaryAtCurrent, bonus:bonusAtCurrent});
   points.push({age:retireAge, salary:Number.isFinite(endSource.salary)?endSource.salary:salaryMonth, bonus:Number.isFinite(endSource.bonus)?endSource.bonus:bonusYear});
+  const interpolation = cfg.interpolation === "step" ? "step" : "linear";
+  if(interpolation === "step" && !cfg.salaryGrowthOn && points.length >= 2){
+    const prev = points[points.length - 2] || points[0];
+    points[points.length - 1] = {
+      ...points[points.length - 1],
+      salary: Number.isFinite(Number(prev?.salary)) ? Number(prev.salary) : salaryAtCurrent,
+      bonus: Number.isFinite(Number(prev?.bonus)) ? Number(prev.bonus) : bonusAtCurrent
+    };
+  }
   return {
     points,
+    interpolation,
     salaryGrowthOn: !!cfg.salaryGrowthOn,
     salaryGrowthPct: Number.isFinite(Number(cfg.salaryGrowthPct)) ? Number(cfg.salaryGrowthPct) : 3,
+    salaryGrowthMonth: Math.min(12, Math.max(1, Math.round(Number(cfg.salaryGrowthMonth) || 4))),
+    birthMonth: Math.min(12, Math.max(1, Math.round(Number(cfg.birthMonth) || 1))),
     bonusLinkedOn: !!cfg.bonusLinkedOn,
     bonusLinkedPct: Number.isFinite(Number(cfg.bonusLinkedPct)) ? Number(cfg.bonusLinkedPct) : 33
   };
@@ -18747,6 +18786,67 @@ function formatIncomeCurveAgeLabel(age){
   const rounded = Math.round(n * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
 }
+function formatIncomeCurvePointValue(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '0.0';
+  return (Math.round(n * 10) / 10).toFixed(1);
+}
+function getIncomeCurveBirthMonthFromOwner(owner){
+  const birthId = owner === 'sp' ? 'spouseBirthDate' : 'selfBirthDate';
+  const parts = parseDateInput(document.getElementById(birthId)?.value || '');
+  return parts?.month || 1;
+}
+function getIncomeCurveIncreaseMonth(curve){
+  const m = Math.round(Number(curve?.salaryGrowthMonth) || 4);
+  return Math.min(12, Math.max(1, m));
+}
+function getIncomeCurveIncreaseAgeOffset(birthMonth, increaseMonth){
+  const b = Math.min(12, Math.max(1, Math.round(Number(birthMonth) || 1)));
+  const m = Math.min(12, Math.max(1, Math.round(Number(increaseMonth) || 4)));
+  return ((m - b + 12) % 12) / 12;
+}
+function getIncomeCurveAnnualIncreaseAges(currentAge, retireAge, increaseMonth, birthMonth){
+  const start = Number(currentAge);
+  const end = Number(retireAge);
+  if(!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+  const offset = getIncomeCurveIncreaseAgeOffset(birthMonth, increaseMonth);
+  const ages = [];
+  const firstYear = Math.floor(start) - 1;
+  const lastYear = Math.ceil(end) + 1;
+  for(let ageYear = firstYear; ageYear <= lastYear; ageYear++){
+    const age = ageYear + offset;
+    if(age > start + 1e-9 && age < end - 1e-9){
+      ages.push(Math.round(age * 1000000) / 1000000);
+    }
+  }
+  return Array.from(new Set(ages)).sort((a,b)=>a-b);
+}
+function getIncomeCurveGrowthStepCountAtAge(age, currentAge, retireAge, curve){
+  const target = Number(age);
+  if(!Number.isFinite(target)) return 0;
+  const increaseAges = getIncomeCurveAnnualIncreaseAges(currentAge, retireAge, getIncomeCurveIncreaseMonth(curve), curve?.birthMonth || 1);
+  return increaseAges.filter(a=>a <= target + 1e-9).length;
+}
+function buildIncomeCurveAutoGeneratedPoints(curve, currentAge, retireAge, salaryMonth, bonusYear, salaryCustom, bonusCustom){
+  const growthRate = (Number(curve?.salaryGrowthPct) || 0) / 100;
+  const bonusLinkedPct = Number(curve?.bonusLinkedPct) || 0;
+  const ages = [Number(currentAge), ...getIncomeCurveAnnualIncreaseAges(currentAge, retireAge, getIncomeCurveIncreaseMonth(curve), curve?.birthMonth || 1), Number(retireAge)]
+    .filter(age=>Number.isFinite(age));
+  return Array.from(new Set(ages.map(age=>Math.round(age * 1000000) / 1000000))).sort((a,b)=>a-b).map(age=>{
+    const steps = getIncomeCurveGrowthStepCountAtAge(age, currentAge, retireAge, curve);
+    const factor = Math.pow(1 + growthRate, Math.max(0, steps));
+    const salary = salaryCustom ? (Number(salaryMonth) || 0) * factor : (Number(salaryMonth) || 0);
+    let bonus;
+    if(curve?.bonusLinkedOn && bonusCustom){
+      bonus = salary * 12 * bonusLinkedPct / 100;
+    }else if(bonusCustom){
+      bonus = (Number(bonusYear) || 0) * factor;
+    }else{
+      bonus = Number(bonusYear) || 0;
+    }
+    return {age, salary, bonus};
+  });
+}
 
 function buildIncomeCurveSeries(incomeCfg, baseAge, targetAge){
   const currentAge = baseAge;
@@ -18754,19 +18854,21 @@ function buildIncomeCurveSeries(incomeCfg, baseAge, targetAge){
   const salaryMonth = Number(incomeCfg.salaryMonth) || 0;
   const bonusYear = Number(incomeCfg.bonusYear) || 0;
   const curve = normalizeIncomeCurveConfig(incomeCfg.incomeCurve, currentAge, retireAge, salaryMonth, bonusYear);
+  curve.birthMonth = Math.min(12, Math.max(1, Math.round(Number(incomeCfg.birthMonth || curve.birthMonth || 1))));
   const salaryCustom = incomeCfg.salaryMode === "custom";
   const bonusCustom = incomeCfg.bonusMode === "custom";
-  let points = curve.points.map(p=>({...p}));
-  if(curve.salaryGrowthOn && salaryCustom){
-    points = points.map(p=>({...p, salary: salaryMonth * Math.pow(1 + (curve.salaryGrowthPct||0)/100, Math.max(0, p.age - currentAge))}));
-  }
-  if(curve.bonusLinkedOn && bonusCustom){
-    points = points.map(p=>({...p, bonus: p.salary * 12 * (curve.bonusLinkedPct||0) / 100}));
-  }
-  function interpLinear(key, fixedValue){
+  let points = buildIncomeCurveEffectivePoints(curve, currentAge, retireAge, salaryMonth, bonusYear, salaryCustom, bonusCustom);
+  function interpIncomeCurveValue(key, fixedValue){
     if(targetAge > retireAge) return 0;
     if(!(key === "salary" ? salaryCustom : bonusCustom)) return fixedValue;
     if(targetAge <= points[0].age) return Number(points[0][key]) || 0;
+    if(curve.interpolation === "step"){
+      for(let i=points.length-1;i>=0;i--){
+        const p = points[i];
+        if(targetAge >= (Number(p.age) || 0) - 1e-9) return Number(p[key]) || 0;
+      }
+      return Number(points[0][key]) || 0;
+    }
     for(let i=0;i<points.length-1;i++){
       const a = points[i], b = points[i+1];
       if(targetAge <= b.age){
@@ -18777,14 +18879,12 @@ function buildIncomeCurveSeries(incomeCfg, baseAge, targetAge){
     }
     return Number(points[points.length-1][key]) || 0;
   }
-  let salaryResult = curve.salaryGrowthOn && salaryCustom && targetAge <= retireAge
-    ? salaryMonth * Math.pow(1 + (curve.salaryGrowthPct||0)/100, Math.max(0, targetAge - currentAge))
-    : interpLinear("salary", salaryMonth);
+  let salaryResult = interpIncomeCurveValue("salary", salaryMonth);
   let bonusResult;
   if(curve.bonusLinkedOn && bonusCustom && targetAge <= retireAge){
     bonusResult = salaryResult * 12 * (curve.bonusLinkedPct||0) / 100;
   }else{
-    bonusResult = interpLinear("bonus", bonusYear);
+    bonusResult = interpIncomeCurveValue("bonus", bonusYear);
   }
   return {
     salaryMonth: salaryResult,
@@ -21359,6 +21459,33 @@ function buildFireDiagnosisLinePoints(series, valueKey){
     y:Number(item?.[valueKey] || 0) || 0
   })).filter(point=>Number.isFinite(point.x) && Number.isFinite(point.y));
 }
+function formatFireDiagnosisTooltipAge(value){
+  const num = Number(value);
+  if(!Number.isFinite(num)) return '-歳';
+  const rounded = Math.round(num * 10) / 10;
+  const text = Math.abs(rounded - Math.round(rounded)) < 1e-9 ? String(Math.round(rounded)) : rounded.toFixed(1);
+  return `${text}歳`;
+}
+function makeFireDiagnosisTooltipOptions(formatValue){
+  return {
+    usePointStyle:true,
+    callbacks:{
+      title(items){
+        const item = Array.isArray(items) && items.length ? items[0] : null;
+        const age = item?.parsed?.x ?? item?.raw?.x ?? item?.label;
+        return `退職年齢：${formatFireDiagnosisTooltipAge(age)}`;
+      },
+      labelPointStyle(){
+        return {pointStyle:'circle', rotation:0};
+      },
+      label(ctx){
+        const value = Number(ctx.parsed?.y);
+        if(!Number.isFinite(value)) return `${ctx.dataset.label}: -`;
+        return `${ctx.dataset.label}: ${formatValue(value)}`;
+      }
+    }
+  };
+}
 function getMonteCarloFireGraphMarkerAge(result){
   if(!result?.found) return null;
   const age = Math.round(Number(result.fireAgeYears ?? result.firePossibleAge));
@@ -21380,6 +21507,7 @@ function buildFireDiagnosisMarkerDataset(label, x, y, color, legendKey=''){
     pointRadius:5,
     pointHoverRadius:6,
     pointHitRadius:7,
+    pointStyle:'circle',
     showLine:false,
     borderWidth:0,
     order:-10
@@ -21446,6 +21574,7 @@ function renderNormalFireTerminalChart(result){
         pointRadius:3,
         pointHoverRadius:4,
         pointHitRadius:5,
+        pointStyle:'circle',
         borderWidth:2.4,
         tension:0.2,
         fill:false,
@@ -21463,6 +21592,7 @@ function renderNormalFireTerminalChart(result){
         pointRadius:3,
         pointHoverRadius:4,
         pointHitRadius:5,
+        pointStyle:'circle',
         borderWidth:2.4,
         tension:0.2,
         fill:false,
@@ -21497,6 +21627,7 @@ function renderNormalFireTerminalChart(result){
         pointRadius:3,
         pointHoverRadius:4,
         pointHitRadius:5,
+        pointStyle:'circle',
         borderWidth:2.4,
         tension:0.2,
         fill:false
@@ -21545,11 +21676,7 @@ function renderNormalFireTerminalChart(result){
       layout:{padding:{right:12, top:8, bottom:4, left:0}},
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{label(ctx){
-          const value = Number(ctx.parsed?.y);
-          if(!Number.isFinite(value)) return `${ctx.dataset.label}: -`;
-          return `${ctx.dataset.label}: ${Math.round(value).toLocaleString()}万円`;
-        }}}
+        tooltip:makeFireDiagnosisTooltipOptions(value=>`${Math.round(value).toLocaleString()}万円`)
       },
       scales:{
         y:{
@@ -21620,6 +21747,7 @@ function renderMonteCarloFireProbabilityChart(result){
         pointRadius:3,
         pointHoverRadius:4,
         pointHitRadius:5,
+        pointStyle:'circle',
         borderWidth:2.4,
         tension:0.2,
         fill:false,
@@ -21637,6 +21765,7 @@ function renderMonteCarloFireProbabilityChart(result){
         pointRadius:3,
         pointHoverRadius:4,
         pointHitRadius:5,
+        pointStyle:'circle',
         borderWidth:2.4,
         tension:0.2,
         fill:false,
@@ -21673,6 +21802,7 @@ function renderMonteCarloFireProbabilityChart(result){
         pointRadius:3,
         pointHoverRadius:4,
         pointHitRadius:5,
+        pointStyle:'circle',
         borderWidth:2.4,
         tension:0.2,
         fill:false
@@ -21720,11 +21850,7 @@ function renderMonteCarloFireProbabilityChart(result){
       layout:{padding:{right:12, top:8, bottom:4, left:0}},
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{label(ctx){
-          const value = Number(ctx.parsed?.y);
-          if(!Number.isFinite(value)) return `${ctx.dataset.label}: -`;
-          return `${ctx.dataset.label}: ${value.toFixed(1)}%`;
-        }}}
+        tooltip:makeFireDiagnosisTooltipOptions(value=>`${value.toFixed(1)}%`)
       },
       scales:{
         y:{
@@ -27620,7 +27746,10 @@ function buildDefaultIncomeCurveForOwner(owner){
   const retireAge = numInput(c.retireInputId, 65) || 65;
   const salary = numInput(c.salaryInputId, 0);
   const bonus = numInput(c.bonusInputId, 0);
-  return normalizeIncomeCurveConfig(null, currentAge, retireAge, salary, bonus);
+  const curve = normalizeIncomeCurveConfig(null, currentAge, retireAge, salary, bonus);
+  curve.interpolation = "step";
+  curve.birthMonth = getIncomeCurveBirthMonthFromOwner(owner);
+  return curve;
 }
 function getStoredIncomeCurveForOwner(owner){
   const c = getIncomeOwnerConfig(owner);
@@ -27628,7 +27757,9 @@ function getStoredIncomeCurveForOwner(owner){
   const retireAge = numInput(c.retireInputId, 65) || 65;
   const salary = numInput(c.salaryInputId, 0);
   const bonus = numInput(c.bonusInputId, 0);
-  return normalizeIncomeCurveConfig(parseIncomeCurveJson(document.getElementById(c.curveJsonId)?.value), currentAge, retireAge, salary, bonus);
+  const curve = normalizeIncomeCurveConfig(parseIncomeCurveJson(document.getElementById(c.curveJsonId)?.value), currentAge, retireAge, salary, bonus);
+  curve.birthMonth = getIncomeCurveBirthMonthFromOwner(owner);
+  return curve;
 }
 function shouldUseCurrentInputsAsInitialIncomeCurve(owner, rawCurve){
   const c = getIncomeOwnerConfig(owner);
@@ -27637,6 +27768,8 @@ function shouldUseCurrentInputsAsInitialIncomeCurve(owner, rawCurve){
   const salary = numInput(c.salaryInputId, 0);
   const bonus = numInput(c.bonusInputId, 0);
   if(!rawCurve || !Array.isArray(rawCurve.points) || rawCurve.points.length < 2) return true;
+  if(rawCurve.interpolation == null) return false;
+  if(rawCurve.interpolation === "step") return false;
   const normalized = normalizeIncomeCurveConfig(rawCurve, currentAge, retireAge, salary, bonus);
   if(normalized.salaryGrowthOn || normalized.bonusLinkedOn) return false;
   if(!Array.isArray(normalized.points) || normalized.points.length !== 2) return false;
@@ -27660,6 +27793,79 @@ function syncIncomeInputsFromCurve(owner, curve){
   formatNumericInputDisplay(salaryInput, true);
   formatNumericInputDisplay(bonusInput, true);
 }
+function isIncomeCurveStepMode(curve){
+  return (curve?.interpolation || "linear") === "step";
+}
+function getIncomeCurveFinalSourcePoint(curve){
+  const points = Array.isArray(curve?.points) ? curve.points : [];
+  if(points.length < 2) return null;
+  return points[points.length - 2] || points[0] || null;
+}
+function syncIncomeCurveFinalPointForStep(curve){
+  if(!curve || !isIncomeCurveStepMode(curve) || curve.salaryGrowthOn || !Array.isArray(curve.points) || curve.points.length < 2) return curve;
+  const source = getIncomeCurveFinalSourcePoint(curve);
+  const lastIndex = curve.points.length - 1;
+  curve.points[lastIndex] = {
+    ...curve.points[lastIndex],
+    salary: Number.isFinite(Number(source?.salary)) ? Number(source.salary) : 0,
+    bonus: Number.isFinite(Number(source?.bonus)) ? Number(source.bonus) : 0
+  };
+  return curve;
+}
+function applyIncomeCurveAutoValuesToPoints(curve, currentAge, salaryMonth, bonusYear, modes){
+  if(!curve || !Array.isArray(curve.points)) return curve;
+  const salaryCustom = modes?.salary === "custom";
+  const bonusCustom = modes?.bonus === "custom";
+  const growthOn = !!curve.salaryGrowthOn;
+  const bonusLinkedOn = !!curve.bonusLinkedOn;
+  const growthRate = (Number(curve.salaryGrowthPct) || 0) / 100;
+  const bonusLinkedPct = Number(curve.bonusLinkedPct) || 0;
+  if(!growthOn && !bonusLinkedOn) return curve;
+  curve.points = curve.points.map(p=>{
+    const age = Number(p?.age);
+    const elapsed = Number.isFinite(age) ? Math.max(0, age - currentAge) : 0;
+    const factor = Math.pow(1 + growthRate, elapsed);
+    const next = {...p};
+    if(growthOn && salaryCustom){
+      next.salary = (Number(salaryMonth) || 0) * factor;
+    }
+    if(bonusCustom){
+      if(bonusLinkedOn){
+        const salaryForBonus = Number.isFinite(Number(next.salary)) ? Number(next.salary) : (Number(salaryMonth) || 0) * factor;
+        next.bonus = salaryForBonus * 12 * bonusLinkedPct / 100;
+      }else if(growthOn){
+        next.bonus = (Number(bonusYear) || 0) * factor;
+      }
+    }
+    return next;
+  });
+  return curve;
+}
+function buildIncomeCurveEffectivePoints(curve, currentAge, retireAge, salaryMonth, bonusYear, salaryCustom, bonusCustom){
+  const normalized = curve && typeof curve === "object" ? curve : normalizeIncomeCurveConfig(null, currentAge, retireAge, salaryMonth, bonusYear);
+  const basePoints = Array.isArray(normalized.points) ? normalized.points.map(p=>({...p})) : [];
+  const growthOn = !!normalized.salaryGrowthOn;
+  const growthRate = (Number(normalized.salaryGrowthPct) || 0) / 100;
+  const bonusLinkedPct = Number(normalized.bonusLinkedPct) || 0;
+  if(growthOn && (salaryCustom || bonusCustom)){
+    return buildIncomeCurveAutoGeneratedPoints(normalized, currentAge, retireAge, salaryMonth, bonusYear, salaryCustom, bonusCustom);
+  }
+  return basePoints;
+}
+function updateIncomeCurveFinalPointInputs(){
+  if(!incomeCurveDraft || !isIncomeCurveStepMode(incomeCurveDraft)) return;
+  const lastIndex = incomeCurveDraft.points.length - 1;
+  const last = incomeCurveDraft.points[lastIndex];
+  const tr = document.querySelector(`#incomeCurveRows tr[data-idx="${lastIndex}"]`);
+  if(!tr || !last) return;
+  const salaryInput = tr.querySelector('input[data-curve-field="salary"]');
+  const bonusInput = tr.querySelector('input[data-curve-field="bonus"]');
+  if(salaryInput) salaryInput.value = String(Math.round((Number(last.salary) || 0) * 10) / 10);
+  if(bonusInput) bonusInput.value = String(Math.round((Number(last.bonus) || 0) * 10) / 10);
+  formatNumericInputDisplay(salaryInput, true);
+  formatNumericInputDisplay(bonusInput, true);
+}
+
 function getStoredLoanDetail(){
   return buildLoanDetailFromDOM();
 }
@@ -27934,10 +28140,18 @@ function renderIncomeCurveModal(){
   const c = getIncomeOwnerConfig(activeIncomeCurveOwner);
   const currentAge = numInput("age", 50) || 50;
   const retireAge = numInput(c.retireInputId, 65) || 65;
-  incomeCurveDraft = normalizeIncomeCurveConfig(incomeCurveDraft, currentAge, retireAge, numInput(c.salaryInputId, 0), numInput(c.bonusInputId, 0));
+  const baseSalary = numInput(c.salaryInputId, 0);
+  const baseBonus = numInput(c.bonusInputId, 0);
+  incomeCurveDraft = normalizeIncomeCurveConfig(incomeCurveDraft, currentAge, retireAge, baseSalary, baseBonus);
+  incomeCurveDraft.birthMonth = getIncomeCurveBirthMonthFromOwner(activeIncomeCurveOwner);
   const modes = getIncomeCurveModalModes();
+  incomeCurveDraft = syncIncomeCurveFinalPointForStep(incomeCurveDraft);
+  document.getElementById("incomeCurveInterpolationLinear").checked = (incomeCurveDraft.interpolation || "linear") !== "step";
+  document.getElementById("incomeCurveInterpolationStep").checked = (incomeCurveDraft.interpolation || "linear") === "step";
   document.getElementById("incomeCurveSalaryGrowthOn").checked = !!incomeCurveDraft.salaryGrowthOn;
   document.getElementById("incomeCurveSalaryGrowthPct").value = incomeCurveDraft.salaryGrowthPct ?? 3;
+  const growthMonthEl = document.getElementById("incomeCurveSalaryGrowthMonth");
+  if(growthMonthEl) growthMonthEl.value = String(getIncomeCurveIncreaseMonth(incomeCurveDraft));
   document.getElementById("incomeCurveBonusLinkedOn").checked = !!incomeCurveDraft.bonusLinkedOn;
   document.getElementById("incomeCurveBonusLinkedPct").value = incomeCurveDraft.bonusLinkedPct ?? 33;
   formatNumericInputDisplay(document.getElementById("incomeCurveSalaryGrowthPct"), true);
@@ -27945,7 +28159,17 @@ function renderIncomeCurveModal(){
   const tbody = document.getElementById("incomeCurveRows");
   tbody.innerHTML = incomeCurveDraft.points.map((p, idx)=>{
     const fixed = idx === 0 || idx === incomeCurveDraft.points.length - 1;
-    return `<tr data-idx="${idx}"><td class="${fixed ? "readonly-cell" : ""}">${fixed ? `${escapeHtml(formatIncomeCurveAgeLabel(p.age))}歳` : `<input type="number" class="agebox age-input" step="0.01" data-curve-field="age" value="${attrValue(p.age)}">`}</td><td><input type="number" class="moneybox money-input" data-curve-field="salary" value="${attrValue(p.salary,0)}" ${modes.salary !== "custom" || incomeCurveDraft.salaryGrowthOn ? "disabled" : ""}></td><td><input type="number" class="moneybox money-input" data-curve-field="bonus" value="${attrValue(p.bonus,0)}" ${modes.bonus !== "custom" || incomeCurveDraft.bonusLinkedOn ? "disabled" : ""}></td><td>${fixed ? "固定" : `<button type="button" class="delete-curve-point-btn" data-curve-delete="${idx}">削除</button>`}</td></tr>`;
+    const finalPoint = idx === incomeCurveDraft.points.length - 1;
+    const autoMode = !!incomeCurveDraft.salaryGrowthOn;
+    const stepFinal = finalPoint && isIncomeCurveStepMode(incomeCurveDraft) && !autoMode;
+    const ageDisabled = autoMode;
+    const salaryDisabled = modes.salary !== "custom" || autoMode || stepFinal;
+    const bonusDisabled = modes.bonus !== "custom" || incomeCurveDraft.bonusLinkedOn || autoMode || stepFinal;
+    const opLabel = autoMode ? "自動" : (stepFinal ? "自動" : (fixed ? "固定" : `<button type="button" class="delete-curve-point-btn" data-curve-delete="${idx}">削除</button>`));
+    const ageValue = formatIncomeCurveAgeLabel(p.age);
+    const salaryValue = formatIncomeCurvePointValue(p.salary);
+    const bonusValue = formatIncomeCurvePointValue(p.bonus);
+    return `<tr data-idx="${idx}"><td class="${fixed ? "readonly-cell" : ""}">${fixed ? `${escapeHtml(ageValue)}歳` : `<input type="number" class="agebox age-input" step="0.01" data-curve-field="age" value="${attrValue(ageValue)}" ${ageDisabled ? "disabled" : ""}>`}</td><td><input type="number" class="moneybox money-input" data-curve-field="salary" value="${attrValue(salaryValue,0)}" ${salaryDisabled ? "disabled" : ""}></td><td><input type="number" class="moneybox money-input" data-curve-field="bonus" value="${attrValue(bonusValue,0)}" ${bonusDisabled ? "disabled" : ""}></td><td>${opLabel}</td></tr>`;
   }).join("");
   enhanceNumericInputs(document.getElementById("incomeCurveModal"));
   formatAllNumericInputs(document.getElementById("incomeCurveModal"), true);
@@ -27957,16 +28181,37 @@ function updateIncomeCurveAutoControlStates(){
   const modes = getIncomeCurveModalModes();
   const salaryAuto = document.getElementById("incomeCurveSalaryGrowthOn").checked;
   const bonusAuto = document.getElementById("incomeCurveBonusLinkedOn").checked;
-  document.getElementById("incomeCurveSalaryGrowthPct").disabled = !salaryAuto || modes.salary !== "custom";
+  document.getElementById("incomeCurveSalaryGrowthPct").disabled = !salaryAuto || (modes.salary !== "custom" && modes.bonus !== "custom");
+  const growthMonthEl = document.getElementById("incomeCurveSalaryGrowthMonth");
+  if(growthMonthEl) growthMonthEl.disabled = !salaryAuto || (modes.salary !== "custom" && modes.bonus !== "custom");
+  const annualBtn = document.getElementById("incomeCurveCreateAnnualPointsBtn");
+  if(annualBtn) annualBtn.disabled = modes.salary !== "custom" && modes.bonus !== "custom";
+  const addBtn = document.getElementById("incomeCurveAddPointBtn");
+  if(addBtn) addBtn.disabled = salaryAuto;
   document.getElementById("incomeCurveBonusLinkedPct").disabled = !bonusAuto || modes.bonus !== "custom";
-  document.querySelectorAll('#incomeCurveRows input[data-curve-field="salary"]').forEach(el=>{ el.disabled = modes.salary !== "custom" || salaryAuto; });
-  document.querySelectorAll('#incomeCurveRows input[data-curve-field="bonus"]').forEach(el=>{ el.disabled = modes.bonus !== "custom" || bonusAuto; });
+  document.getElementById("incomeCurveInterpolationLinear").disabled = false;
+  document.getElementById("incomeCurveInterpolationStep").disabled = false;
+  document.getElementById("incomeCurveInterpolationWrap")?.classList.toggle("is-disabled", false);
+  const lastIdx = incomeCurveDraft?.points?.length ? incomeCurveDraft.points.length - 1 : -1;
+  document.querySelectorAll('#incomeCurveRows tr[data-idx]').forEach(tr=>{
+    const idx = Number(tr.dataset.idx);
+    const stepFinal = idx === lastIdx && isIncomeCurveStepMode(incomeCurveDraft) && !incomeCurveDraft.salaryGrowthOn;
+    const ageEl = tr.querySelector('input[data-curve-field="age"]');
+    const salaryEl = tr.querySelector('input[data-curve-field="salary"]');
+    const bonusEl = tr.querySelector('input[data-curve-field="bonus"]');
+    if(ageEl) ageEl.disabled = salaryAuto;
+    if(salaryEl) salaryEl.disabled = modes.salary !== "custom" || salaryAuto || stepFinal;
+    if(bonusEl) bonusEl.disabled = modes.bonus !== "custom" || bonusAuto || salaryAuto || stepFinal;
+  });
   applyTabOrder();
 }
 function syncIncomeCurveDraftFromModal(){
   if(!activeIncomeCurveOwner || !incomeCurveDraft) return;
+  incomeCurveDraft.interpolation = document.getElementById("incomeCurveInterpolationStep")?.checked ? "step" : "linear";
   incomeCurveDraft.salaryGrowthOn = document.getElementById("incomeCurveSalaryGrowthOn").checked;
   incomeCurveDraft.salaryGrowthPct = numInput("incomeCurveSalaryGrowthPct", 3);
+  incomeCurveDraft.salaryGrowthMonth = Math.min(12, Math.max(1, Math.round(numInput("incomeCurveSalaryGrowthMonth", 4) || 4)));
+  incomeCurveDraft.birthMonth = getIncomeCurveBirthMonthFromOwner(activeIncomeCurveOwner);
   incomeCurveDraft.bonusLinkedOn = document.getElementById("incomeCurveBonusLinkedOn").checked;
   incomeCurveDraft.bonusLinkedPct = numInput("incomeCurveBonusLinkedPct", 33);
   const rows = [];
@@ -27988,6 +28233,8 @@ function syncIncomeCurveDraftFromModal(){
     const first = rows[0], last = rows[rows.length-1];
     const middle = rows.slice(1, -1).sort((a,b)=>a.age - b.age).map(r=>({age:Math.max(first.age + 0.1, Math.min(last.age - 0.1, r.age)), salary:r.salary, bonus:r.bonus}));
     incomeCurveDraft.points = [{age:first.age, salary:first.salary, bonus:first.bonus}, ...middle, {age:last.age, salary:last.salary, bonus:last.bonus}];
+    syncIncomeCurveFinalPointForStep(incomeCurveDraft);
+    updateIncomeCurveFinalPointInputs();
   }
 }
 function getRenderedIncomeCurve(owner, curve){
@@ -27999,6 +28246,7 @@ function getRenderedIncomeCurve(owner, curve){
     salaryMode:modes.salary,
     bonusMode:modes.bonus,
     incomeCurve:curve,
+    birthMonth:getIncomeCurveBirthMonthFromOwner(owner),
     retireAge:numInput(c.retireInputId, 65) || 65
   }, numInput("age", 50) || 50, numInput(c.retireInputId, 65) || 65);
 }
@@ -28025,6 +28273,76 @@ function getIncomeCurveXAxisTickStep(minAge, maxAge){
   return getIncomeCurveXAxisRange(minAge, maxAge).step;
 }
 
+function shouldDrawIncomeCurveStepPoints(seriesCfg, key){
+  const curve = normalizeIncomeCurveConfig(seriesCfg.incomeCurve, numInput("age", 50) || 50, seriesCfg.retireAge, seriesCfg.salaryMonth, seriesCfg.bonusYear);
+  if(curve.interpolation !== "step") return false;
+  if(key === "salary") return seriesCfg.salaryMode === "custom";
+  if(key === "bonus"){
+    if(curve.bonusLinkedOn) return seriesCfg.bonusMode === "custom" || seriesCfg.salaryMode === "custom";
+    return seriesCfg.bonusMode === "custom";
+  }
+  return false;
+}
+function buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, key, xAxisMax){
+  const points = [];
+  const valueKey = key === "salary" ? "salaryMonth" : "bonusYear";
+  const useStep = shouldDrawIncomeCurveStepPoints(seriesCfg, key);
+  const retireAgeEpsilon = 1e-6;
+  if(useStep){
+    const normalized = normalizeIncomeCurveConfig(seriesCfg.incomeCurve, currentAge, retireAge, seriesCfg.salaryMonth, seriesCfg.bonusYear);
+    normalized.birthMonth = Math.min(12, Math.max(1, Math.round(Number(seriesCfg.birthMonth || normalized.birthMonth || 1))));
+    const curvePoints = buildIncomeCurveEffectivePoints(normalized, currentAge, retireAge, seriesCfg.salaryMonth, seriesCfg.bonusYear, seriesCfg.salaryMode === "custom", seriesCfg.bonusMode === "custom")
+      .filter(p=>Number.isFinite(Number(p.age)) && Number(p.age) >= currentAge - retireAgeEpsilon && Number(p.age) <= retireAge + retireAgeEpsilon);
+    if(curvePoints.length){
+      const firstAge = Math.max(currentAge, Number(curvePoints[0].age));
+      points.push({x:firstAge, y:buildIncomeCurveSeries(seriesCfg, currentAge, firstAge)[valueKey]});
+      for(let i=1;i<curvePoints.length;i++){
+        const age = Number(curvePoints[i].age);
+        if(!(age <= retireAge + retireAgeEpsilon)) continue;
+        const beforeAge = Math.max(currentAge, age - 1e-6);
+        const before = buildIncomeCurveSeries(seriesCfg, currentAge, beforeAge)[valueKey];
+        const after = buildIncomeCurveSeries(seriesCfg, currentAge, age)[valueKey];
+        points.push({x:age, y:before}, {x:age, y:after});
+      }
+      const terminal = buildIncomeCurveSeries(seriesCfg, currentAge, retireAge)[valueKey];
+      points.push({x:retireAge, y:terminal}, {x:retireAge, y:0}, {x:xAxisMax, y:0});
+      return points;
+    }
+  }
+  const sampleAges = new Set();
+  for(let age=Math.floor(currentAge); age<=Math.floor(retireAge); age++){
+    if(age < retireAge - retireAgeEpsilon) sampleAges.add(age);
+  }
+  if(seriesCfg.incomeCurve?.salaryGrowthOn){
+    const normalizedForAutoSamples = normalizeIncomeCurveConfig(seriesCfg.incomeCurve, currentAge, retireAge, seriesCfg.salaryMonth, seriesCfg.bonusYear);
+    normalizedForAutoSamples.birthMonth = Math.min(12, Math.max(1, Math.round(Number(seriesCfg.birthMonth || normalizedForAutoSamples.birthMonth || 1))));
+    buildIncomeCurveEffectivePoints(
+      normalizedForAutoSamples,
+      currentAge, retireAge, seriesCfg.salaryMonth, seriesCfg.bonusYear, seriesCfg.salaryMode === "custom", seriesCfg.bonusMode === "custom"
+    ).forEach(p=>{
+      const age = Number(p?.age);
+      if(Number.isFinite(age) && age >= currentAge && age < retireAge - retireAgeEpsilon) sampleAges.add(Math.round(age * 1000) / 1000);
+    });
+  }else{
+    ((seriesCfg.incomeCurve && seriesCfg.incomeCurve.points) || []).forEach(p=>{
+      const age = Number(p?.age);
+      if(Number.isFinite(age) && age >= currentAge && age < retireAge - retireAgeEpsilon) sampleAges.add(Math.round(age * 1000) / 1000);
+    });
+  }
+  if(currentAge < retireAge - retireAgeEpsilon) sampleAges.add(Math.round(currentAge * 1000) / 1000);
+  Array.from(sampleAges).sort((a,b)=>a-b).forEach(age=>{
+    if(!(age < retireAge - retireAgeEpsilon)) return;
+    const s = buildIncomeCurveSeries(seriesCfg, currentAge, age);
+    points.push({x:age, y:s[valueKey]});
+  });
+  const terminalIncome = buildIncomeCurveSeries(seriesCfg, currentAge, retireAge);
+  const lastBeforeRetire = points.length ? Number(points[points.length - 1].y) || 0 : Number(key === "salary" ? seriesCfg.salaryMonth : seriesCfg.bonusYear) || 0;
+  const terminalValueRaw = Number(terminalIncome[valueKey]) || 0;
+  const terminalValue = Math.abs(terminalValueRaw) > 1e-9 ? terminalValueRaw : lastBeforeRetire;
+  points.push({x:retireAge, y:terminalValue}, {x:retireAge, y:0}, {x:xAxisMax, y:0});
+  return points;
+}
+
 function drawIncomeCurveChart(){
   if(!activeIncomeCurveOwner || !incomeCurveDraft) return;
   syncIncomeCurveDraftFromModal();
@@ -28035,32 +28353,9 @@ function drawIncomeCurveChart(){
   const chartEndAge = retireAge + postYears;
   const xAxisRange = getIncomeCurveXAxisRange(currentAge, chartEndAge);
   const xTickStep = xAxisRange.step;
-  const seriesCfg = {salaryMonth:numInput(c.salaryInputId,0), bonusYear:numInput(c.bonusInputId,0), salaryMode:getIncomeModes(activeIncomeCurveOwner).salary, bonusMode:getIncomeModes(activeIncomeCurveOwner).bonus, incomeCurve:incomeCurveDraft, retireAge};
-  const salaryPoints = [];
-  const bonusPoints = [];
-  const sampleAges = new Set();
-  const retireAgeEpsilon = 1e-6;
-  for(let age=Math.floor(currentAge); age<=Math.floor(retireAge); age++){
-    if(age < retireAge - retireAgeEpsilon) sampleAges.add(age);
-  }
-  (incomeCurveDraft.points || []).forEach(p=>{
-    const age = Number(p?.age);
-    if(Number.isFinite(age) && age >= currentAge && age < retireAge - retireAgeEpsilon) sampleAges.add(Math.round(age * 1000) / 1000);
-  });
-  if(currentAge < retireAge - retireAgeEpsilon) sampleAges.add(Math.round(currentAge * 1000) / 1000);
-  Array.from(sampleAges).sort((a,b)=>a-b).forEach(age=>{
-    if(!(age < retireAge - retireAgeEpsilon)) return;
-    const s = buildIncomeCurveSeries(seriesCfg, currentAge, age);
-    salaryPoints.push({x:age, y:s.salaryMonth});
-    bonusPoints.push({x:age, y:s.bonusYear});
-  });
-  const terminalIncome = buildIncomeCurveSeries(seriesCfg, currentAge, retireAge);
-  const lastSalaryBeforeRetire = salaryPoints.length ? Number(salaryPoints[salaryPoints.length - 1].y) || 0 : Number(seriesCfg.salaryMonth) || 0;
-  const lastBonusBeforeRetire = bonusPoints.length ? Number(bonusPoints[bonusPoints.length - 1].y) || 0 : Number(seriesCfg.bonusYear) || 0;
-  const terminalSalary = Math.abs(Number(terminalIncome.salaryMonth) || 0) > 1e-9 ? Number(terminalIncome.salaryMonth) : lastSalaryBeforeRetire;
-  const terminalBonus = Math.abs(Number(terminalIncome.bonusYear) || 0) > 1e-9 ? Number(terminalIncome.bonusYear) : lastBonusBeforeRetire;
-  salaryPoints.push({x:retireAge, y:terminalSalary}, {x:retireAge, y:0}, {x:xAxisRange.max, y:0});
-  bonusPoints.push({x:retireAge, y:terminalBonus}, {x:retireAge, y:0}, {x:xAxisRange.max, y:0});
+  const seriesCfg = {salaryMonth:numInput(c.salaryInputId,0), bonusYear:numInput(c.bonusInputId,0), salaryMode:getIncomeModes(activeIncomeCurveOwner).salary, bonusMode:getIncomeModes(activeIncomeCurveOwner).bonus, incomeCurve:incomeCurveDraft, birthMonth:getIncomeCurveBirthMonthFromOwner(activeIncomeCurveOwner), retireAge};
+  const salaryPoints = buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, "salary", xAxisRange.max);
+  const bonusPoints = buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, "bonus", xAxisRange.max);
   const ctx = document.getElementById("incomeCurveChart").getContext("2d");
   const isIncomeCurveCompact = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
   if(incomeCurveChart) incomeCurveChart.destroy();
@@ -28074,8 +28369,34 @@ function drawIncomeCurveChart(){
     },
     options:{
       animation:false,responsive:true,maintainAspectRatio:false,
+      interaction:{mode:"index", intersect:true, axis:"x"},
+      hover:{mode:"index", intersect:true, axis:"x"},
+      elements:{point:{hitRadius:isIncomeCurveCompact ? 10 : 7, hoverRadius:4}},
       layout:{padding:{top:8, right:isIncomeCurveCompact ? 28 : 32, bottom:4}},
-      plugins:{legend:{display:true, labels:{
+      plugins:{
+        tooltip:{
+          enabled:true,
+          mode:"index",
+          intersect:true,
+          axis:"x",
+          usePointStyle:true,
+          callbacks:{
+            title(items){
+              const x = Number(items?.[0]?.parsed?.x);
+              return Number.isFinite(x) ? `${formatNumberJP(x, 1)}歳` : "";
+            },
+            label(ctx){
+              const label = ctx.dataset?.label || "";
+              const y = Number(ctx.parsed?.y);
+              const unit = label.includes("ボーナス") ? "万円 / 年" : "万円 / 月";
+              return `${label}: ${formatNumberJP(y, 1)} ${unit}`;
+            },
+            labelPointStyle(){
+              return {pointStyle:"circle", rotation:0};
+            }
+          }
+        },
+        legend:{display:true, labels:{
         usePointStyle:true,
         pointStyle:"line",
         boxWidth:isIncomeCurveCompact ? 34 : 50,
@@ -28158,24 +28479,32 @@ function drawIncomeCurveChart(){
         id:"retireLine",
         afterDraw(chart){
           const xScale=chart.scales.x;
+          const yScale=chart.scales.y;
           const area=chart.chartArea;
           const px=xScale.getPixelForValue(retireAge);
           const ctx=chart.ctx;
+          if(!Number.isFinite(px) || px < area.left || px > area.right) return;
+          const retireStyle = typeof getRetireGuideSingleStyle === "function" ? getRetireGuideSingleStyle() : {color:"rgba(180,91,106,0.72)", labelColor:"rgba(143,70,84,0.92)", width:1.6, dash:[6,4]};
+          drawRetireGuideLine(ctx, xScale, yScale, area, retireAge, retireStyle);
           ctx.save();
-          ctx.strokeStyle="#b45b6a";
-          ctx.lineWidth=1.8;
-          ctx.setLineDash([6,4]);
-          ctx.lineCap='butt';
+          ctx.font = isIncomeCurveCompact ? "11px Arial" : "12px Arial";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          const label = "リタイア";
+          const padX = isIncomeCurveCompact ? 5 : 6;
+          const labelW = ctx.measureText(label).width + padX * 2;
+          const labelH = isIncomeCurveCompact ? 18 : 20;
+          const labelX = Math.max(area.left + 6, Math.min(px + 8, area.right - labelW - 6));
+          const labelY = Math.min(area.bottom - labelH / 2 - 4, area.top + 14);
+          ctx.fillStyle = "rgba(255,255,255,0.90)";
+          ctx.strokeStyle = "rgba(180,91,106,0.18)";
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(px, area.top);
-          ctx.lineTo(px, area.bottom);
+          ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 7);
+          ctx.fill();
           ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle="#8f4654";
-          ctx.font="600 12px Arial, 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif";
-          ctx.textAlign="right";
-          ctx.textBaseline="alphabetic";
-          ctx.fillText("リタイア", Math.max(area.left + 52, px - 6), area.top + 14);
+          ctx.fillStyle = retireStyle.labelColor;
+          ctx.fillText(label, labelX + padX, labelY);
           ctx.restore();
         }
       }
@@ -28197,6 +28526,29 @@ function addIncomeCurvePoint(){
   const prev = points[insertIdx - 1], next = points[insertIdx];
   const age = Math.round(((prev.age + next.age) / 2) * 10) / 10;
   points.splice(insertIdx, 0, {age, salary:(prev.salary + next.salary)/2, bonus:(prev.bonus + next.bonus)/2});
+  renderIncomeCurveModal();
+}
+function createAnnualIncomeCurvePoints(){
+  if(!activeIncomeCurveOwner || !incomeCurveDraft) return;
+  syncIncomeCurveDraftFromModal();
+  const points = Array.isArray(incomeCurveDraft.points) ? incomeCurveDraft.points : [];
+  const middleCount = Math.max(0, points.length - 2);
+  if(middleCount > 0 && !confirm('既存の中間点を置き換えて、毎年の中間点を作成します。よろしいですか？')) return;
+  const c = getIncomeOwnerConfig(activeIncomeCurveOwner);
+  const currentAge = numInput('age', 50) || 50;
+  const retireAge = numInput(c.retireInputId, 65) || 65;
+  const baseSalary = numInput(c.salaryInputId, 0);
+  const baseBonus = numInput(c.bonusInputId, 0);
+  const modes = getIncomeCurveModalModes();
+  const autoCurve = normalizeIncomeCurveConfig(incomeCurveDraft, currentAge, retireAge, baseSalary, baseBonus);
+  autoCurve.birthMonth = getIncomeCurveBirthMonthFromOwner(activeIncomeCurveOwner);
+  const generated = buildIncomeCurveAutoGeneratedPoints(autoCurve, currentAge, retireAge, baseSalary, baseBonus, modes.salary === 'custom', modes.bonus === 'custom');
+  if(generated.length < 2) return;
+  incomeCurveDraft.points = generated.map(p=>({
+    age:Math.round((Number(p.age) || 0) * 1000000) / 1000000,
+    salary:Math.round((Number(p.salary) || 0) * 10) / 10,
+    bonus:Math.round((Number(p.bonus) || 0) * 10) / 10
+  }));
   renderIncomeCurveModal();
 }
 const WITHDRAWAL_RULE_MODAL_IDS = [
@@ -33700,27 +34052,34 @@ document.getElementById("withdrawalRuleMode")?.addEventListener("keydown", (e)=>
 });
 document.getElementById("incomeCurveSalaryGrowthOn")?.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
-  const nextId = document.getElementById("incomeCurveSalaryGrowthOn")?.checked && !document.getElementById("incomeCurveSalaryGrowthPct")?.disabled
-    ? "incomeCurveSalaryGrowthPct"
-    : "incomeCurveBonusLinkedOn";
+  const nextId = e.shiftKey ? "incomeCurveInterpolationStep" : (!document.getElementById("incomeCurveSalaryGrowthPct")?.disabled ? "incomeCurveSalaryGrowthPct" : "incomeCurveSalaryGrowthMonth");
   if(focusByIdForTab(nextId)) { e.preventDefault(); e.stopPropagation(); }
 });
 document.getElementById("incomeCurveSalaryGrowthPct")?.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
-  const nextId = e.shiftKey ? "incomeCurveSalaryGrowthOn" : "incomeCurveBonusLinkedOn";
+  const nextId = e.shiftKey ? "incomeCurveSalaryGrowthOn" : "incomeCurveSalaryGrowthMonth";
+  if(focusByIdForTab(nextId)) { e.preventDefault(); e.stopPropagation(); }
+});
+document.getElementById("incomeCurveSalaryGrowthMonth")?.addEventListener("keydown", (e)=>{
+  if(e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
+  const nextId = e.shiftKey ? (!document.getElementById("incomeCurveSalaryGrowthPct")?.disabled ? "incomeCurveSalaryGrowthPct" : "incomeCurveSalaryGrowthOn") : "incomeCurveCreateAnnualPointsBtn";
+  if(focusByIdForTab(nextId)) { e.preventDefault(); e.stopPropagation(); }
+});
+document.getElementById("incomeCurveCreateAnnualPointsBtn")?.addEventListener("keydown", (e)=>{
+  if(e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
+  const nextId = e.shiftKey ? "incomeCurveSalaryGrowthMonth" : "incomeCurveBonusLinkedOn";
   if(focusByIdForTab(nextId)) { e.preventDefault(); e.stopPropagation(); }
 });
 document.getElementById("incomeCurveBonusLinkedOn")?.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
-  const nextId = document.getElementById("incomeCurveBonusLinkedOn")?.checked && !document.getElementById("incomeCurveBonusLinkedPct")?.disabled
-    ? "incomeCurveBonusLinkedPct"
-    : (e.shiftKey ? "incomeCurveSalaryGrowthPct" : "cancelIncomeCurveBtn");
+  const nextId = e.shiftKey
+    ? "incomeCurveCreateAnnualPointsBtn"
+    : (document.getElementById("incomeCurveBonusLinkedOn")?.checked && !document.getElementById("incomeCurveBonusLinkedPct")?.disabled ? "incomeCurveBonusLinkedPct" : "cancelIncomeCurveBtn");
   if(focusByIdForTab(nextId)) { e.preventDefault(); e.stopPropagation(); }
 });
 document.getElementById("incomeCurveBonusLinkedPct")?.addEventListener("keydown", (e)=>{
   if(e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
-  const prevChecked = document.getElementById("incomeCurveSalaryGrowthOn")?.checked && !document.getElementById("incomeCurveSalaryGrowthPct")?.disabled;
-  const nextId = e.shiftKey ? (prevChecked ? "incomeCurveSalaryGrowthPct" : "incomeCurveBonusLinkedOn") : "cancelIncomeCurveBtn";
+  const nextId = e.shiftKey ? "incomeCurveBonusLinkedOn" : "cancelIncomeCurveBtn";
   if(focusByIdForTab(nextId)) { e.preventDefault(); e.stopPropagation(); }
 });
 document.getElementById("pensionHelperModeDirect")?.addEventListener("keydown", (e)=>{
@@ -34925,6 +35284,7 @@ document.querySelector('#educationDetailModal .edu-detail-modal')?.addEventListe
   document.querySelector('#educationDetailModal .edu-detail-modal')?.addEventListener(evt, (e)=>e.stopPropagation());
 });
 document.getElementById("incomeCurveAddPointBtn")?.addEventListener("click", addIncomeCurvePoint);
+document.getElementById("incomeCurveCreateAnnualPointsBtn")?.addEventListener("click", createAnnualIncomeCurvePoints);
 document.getElementById("cancelIncomeCurveBtn")?.addEventListener("click", closeIncomeCurveModal);
 document.getElementById("saveIncomeCurveBtn")?.addEventListener("click", saveIncomeCurveModal);
 document.querySelector("#incomeCurveModal .income-curve-modal")?.addEventListener("click", (e)=>e.stopPropagation());
@@ -34944,7 +35304,16 @@ document.getElementById("incomeCurveRows")?.addEventListener("click", (e)=>{
 });
 document.getElementById("incomeCurveModal")?.addEventListener("input", (e)=>{
   if(!e.target.closest("#incomeCurveModal")) return;
-  if(e.target.id === "incomeCurveSalaryGrowthOn" || e.target.id === "incomeCurveBonusLinkedOn") updateIncomeCurveAutoControlStates();
+  if(e.target.id === "incomeCurveSalaryGrowthOn" || e.target.id === "incomeCurveBonusLinkedOn" || e.target.id === "incomeCurveSalaryGrowthMonth") updateIncomeCurveAutoControlStates();
+  if(activeIncomeCurveOwner) drawIncomeCurveChart();
+});
+document.getElementById("incomeCurveModal")?.addEventListener("change", (e)=>{
+  if(!e.target.closest("#incomeCurveModal")) return;
+  if(e.target.name === "incomeCurveInterpolation" || e.target.id === "incomeCurveSalaryGrowthOn" || e.target.id === "incomeCurveBonusLinkedOn" || e.target.id === "incomeCurveSalaryGrowthMonth"){
+    syncIncomeCurveDraftFromModal();
+    renderIncomeCurveModal();
+    return;
+  }
   if(activeIncomeCurveOwner) drawIncomeCurveChart();
 });
 
