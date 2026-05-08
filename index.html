@@ -28282,6 +28282,20 @@ function getIncomeCurveXAxisRange(minAge, maxAge){
 function getIncomeCurveXAxisTickStep(minAge, maxAge){
   return getIncomeCurveXAxisRange(minAge, maxAge).step;
 }
+function getIncomeCurveVisibleTickStep(minAge, maxAge){
+  const min = Number(minAge);
+  const max = Number(maxAge);
+  const span = Math.max(0.1, (Number.isFinite(max) ? max : 0) - (Number.isFinite(min) ? min : 0));
+  const isCompact = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+  const maxLabels = isCompact ? 6 : 8;
+  const rough = Math.max(0.1, span / Math.max(1, maxLabels - 1));
+  if(rough <= 0.5) return 0.5;
+  if(rough <= 1) return 1;
+  if(rough <= 2) return 2;
+  if(rough <= 5) return 5;
+  if(rough <= 10) return 10;
+  return Math.ceil(rough / 10) * 10;
+}
 
 function shouldDrawIncomeCurveStepPoints(seriesCfg, key){
   const curve = normalizeIncomeCurveConfig(seriesCfg.incomeCurve, numInput("age", 50) || 50, seriesCfg.retireAge, seriesCfg.salaryMonth, seriesCfg.bonusYear);
@@ -28404,6 +28418,7 @@ function applyIncomeCurveBoundsToOptions(options){
   if(!bounds || !options?.scales) return;
   options.scales.x.min = bounds.xMin;
   options.scales.x.max = bounds.xMax;
+  if(options.scales.x.ticks) options.scales.x.ticks.stepSize = getIncomeCurveVisibleTickStep(bounds.xMin, bounds.xMax);
   options.scales.y.min = bounds.yMin;
   options.scales.y.max = bounds.yMax;
   options.scales.y1.min = bounds.y1Min;
@@ -28624,9 +28639,23 @@ function setupIncomeCurveChartInteractions(){
     applyBounds(next);
     e.preventDefault();
   }, {passive:false});
-  window.addEventListener('mouseup', ()=>finishPan());
+  const finishPointerEnd = (e)=>{
+    const state = incomeCurveViewState.zoomState;
+    if(state && e && Number.isFinite(Number(e.clientX)) && Number.isFinite(Number(e.clientY))){
+      const pt = getPoint(e);
+      const coord = state.axis === 'x' ? pt.x : pt.y;
+      state.currentPx = coord;
+      if(Math.abs(coord - state.startPx) >= MIN_DRAG_PX) state.moved = true;
+      incomeCurveViewState.selectionGuide = {axis:state.axis, startPx:state.startPx, currentPx:coord};
+    }
+    finishSelectionZoom();
+    finishPan();
+  };
+  window.addEventListener('mouseup', finishPointerEnd, true);
+  document.addEventListener('mouseup', finishPointerEnd, true);
+  canvas.addEventListener('mouseup', finishPointerEnd, true);
   window.addEventListener('mouseleave', ()=>{ finishSelectionZoom(); finishPan(); });
-  window.addEventListener('mouseup', ()=>finishSelectionZoom());
+  window.addEventListener('blur', ()=>{ finishSelectionZoom(); finishPan(); });
   canvas.addEventListener('dblclick', (e)=>{ resetIncomeCurveZoom(); e.preventDefault(); }, true);
   canvas.addEventListener('click', (e)=>{
     if(Date.now() < incomeCurveViewState.suppressClickUntil){ e.preventDefault(); e.stopPropagation(); }
@@ -28667,6 +28696,57 @@ function setupIncomeCurveChartInteractions(){
     touchState.moved = true;
     applyBounds(next);
   };
+  const findNearestIncomeCurveTooltipPoint = (pt, maxDist=24)=>{
+    const chart = getChart();
+    if(!chart?.chartArea) return null;
+    let best = null;
+    const metas = chart.getSortedVisibleDatasetMetas ? chart.getSortedVisibleDatasetMetas() : [];
+    metas.forEach(meta=>{
+      const points = Array.isArray(meta?.data) ? meta.data : [];
+      points.forEach((el, index)=>{
+        const x = Number(el?.x);
+        const y = Number(el?.y);
+        if(!Number.isFinite(x) || !Number.isFinite(y)) return;
+        const d = Math.hypot(pt.x - x, pt.y - y);
+        if(d <= maxDist && (!best || d < best.dist)){
+          best = {datasetIndex:meta.index, index, x, y, dist:d};
+        }
+      });
+    });
+    return best;
+  };
+  const showIncomeCurveTooltipNear = (pt)=>{
+    const chart = getChart();
+    const nearest = findNearestIncomeCurveTooltipPoint(pt, 32);
+    if(!chart || !nearest){
+      chart?.tooltip?.setActiveElements?.([], {x:pt.x, y:pt.y});
+      chart?.setActiveElements?.([]);
+      chart?.update('none');
+      return false;
+    }
+    const targetX = Number(chart.data?.datasets?.[nearest.datasetIndex]?.data?.[nearest.index]?.x);
+    const active = [];
+    (chart.data?.datasets || []).forEach((ds, datasetIndex)=>{
+      if(chart.isDatasetVisible && !chart.isDatasetVisible(datasetIndex)) return;
+      const data = Array.isArray(ds.data) ? ds.data : [];
+      let bestIdx = -1;
+      let bestDist = Infinity;
+      data.forEach((p, index)=>{
+        const x = Number(p?.x);
+        if(!Number.isFinite(x)) return;
+        const d = Math.abs(x - targetX);
+        if(d < bestDist){ bestDist = d; bestIdx = index; }
+      });
+      if(bestIdx >= 0) active.push({datasetIndex, index:bestIdx});
+    });
+    if(active.length){
+      chart.setActiveElements?.(active);
+      chart.tooltip?.setActiveElements?.(active, {x:nearest.x, y:nearest.y});
+      chart.update('none');
+      return true;
+    }
+    return false;
+  };
   let touchState = null;
   canvas.addEventListener('touchstart', (e)=>{
     const pts = getTouchPoints(e);
@@ -28687,8 +28767,16 @@ function setupIncomeCurveChartInteractions(){
       incomeCurveViewState.lastTapPoint = pts[0];
       if(isIncomeCurveZoomed()){
         const axis = getAxisZone(pts[0]);
-        if(isInsideChartArea(pts[0]) || axis === 'y' || axis === 'y1'){
-          touchState = {mode:'pan', start:pts[0], bounds:cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds()), axis:axis || 'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
+        const bounds = cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds());
+        if(isInsideChartArea(pts[0])){
+          if(showIncomeCurveTooltipNear(pts[0])){
+            touchState = {mode:'tooltip', start:pts[0], last:pts[0], startTime:now, lastTime:now, bounds, axis:'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
+          }else{
+            touchState = {mode:'pan', start:pts[0], bounds, axis:'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
+          }
+          e.preventDefault();
+        }else if(axis === 'y' || axis === 'y1'){
+          touchState = {mode:'pan', start:pts[0], bounds, axis, moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
           e.preventDefault();
         }
       }
@@ -28700,7 +28788,7 @@ function setupIncomeCurveChartInteractions(){
       if(axis === 'x') axes.x = true;
       else if(axis === 'y') axes.y = true;
       else if(axis === 'y1') axes.y1 = true;
-      else if(center.x >= area.left && center.x <= area.right && center.y >= area.top && center.y <= area.bottom){ axes.x = true; axes.y = true; }
+      else if(center.x >= area.left && center.x <= area.right && center.y >= area.top && center.y <= area.bottom){ axes.x = true; axes.y = true; axes.y1 = true; }
       if(axes.x || axes.y || axes.y1){
         touchState = {mode:'pinch', startPts:[pts[0], pts[1]], bounds:cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds()), axes, moved:false};
         e.preventDefault();
@@ -28713,7 +28801,26 @@ function setupIncomeCurveChartInteractions(){
     if(touchState.mode === 'pinch' && pts.length >= 2){
       applyPinch(touchState, pts);
       e.preventDefault();
-    }else if(touchState.mode === 'pan' && pts.length === 1){
+    }else if(touchState.mode === 'tooltip' && pts.length === 1){
+      const chart = getChart();
+      const pt = pts[0];
+      const dx = pt.x - touchState.start.x;
+      const dy = pt.y - touchState.start.y;
+      const totalMove = Math.hypot(dx, dy);
+      const now = Date.now();
+      const elapsed = Math.max(1, now - (touchState.startTime || now));
+      const speed = totalMove / elapsed;
+      if(totalMove >= 12 && speed >= 0.42){
+        touchState = {mode:'pan', start:touchState.start, bounds:touchState.bounds, axis:'plot', moved:true, plotWidth:touchState.plotWidth, plotHeight:touchState.plotHeight};
+      }else{
+        showIncomeCurveTooltipNear(pt);
+        touchState.last = pt;
+        touchState.lastTime = now;
+        e.preventDefault();
+        return;
+      }
+    }
+    if(touchState?.mode === 'pan' && pts.length === 1){
       const chart = getChart();
       const pt = pts[0];
       const dx = pt.x - touchState.start.x;
@@ -28845,7 +28952,7 @@ function drawIncomeCurveChart(){
           min:incomeCurveBounds.xMin,
           max:incomeCurveBounds.xMax,
           title:{display:true,text:"年齢（歳)".replace(')', '）'), padding:{top:2, bottom:0}},
-          ticks:{stepSize:xTickStep, maxRotation:0, minRotation:0, autoSkip:false, padding:5, callback(value){ return formatScaledAxisNumber(Number(value)); }},
+          ticks:{stepSize:getIncomeCurveVisibleTickStep(incomeCurveBounds.xMin, incomeCurveBounds.xMax), maxRotation:0, minRotation:0, autoSkip:false, padding:5, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
@@ -28856,7 +28963,7 @@ function drawIncomeCurveChart(){
           min:incomeCurveBounds.yMin,
           max:incomeCurveBounds.yMax,
           grace:"12%",
-          ticks:{padding:5},
+          ticks:{padding:5, maxTicksLimit:7, callback(value, index, ticks){ if(isIncomeCurveZoomed() && (index === 0 || index === (ticks?.length || 0) - 1)) return ''; return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
@@ -28867,7 +28974,7 @@ function drawIncomeCurveChart(){
           min:incomeCurveBounds.y1Min,
           max:incomeCurveBounds.y1Max,
           grace:"12%",
-          ticks:{padding:5},
+          ticks:{padding:5, maxTicksLimit:7, callback(value, index, ticks){ if(isIncomeCurveZoomed() && (index === 0 || index === (ticks?.length || 0) - 1)) return ''; return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1, drawOnChartArea:false},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         }
