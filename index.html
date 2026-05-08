@@ -28470,6 +28470,24 @@ function isIncomeCurveAxisZoomed(axis){
   if(axis === 'y1') return Math.abs(auto.y1Min - over.y1Min) > 1e-9 || Math.abs(auto.y1Max - over.y1Max) > 1e-9;
   return isIncomeCurveZoomed();
 }
+function shouldHideIncomeCurveYAxisEdgeLabel(axis, index, ticks){
+  if(!Array.isArray(ticks) || ticks.length < 2) return false;
+  const isEdge = index === 0 || index === ticks.length - 1;
+  if(!isEdge) return false;
+  if(isIncomeCurveAxisZoomed(axis)) return true;
+  if(ticks.length < 3) return false;
+  const values = ticks.map(t=>Number(t?.value ?? t));
+  if(values.some(v=>!Number.isFinite(v))) return false;
+  const epsilon = 1e-9;
+  if(index === ticks.length - 1){
+    const edgeGap = values[values.length - 1] - values[values.length - 2];
+    const innerGap = values[values.length - 2] - values[values.length - 3];
+    return edgeGap > epsilon && innerGap > epsilon && edgeGap < innerGap * 0.75;
+  }
+  const edgeGap = values[1] - values[0];
+  const innerGap = values[2] - values[1];
+  return edgeGap > epsilon && innerGap > epsilon && edgeGap < innerGap * 0.75;
+}
 function getIncomeCurveStableAxisWidth(axisId, compact){
   if(axisId === 'y') return compact ? 52 : 58;
   if(axisId === 'y1') return compact ? 44 : 50;
@@ -29104,7 +29122,8 @@ function drawIncomeCurveChart(){
           min:incomeCurveBounds.yMin,
           max:incomeCurveBounds.yMax,
           grace:"12%",
-          ticks:{padding:5, maxTicksLimit:7, callback(value){
+          ticks:{padding:5, maxTicksLimit:7, callback(value, index, ticks){
+            if(shouldHideIncomeCurveYAxisEdgeLabel('y', index, ticks)) return "";
             return formatScaledAxisNumber(Number(value));
           }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
@@ -29117,7 +29136,8 @@ function drawIncomeCurveChart(){
           min:incomeCurveBounds.y1Min,
           max:incomeCurveBounds.y1Max,
           grace:"12%",
-          ticks:{padding:5, maxTicksLimit:7, callback(value){
+          ticks:{padding:5, maxTicksLimit:7, callback(value, index, ticks){
+            if(shouldHideIncomeCurveYAxisEdgeLabel('y1', index, ticks)) return "";
             return formatScaledAxisNumber(Number(value));
           }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1, drawOnChartArea:false},
