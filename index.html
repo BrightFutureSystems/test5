@@ -28296,27 +28296,34 @@ function getIncomeCurveVisibleTickStep(minAge, maxAge){
   if(rough <= 10) return 10;
   return Math.ceil(rough / 10) * 10;
 }
-function buildIncomeCurveAxisTickValues(minValue, maxValue, stepValue){
+function buildIncomeCurveAxisTickValues(minValue, maxValue, stepValue, opts={}){
   const min = Number(minValue), max = Number(maxValue), step = Number(stepValue);
   if(!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || step <= 0 || max <= min) return [];
+  const includeBounds = !!opts.includeBounds;
   const epsilon = Math.max(1e-9, step * 1e-6);
   const values = [];
+  if(includeBounds) values.push(Math.round(min * 1000000) / 1000000);
   let start = Math.ceil((min + epsilon) / step) * step;
   const end = Math.floor((max - epsilon) / step) * step;
   for(let v = start; v <= end + epsilon; v += step){
-    values.push(Math.round(v * 1000000) / 1000000);
+    const rounded = Math.round(v * 1000000) / 1000000;
+    if(!values.some(x=>Math.abs(x-rounded) < epsilon)) values.push(rounded);
+  }
+  if(includeBounds){
+    const roundedMax = Math.round(max * 1000000) / 1000000;
+    if(!values.some(x=>Math.abs(x-roundedMax) < epsilon)) values.push(roundedMax);
   }
   if(!values.length){
     const mid = Math.round(((min + max) / 2) * 1000000) / 1000000;
     if(mid > min + epsilon && mid < max - epsilon) values.push(mid);
   }
-  return values;
+  return values.sort((a,b)=>a-b);
 }
-function buildIncomeCurveYAxisTickValues(minValue, maxValue, maxTicks=7){
+function buildIncomeCurveYAxisTickValues(minValue, maxValue, maxTicks=7, opts={}){
   const min = Number(minValue), max = Number(maxValue);
   if(!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return [];
   const step = getNiceTickStepForBounds(min, max, Math.max(3, Number(maxTicks) || 7));
-  return buildIncomeCurveAxisTickValues(min, max, step);
+  return buildIncomeCurveAxisTickValues(min, max, step, opts);
 }
 
 function shouldDrawIncomeCurveStepPoints(seriesCfg, key){
@@ -28453,6 +28460,20 @@ function isIncomeCurveZoomed(){
   return Math.abs(auto.xMin - over.xMin) > 1e-9 || Math.abs(auto.xMax - over.xMax) > 1e-9
     || Math.abs(auto.yMin - over.yMin) > 1e-9 || Math.abs(auto.yMax - over.yMax) > 1e-9
     || Math.abs(auto.y1Min - over.y1Min) > 1e-9 || Math.abs(auto.y1Max - over.y1Max) > 1e-9;
+}
+function isIncomeCurveAxisZoomed(axis){
+  const auto = incomeCurveViewState.autoBounds;
+  const over = incomeCurveViewState.overrideBounds;
+  if(!auto || !over) return false;
+  if(axis === 'x') return Math.abs(auto.xMin - over.xMin) > 1e-9 || Math.abs(auto.xMax - over.xMax) > 1e-9;
+  if(axis === 'y') return Math.abs(auto.yMin - over.yMin) > 1e-9 || Math.abs(auto.yMax - over.yMax) > 1e-9;
+  if(axis === 'y1') return Math.abs(auto.y1Min - over.y1Min) > 1e-9 || Math.abs(auto.y1Max - over.y1Max) > 1e-9;
+  return isIncomeCurveZoomed();
+}
+function getIncomeCurveStableAxisWidth(axisId, compact){
+  if(axisId === 'y') return compact ? 52 : 58;
+  if(axisId === 'y1') return compact ? 44 : 50;
+  return undefined;
 }
 function resetIncomeCurveZoom(){
   incomeCurveViewState.overrideBounds = null;
@@ -28737,13 +28758,34 @@ function setupIncomeCurveChartInteractions(){
     });
     return best;
   };
-  const showIncomeCurveTooltipNear = (pt, maxDist=18)=>{
+  const showIncomeCurveTooltipNear = (pt, maxDist=18, allowXOnly=false)=>{
     const chart = getChart();
-    const nearest = findNearestIncomeCurveTooltipPoint(pt, maxDist);
-    if(!chart || !nearest){
-      chart?.tooltip?.setActiveElements?.([], {x:pt.x, y:pt.y});
-      chart?.setActiveElements?.([]);
-      chart?.update('none');
+    if(!chart?.chartArea){
+      return false;
+    }
+    let nearest = findNearestIncomeCurveTooltipPoint(pt, maxDist);
+    if(!nearest && allowXOnly && isInsideChartArea(pt)){
+      const targetValue = chart.scales?.x?.getValueForPixel?.(pt.x);
+      let best = null;
+      (chart.data?.datasets || []).forEach((ds, datasetIndex)=>{
+        if(chart.isDatasetVisible && !chart.isDatasetVisible(datasetIndex)) return;
+        const data = Array.isArray(ds.data) ? ds.data : [];
+        data.forEach((p, index)=>{
+          const x = Number(p?.x);
+          if(!Number.isFinite(x) || !Number.isFinite(targetValue)) return;
+          const d = Math.abs(x - targetValue);
+          if(!best || d < best.dist){
+            const el = chart.getDatasetMeta?.(datasetIndex)?.data?.[index];
+            best = {datasetIndex, index, x:Number(el?.x) || pt.x, y:Number(el?.y) || pt.y, dist:d};
+          }
+        });
+      });
+      nearest = best;
+    }
+    if(!nearest){
+      chart.tooltip?.setActiveElements?.([], {x:pt.x, y:pt.y});
+      chart.setActiveElements?.([]);
+      chart.update('none');
       return false;
     }
     const targetX = Number(chart.data?.datasets?.[nearest.datasetIndex]?.data?.[nearest.index]?.x);
@@ -28843,7 +28885,7 @@ function setupIncomeCurveChartInteractions(){
         hideIncomeCurveTooltip();
         touchState = {mode:'pan', start:touchState.start, bounds:touchState.bounds, axis:'plot', moved:true, plotWidth:touchState.plotWidth, plotHeight:touchState.plotHeight};
       }else{
-        showIncomeCurveTooltipNear(pt, zoomed ? 18 : 22);
+        showIncomeCurveTooltipNear(pt, zoomed ? 18 : 22, true);
         touchState.last = pt;
         touchState.lastTime = now;
         touchState.moved = totalMove >= 4;
@@ -28918,6 +28960,9 @@ function drawIncomeCurveChart(){
   };
   updateIncomeCurveAutoBounds(autoBounds);
   const incomeCurveBounds = getIncomeCurveEffectiveBounds() || autoBounds;
+  const incomeCurveXAxisZoomed = isIncomeCurveAxisZoomed('x');
+  const incomeCurveYAxisZoomed = isIncomeCurveAxisZoomed('y');
+  const incomeCurveY1AxisZoomed = isIncomeCurveAxisZoomed('y1');
   if(incomeCurveChart) incomeCurveChart.destroy();
   incomeCurveChart = new Chart(ctx, {
     type:"line",
@@ -28992,7 +29037,7 @@ function drawIncomeCurveChart(){
           title:{display:true,text:"年齢（歳)".replace(')', '）'), padding:{top:2, bottom:0}},
           afterBuildTicks(axis){
             const step = getIncomeCurveVisibleTickStep(axis.min, axis.max);
-            axis.ticks = buildIncomeCurveAxisTickValues(axis.min, axis.max, step).map(v=>({value:v}));
+            axis.ticks = buildIncomeCurveAxisTickValues(axis.min, axis.max, step, {includeBounds:!incomeCurveXAxisZoomed}).map(v=>({value:v}));
           },
           ticks:{stepSize:getIncomeCurveVisibleTickStep(incomeCurveBounds.xMin, incomeCurveBounds.xMax), includeBounds:false, maxRotation:0, minRotation:0, autoSkip:false, padding:5, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
@@ -29006,8 +29051,9 @@ function drawIncomeCurveChart(){
           max:incomeCurveBounds.yMax,
           grace:"12%",
           afterBuildTicks(axis){
-            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7).map(v=>({value:v}));
+            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7, {includeBounds:!incomeCurveYAxisZoomed}).map(v=>({value:v}));
           },
+          afterFit(scale){ scale.width = getIncomeCurveStableAxisWidth('y', isIncomeCurveCompact) || scale.width; },
           ticks:{padding:5, maxTicksLimit:7, includeBounds:false, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
@@ -29020,8 +29066,9 @@ function drawIncomeCurveChart(){
           max:incomeCurveBounds.y1Max,
           grace:"12%",
           afterBuildTicks(axis){
-            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7).map(v=>({value:v}));
+            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7, {includeBounds:!incomeCurveY1AxisZoomed}).map(v=>({value:v}));
           },
+          afterFit(scale){ scale.width = getIncomeCurveStableAxisWidth('y1', isIncomeCurveCompact) || scale.width; },
           ticks:{padding:5, maxTicksLimit:7, includeBounds:false, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1, drawOnChartArea:false},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
