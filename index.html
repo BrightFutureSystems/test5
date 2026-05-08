@@ -25640,10 +25640,26 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
   };
 }
 
-function getAdaptiveXAxisStepSize(minValue, maxValue){
+function isCompactXAxisLabelLayout(){
+  if(typeof isMobile === "function") return !!isMobile();
+  return !!(typeof window !== "undefined" && window.matchMedia?.("(max-width:900px), (pointer:coarse)")?.matches);
+}
+function getCompactXAxisStepSize(minValue, maxValue){
   const min = Number(minValue);
   const max = Number(maxValue);
   const range = Math.max(0, Math.abs(max - min));
+  if(range <= 12) return 1;
+  if(range <= 24) return 2;
+  if(range <= 60) return 5;
+  if(range <= 120) return 10;
+  return 20;
+}
+function getAdaptiveXAxisStepSize(minValue, maxValue, compactOverride=null){
+  const min = Number(minValue);
+  const max = Number(maxValue);
+  const range = Math.max(0, Math.abs(max - min));
+  const compact = compactOverride === null ? isCompactXAxisLabelLayout() : !!compactOverride;
+  if(compact) return getCompactXAxisStepSize(min, max);
   if(range <= 20) return 1;
   if(range <= 36) return 2;
   if(range <= 72) return 5;
@@ -25651,14 +25667,7 @@ function getAdaptiveXAxisStepSize(minValue, maxValue){
   return 20;
 }
 function getEducationMobileXAxisStepSize(minValue, maxValue){
-  const min = Number(minValue);
-  const max = Number(maxValue);
-  const range = Math.max(0, Math.abs(max - min));
-  if(range <= 12) return 1;
-  if(range <= 36) return 2;
-  if(range <= 72) return 5;
-  if(range <= 120) return 10;
-  return 20;
+  return getCompactXAxisStepSize(minValue, maxValue);
 }
 function buildAdaptiveXAxisTickValues(minValue, maxValue, stepOverride=null){
   const min = Number(minValue);
