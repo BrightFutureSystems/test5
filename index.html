@@ -28471,8 +28471,8 @@ function isIncomeCurveAxisZoomed(axis){
   return isIncomeCurveZoomed();
 }
 function getIncomeCurveStableAxisWidth(axisId, compact){
-  if(axisId === 'y') return compact ? 52 : 58;
-  if(axisId === 'y1') return compact ? 44 : 50;
+  if(axisId === 'y') return compact ? 68 : 72;
+  if(axisId === 'y1') return compact ? 68 : 72;
   return undefined;
 }
 function resetIncomeCurveZoom(){
@@ -28882,10 +28882,10 @@ function setupIncomeCurveChartInteractions(){
       const elapsed = Math.max(1, now - (touchState.startTime || now));
       const speed = totalMove / elapsed;
       const zoomed = isIncomeCurveZoomed();
-      const shouldSwitchToPan = zoomed && totalMove >= 14 && (speed >= 0.38 || totalMove >= 34);
+      const shouldSwitchToPan = zoomed && totalMove >= 24 && (speed >= 0.65 || totalMove >= 56);
       if(shouldSwitchToPan){
         hideIncomeCurveTooltip();
-        touchState = {mode:'pan', start:touchState.start, bounds:touchState.bounds, axis:'plot', moved:true, plotWidth:touchState.plotWidth, plotHeight:touchState.plotHeight};
+        touchState = {mode:'pan', start:pt, bounds:cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds()) || touchState.bounds, axis:'plot', moved:false, plotWidth:touchState.plotWidth, plotHeight:touchState.plotHeight};
       }else{
         showIncomeCurveTooltipNear(pt, zoomed ? 22 : 28, true);
         touchState.last = pt;
