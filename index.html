@@ -27181,7 +27181,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
     animation:false,
     responsive:true,
     maintainAspectRatio:false,
-    layout:{padding:((graphType === "cashflow" || graphType === "education") ? {...chartLayoutPadding, top:((chartLayoutPadding.top || 0) + 1)} : ((graphType === "investment" || graphType === "incomeExpense") ? {...chartLayoutPadding, bottom:((chartLayoutPadding.bottom || 0) + 1)} : chartLayoutPadding))},
+    layout:{padding:(graphType === "education" ? {...chartLayoutPadding, top:16, bottom:16} : (graphType === "cashflow" ? {...chartLayoutPadding, top:((chartLayoutPadding.top || 0) + 1)} : ((graphType === "investment" || graphType === "incomeExpense") ? {...chartLayoutPadding, bottom:((chartLayoutPadding.bottom || 0) + 1)} : chartLayoutPadding)))},
     interaction:{mode:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? "index" : "nearest"), intersect:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? false : true)},
     events: (graphType === "asset" || graphType === "cashflow" || graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense" || graphType === "education") ? [] : undefined,
     plugins:{
@@ -27309,6 +27309,8 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       stacked:false,
       min:rightAxis.min,
       max:rightAxis.max,
+      _educationAutoMin:0,
+      _educationAutoMax:Number(rightAxis.autoMax),
       grid:{drawOnChartArea:false, drawTicks:false, z:-1}, border:{z:-1},
       title:{display:false,text:`教育費累計（${rightAxisUnitSpec.label}）`},
       _educationRightTitleText:`教育費累計（${rightAxisUnitSpec.label}）`,
@@ -36188,7 +36190,26 @@ function computeChartAxisGestureOuterBounds(){
   const yData = collectVisibleMainChartYValues(dataXMin, dataXMax, graphType);
   const symmetric = false;
   const axis = getAxisBounds(yData, {...cfg, fixedScale:false, _graphType:graphType}, symmetric);
-  return {xMin, xMax, yMin: axis.min, yMax: axis.max};
+  let y1Min = null;
+  let y1Max = null;
+  if(graphType === "education" && chart?.options?.scales?.y1){
+    const y1Options = chart.options.scales.y1 || {};
+    const autoMin = Number(y1Options._educationAutoMin);
+    const autoMax = Number(y1Options._educationAutoMax);
+    if(Number.isFinite(autoMin) && Number.isFinite(autoMax) && autoMax > autoMin){
+      y1Min = autoMin;
+      y1Max = autoMax;
+    }else{
+      const y1Scale = chart.scales?.y1 || {};
+      const fallbackMin = Number.isFinite(Number(y1Options.min)) ? Number(y1Options.min) : Number(y1Scale.min);
+      const fallbackMax = Number.isFinite(Number(y1Options.max)) ? Number(y1Options.max) : Number(y1Scale.max);
+      if(Number.isFinite(fallbackMin) && Number.isFinite(fallbackMax) && fallbackMax > fallbackMin){
+        y1Min = fallbackMin;
+        y1Max = fallbackMax;
+      }
+    }
+  }
+  return {xMin, xMax, yMin: axis.min, yMax: axis.max, y1Min, y1Max};
 }
 
 function getChartAxisModalXInputMode(){
@@ -36390,7 +36411,9 @@ function resetChartAxesToAuto(options = {}){
   }
   if(chart && (document.getElementById("graphType")?.value || "asset") === "education"){
     chart.$educationTouchYZoomed = false;
+    chart.$educationTouchY1Zoomed = false;
     chart.$educationOverlayTouchYZoomed = false;
+    chart.$educationOverlayTouchY1Zoomed = false;
   }
   const fixedScaleEl = document.getElementById("fixedScale");
   const fixedScaleMinEl = document.getElementById("fixedScaleMin");
@@ -36424,10 +36447,23 @@ function syncInvestmentReferenceYAxisFromMain(activeChart){
   if(Number.isFinite(nextMin)) activeChart.options.scales[referenceAxisId].min = nextMin;
   if(Number.isFinite(nextMax)) activeChart.options.scales[referenceAxisId].max = nextMax;
 }
+
+function syncEducationRightAxisOverrideFromChart(activeChart){
+  if((document.getElementById("graphType")?.value || "asset") !== "education") return;
+  if(!activeChart?.options?.scales?.y1) return;
+  const y1Options = activeChart.options.scales.y1 || {};
+  const y1Scale = activeChart.scales?.y1 || {};
+  const nextMin = Number.isFinite(Number(y1Options.min)) ? Number(y1Options.min) : Number(y1Scale.min);
+  const nextMax = Number.isFinite(Number(y1Options.max)) ? Number(y1Options.max) : Number(y1Scale.max);
+  if(Number.isFinite(nextMin) && Number.isFinite(nextMax) && nextMax > nextMin){
+    educationRightAxisOverride = {min:nextMin, max:nextMax};
+  }
+}
 function syncChartAxisStateFromChartInstance(activeChart, options = {}){
   if(!activeChart?.options?.scales) return;
   applyAdaptiveXAxisTicksToChart(activeChart);
   syncInvestmentReferenceYAxisFromMain(activeChart);
+  syncEducationRightAxisOverrideFromChart(activeChart);
   const scales = activeChart.scales || {};
   const xAxisMinEl = document.getElementById("xAxisMin");
   const xAxisMaxEl = document.getElementById("xAxisMax");
@@ -36644,6 +36680,8 @@ function setupChartPanInteractions(){
       startMaxX: Number(chart.scales.x.max),
       startMinY: Number(chart.scales.y.min),
       startMaxY: Number(chart.scales.y.max),
+      startMinY1: Number(chart.scales.y1?.min),
+      startMaxY1: Number(chart.scales.y1?.max),
       moved:false
     };
     canvas.classList.add('chart-pan-active');
@@ -36667,6 +36705,16 @@ function setupChartPanInteractions(){
     const startMaxYPx = yScale.getPixelForValue(panState.startMaxY);
     const newMinY = yScale.getValueForPixel(startMinYPx - dy);
     const newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
+    const graphType = document.getElementById("graphType")?.value || "asset";
+    const y1Scale = graphType === "education" ? chart.scales?.y1 : null;
+    let newMinY1 = NaN;
+    let newMaxY1 = NaN;
+    if(y1Scale && Number.isFinite(Number(panState.startMinY1)) && Number.isFinite(Number(panState.startMaxY1))){
+      const startMinY1Px = y1Scale.getPixelForValue(panState.startMinY1);
+      const startMaxY1Px = y1Scale.getPixelForValue(panState.startMaxY1);
+      newMinY1 = y1Scale.getValueForPixel(startMinY1Px - dy);
+      newMaxY1 = y1Scale.getValueForPixel(startMaxY1Px - dy);
+    }
     if(Number.isFinite(newMinX) && Number.isFinite(newMaxX)){
       chart.options.scales.x.min = newMinX;
       chart.options.scales.x.max = newMaxX;
@@ -36675,8 +36723,16 @@ function setupChartPanInteractions(){
       chart.options.scales.y.min = Math.min(newMinY, newMaxY);
       chart.options.scales.y.max = Math.max(newMinY, newMaxY);
     }
+    if(y1Scale && chart.options.scales?.y1 && Number.isFinite(newMinY1) && Number.isFinite(newMaxY1)){
+      const nextMinY1 = Math.min(newMinY1, newMaxY1);
+      const nextMaxY1 = Math.max(newMinY1, newMaxY1);
+      chart.options.scales.y1.min = nextMinY1;
+      chart.options.scales.y1.max = nextMaxY1;
+      educationRightAxisOverride = {min:nextMinY1, max:nextMaxY1};
+    }
     applyAdaptiveXAxisTicksToChart(chart);
     syncInvestmentReferenceYAxisFromMain(chart);
+    syncEducationRightAxisOverrideFromChart(chart);
     chart.update('none');
     syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
     e.preventDefault();
@@ -36718,26 +36774,68 @@ function setupChartTouchInteractions(){
     if(!area) return false;
     return pt.x >= area.left && pt.x <= area.right && pt.y >= area.top && pt.y <= area.bottom;
   };
+  const getEducationTouchZone = (pt)=>{
+    const area = chart?.chartArea;
+    if(!area) return null;
+    if(pt.x >= area.left && pt.x <= area.right && pt.y >= area.top && pt.y <= area.bottom) return 'plot';
+    if(pt.x >= area.left && pt.x <= area.right && pt.y >= area.bottom && pt.y <= area.bottom + 32) return 'x';
+    if(pt.x >= Math.max(0, area.left - 38) && pt.x <= area.left && pt.y >= area.top && pt.y <= area.bottom) return 'y';
+    const y1Scale = chart?.scales?.y1;
+    if(y1Scale){
+      const rightAxisLeft = Math.min(Number(y1Scale.left), Number(area.right));
+      const rightAxisRight = Math.max(Number(y1Scale.right), Number(area.right));
+      if(Number.isFinite(rightAxisLeft) && Number.isFinite(rightAxisRight) && pt.x >= rightAxisLeft && pt.x <= rightAxisRight && pt.y >= area.top && pt.y <= area.bottom) return 'y1';
+    }
+    return null;
+  };
+  const normalizeMainChartTouchYBounds = (minY, maxY, outerMin, outerMax)=>{
+    let nextMin = Number(minY);
+    let nextMax = Number(maxY);
+    const minOuter = Number(outerMin);
+    const maxOuter = Number(outerMax);
+    if(!Number.isFinite(nextMin) || !Number.isFinite(nextMax) || !Number.isFinite(minOuter) || !Number.isFinite(maxOuter) || maxOuter <= minOuter) return null;
+    if(nextMin > nextMax){ const t = nextMin; nextMin = nextMax; nextMax = t; }
+    const outerRange = maxOuter - minOuter;
+    let range = Math.max(1e-9, Math.min(outerRange, nextMax - nextMin));
+    if(range >= outerRange * 0.985) return {min:minOuter, max:maxOuter};
+    if(nextMin < minOuter){ nextMax += (minOuter - nextMin); nextMin = minOuter; }
+    if(nextMax > maxOuter){ nextMin -= (nextMax - maxOuter); nextMax = maxOuter; }
+    nextMin = Math.max(minOuter, nextMin);
+    nextMax = Math.min(maxOuter, nextMax);
+    if(nextMax - nextMin < range - 1e-9){
+      if(nextMin <= minOuter + 1e-9) nextMax = Math.min(maxOuter, nextMin + range);
+      else if(nextMax >= maxOuter - 1e-9) nextMin = Math.max(minOuter, nextMax - range);
+    }
+    return {min:nextMin, max:nextMax};
+  };
   const getTouchZoomAxesFromDefaults = ()=>{
-    if(!chart?.scales?.x || !chart?.scales?.y) return {x:false, y:false, any:false};
+    if(!chart?.scales?.x || !chart?.scales?.y) return {x:false, y:false, y1:false, any:false};
     const gestureBounds = computeChartAxisGestureOuterBounds();
     const xOptions = chart.options?.scales?.x || {};
     const yOptions = chart.options?.scales?.y || {};
+    const y1Options = chart.options?.scales?.y1 || {};
     const currMinX = Number.isFinite(Number(xOptions.min)) ? Number(xOptions.min) : Number(chart.scales.x.min);
     const currMaxX = Number.isFinite(Number(xOptions.max)) ? Number(xOptions.max) : Number(chart.scales.x.max);
     const currMinY = Number.isFinite(Number(yOptions.min)) ? Number(yOptions.min) : Number(chart.scales.y.min);
     const currMaxY = Number.isFinite(Number(yOptions.max)) ? Number(yOptions.max) : Number(chart.scales.y.max);
+    const currMinY1 = Number.isFinite(Number(y1Options.min)) ? Number(y1Options.min) : Number(chart.scales?.y1?.min);
+    const currMaxY1 = Number.isFinite(Number(y1Options.max)) ? Number(y1Options.max) : Number(chart.scales?.y1?.max);
     const graphType = document.getElementById("graphType")?.value || "asset";
     const xOuterRange = Math.max(1e-9, Math.abs(Number(gestureBounds.xMax) - Number(gestureBounds.xMin)) || 1);
     const yOuterRange = Math.max(1e-9, Math.abs(Number(gestureBounds.yMax) - Number(gestureBounds.yMin)) || 1);
+    const y1OuterRange = Math.max(1e-9, Math.abs(Number(gestureBounds.y1Max) - Number(gestureBounds.y1Min)) || 1);
     const xCurrentRange = Math.abs(currMaxX - currMinX);
     const yCurrentRange = Math.abs(currMaxY - currMinY);
+    const y1CurrentRange = Math.abs(currMaxY1 - currMinY1);
     const xTol = Math.max(0.02, xOuterRange * 0.001);
     const yTol = Math.max(1, yOuterRange * 0.02);
     const xRangeZoomed = xCurrentRange < xOuterRange * 0.985;
     const xPositionZoomed = Math.abs(currMinX - gestureBounds.xMin) > xTol || Math.abs(currMaxX - gestureBounds.xMax) > xTol;
     const yRangeZoomed = yCurrentRange < yOuterRange * 0.985;
     const yPositionZoomed = Math.abs(currMinY - gestureBounds.yMin) > yTol || Math.abs(currMaxY - gestureBounds.yMax) > yTol;
+    const y1RangeZoomed = y1CurrentRange < y1OuterRange * 0.985;
+    const y1Tol = Math.max(1, y1OuterRange * 0.02);
+    const y1PositionZoomed = Math.abs(currMinY1 - gestureBounds.y1Min) > y1Tol || Math.abs(currMaxY1 - gestureBounds.y1Max) > y1Tol;
     const xZoomed = xRangeZoomed || xPositionZoomed;
     // 収入／支出グラフは上下非対称オートスケールのため、y軸の数値範囲比較だけでは
     // 非ズーム状態をyズーム中と誤判定しやすい。スマホのyパンは、ピンチ等で明示的に
@@ -36749,7 +36847,10 @@ function setupChartTouchInteractions(){
         : (graphType === "assetProbability" && chart?.$assetProbabilityOverlayMode
           ? (chart?.$assetProbabilityOverlayTouchYZoomed === true && yRangeZoomed)
           : (yRangeZoomed || yPositionZoomed)));
-    return {x:xZoomed, y:yZoomed, any:xZoomed || yZoomed};
+    const y1Zoomed = graphType === "education" && chart?.scales?.y1
+      ? ((chart?.$educationTouchY1Zoomed === true && y1RangeZoomed) || y1PositionZoomed)
+      : false;
+    return {x:xZoomed, y:yZoomed, y1:y1Zoomed, any:xZoomed || yZoomed || y1Zoomed};
   };
   const isZoomedFromDefaults = ()=>getTouchZoomAxesFromDefaults().any;
   const normalizeMainChartTouchXBounds = (minX, maxX, gestureBounds)=>{
@@ -36784,7 +36885,7 @@ function setupChartTouchInteractions(){
       max: Math.round(nextMax * 100) / 100
     };
   };
-  const applyMainChartTouchUpdate = (gestureBounds, nextX, nextY)=>{
+  const applyMainChartTouchUpdate = (gestureBounds, nextX, nextY, nextY1)=>{
     if(nextX){
       chart.options.scales.x.min = nextX.min;
       chart.options.scales.x.max = nextX.max;
@@ -36806,7 +36907,17 @@ function setupChartTouchInteractions(){
         chart.$assetProbabilityOverlayTouchYZoomed = Number.isFinite(nextRangeY) && nextRangeY < outerRangeY * 0.985;
       }
     }
+    if(nextY1 && chart.options?.scales?.y1){
+      chart.options.scales.y1.min = nextY1.min;
+      chart.options.scales.y1.max = nextY1.max;
+      const outerRangeY1 = Math.max(1e-9, Number(gestureBounds?.y1Max) - Number(gestureBounds?.y1Min));
+      const nextRangeY1 = Math.abs(Number(nextY1.max) - Number(nextY1.min));
+      chart.$educationTouchY1Zoomed = Number.isFinite(nextRangeY1) && nextRangeY1 < outerRangeY1 * 0.985;
+      if(chart.$overlayMode) chart.$educationOverlayTouchY1Zoomed = chart.$educationTouchY1Zoomed;
+      educationRightAxisOverride = {min:nextY1.min, max:nextY1.max};
+    }
     syncInvestmentReferenceYAxisFromMain(chart);
+    syncEducationRightAxisOverrideFromChart(chart);
     chart.update('none');
     syncChartAxisStateFromChartInstance(chart, {lockYScale:true});
   };
@@ -36854,13 +36965,23 @@ function setupChartTouchInteractions(){
       const a = getTouchPoint(e.touches[0]);
       const b = getTouchPoint(e.touches[1]);
       const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
-      if(!isInsideChartArea(center)) return;
+      const graphType = document.getElementById("graphType")?.value || "asset";
+      const touchZone = graphType === "education" ? getEducationTouchZone(center) : (isInsideChartArea(center) ? 'plot' : null);
+      if(!touchZone) return;
       const xScale = chart.scales.x;
       const yScale = chart.scales.y;
+      const y1Scale = chart.scales?.y1;
       const startDx = Math.abs(b.x - a.x);
       const startDy = Math.abs(b.y - a.y);
+      const pinchAxes = {
+        x: touchZone === 'plot' || touchZone === 'x',
+        y: touchZone === 'plot' || touchZone === 'y',
+        y1: graphType === 'education' && !!y1Scale && (touchZone === 'plot' || touchZone === 'y1')
+      };
       touchState = {
         type:'pinch',
+        axisZone:touchZone,
+        axes:pinchAxes,
         startA:a,
         startB:b,
         startDist:Math.max(1, getDistance(a, b)),
@@ -36871,10 +36992,14 @@ function setupChartTouchInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        startMinY1:Number(y1Scale?.min),
+        startMaxY1:Number(y1Scale?.max),
         startValueAX:xScale.getValueForPixel(a.x),
         startValueBX:xScale.getValueForPixel(b.x),
         startValueAY:yScale.getValueForPixel(a.y),
         startValueBY:yScale.getValueForPixel(b.y),
+        startValueAY1:y1Scale ? y1Scale.getValueForPixel(a.y) : NaN,
+        startValueBY1:y1Scale ? y1Scale.getValueForPixel(b.y) : NaN,
         moved:false
       };
       e.preventDefault();
@@ -36883,7 +37008,9 @@ function setupChartTouchInteractions(){
     if(e.touches.length === 1){
       const touch = e.touches[0];
       const pt = getTouchPoint(touch);
-      if(!isInsideChartArea(pt)){
+      const graphType = document.getElementById("graphType")?.value || "asset";
+      const touchZone = graphType === "education" ? getEducationTouchZone(pt) : (isInsideChartArea(pt) ? 'plot' : null);
+      if(!touchZone){
         const tooltipEl = document.getElementById("chartExternalTooltip");
         if(tooltipEl) tooltipEl.hidden = true;
         chart.setActiveElements([]);
@@ -36893,8 +37020,29 @@ function setupChartTouchInteractions(){
       }
       const zoomAxes = getTouchZoomAxesFromDefaults();
       const zoomed = !!zoomAxes.any;
-      const tooltipHit = updateMainChartTooltipFromTouch(touch);
       const now = Date.now();
+      if(touchZone && touchZone !== 'plot'){
+        const axisZoomed = touchZone === 'x' ? !!zoomAxes.x : (touchZone === 'y' ? !!zoomAxes.y : !!zoomAxes.y1);
+        touchState = {
+          type:'pan',
+          panAxis:touchZone,
+          startX:pt.x,
+          startY:pt.y,
+          startMinX:Number(chart.scales.x.min),
+          startMaxX:Number(chart.scales.x.max),
+          startMinY:Number(chart.scales.y.min),
+          startMaxY:Number(chart.scales.y.max),
+          startMinY1:Number(chart.scales.y1?.min),
+          startMaxY1:Number(chart.scales.y1?.max),
+          xZoomed: touchZone === 'x' && axisZoomed,
+          yZoomed: touchZone === 'y' && axisZoomed,
+          y1Zoomed: touchZone === 'y1' && axisZoomed,
+          moved:false
+        };
+        e.preventDefault();
+        return;
+      }
+      const tooltipHit = updateMainChartTooltipFromTouch(touch);
       touchState = {
         type:'tooltipOrPan',
         startX:pt.x,
@@ -36909,11 +37057,14 @@ function setupChartTouchInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        startMinY1:Number(chart.scales.y1?.min),
+        startMaxY1:Number(chart.scales.y1?.max),
         moved:false,
         tooltipMoved:false,
         zoomed,
         xZoomed: !!zoomAxes.x,
         yZoomed: !!zoomAxes.y,
+        y1Zoomed: !!zoomAxes.y1,
         tooltipHit
       };
       e.preventDefault();
@@ -36944,7 +37095,7 @@ function setupChartTouchInteractions(){
       const outerRangeX = Math.max(1, gestureBounds.xMax - gestureBounds.xMin);
       let newMinX = touchState.startMinX;
       let newMaxX = touchState.startMaxX;
-      if(currentDx >= 8){
+      if(touchState.axes?.x && currentDx >= 8){
         const t1x = (a.x - xLeft) / xWidth;
         const t2x = (b.x - xLeft) / xWidth;
         const dtX = t2x - t1x;
@@ -36969,7 +37120,7 @@ function setupChartTouchInteractions(){
       const outerRangeY = Math.max(1e-9, gestureBounds.yMax - gestureBounds.yMin);
       let newMinY = touchState.startMinY;
       let newMaxY = touchState.startMaxY;
-      if(currentDy >= 10){
+      if(touchState.axes?.y && currentDy >= 10){
         const t1y = (yBottom - a.y) / yHeight;
         const t2y = (yBottom - b.y) / yHeight;
         const dtY = t2y - t1y;
@@ -36990,9 +37141,34 @@ function setupChartTouchInteractions(){
         newMinY = gestureBounds.yMin;
         newMaxY = gestureBounds.yMax;
       }
-      const nextX = normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds);
-      const nextY = (Number.isFinite(newMinY) && Number.isFinite(newMaxY)) ? {min:Math.min(newMinY, newMaxY), max:Math.max(newMinY, newMaxY)} : null;
-      applyMainChartTouchUpdate(gestureBounds, nextX, nextY);
+      const y1Scale = chart.scales?.y1;
+      const outerRangeY1 = Math.max(1e-9, Number(gestureBounds.y1Max) - Number(gestureBounds.y1Min));
+      let newMinY1 = touchState.startMinY1;
+      let newMaxY1 = touchState.startMaxY1;
+      if(touchState.axes?.y1 && y1Scale && currentDy >= 10){
+        const y1Top = y1Scale.top;
+        const y1Bottom = y1Scale.bottom;
+        const y1Height = Math.max(1, y1Bottom - y1Top);
+        const t1y1 = (y1Bottom - a.y) / y1Height;
+        const t2y1 = (y1Bottom - b.y) / y1Height;
+        const dtY1 = t2y1 - t1y1;
+        if(Math.abs(dtY1) > 0.001){
+          let newRangeY1 = (touchState.startValueBY1 - touchState.startValueAY1) / dtY1;
+          if(Number.isFinite(newRangeY1)){
+            newRangeY1 = Math.max(1e-9, Math.min(outerRangeY1, Math.abs(newRangeY1)));
+            newMinY1 = touchState.startValueAY1 - t1y1 * newRangeY1;
+            newMaxY1 = newMinY1 + newRangeY1;
+          }
+        }
+      }
+      if((newMaxY1 - newMinY1) >= outerRangeY1 * 0.985){
+        newMinY1 = gestureBounds.y1Min;
+        newMaxY1 = gestureBounds.y1Max;
+      }
+      const nextX = touchState.axes?.x ? normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds) : null;
+      const nextY = (touchState.axes?.y && Number.isFinite(newMinY) && Number.isFinite(newMaxY)) ? normalizeMainChartTouchYBounds(newMinY, newMaxY, gestureBounds.yMin, gestureBounds.yMax) : null;
+      const nextY1 = (touchState.axes?.y1 && Number.isFinite(newMinY1) && Number.isFinite(newMaxY1)) ? normalizeMainChartTouchYBounds(newMinY1, newMaxY1, gestureBounds.y1Min, gestureBounds.y1Max) : null;
+      applyMainChartTouchUpdate(gestureBounds, nextX, nextY, nextY1);
       e.preventDefault();
       return;
     }
@@ -37042,8 +37218,12 @@ function setupChartTouchInteractions(){
         startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min),
         startMaxY:Number(chart.scales.y.max),
+        startMinY1:Number(chart.scales.y1?.min),
+        startMaxY1:Number(chart.scales.y1?.max),
+        panAxis:'plot',
         xZoomed: !!touchState.xZoomed,
         yZoomed: !!touchState.yZoomed,
+        y1Zoomed: !!touchState.y1Zoomed,
         moved:false
       };
       e.preventDefault();
@@ -37063,6 +37243,8 @@ function setupChartTouchInteractions(){
       const gestureBounds = computeChartAxisGestureOuterBounds();
       const xScale = chart.scales.x;
       const yScale = chart.scales.y;
+      const y1Scale = chart.scales?.y1;
+      const panAxis = touchState.panAxis || 'plot';
       const startMinPx = xScale.getPixelForValue(touchState.startMinX);
       const startMaxPx = xScale.getPixelForValue(touchState.startMaxX);
       let newMinX = xScale.getValueForPixel(startMinPx - dx);
@@ -37071,21 +37253,22 @@ function setupChartTouchInteractions(){
       const startMaxYPx = yScale.getPixelForValue(touchState.startMaxY);
       let newMinY = yScale.getValueForPixel(startMinYPx - dy);
       let newMaxY = yScale.getValueForPixel(startMaxYPx - dy);
-      const nextX = touchState.xZoomed ? normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds) : null;
-      let nextY = null;
-      if(touchState.yZoomed && Number.isFinite(newMinY) && Number.isFinite(newMaxY)){
-        const rangeY = newMaxY - newMinY;
-        if(rangeY <= (gestureBounds.yMax - gestureBounds.yMin)){
-          if(newMinY < gestureBounds.yMin){ newMaxY += (gestureBounds.yMin - newMinY); newMinY = gestureBounds.yMin; }
-          if(newMaxY > gestureBounds.yMax){ newMinY -= (newMaxY - gestureBounds.yMax); newMaxY = gestureBounds.yMax; }
-        }
-        nextY = {min:Math.min(newMinY, newMaxY), max:Math.max(newMinY, newMaxY)};
+      let newMinY1 = NaN;
+      let newMaxY1 = NaN;
+      if(y1Scale && Number.isFinite(Number(touchState.startMinY1)) && Number.isFinite(Number(touchState.startMaxY1))){
+        const startMinY1Px = y1Scale.getPixelForValue(touchState.startMinY1);
+        const startMaxY1Px = y1Scale.getPixelForValue(touchState.startMaxY1);
+        newMinY1 = y1Scale.getValueForPixel(startMinY1Px - dy);
+        newMaxY1 = y1Scale.getValueForPixel(startMaxY1Px - dy);
       }
-      if(!nextX && !nextY){
+      const nextX = touchState.xZoomed && (panAxis === 'plot' || panAxis === 'x') ? normalizeMainChartTouchXBounds(newMinX, newMaxX, gestureBounds) : null;
+      const nextY = touchState.yZoomed && (panAxis === 'plot' || panAxis === 'y') ? normalizeMainChartTouchYBounds(newMinY, newMaxY, gestureBounds.yMin, gestureBounds.yMax) : null;
+      const nextY1 = touchState.y1Zoomed && (panAxis === 'plot' || panAxis === 'y1') ? normalizeMainChartTouchYBounds(newMinY1, newMaxY1, gestureBounds.y1Min, gestureBounds.y1Max) : null;
+      if(!nextX && !nextY && !nextY1){
         e.preventDefault();
         return;
       }
-      applyMainChartTouchUpdate(gestureBounds, nextX, nextY);
+      applyMainChartTouchUpdate(gestureBounds, nextX, nextY, nextY1);
       e.preventDefault();
     }
   }, {passive:false});
