@@ -28839,10 +28839,11 @@ function setupIncomeCurveChartInteractions(){
       const bounds = cloneIncomeCurveBounds(getIncomeCurveEffectiveBounds());
       const inside = isInsideChartArea(pts[0]);
       if(inside){
-        if(showIncomeCurveTooltipNear(pts[0], isIncomeCurveZoomed() ? 18 : 22)){
+        const zoomed = isIncomeCurveZoomed();
+        if(showIncomeCurveTooltipNear(pts[0], zoomed ? 22 : 28, true)){
           touchState = {mode:'tooltip', start:pts[0], last:pts[0], startTime:now, lastTime:now, bounds, axis:'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
           e.preventDefault();
-        }else if(isIncomeCurveZoomed()){
+        }else if(zoomed){
           touchState = {mode:'pan', start:pts[0], bounds, axis:'plot', moved:false, plotWidth:Math.max(1, chart.chartArea.right-chart.chartArea.left), plotHeight:Math.max(1, chart.chartArea.bottom-chart.chartArea.top)};
           e.preventDefault();
         }
@@ -28881,11 +28882,12 @@ function setupIncomeCurveChartInteractions(){
       const elapsed = Math.max(1, now - (touchState.startTime || now));
       const speed = totalMove / elapsed;
       const zoomed = isIncomeCurveZoomed();
-      if(zoomed && totalMove >= 14 && speed >= 0.42){
+      const shouldSwitchToPan = zoomed && totalMove >= 14 && (speed >= 0.38 || totalMove >= 34);
+      if(shouldSwitchToPan){
         hideIncomeCurveTooltip();
         touchState = {mode:'pan', start:touchState.start, bounds:touchState.bounds, axis:'plot', moved:true, plotWidth:touchState.plotWidth, plotHeight:touchState.plotHeight};
       }else{
-        showIncomeCurveTooltipNear(pt, zoomed ? 18 : 22, true);
+        showIncomeCurveTooltipNear(pt, zoomed ? 22 : 28, true);
         touchState.last = pt;
         touchState.lastTime = now;
         touchState.moved = totalMove >= 4;
@@ -28960,9 +28962,6 @@ function drawIncomeCurveChart(){
   };
   updateIncomeCurveAutoBounds(autoBounds);
   const incomeCurveBounds = getIncomeCurveEffectiveBounds() || autoBounds;
-  const incomeCurveXAxisZoomed = isIncomeCurveAxisZoomed('x');
-  const incomeCurveYAxisZoomed = isIncomeCurveAxisZoomed('y');
-  const incomeCurveY1AxisZoomed = isIncomeCurveAxisZoomed('y1');
   if(incomeCurveChart) incomeCurveChart.destroy();
   incomeCurveChart = new Chart(ctx, {
     type:"line",
@@ -28977,7 +28976,7 @@ function drawIncomeCurveChart(){
       interaction:{mode:"index", intersect:true, axis:"x"},
       hover:{mode:"index", intersect:true, axis:"x"},
       elements:{point:{hitRadius:isIncomeCurveCompact ? 10 : 7, hoverRadius:4}},
-      layout:{padding:{top:8, right:isIncomeCurveCompact ? 28 : 32, bottom:4}},
+      layout:{padding:{top:16, right:28, bottom:16}},
       plugins:{
         tooltip:{
           enabled:true,
@@ -29037,9 +29036,9 @@ function drawIncomeCurveChart(){
           title:{display:true,text:"年齢（歳)".replace(')', '）'), padding:{top:2, bottom:0}},
           afterBuildTicks(axis){
             const step = getIncomeCurveVisibleTickStep(axis.min, axis.max);
-            axis.ticks = buildIncomeCurveAxisTickValues(axis.min, axis.max, step, {includeBounds:!incomeCurveXAxisZoomed}).map(v=>({value:v}));
+            axis.ticks = buildIncomeCurveAxisTickValues(axis.min, axis.max, step, {includeBounds:!isIncomeCurveZoomed()}).map(v=>({value:v}));
           },
-          ticks:{stepSize:getIncomeCurveVisibleTickStep(incomeCurveBounds.xMin, incomeCurveBounds.xMax), includeBounds:false, maxRotation:0, minRotation:0, autoSkip:false, padding:5, callback(value){ return formatScaledAxisNumber(Number(value)); }},
+          ticks:{stepSize:getIncomeCurveVisibleTickStep(incomeCurveBounds.xMin, incomeCurveBounds.xMax), includeBounds:false, maxRotation:0, minRotation:0, autoSkip:false, padding:4, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
@@ -29051,10 +29050,10 @@ function drawIncomeCurveChart(){
           max:incomeCurveBounds.yMax,
           grace:"12%",
           afterBuildTicks(axis){
-            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7, {includeBounds:!incomeCurveYAxisZoomed}).map(v=>({value:v}));
+            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7, {includeBounds:!isIncomeCurveZoomed()}).map(v=>({value:v}));
           },
           afterFit(scale){ scale.width = getIncomeCurveStableAxisWidth('y', isIncomeCurveCompact) || scale.width; },
-          ticks:{padding:5, maxTicksLimit:7, includeBounds:false, callback(value){ return formatScaledAxisNumber(Number(value)); }},
+          ticks:{padding:4, maxTicksLimit:7, includeBounds:false, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         },
@@ -29066,10 +29065,10 @@ function drawIncomeCurveChart(){
           max:incomeCurveBounds.y1Max,
           grace:"12%",
           afterBuildTicks(axis){
-            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7, {includeBounds:!incomeCurveY1AxisZoomed}).map(v=>({value:v}));
+            axis.ticks = buildIncomeCurveYAxisTickValues(axis.min, axis.max, 7, {includeBounds:!isIncomeCurveZoomed()}).map(v=>({value:v}));
           },
           afterFit(scale){ scale.width = getIncomeCurveStableAxisWidth('y1', isIncomeCurveCompact) || scale.width; },
-          ticks:{padding:5, maxTicksLimit:7, includeBounds:false, callback(value){ return formatScaledAxisNumber(Number(value)); }},
+          ticks:{padding:4, maxTicksLimit:7, includeBounds:false, callback(value){ return formatScaledAxisNumber(Number(value)); }},
           grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1, drawOnChartArea:false},
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}
         }
