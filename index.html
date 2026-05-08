@@ -25650,11 +25650,22 @@ function getAdaptiveXAxisStepSize(minValue, maxValue){
   if(range <= 120) return 10;
   return 20;
 }
-function buildAdaptiveXAxisTickValues(minValue, maxValue){
+function getEducationMobileXAxisStepSize(minValue, maxValue){
+  const min = Number(minValue);
+  const max = Number(maxValue);
+  const range = Math.max(0, Math.abs(max - min));
+  if(range <= 12) return 1;
+  if(range <= 36) return 2;
+  if(range <= 72) return 5;
+  if(range <= 120) return 10;
+  return 20;
+}
+function buildAdaptiveXAxisTickValues(minValue, maxValue, stepOverride=null){
   const min = Number(minValue);
   const max = Number(maxValue);
   if(!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return [];
-  const step = getAdaptiveXAxisStepSize(min, max);
+  const override = Number(stepOverride);
+  const step = (Number.isFinite(override) && override > 0) ? override : getAdaptiveXAxisStepSize(min, max);
   const values = [];
   let start = Math.ceil(min / step) * step;
   const end = Math.floor(max / step) * step;
@@ -26375,6 +26386,14 @@ function getEducationRightAxisBounds(rightAxisData, cfg){
     };
   }
   return {min:0, max:Number(autoAxis.max), autoMax:Number(autoAxis.max)};
+}
+function shouldHideEducationRightAxisEdgeLabel(index, ticks){
+  if(!Array.isArray(ticks) || ticks.length < 2) return false;
+  if(index !== 0 && index !== ticks.length - 1) return false;
+  if(!educationRightAxisOverride) return false;
+  const min = Number(educationRightAxisOverride.min);
+  const max = Number(educationRightAxisOverride.max);
+  return Number.isFinite(min) && Number.isFinite(max) && max > min;
 }
 
 
@@ -27245,7 +27264,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       }
     },
     scales:{
-      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const values = buildAdaptiveXAxisTickValues(scale.min, scale.max); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
+      x:{type:"linear", min:xMin, max:xMax, offset:false, bounds:((graphType === "assetBreakdown" || graphType === "investment" || graphType === "incomeExpense") ? "data" : "ticks"), grid:{display:false, z:-1}, border:{z:-1}, afterBuildTicks(scale){ const stepOverride = (graphType === "education" && compactChartLayout) ? getEducationMobileXAxisStepSize(scale.min, scale.max) : null; const values = buildAdaptiveXAxisTickValues(scale.min, scale.max, stepOverride); scale.ticks = values.map(v=>({ value:v })); }, ticks:{stepSize:xStepSize, autoSkip:false, precision:0, maxRotation:0, minRotation:0, maxTicksLimit:14, callback:function(value, index, ticks){ return formatMainChartXAxisTick(this, extra.simRef, value, index, ticks); }}, title:{display:true,text:getXAxisTitleText()}},
       y:{title:{display:true,text:`${getMainChartBaseYAxisTitle(graphType)}（${yUnitSpec.label}）`}, min:axis.min, max:axis.max, stacked:(graphType==="education" || graphType==="incomeExpense" || graphType==="assetBreakdown" || graphType==="investment"), grid:{z:-1}, border:{z:-1}, ticks:{includeBounds:false, padding:yTickPadding, callback(value, index, ticks){ return formatMainChartYAxisTick(value, index, ticks, yUnitSpec); }}}
     }
   };
@@ -27299,6 +27318,9 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
   }
   if(graphType === "education"){
     options.scales.x.grid = {display:false, z:-1};
+    if(compactChartLayout){
+      options.scales.x.ticks.stepSize = getEducationMobileXAxisStepSize(xMin, xMax);
+    }
     options.scales.y.grid = {...options.scales.y.grid, drawTicks:false};
     options.scales.y.stacked = true;
     const rightAxisData = extra.educationCumData || [0];
@@ -27315,7 +27337,7 @@ function buildChartOptions(graphType, cfg, yData, overlay=false, extra={}){
       title:{display:false,text:`教育費累計（${rightAxisUnitSpec.label}）`},
       _educationRightTitleText:`教育費累計（${rightAxisUnitSpec.label}）`,
       afterFit(scale){ scale.width += 18; },
-      ticks:{callback(value){ return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
+      ticks:{callback(value, index, ticks){ if(shouldHideEducationRightAxisEdgeLabel(index, ticks)) return ""; return formatScaledAxisNumber((Number(value) || 0) / Math.max(1e-9, Number(rightAxisUnitSpec?.divisor) || 1)); }}
     };
   }
   return options;
