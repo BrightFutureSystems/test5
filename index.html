@@ -45651,6 +45651,7 @@ body.standard-modal-scroll-locked .page{
   ];
   const scrollKeys = new Set(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' ']);
   let lastTouchY = null;
+  let lastTouchX = null;
   function getOpenStandardModal(){
     for(const id of modalIds){
       const modal = document.getElementById(id);
@@ -45678,7 +45679,11 @@ body.standard-modal-scroll-locked .page{
   function shouldPreventWheel(modal, event){
     if(!modal) return false;
     if(!isInsideModal(modal, event.target)) return true;
-    if(isOverlaySettingsTableScrollTarget(modal, event.target)) return false;
+    if(isOverlaySettingsTableScrollTarget(modal, event.target)){
+      const dx = Math.abs(Number(event.deltaX) || 0);
+      const dy = Math.abs(Number(event.deltaY) || 0);
+      if(dx > dy) return false;
+    }
     const scroller = getScrollableAncestorWithin(modal, event.target);
     if(!scroller) return true;
     const dy = Number(event.deltaY) || 0;
@@ -45695,24 +45700,34 @@ body.standard-modal-scroll-locked .page{
     const modal = getOpenStandardModal();
     if(!modal) return;
     lastTouchY = event.touches && event.touches.length ? event.touches[0].clientY : null;
+    lastTouchX = event.touches && event.touches.length ? event.touches[0].clientX : null;
   }
   function onTouchMove(event){
     const modal = getOpenStandardModal();
     if(!modal) return;
     const currentY = event.touches && event.touches.length ? event.touches[0].clientY : null;
+    const currentX = event.touches && event.touches.length ? event.touches[0].clientX : null;
     if(!isInsideModal(modal, event.target)){
       if(event.cancelable) event.preventDefault();
       lastTouchY = currentY;
+      lastTouchX = currentX;
       return;
     }
-    if(isOverlaySettingsTableScrollTarget(modal, event.target)){
-      lastTouchY = currentY;
-      return;
+    const overlayTableTouch = isOverlaySettingsTableScrollTarget(modal, event.target);
+    if(overlayTableTouch && Number.isFinite(lastTouchX) && Number.isFinite(currentX) && Number.isFinite(lastTouchY) && Number.isFinite(currentY)){
+      const dxAbs = Math.abs(currentX - lastTouchX);
+      const dyAbs = Math.abs(currentY - lastTouchY);
+      if(dxAbs > dyAbs * 1.15){
+        lastTouchY = currentY;
+        lastTouchX = currentX;
+        return;
+      }
     }
     const scroller = getScrollableAncestorWithin(modal, event.target);
     if(!scroller){
       if(event.cancelable) event.preventDefault();
       lastTouchY = currentY;
+      lastTouchX = currentX;
       return;
     }
     if(Number.isFinite(lastTouchY) && Number.isFinite(currentY)){
@@ -45724,9 +45739,11 @@ body.standard-modal-scroll-locked .page{
       }
     }
     lastTouchY = currentY;
+    lastTouchX = currentX;
   }
   function onTouchEnd(){
     lastTouchY = null;
+    lastTouchX = null;
   }
   function onKeyDown(event){
     const modal = getOpenStandardModal();
@@ -45885,8 +45902,8 @@ body.standard-modal-scroll-locked .page{
 
 
 
-<style id="v1401-overlay-settings-modal-scroll-unlock">
-/* Scope: overlay settings modal only. Allow the table wrapper to handle horizontal touch scroll on mobile. */
+<style id="v1402-overlay-settings-modal-scroll-guard-fix">
+/* Scope: overlay settings modal only. Keep table horizontal scroll, but prevent vertical scroll chaining to the background page. */
 #overlaySettingsModal .overlay-settings-modal{
   touch-action:auto !important;
 }
@@ -45895,7 +45912,7 @@ body.standard-modal-scroll-locked .page{
   overflow-y:visible !important;
   -webkit-overflow-scrolling:touch !important;
   touch-action:pan-x pan-y !important;
-  overscroll-behavior:auto !important;
+  overscroll-behavior:contain !important;
 }
 </style>
 
