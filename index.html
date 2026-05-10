@@ -2026,6 +2026,19 @@ document.addEventListener("scroll", (ev)=>{
   .crash-compare-content.is-open{opacity:1;}
   .withdrawal-compare-header{display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:0;}
   .compare-header-note{color:var(--muted);font-size:.9rem;line-height:1.4;white-space:nowrap;}
+  @media (max-width:900px), (pointer:coarse){
+    #withdrawalCompareSection .withdrawal-compare-header{
+      flex-direction:column;
+      align-items:flex-start;
+      gap:6px;
+    }
+    #withdrawalCompareSection .compare-header-note{
+      white-space:normal;
+      display:block;
+      width:100%;
+      line-height:1.45;
+    }
+  }
   .withdrawal-compare-split{display:inline-flex;align-items:stretch;}
   .withdrawal-compare-content{overflow:hidden;max-height:0;opacity:0;transition:max-height .24s ease, opacity .2s ease;margin-top:0;}
   .withdrawal-compare-content.is-open{opacity:1;}
@@ -4318,6 +4331,80 @@ document.addEventListener("scroll", (ev)=>{
   background:#eaf2fb !important;
 }
 
+
+
+/* ===== v1404: crash preview sheet initial control width stabilization ===== */
+.crash-test-table td:nth-child(4),
+.crash-test-table td:nth-child(5),
+.crash-test-table td:nth-child(6){
+  text-align:center !important;
+}
+.crash-test-table .crash-timing-wrap{
+  display:inline-flex !important;
+  width:auto !important;
+  max-width:100% !important;
+  margin:0 auto !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:4px !important;
+  white-space:nowrap !important;
+}
+.crash-test-table .crash-timing-type-select{
+  width:108px !important;
+  min-width:108px !important;
+  max-width:108px !important;
+  flex:0 0 108px !important;
+}
+.crash-test-table .crash-timing-value{
+  width:62px !important;
+  min-width:62px !important;
+  max-width:62px !important;
+  flex:0 0 62px !important;
+}
+.crash-test-table td:nth-child(5) .input-unit.center,
+.crash-test-table td:nth-child(6) .input-unit.center{
+  display:inline-flex !important;
+  width:auto !important;
+  max-width:100% !important;
+  margin:0 auto !important;
+  padding-left:0 !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
+}
+.crash-test-table td [data-crash-field="dropPct"]{
+  width:64px !important;
+  min-width:64px !important;
+  max-width:64px !important;
+  flex:0 0 64px !important;
+}
+.crash-test-table td [data-crash-field="recoveryYears"]{
+  width:54px !important;
+  min-width:54px !important;
+  max-width:54px !important;
+  flex:0 0 54px !important;
+}
+
+  @media (max-width:900px), (pointer:coarse){
+    .loan-control-box .loan-inflation-check{
+      display:grid !important;
+      grid-template-columns:auto minmax(0, 1fr);
+      column-gap:8px;
+      row-gap:0;
+      align-items:start;
+      line-height:1.45;
+    }
+    .loan-control-box .loan-inflation-check input{
+      grid-column:1;
+      grid-row:1;
+      margin-top:.24em;
+    }
+    .loan-control-box .loan-inflation-check span{
+      grid-column:2;
+      grid-row:1;
+      min-width:0;
+    }
+  }
 </style>
 
 
@@ -4495,6 +4582,7 @@ document.addEventListener("scroll", (ev)=>{
   .compare-header-note,
   .withdrawal-param-case-help,
   .cashflow-modal-note,
+  #cashflowSummaryNote,
   .cashflow-modal-unit-note{
     color:var(--v827-table-muted) !important;
   }
@@ -5564,6 +5652,92 @@ document.addEventListener("scroll", (ev)=>{
   cursor:ns-resize;
 }
 </style>
+
+
+<!-- ===== v1410: align simple mode blue accent to first label line ===== -->
+<style>
+  #simpleModePanel .simple-mode-field-label-main{
+    display:grid !important;
+    grid-template-columns:4px minmax(0, 1fr) auto !important;
+    column-gap:10px !important;
+    row-gap:0 !important;
+    align-items:start !important;
+  }
+  #simpleModePanel .simple-mode-field-label-main::before{
+    grid-column:1 !important;
+    grid-row:1 !important;
+    align-self:start !important;
+    margin-top:calc((1.35em - 20px) / 2) !important;
+  }
+  #simpleModePanel .simple-mode-field-label-main > span:first-child{
+    display:block !important;
+    grid-column:2 !important;
+    grid-row:1 !important;
+    min-width:0 !important;
+    line-height:1.35 !important;
+  }
+  #simpleModePanel .simple-mode-field-label-main .simple-mode-inline-check{
+    grid-column:3 !important;
+    grid-row:1 !important;
+    align-self:start !important;
+    margin-top:0.12em !important;
+  }
+  @media (max-width:900px), (pointer:coarse){
+    #simpleModePanel .simple-mode-field-label-main{
+      grid-template-columns:4px minmax(0, 1fr) auto !important;
+      column-gap:9px !important;
+      align-items:start !important;
+    }
+    #simpleModePanel .simple-mode-field-label-main::before{
+      margin-top:calc((1.35em - 20px) / 2) !important;
+    }
+  }
+</style>
+
+
+<!-- ===== v1417: annual cashflow table font-weight tuning only ===== -->
+<style id="v1417-cashflow-font-weight-tuning">
+/* Scope: 年度別収支表の文字ウェイトのみ。 */
+#cashflowModal .cashflow-table thead th,
+#cashflowModal .cashflow-table .cashflow-year-col{
+  font-weight:600 !important;
+}
+
+#cashflowModal .cashflow-table tbody tr.cashflow-sticky-row > th,
+#cashflowModal .cashflow-table tbody tr.cashflow-sticky-row > td,
+#cashflowModal .cashflow-table tbody tr.cashflow-meta-row > th,
+#cashflowModal .cashflow-table tbody tr.cashflow-meta-row > td{
+  font-weight:500 !important;
+}
+
+#cashflowModal .cashflow-table tbody th.cashflow-item-col{
+  font-weight:500 !important;
+}
+
+#cashflowModal .cashflow-table tbody td{
+  font-weight:400 !important;
+}
+
+#cashflowModal .cashflow-table .cashflow-item-group,
+#cashflowModal .cashflow-table tr.cashflow-highlight-income > th,
+#cashflowModal .cashflow-table tr.cashflow-highlight-income > td,
+#cashflowModal .cashflow-table tr.cashflow-highlight-expense > th,
+#cashflowModal .cashflow-table tr.cashflow-highlight-expense > td,
+#cashflowModal .cashflow-table tr.cashflow-highlight-balance > th,
+#cashflowModal .cashflow-table tr.cashflow-highlight-balance > td,
+#cashflowModal .cashflow-table tr.cashflow-highlight-asset > th,
+#cashflowModal .cashflow-table tr.cashflow-highlight-asset > td{
+  font-weight:600 !important;
+}
+
+#cashflowModal .cashflow-table tr.cashflow-highlight-tax > th{
+  font-weight:500 !important;
+}
+#cashflowModal .cashflow-table tr.cashflow-highlight-tax > td{
+  font-weight:400 !important;
+}
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -6029,8 +6203,8 @@ document.addEventListener("scroll", (ev)=>{
       <div class="withdrawal-preview-scroll">
       <div id="withdrawalRuleTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">取り崩し設定</div>
       <div class="withdrawal-rule-grid">
-        <div class="withdrawal-rule-note">※ 資産をどの考え方・順番で取り崩すかを設定します。</div>
-        <div class="withdrawal-rule-note">※ 設定した取り崩しルールは、通常計算・確率計算の両方で使われます。シート内の変更は保存前でもグラフへ反映され、キャンセルすると元に戻ります。</div>
+        <div class="withdrawal-rule-note">資産をどの考え方・順番で取り崩すかを設定します。</div>
+        <div class="withdrawal-rule-note">設定した取り崩しルールは、通常計算・確率計算の両方で使われます。シート内の変更は保存前でもグラフに反映されます。キャンセルすると元に戻ります。</div>
         <div class="withdrawal-rule-section">
           <div class="withdrawal-rule-section-title">設定内容</div>
           <div class="withdrawal-rule-fields">
@@ -6094,8 +6268,8 @@ document.addEventListener("scroll", (ev)=>{
             <div id="withdrawalRuleBucketSection" class="withdrawal-rule-field withdrawal-rule-hidden">
               <label for="withdrawalBucketTargetYears">短期バケツ目標年数</label><div class="input-unit"><input id="withdrawalBucketTargetYears" type="number" class="agebox" value="4" step="0.5" min="0"><span class="suffix">年分</span></div>
               <label for="withdrawalBucketFloorYears" style="margin-top:8px;">最低現金バッファ年数</label><div class="input-unit"><input id="withdrawalBucketFloorYears" type="number" class="agebox" value="1" step="0.5" min="0"><span class="suffix">年分</span></div>
-              <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 防衛ルールを使う</label>
-              <label for="withdrawalBucketDefenseMode" style="margin-top:8px;">防衛ルール方式</label><select id="withdrawalBucketDefenseMode"><option value="drawdown" selected>ドローダウン型</option><option value="annual_return">年間リターン閾値型</option></select>
+              <label class="inline-check" style="margin-top:8px;"><input id="withdrawalBucketDefenseOn" type="checkbox" checked> 防衛モードを使う</label>
+              <label for="withdrawalBucketDefenseMode" style="margin-top:8px;">防衛モード判定</label><select id="withdrawalBucketDefenseMode"><option value="drawdown" selected>ドローダウン型</option><option value="annual_return">年間リターン閾値型</option></select>
               <label id="withdrawalBucketDefenseThresholdLabel" for="withdrawalBucketDefenseThresholdPct" style="margin-top:8px;">発動ライン（高値比）</label><div class="input-unit"><input id="withdrawalBucketDefenseThresholdPct" type="number" class="ratebox" value="-20" step="0.1"><span class="suffix">%</span></div>
               <label for="withdrawalBucketDefenseRecoveryPct" style="margin-top:8px;">解除回復率</label><div class="input-unit"><input id="withdrawalBucketDefenseRecoveryPct" type="number" class="ratebox" value="95" step="0.1" min="0" max="200"><span class="suffix">%</span></div>
             </div>
@@ -6107,10 +6281,10 @@ document.addEventListener("scroll", (ev)=>{
               </select>
             </div>
             <div id="withdrawalOrderAutoSection" class="withdrawal-rule-field withdrawal-rule-field-wide">
-              <div class="withdrawal-rule-summary">以下の順で売却します。<br>1. 課税<br>2. その他<br>3. NISA<br>4. DC系<br><span class="small muted">同一区分内では、含み益率が低いものを優先し、さらに残高が大きいものを優先します。</span></div>
+              <div class="withdrawal-rule-summary">以下の順で売却します。<br>1. 課税<br>2. その他<br>3. NISA<br>4. DC系<br><span class="small muted">同一区分内では、売却時の税負担を抑えやすいように含み益率が低いものを優先し、同程度の場合は残高が大きいものを優先します。</span></div>
             </div>
             <div id="withdrawalOrderManualSection" class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden">
-              <div class="withdrawal-rule-note">現在の運用資産・今後の投資・積立投資を対象に、売却優先順を設定します。現在の運用資産で現在額 0 のものは表示せず、今後の投資は「開始前は売却不可」、積立投資は「形成済み残高のみ売却対象」として表示します。実際の売却時は、その年に売却可能なものの中から上位順で使います。 / 行左端のハンドルをドラッグして順番を変更できます。</div>
+              <div class="withdrawal-rule-note">現在の運用資産・今後の投資・積立投資を対象に、売却優先順を設定します。現在額0の運用資産は表示せず、今後の投資は開始後、積立投資は形成済み残高のみを売却対象とします。<br>実際の売却時は、その年に売却可能なものの中から上位順で使います。行左端のハンドルをドラッグして順番を変更できます。</div>
               <div class="withdrawal-compare-table-wrap withdrawal-order-manual-wrap">
                 <div id="withdrawalOrderDropLine" class="withdrawal-order-drop-line" aria-hidden="true"></div>
                 <table class="withdrawal-param-case-table">
@@ -6134,10 +6308,10 @@ document.addEventListener("scroll", (ev)=>{
               <button type="button" id="runWithdrawalCompareBtn" class="compact-btn split-btn-main">取り崩し比較</button>
               <button type="button" id="toggleWithdrawalCompareBtn" class="compact-btn split-btn-toggle" aria-label="取り崩し比較の開閉" aria-controls="withdrawalCompareContent" aria-expanded="false">▼</button>
             </div>
-            <span class="compare-header-note">（同一乱数で確率比較）</span>
+            <span class="compare-header-note">モンテカルロ法で将来資産を確率比較</span>
           </div>
           <div id="withdrawalCompareContent" class="withdrawal-compare-content" hidden>
-            <div id="withdrawalCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「取り崩し比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。</div>
+            <div id="withdrawalCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定し、上部の「取り崩し比較」を押すと、現在の確率設定とモンテカルロ法を使って、各ケースの将来資産の分布を確率的に比較します。条件差を公平に見るため、各ケースには同じ乱数列を使います。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
             <div class="withdrawal-compare-subcontrols">
               <div class="withdrawal-rule-field">
                 <label for="withdrawalCompareMode">比較モード</label>
@@ -6149,6 +6323,11 @@ document.addEventListener("scroll", (ev)=>{
               <div id="withdrawalCompareParamRuleField" class="withdrawal-rule-field withdrawal-rule-hidden">
                 <label for="withdrawalCompareParamRule">比較対象ルール</label>
                 <select id="withdrawalCompareParamRule">
+                  <option value="fixed_rate">定率取り崩し</option>
+                  <option value="fixed_amount">定額取り崩し</option>
+                  <option value="basic_annual">毎年分割取り崩し</option>
+                  <option value="basic_lump">一括全額取り崩し</option>
+                  <option value="basic_hybrid">一部一括＋残り分割</option>
                   <option value="current">固定年数バッファ型</option>
                   <option value="rebalance">目標配分リバランス型</option>
                   <option value="bucket">2バケツ戦略型</option>
@@ -6168,9 +6347,9 @@ document.addEventListener("scroll", (ev)=>{
                 </select>
               </div>
             </div>
-            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">※ 現在の確率設定で、選択した取り崩しルールの結果を同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
+            <div id="withdrawalCompareModeHelp" class="withdrawal-param-case-help">比較したい取り崩しルールを選択してください。重複選択はできません。1つ以上選択すると比較できます。</div>
             <div id="withdrawalCompareRuleEditor">
-              <div class="withdrawal-param-case-help">※ 比較したい取り崩しルールだけを選択してください。重複選択はできません。1つ以上選択すると比較を実行できます。</div>
+              <div class="withdrawal-param-case-help"></div>
               <div class="withdrawal-compare-table-wrap">
                 <table class="withdrawal-param-case-table">
                   <thead><tr><th>比較</th><th>取り崩しルール</th></tr></thead>
@@ -6180,7 +6359,7 @@ document.addEventListener("scroll", (ev)=>{
               <input id="withdrawalCompareRuleSelectionJson" type="hidden" value="">
             </div>
             <div id="withdrawalCompareParamEditor" class="withdrawal-rule-hidden">
-              <div class="withdrawal-param-case-help">※ 1つの比較パラメータだけを変え、他の取り崩し条件は固定したまま 2〜5 ケースを同じ乱数列で比較します。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。</div>
+              <div class="withdrawal-param-case-help">1つの比較パラメータだけを変え、他の取り崩し条件は固定したまま比較します。</div>
               <div class="withdrawal-compare-table-wrap">
                 <table class="withdrawal-param-case-table">
                   <thead><tr><th>ケース</th><th>値</th><th>単位</th></tr></thead>
@@ -6253,7 +6432,7 @@ document.addEventListener("scroll", (ev)=>{
                 <button type="button" id="runCrashCompareBtn" class="compact-btn split-btn-main">暴落比較</button>
                 <button type="button" id="toggleCrashCompareBtn" class="compact-btn split-btn-toggle" aria-label="暴落比較の開閉" aria-controls="crashCompareContent" aria-expanded="false">▼</button>
               </div>
-              <span class="compare-header-note">（同一乱数で確率比較）</span>
+              <span class="compare-header-note">確率（モンテカルロ）比較</span>
             </div>
             <div id="crashCompareContent" class="crash-compare-content" hidden>
               <div id="crashCompareStatus" class="withdrawal-compare-status" style="margin-top:10px;">比較条件を設定して「暴落比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。</div>
@@ -6361,7 +6540,7 @@ document.addEventListener("scroll", (ev)=>{
                 <button id="runMonteCompareBtn" type="button" class="compact-btn split-btn-main">確率比較</button>
                 <button id="toggleMonteCompareBtn" type="button" class="compact-btn split-btn-toggle" aria-label="確率比較の開閉" aria-expanded="false">▼</button>
               </div>
-              <span class="compare-header-note">（同一乱数で確率比較）</span>
+              <span class="compare-header-note">確率（モンテカルロ）比較</span>
             </div>
             <div id="monteCompareContent" class="withdrawal-compare-content" hidden>
               <div id="monteCompareSection">
@@ -6479,7 +6658,7 @@ document.addEventListener("scroll", (ev)=>{
       <div class="withdrawal-preview-scroll">
         <div id="chartAxisTitle" class="modal-text" style="font-weight:bold;margin:0 16px 10px;flex:0 0 auto;">グラフ軸設定</div>
         <div class="withdrawal-rule-grid">
-          <div class="chart-axis-note">通常の拡大・縮小・移動はグラフ上で行い、細かい表示範囲の指定はここで行います。PCは軸上ドラッグで軸別ズーム、グラフ内ドラッグで移動、ダブルクリックで初期表示に戻せます。スマホ／タブレットはピンチで拡大縮小、拡大後ドラッグで移動、ダブルタップで初期表示に戻せます。条件タブをクリックしたときも、その条件のグラフは初期表示に戻ります。</div>
+          <div class="chart-axis-note">通常の拡大・移動はグラフ上で行い、細かい表示範囲の指定はここで行います。PCでは、軸上ドラッグで軸別ズーム、グラフ内ドラッグで移動、ダブルクリックで初期表示に戻せます。スマホ／タブレットでは、ピンチで表示範囲を調整し、ドラッグで移動、ダブルタップで初期表示に戻せます。条件タブを選択すると、グラフは初期表示に戻ります。</div>
           <div class="chart-axis-section">
             <div class="chart-axis-section-title">表示範囲（このタブのみ）</div>
             <div class="chart-axis-fields-3">
@@ -6529,7 +6708,7 @@ document.addEventListener("scroll", (ev)=>{
     <div class="modal-card cashflow-modal" role="dialog" aria-modal="true" aria-labelledby="cashflowModalTitle">
       <div id="cashflowModalTitle" class="modal-text" style="font-weight:bold;margin-bottom:10px;">年度別収支表</div>
       <div class="cashflow-modal-grid">
-        <div class="cashflow-modal-note">現在表示中の条件について、社会保険料・税を含めた簡易の年度別収支表を表示します。前スレッドで調整した固定行・固定列・色・罫線・マスキング・スマホスクロール挙動をそのまま引き継いでいます。</div>
+        <div class="cashflow-modal-note">現在表示中の条件について、社会保険料・公的年金課税を含めた簡易の年度別収支を表示します。年次列は暦年単位（1月1日〜12月31日）で、初年度のみ基準日から年末までの期間です。</div>
         <div id="cashflowSummaryNote" class="stack-note"></div>
         <div class="cashflow-modal-unit-note">（金額の単位：万円）</div>
         <div class="cashflow-modal-shell">
@@ -6859,7 +7038,7 @@ document.addEventListener("scroll", (ev)=>{
           <button type="button" id="homeDetailBtn" class="loan-detail-btn" disabled>住宅ローン詳細設定</button>
         </div>
         <div class="loan-control-row">
-          <label><input id="inflLoan" type="checkbox"> インフレ率に基づき返済額上昇を仮定</label>
+          <label class="loan-inflation-check"><input id="inflLoan" type="checkbox"><span>インフレ率に基づき返済額上昇を仮定</span></label>
         </div>
       </div>
       <div id="loanSummary" class="loan-summary" aria-live="polite"></div>
@@ -6948,7 +7127,7 @@ document.addEventListener("scroll", (ev)=>{
 
     <div class="section">
       <h2>社会保険・年金課税</h2>
-      <div class="help">通常は初期設定のままで利用できます。実際の保険料・税額は自治体、年度、所得、世帯構成、各種控除により異なるため、必要な場合のみ詳細パラメータを調整してください。</div>
+      <div class="help">退職後に発生する社会保険料（国民年金・健康保険など）と、年金受給開始後の公的年金課税を設定します。現役期の社会保険料はここでは設定しません。通常は初期設定のままで利用できます。実際の保険料・税額は自治体、年度、所得、世帯構成、各種控除により異なるため、必要な場合のみ詳細パラメータを調整してください。</div>
       <div class="grid2">
         <div>
           <div class="subhead subhead-with-action"><span>社会保険料（標準推計）</span><button type="button" id="resetSocialSimpleBtn" class="subhead-action-btn">初期化</button></div>
@@ -6966,7 +7145,7 @@ document.addEventListener("scroll", (ev)=>{
             <tr><td>介護保険（65歳以上）</td><td><div class="input-unit center"><input id="socialNursingAnnual" type="number" class="moneybox" value="8" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
             <tr><td>後期高齢者医療（参考上限）</td><td><div class="input-unit center"><input id="socialLateElderlyAnnual" type="number" class="moneybox" value="12" step="0.1"><span class="suffix">万円 / 年 / 人</span></div></td></tr>
           </table>
-          <div class="help small">社会保険料は、国民年金、国保、介護保険、後期高齢者医療などを標準推計で概算します。<br>退職後健保の選択に応じて、国保簡易、任意継続、扶養、後期高齢者医療を簡易反映します。<br>実際の保険料は自治体・年度・所得・世帯構成・加入制度により異なります。<br>給与・賞与などの勤労収入は手取り入力を前提としているため、勤務中の健康保険料・厚生年金保険料は原則として別途計上しません。</div>
+          <div class="help small">社会保険料は、国民年金、国保、介護保険、後期高齢者医療などを標準推計で概算します。<br>退職後健保の選択に応じて、国保簡易、任意継続、扶養、後期高齢者医療を簡易反映します。<br>実際の保険料は自治体・年度・所得・世帯構成・加入制度により異なります。<br>勤労収入・事業収入などは手取り額で入力する前提のため、現役期の社会保険料は原則として別途計上しません。</div>
         </div>
         <div>
           <div class="subhead subhead-with-action"><span>公的年金課税（簡易）</span><button type="button" id="resetPensionTaxSimpleBtn" class="subhead-action-btn">初期化</button></div>
@@ -6977,7 +7156,7 @@ document.addEventListener("scroll", (ev)=>{
             <tr><td>住民税 基礎控除</td><td><div class="input-unit center"><input id="taxResidentBasicDeduction" type="number" class="moneybox" value="43" step="0.1"><span class="suffix">万円 / 人</span></div></td></tr>
             <tr><td>住民税率（簡易）</td><td><div class="input-unit center"><input id="taxResidentRatePct" type="number" class="ratebox" value="10" step="0.1"><span class="suffix">%</span></div></td></tr>
           </table>
-          <div class="help small">公的年金のみを簡易課税対象とし、その他収入は手取り入力済みとして扱います。<br>公的年金等控除、復興特別所得税、社会保険料控除、住民税所得割の非課税判定を簡易反映します。<br>実際の税額は、他所得、扶養・配偶者控除、住民税均等割、各種控除、自治体・年度・制度改正により異なります。</div>
+          <div class="help small">簡易課税では公的年金のみを課税対象とし、その他の収入は税引後の金額として扱います。<br>公的年金等控除、復興特別所得税、社会保険料控除、住民税所得割の非課税判定を簡易反映します。<br>実際の税額は、他所得、扶養・配偶者控除、住民税均等割、各種控除、自治体・年度・制度改正により異なります。</div>
         </div>
       </div>
     </div>
@@ -7043,14 +7222,14 @@ const CASHFLOW_TABLE_COLUMNS = [
   {label:"臨時支出", path:"expense.temporary"},
   {label:"支出合計(B)", path:"expense.total"},
   {label:"社会保険料", path:"social.total"},
-  {label:"　本人 社会保険料", path:"social.detail.self.total"},
+  {label:"　本人", path:"social.detail.self.total"},
   {label:"　　国民健康保険", path:"social.detail.self.nationalHealth"},
   {label:"　　健康保険", path:"social.detail.self.employeeHealth"},
   {label:"　　後期高齢者医療", path:"social.detail.self.lateElderlyHealth"},
   {label:"　　国民年金", path:"social.detail.self.nationalPension"},
   {label:"　　厚生年金", path:"social.detail.self.employeePension"},
   {label:"　　介護保険", path:"social.detail.self.nursingCare"},
-  {label:"　配偶者 社会保険料", path:"social.detail.spouse.total"},
+  {label:"　配偶者", path:"social.detail.spouse.total"},
   {label:"　　国民健康保険", path:"social.detail.spouse.nationalHealth"},
   {label:"　　健康保険", path:"social.detail.spouse.employeeHealth"},
   {label:"　　後期高齢者医療", path:"social.detail.spouse.lateElderlyHealth"},
@@ -7058,9 +7237,9 @@ const CASHFLOW_TABLE_COLUMNS = [
   {label:"　　厚生年金", path:"social.detail.spouse.employeePension"},
   {label:"　　介護保険", path:"social.detail.spouse.nursingCare"},
   {label:"所得税・住民税等", path:"tax.total"},
-  {label:"税社保合計", path:"cashflow.taxSocialTotal"},
+  {label:"税・社保合計", path:"cashflow.taxSocialTotal"},
   {label:"年間収支(A-B)", path:"cashflow.gross", className:"cashflow-posneg"},
-  {label:"税社保反映後収支", path:"cashflow.afterTaxSocial", className:"cashflow-posneg"},
+  {label:"税・社保反映後収支", path:"cashflow.afterTaxSocial", className:"cashflow-posneg"},
   {label:"資産運用：投資額", path:"investment.contribution"},
   {label:"資産運用：取崩し額", path:"investment.withdrawal"},
   {label:"生活費不足の売却額", path:"investment.sales.shortfall"},
@@ -9957,6 +10136,51 @@ function applyDefaultScalarInputs(){
   if(spouseAgeHidden) spouseAgeHidden.value = "35";
   if(inflRateInput) inflRateInput.value = "0.0";
 }
+function applyFreshScenarioDefaultPolicy(data = {}, counts = dynamicCounts){
+  const next = {...(data || {})};
+  const today = getTodayDateString();
+  const todayYear = parseDateInput(today)?.year || new Date().getFullYear();
+  next.baseDate = today;
+  next.currentBaseYear = String(todayYear);
+  next.selfBirthDate = getDefaultBirthDateForAge(today, 40);
+  next.spouseBirthDate = getDefaultBirthDateForAge(today, 35);
+  next.age = "40";
+  next.spouseAge = "35";
+  next.inflRate = next.inflRate == null || next.inflRate === "" ? "0.0" : next.inflRate;
+  next.simpleAutoInflLife1 = "1";
+  next.simpleAutoInflLife2 = "1";
+  next.simpleAutoInflRent1 = "1";
+  next.simpleAutoInflEdu = "1";
+  const lifeCount = Math.max(DEFAULT_ROW_COUNT.life || 1, normalizeDynamicCountValue(counts?.life));
+  for(let i=1;i<=lifeCount;i++) next[`life${i}_inflationOn`] = true;
+  const rentCount = Math.max(DEFAULT_ROW_COUNT.rent || 1, normalizeDynamicCountValue(counts?.rent));
+  for(let i=1;i<=rentCount;i++) next[`rent${i}_inflationOn`] = true;
+  next.inflEdu = true;
+  const childCount = Math.max(DEFAULT_ROW_COUNT.child || 1, normalizeDynamicCountValue(counts?.child));
+  for(let i=1;i<=childCount;i++){
+    next[`child${i}_enabled`] = false;
+    next[`child${i}_birthDate`] = today;
+    next[`child${i}_age`] = 0;
+    next[`child${i}_ageDisplay`] = calcAgeLabelFromBirthDate(today, today) || "0歳0ヶ月";
+    next[`child${i}_school`] = "年少未満";
+    next[`child${i}_schoolManual`] = "false";
+    next[`child${i}_allowanceOn`] = false;
+    next[`c${i}_detail_json`] = "";
+    setRowLabelMeta(next, "child", i, defaultRowLabel("child", i), false);
+  }
+  return next;
+}
+function clearScenarioScopedInputsForFreshDefault(){
+  document.querySelectorAll("input, select").forEach(el=>{
+    if(!el.id) return;
+    const inSimplePanel = !!(el.closest && el.closest("#simpleModePanel"));
+    const inSimpleBasicInfo = !!(el.closest && el.closest("#basicInfoSection"));
+    const inExcludedModal = !!(el.closest && (el.closest("#loanDetailModal") || el.closest("#loanDetailConflictModal") || el.closest("#incomeCurveModal") || el.closest("#pensionHelperModal") || el.closest("#educationDetailModal") || el.closest("#insuranceAssistModal") || el.closest("#crashTestModal") || el.closest("#fireDiagnosisModal") || el.closest("#monteCarloSettingsModal") || el.closest("#chartAxisModal") || el.closest("#cashflowModal")));
+    if((inSimplePanel && !inSimpleBasicInfo) || inExcludedModal) return;
+    if(el.type === "checkbox" || el.type === "radio") el.checked = false;
+    else el.value = "";
+  });
+}
 function createDefaultScenarioData(){
   DYNAMIC_SECTIONS.forEach(type=>{ dynamicCounts[type] = DEFAULT_ROW_COUNT[type] || 1; });
   applyDefaultScalarInputs();
@@ -9964,7 +10188,7 @@ function createDefaultScenarioData(){
   syncAllBirthDateDerivedFields();
   syncSimpleModeSumInvAutoAgesInDOM();
   updatePeriodDisplays();
-  return migrateLegacyData(getAllInputs());
+  return applyFreshScenarioDefaultPolicy(migrateLegacyData(getAllInputs()), dynamicCounts);
 }
 function getDefaultScenarioTemplate(){
   if(!defaultScenarioTemplate){
@@ -9993,7 +10217,8 @@ function buildDefaultScenarioDataForDynamicCounts(targetCounts = dynamicCounts){
   DYNAMIC_SECTIONS.forEach(type=>{
     counts[type] = Math.max(DEFAULT_ROW_COUNT[type] || 1, normalizeDynamicCountValue(targetCounts?.[type]));
   });
-  const baseData = getDefaultScenarioTemplate();
+  const baseData = applyFreshScenarioDefaultPolicy(getDefaultScenarioTemplate(), counts);
+  clearScenarioScopedInputsForFreshDefault();
   dynamicCounts = {...counts};
   renderDynamicSections(baseData);
   applyDataValuesToExistingInputs(baseData);
@@ -10011,7 +10236,7 @@ function buildDefaultScenarioDataForDynamicCounts(targetCounts = dynamicCounts){
   syncSimpleModeSumInvAutoAgesInDOM();
   updatePeriodDisplays();
   updateChildAllowanceSummary();
-  return migrateLegacyData(getAllInputs());
+  return applyFreshScenarioDefaultPolicy(migrateLegacyData(getAllInputs()), counts);
 }
 
 function buildSchoolSelect(id, value){
@@ -13546,6 +13771,7 @@ function setAllInputs(data, options = {}){
     if(el.type === "checkbox" || el.type === "radio") el.checked = parseStoredCheckboxValue(val, false);
     else el.value = val;
   });
+  applySimpleAutoInflManagedDefaultsToDOM(migrated);
   if(options?.resetTabScopedControls) applyTabScopedControlsAfterSetAllInputs(migrated);
   __setAllInputsMark('applyValues', {entries:__valueEntries, applied:__valueApplied});
   updateEducationGridChildEnabledStates();
@@ -14172,9 +14398,9 @@ const SIMPLE_MODE_BLOCKS = [
     title:"現役期",
     note:"退職前の収支を簡易に調整します。",
     fields:[
-      {key:"salaryMonth", label:"退職までの手取り（月）", unit:"万円 / 月", min:0, max:200, step:1, help:"手取りをカスタム設定中は、簡単モードでは変更できません。"},
-      {key:"bonusYear", label:"退職までのボーナス（年・手取り）", unit:"万円 / 年", min:0, max:400, step:1, help:"ボーナスをカスタム設定中は、簡単モードでは変更できません。"},
-      {key:"lifeBefore", label:"退職までの生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1, help:"生活費には家賃・教育費を含めません。子どもの人数・年齢に応じた標準的な教育費は、自動的に計算に含まれます。"},
+      {key:"salaryMonth", label:"手取り（月）", unit:"万円 / 月", min:0, max:200, step:1, help:"手取りをカスタム設定中は、簡単モードでは変更できません。"},
+      {key:"bonusYear", label:"ボーナス（年・手取り）", unit:"万円 / 年", min:0, max:400, step:1, help:"ボーナスをカスタム設定中は、簡単モードでは変更できません。"},
+      {key:"lifeBefore", label:"現役期の生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1, help:"生活費には家賃・教育費を含めません。子どもの人数・年齢に応じた標準的な教育費は、自動的に計算に含まれます。"},
       {key:"rent", label:"家賃（現役期・老後共通）", unit:"万円 / 月", min:0, max:50, step:0.5, help:"家賃は現役期・老後共通です。"}
     ]
   },
@@ -14218,6 +14444,19 @@ const SIMPLE_AUTO_INFL_FLAG_IDS = {
   rent1:"simpleAutoInflRent1",
   edu:"simpleAutoInflEdu"
 };
+function normalizeSimpleAutoInflFlagValue(value){
+  return (value === false || value === 0 || String(value) === "0" || String(value).toLowerCase() === "false") ? "0" : "1";
+}
+function applySimpleAutoInflManagedDefaultsToDOM(data = {}){
+  const source = data && typeof data === "object" ? data : {};
+  Object.values(SIMPLE_AUTO_INFL_FLAG_IDS).forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(Object.prototype.hasOwnProperty.call(source, id)) el.value = normalizeSimpleAutoInflFlagValue(source[id]);
+    else el.value = "1";
+    el.setAttribute("value", el.value);
+  });
+}
 const SIMPLE_MODE_NON_TAXABLE_ACCOUNT_TYPES = new Set(["つみたてNISA","成長NISA","iDeCo","企業型DC"]);
 let simpleAutoInflSyncInProgress = false;
 
@@ -14343,13 +14582,47 @@ function isSimpleInflationEnabled(rateValue = null){
   const n = rateValue == null ? numInput("inflRate", 0) : numValue(rateValue, 0);
   return Math.abs(n) > 0.0000001;
 }
+const SIMPLE_AUTO_INFL_TARGETS = [
+  {flag:"life1", inputId:"life1_inflationOn", dataKey:"life1_inflationOn"},
+  {flag:"life2", inputId:"life2_inflationOn", dataKey:"life2_inflationOn"},
+  {flag:"rent1", inputId:"rent1_inflationOn", dataKey:"rent1_inflationOn"},
+  {flag:"edu", inputId:"inflEdu", dataKey:"inflEdu"}
+];
+function applySimpleManagedInflationOnToData(data, rateValue = null){
+  if(!data || !isSimpleInflationEnabled(rateValue)) return false;
+  let changed = false;
+  SIMPLE_AUTO_INFL_TARGETS.forEach(target=>{
+    if(!isSimpleAutoInflManaged(target.flag)) return;
+    const flagId = SIMPLE_AUTO_INFL_FLAG_IDS[target.flag];
+    if(flagId && data[flagId] !== "1"){
+      data[flagId] = "1";
+      changed = true;
+    }
+    if(data[target.dataKey] !== true){
+      data[target.dataKey] = true;
+      changed = true;
+    }
+  });
+  return changed;
+}
 function syncSimpleInflationCheckboxesFromRate(rateValue = null){
-  const enabled = isSimpleInflationEnabled(rateValue);
+  // 既存タブ表示時・タブ切替時には、保存済みの反映チェック状態を勝手に変更しない。
+  // フレッシュスタート／＋新規タブは applyFreshScenarioDefaultPolicy() で明示的にONにする。
+  // 簡単モードでインフレ率を0以外へ変更した時だけ、連動管理中の項目をONにする。
+  if(rateValue != null && scenarios.length && currentTab >= 0 && scenarios[currentTab]){
+    applySimpleAutoInflManagedDefaultsToDOM(scenarios[currentTab].data || {});
+  }
+  if(rateValue == null || !isSimpleInflationEnabled(rateValue)) return;
   withSimpleAutoInflSync(()=>{
-    if(isSimpleAutoInflManaged("life1")) setCheckboxValue("life1_inflationOn", enabled);
-    if(isSimpleAutoInflManaged("life2")) setCheckboxValue("life2_inflationOn", enabled);
-    if(isSimpleAutoInflManaged("rent1")) setCheckboxValue("rent1_inflationOn", enabled);
-    if(isSimpleAutoInflManaged("edu")) setCheckboxValue("inflEdu", enabled);
+    SIMPLE_AUTO_INFL_TARGETS.forEach(target=>{
+      if(isSimpleAutoInflManaged(target.flag)) setCheckboxValue(target.inputId, true);
+    });
+    if(scenarios.length && currentTab >= 0 && scenarios[currentTab]){
+      const data = scenarios[currentTab].data || {};
+      if(applySimpleManagedInflationOnToData(data, rateValue)){
+        scenarios[currentTab].data = data;
+      }
+    }
   });
 }
 function getSimpleModeDisplayDigits(def){
@@ -14947,6 +15220,10 @@ function patchCurrentScenarioDataForSimpleModeRangeKey(key){
       changed = true;
     }
   });
+  if(key === "inflRate"){
+    const inflSourceValue = getSimpleModePatchInputValue("inflRate");
+    if(applySimpleManagedInflationOnToData(nextData, inflSourceValue)) changed = true;
+  }
   if(!changed){
     return {applied:true, key, patchedKeys:dataKeys, changed:false};
   }
@@ -15773,13 +16050,23 @@ function updateInputModeUI(){
 }
 function addTab(){
   const hadNoScenarios = !scenarios.length;
+  const inheritedXAxisLabelMode = hadNoScenarios ? "age" : String(document.getElementById("xAxisLabelMode")?.value || scenarios.find(sc=>sc && (sc.xAxisLabelMode || sc.data?.xAxisLabelMode))?.xAxisLabelMode || scenarios.find(sc=>sc && (sc.xAxisLabelMode || sc.data?.xAxisLabelMode))?.data?.xAxisLabelMode || "age");
   if(!hadNoScenarios) ensureScenarioSaved();
   normalizeScenarioNames();
   const baseData = buildDefaultScenarioDataForDynamicCounts(getCurrentDynamicCountsForNewScenario());
+  withdrawalCompareCache = null;
+  baseData.xAxisLabelMode = inheritedXAxisLabelMode;
   const insertIndex = hadNoScenarios ? 0 : Math.min(Math.max(currentTab + 1, 0), scenarios.length);
   const nextScenario = createScenarioRecord(baseData, nextScenarioSerial);
+  nextScenario.xAxisLabelMode = inheritedXAxisLabelMode;
+  if(nextScenario.data) nextScenario.data.xAxisLabelMode = inheritedXAxisLabelMode;
   nextScenarioSerial += 1;
   scenarios.splice(insertIndex, 0, nextScenario);
+  if(Array.isArray(scenarios)){
+    scenarios.forEach(sc=>{ if(!sc) return; sc.xAxisLabelMode = inheritedXAxisLabelMode; if(sc.data) sc.data.xAxisLabelMode = inheritedXAxisLabelMode; });
+  }
+  const xAxisLabelModeEl = document.getElementById("xAxisLabelMode");
+  if(xAxisLabelModeEl) xAxisLabelModeEl.value = inheritedXAxisLabelMode;
   syncWorkspaceOverlayAfterScenarioMutation();
   if(hadNoScenarios){
     currentTab = insertIndex;
@@ -15789,6 +16076,8 @@ function addTab(){
     currentTab = insertIndex;
   }
   enforceOverlaySafeActiveScenario(currentTab, {syncInputs:true});
+  const xAxisLabelModeAfterSync = document.getElementById("xAxisLabelMode");
+  if(xAxisLabelModeAfterSync) xAxisLabelModeAfterSync.value = inheritedXAxisLabelMode;
   updateInputsVisibility();
   renderTabs();
 }
@@ -22722,9 +23011,9 @@ function formatCashflowDisplayValue(value, type='money'){
 function getCashflowRowHighlightClass(label){
   if(label === '収入合計(A)') return 'cashflow-highlight-income';
   if(label === '支出合計(B)') return 'cashflow-highlight-expense';
-  if(label === '年間収支(A-B)' || label === '税社保反映後収支' || label === '年末の現預金額') return 'cashflow-highlight-balance';
+  if(label === '年間収支(A-B)' || label === '税・社保反映後収支' || label === '年末の現預金額') return 'cashflow-highlight-balance';
   if(label === '所得税・住民税等') return '';
-  if(label === '税社保合計' || String(label || '').includes('税金') || String(label || '').includes('所得税') || String(label || '').includes('住民税') || String(label || '').includes('源泉税')) return 'cashflow-highlight-tax';
+  if(label === '税・社保合計' || label === '売却税' || String(label || '').includes('税金') || String(label || '').includes('所得税') || String(label || '').includes('住民税') || String(label || '').includes('源泉税')) return 'cashflow-highlight-tax';
   if(label === '年末の総資産額') return 'cashflow-highlight-asset';
   return '';
 }
@@ -22862,10 +23151,15 @@ function renderCashflowTable(sim){
     const last = rows[rows.length - 1];
     const firstWindow = first?.meta?.calendarWindow;
     const lastWindow = last?.meta?.calendarWindow;
+    const formatCashflowNoteDate = value=>{
+      const parsed = parseDateInput(value);
+      if(!parsed) return value || '';
+      return `${parsed.year}年${parsed.month}月${parsed.day}日`;
+    };
     const periodText = rows.length
-      ? `${firstWindow?.start || ((first?.year ?? '') + '年')}〜${lastWindow?.end || ((last?.year ?? '') + '年')}`
+      ? `${formatCashflowNoteDate(firstWindow?.start) || ((first?.year ?? '') + '年')}〜${formatCashflowNoteDate(lastWindow?.end) || ((last?.year ?? '') + '年')}`
       : '';
-    note.textContent = rows.length ? `表示期間：${periodText} / 年次列：各暦年（初年度のみ基準日から年末まで） / 取り崩しルール：${getWithdrawalRuleLabel(first?.meta?.withdrawalRule?.mode)} / 防御ルール：${first?.meta?.withdrawalRule?.defensiveLabel || 'なし'} / 本人年齢を固定表示し、配偶者年齢・子ども年齢は色分け表示しています。` : '';
+    note.textContent = rows.length ? `表示期間：${periodText}` : '';
   }
   requestAnimationFrame(()=>{ updateCashflowColumnSizing(); updateCashflowStickyOffsets(); syncCashflowTopScrollbar(); });
 }
@@ -29333,25 +29627,67 @@ const WITHDRAWAL_COMPARE_RULE_DEF_MAP = WITHDRAWAL_COMPARE_RULE_DEFS.reduce((acc
   return acc;
 }, {});
 const WITHDRAWAL_COMPARE_RULE_SLOT_COUNT = 5;
+const WITHDRAWAL_START_PARAM_DEFS = [
+  {key:'startFixedAge', label:'取り崩し開始年齢', unit:'歳', step:1, min:0, max:120, fallback:65, caseValues:{2:[65,70],3:[60,65,70],4:[60,65,70,75],5:[55,60,65,70,75]}, fixedPolicy:{startConditionMode:'fixed_age'}, format:(v)=>`${formatNumberJP(v, 0)}歳`},
+  {key:'startCashBufferYears', label:'開始判定の現金年数', unit:'年分', step:0.5, min:0, max:20, fallback:2, caseValues:{2:[2,3],3:[1,2,3],4:[1,2,3,4],5:[0.5,1,2,3,4]}, fixedPolicy:{startConditionMode:'cash_buffer_threshold'}, format:(v)=>`${formatNumberJP(v, 1)}年分`}
+];
 const WITHDRAWAL_PARAMETER_COMPARE_RULES = {
+  fixed_rate:{
+    label:'定率取り崩し',
+    params:[
+      ...WITHDRAWAL_START_PARAM_DEFS,
+      {key:'fixedRatePct', label:'年間取り崩し率', unit:'%', step:0.1, min:0, max:20, fallback:4, displayScale:100, caseValues:{2:[4,5],3:[3,4,5],4:[3,4,5,6],5:[2,3,4,5,6]}, format:(v)=>`${formatNumberJP(v, 1)}%`}
+    ]
+  },
+  fixed_amount:{
+    label:'定額取り崩し',
+    params:[
+      ...WITHDRAWAL_START_PARAM_DEFS,
+      {key:'fixedAmountYearly', label:'年間取り崩し額', unit:'万円/年', step:10, min:0, max:10000, fallback:300, caseValues:{2:[300,420],3:[180,300,420],4:[180,300,420,540],5:[180,240,300,360,420]}, format:(v)=>`${formatNumberJP(v, 0)}万円/年`}
+    ]
+  },
+  basic_annual:{
+    label:'毎年分割取り崩し',
+    params:[
+      ...WITHDRAWAL_START_PARAM_DEFS,
+      {key:'basicAnnualPeriodYears', label:'分割取り崩し年数', unit:'年', step:1, min:0, max:80, fallback:25, caseValues:{2:[25,35],3:[15,25,35],4:[15,25,35,45],5:[15,20,25,30,35]}, format:(v)=>`${formatNumberJP(v, 0)}年`}
+    ]
+  },
+  basic_lump:{
+    label:'一括全額取り崩し',
+    params:[
+      ...WITHDRAWAL_START_PARAM_DEFS
+    ]
+  },
+  basic_hybrid:{
+    label:'一部一括＋残り分割',
+    params:[
+      ...WITHDRAWAL_START_PARAM_DEFS,
+      {key:'basicHybridLumpAmount', label:'一括取り崩し額', unit:'万円', step:100, min:0, max:100000, fallback:0, caseValues:{2:[0,1000],3:[0,500,1000],4:[0,500,1000,1500],5:[0,500,1000,1500,2000]}, format:(v)=>`${formatNumberJP(v, 0)}万円`},
+      {key:'basicHybridPeriodYears', label:'分割取り崩し年数', unit:'年', step:1, min:0, max:80, fallback:20, caseValues:{2:[20,30],3:[10,20,30],4:[10,20,30,40],5:[10,15,20,25,30]}, format:(v)=>`${formatNumberJP(v, 0)}年`}
+    ]
+  },
   current:{
     label:'固定年数バッファ型',
     params:[
-      {key:'currentBufferYears', label:'現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:2, format:(v)=>`${formatNumberJP(v, 1)}年分`}
+      {key:'currentBufferYears', label:'現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:2, caseValues:{2:[2,3],3:[1,2,3],4:[1,2,3,4],5:[0.5,1,2,3,4]}, format:(v)=>`${formatNumberJP(v, 1)}年分`}
     ]
   },
   rebalance:{
     label:'目標配分リバランス型',
     params:[
-      {key:'rebalanceBufferYears', label:'最低現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`},
-      {key:'rebalanceCashPct', label:'目標現金比率', unit:'%', step:1, min:0, max:100, fallback:20, displayScale:100, format:(v)=>`${formatNumberJP(v, 0)}%`}
+      {key:'rebalanceBufferYears', label:'最低現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:1, caseValues:{2:[1,2],3:[0.5,1,2],4:[0.5,1,2,3],5:[0.5,1,2,3,4]}, format:(v)=>`${formatNumberJP(v, 1)}年分`},
+      {key:'rebalanceCashPct', label:'目標現金比率', unit:'%', step:1, min:0, max:100, fallback:20, displayScale:100, caseValues:{2:[20,30],3:[10,20,30],4:[10,20,30,40],5:[0,10,20,30,40]}, format:(v)=>`${formatNumberJP(v, 0)}%`}
     ]
   },
   bucket:{
     label:'2バケツ戦略型',
     params:[
-      {key:'bucketTargetYears', label:'短期バケツ目標年数', unit:'年分', step:0.5, min:0, max:20, fallback:4, format:(v)=>`${formatNumberJP(v, 1)}年分`},
-      {key:'bucketFloorYears', label:'最低現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:1, format:(v)=>`${formatNumberJP(v, 1)}年分`}
+      {key:'bucketTargetYears', label:'短期バケツ目標年数', unit:'年分', step:0.5, min:0, max:20, fallback:4, caseValues:{2:[4,6],3:[2,4,6],4:[2,4,6,8],5:[1,2,4,6,8]}, format:(v)=>`${formatNumberJP(v, 1)}年分`},
+      {key:'bucketFloorYears', label:'最低現金バッファ年数', unit:'年分', step:0.5, min:0, max:20, fallback:1, caseValues:{2:[1,2],3:[0.5,1,2],4:[0.5,1,2,3],5:[0.5,1,2,3,4]}, hiddenWhen:(policy)=>policy?.bucketDefenseOn === false, format:(v)=>`${formatNumberJP(v, 1)}年分`},
+      {key:'bucketDefenseThresholdDrawdown', field:'bucketDefenseThreshold', label:'発動ライン（高値比）', unit:'%', step:0.1, min:-95, max:0, fallback:-20, displayScale:100, caseValues:{2:[-20,-30],3:[-10,-20,-30],4:[-10,-20,-30,-40],5:[-10,-15,-20,-25,-30]}, hiddenWhen:(policy)=>policy?.bucketDefenseOn === false || policy?.bucketDefenseMode === 'annual_return', format:(v)=>`${formatNumberJP(v, 1)}%`},
+      {key:'bucketDefenseThresholdAnnual', field:'bucketDefenseThreshold', label:'発動ライン（年次リターン）', unit:'%', step:0.1, min:-100, max:0, fallback:-15, displayScale:100, caseValues:{2:[-15,-25],3:[-5,-15,-25],4:[-5,-15,-25,-35],5:[-5,-10,-15,-20,-25]}, hiddenWhen:(policy)=>policy?.bucketDefenseOn === false || policy?.bucketDefenseMode !== 'annual_return', format:(v)=>`${formatNumberJP(v, 1)}%`},
+      {key:'bucketDefenseRecoveryPct', label:'解除回復率', unit:'%', step:0.1, min:0, max:200, fallback:95, displayScale:100, caseValues:{2:[95,100],3:[90,95,100],4:[85,90,95,100],5:[85,90,95,100,105]}, hiddenWhen:(policy)=>policy?.bucketDefenseOn === false, format:(v)=>`${formatNumberJP(v, 1)}%`}
     ]
   }
 };
@@ -29729,15 +30065,23 @@ function formatNumberJP(value, decimals=1){
 function getWithdrawalCompareMode(){
   return document.getElementById('withdrawalCompareMode')?.value === 'parameter' ? 'parameter' : 'rule';
 }
-function getWithdrawalParameterDefinitions(ruleMode){
-  return WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.params || [];
+function getWithdrawalParameterFieldKey(paramDef){
+  return paramDef?.field || paramDef?.key || '';
 }
-function getWithdrawalParameterDefinition(ruleMode, paramKey){
-  return getWithdrawalParameterDefinitions(ruleMode).find(def=>def.key === paramKey) || null;
+function getWithdrawalParameterDefinitions(ruleMode, policyOverride=null){
+  const policy = policyOverride || getScenarioFromDOM()?.withdrawalPolicy || {};
+  return (WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.params || []).filter(def=>!(typeof def.hiddenWhen === 'function' && def.hiddenWhen(policy)));
+}
+function getWithdrawalParameterDefinition(ruleMode, paramKey, policyOverride=null){
+  return getWithdrawalParameterDefinitions(ruleMode, policyOverride).find(def=>def.key === paramKey) || null;
+}
+function getWithdrawalParameterLabel(paramDef){
+  return typeof paramDef?.label === 'function' ? paramDef.label(getScenarioFromDOM()?.withdrawalPolicy || {}) : (paramDef?.label || '');
 }
 function getWithdrawalPolicyFieldCurrentValue(policy, paramDef){
   if(!paramDef) return 0;
-  const raw = Number(policy?.[paramDef.key]);
+  const fieldKey = getWithdrawalParameterFieldKey(paramDef);
+  const raw = Number(policy?.[fieldKey]);
   if(Number.isFinite(raw)) return normalizeWithdrawalParamValue(convertWithdrawalParamStoredToDisplay(raw, paramDef), paramDef);
   return Number(paramDef.fallback || 0) || 0;
 }
@@ -29767,6 +30111,10 @@ function convertWithdrawalParamDisplayToStored(value, paramDef){
 }
 function buildDefaultWithdrawalParamValues(baseValue, paramDef, count){
   const desired = Math.max(2, Math.min(5, Number(count) || 3));
+  const set = paramDef?.caseValues?.[desired];
+  if(Array.isArray(set) && set.length){
+    return set.slice(0, desired).map(v=>normalizeWithdrawalParamValue(v, paramDef));
+  }
   const base = normalizeWithdrawalParamValue(baseValue, paramDef);
   const step = Math.max(0.0001, Number(paramDef?.step) || 1);
   const min = Number.isFinite(Number(paramDef?.min)) ? Number(paramDef.min) : -Infinity;
@@ -29872,7 +30220,7 @@ function ensureWithdrawalParameterOptions(){
   const ruleMode = ruleSelect.value || 'current';
   const defs = getWithdrawalParameterDefinitions(ruleMode);
   const currentValue = paramSelect.value;
-  paramSelect.innerHTML = defs.map(def=>`<option value="${escapeAttr(def.key)}">${escapeHtml(def.label)}</option>`).join('');
+  paramSelect.innerHTML = defs.map(def=>`<option value="${escapeAttr(def.key)}">${escapeHtml(getWithdrawalParameterLabel(def))}</option>`).join('');
   const nextValue = defs.some(def=>def.key === currentValue) ? currentValue : (defs[0]?.key || '');
   paramSelect.value = nextValue;
 }
@@ -29927,8 +30275,8 @@ function getWithdrawalComparisonCases(cfgBase){
       return {
         mode:ruleMode,
         label:item?.label || `ケース${idx + 1}`,
-        fullLabel:`${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} / ${paramDef.label} ${paramDef.format ? paramDef.format(value) : value}`,
-        policyOverride:{mode:ruleMode, [paramKey]:convertWithdrawalParamDisplayToStored(value, paramDef)}
+        fullLabel:`${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} / ${getWithdrawalParameterLabel(paramDef)} ${paramDef.format ? paramDef.format(value) : value}`,
+        policyOverride:{mode:ruleMode, ...(paramDef.fixedPolicy || {}), [getWithdrawalParameterFieldKey(paramDef)]:convertWithdrawalParamDisplayToStored(value, paramDef)}
       };
     });
   }
@@ -30018,7 +30366,7 @@ function updateWithdrawalCompareModeUI(){
   }
   const status = document.getElementById('withdrawalCompareStatus');
   if(status && !withdrawalCompareCache){
-    status.textContent = '比較条件を設定して「取り崩し比較」を押すと、条件差を公平に見るため各ケースに同じ乱数列を使って比較します。';
+    status.textContent = '比較条件を設定し、上部の「取り崩し比較」を押すと、現在の確率設定とモンテカルロ法を使って、各ケースの将来資産の分布を確率的に比較します。条件差を公平に見るため、各ケースには同じ乱数列を使います。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。';
     const body = document.getElementById('withdrawalCompareBody');
     if(body) body.innerHTML = '';
     setWithdrawalCompareResultsVisible(false);
@@ -32717,7 +33065,7 @@ function renderWithdrawalComparisonResults(results){
         const ruleMode = document.getElementById('withdrawalCompareParamRule')?.value || 'current';
         const paramKey = document.getElementById('withdrawalCompareParamKey')?.value || '';
         const paramDef = getWithdrawalParameterDefinition(ruleMode, paramKey);
-        status.textContent = `同一乱数列で、${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} の ${paramDef?.label || 'パラメータ'} を変えた ${results.length} ケースを比較しました。`;
+        status.textContent = `同一乱数列で、${WITHDRAWAL_PARAMETER_COMPARE_RULES[ruleMode]?.label || ''} の ${getWithdrawalParameterLabel(paramDef) || 'パラメータ'} を変えた ${results.length} ケースを比較しました。`;
       }else if(results.length <= 1){
         status.textContent = '同一乱数列で、選択した 1 つの取り崩しルールの結果を表示しました。';
       }else{
@@ -33249,6 +33597,17 @@ function updateWithdrawalBucketDefenseModeUI(){
     }
   }
   if(modeEl) modeEl.dataset.previousMode = mode;
+  updateWithdrawalBucketDefenseEnabledUI();
+}
+function setWithdrawalBucketDefenseControlDisabled(id, disabled){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.disabled = !!disabled;
+  el.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+}
+function updateWithdrawalBucketDefenseEnabledUI(){
+  const defenseOn = !!document.getElementById('withdrawalBucketDefenseOn')?.checked;
+  ['withdrawalBucketDefenseMode','withdrawalBucketDefenseThresholdPct','withdrawalBucketDefenseRecoveryPct'].forEach(id=>setWithdrawalBucketDefenseControlDisabled(id, !defenseOn));
 }
 function renderWithdrawalRuleSummary(){
   const box = document.getElementById('withdrawalRuleSummary');
@@ -33277,10 +33636,10 @@ function renderWithdrawalRuleSummary(){
   else if(mode === 'basic_lump') html = `<strong>一括全額取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点で、その時点の運用資産を全額取り崩します。`;
   else if(mode === 'basic_hybrid') html = `<strong>一部一括＋残り分割</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点に ${formatNumberJP(basicHybridLumpAmount, 1)} 万円を一括で取り崩し、残額はその時点の運用資産残高をもとに自動計算して、翌年から ${basicHybridPeriodYears} 年間で均等に分割して取り崩します。`;
   else if(mode === 'rebalance') html = `<strong>目標配分リバランス型</strong><br>生活費 ${rebalanceYears} 年分を最低現金として持ちつつ、年末に現金比率 ${cashPct}% を目標に不足分を投資資産から補充します。`;
-  else if(mode === 'bucket') html = `<strong>2バケツ戦略型</strong><br>短期 = 預貯金・安全資産、中長期 = 売却候補となる投資資産全体です。平常時は短期を ${formatNumberJP(bucketTarget, 1)} 年分まで補充し、防衛時は最低現金バッファ年数 ${formatNumberJP(bucketFloor, 1)} 年分までに抑えます。防衛中でも支払いに必要な現金が足りない場合は売却します。` + (defenseOn ? ` 防衛ルール方式は ${defenseMode === 'annual_return' ? '年間リターン閾値型' : 'ドローダウン型'}、発動ラインは ${formatNumberJP(defensePct, 1)}%、解除回復率は ${formatNumberJP(defenseRecoveryPct, 1)}% です。<br><span class="small muted">${defenseMode === 'annual_return' ? '年間リターン閾値型: 年間の投資資産リターンがこの値以下になった年に防衛へ入ります。' : 'ドローダウン型: 中長期投資資産全体が過去ピーク比でこの値以上下落したら防衛へ入ります。'} 解除回復率は、防衛解除の基準となる回復率です。</span>` : ' 防衛ルールは使いません。');
+  else if(mode === 'bucket') html = `<strong>2バケツ戦略型</strong><br>2バケツ戦略は、生活費に近いお金を「短期バケツ」（預貯金・安全資産）に置き、値動きのある投資資産を「中長期バケツ」として運用する考え方です。平常時は、生活費を主に短期バケツから支払い、減った分を中長期バケツの投資資産を売却して ${formatNumberJP(bucketTarget, 1)} 年分まで補充します。<br><br>相場が大きく下落した場合は、安値での投資資産売却を抑えるため、防衛モードに入ります。防衛中は、短期バケツの補充を最低現金バッファ ${formatNumberJP(bucketFloor, 1)} 年分までにとどめます。ただし、防衛中でも支払いに必要な現金が不足する場合は、売却候補となる投資資産から売却します。` + (defenseOn ? `<br><br>防衛モード判定：${defenseMode === 'annual_return' ? '年間リターン閾値型' : 'ドローダウン型'}<br>${defenseMode === 'annual_return' ? `中長期バケツの年間リターンが ${formatNumberJP(defensePct, 1)}% 以下になると防衛モードに入り、防衛開始時の基準額の ${formatNumberJP(defenseRecoveryPct, 1)}% まで回復すると防衛モードを解除します。` : `中長期バケツが過去ピーク比で ${formatNumberJP(defensePct, 1)}% 以上下落すると防衛モードに入り、${formatNumberJP(defenseRecoveryPct, 1)}% まで回復すると防衛モードを解除します。`}` : '<br><br>防衛モードは使いません。');
   else if(mode === 'current') html = `<strong>固定年数バッファ型</strong><br>生活費 ${currentYears} 年分の現金バッファを固定的に維持し、不足したら投資資産から補充します。主要生活支出には、生活費・住居費・保険料・定期支出・教育費の継続部分などを含み、臨時支出や入学一時金などの単発費用は含みません。`;
   else html = `<strong>毎年分割取り崩し</strong><br>計画取り崩し開始条件: ${escapeHtml(startSummary)}。条件を満たした最初の年の開始時点の運用資産残高をもとに、${basicAnnualPeriodYears} 年で均等に分割した金額を自動計算し、各年の開始時点に取り崩します。`;
-  html += `<br><span class="small muted">売却順序: ${orderMode === 'manual' ? '手動' : '自動（課税 → その他 → NISA → DC系。同一区分内では含み益率が低いもの優先、さらに残高が大きいもの優先）'}</span>`;
+  html += `<br><span class="small muted">売却順序: ${orderMode === 'manual' ? '手動' : '自動（課税 → その他 → NISA → DC系。同一区分内では売却時の税負担を抑えやすいように含み益率が低いものを優先し、同程度の場合は残高が大きいものを優先）'}</span>`;
   box.innerHTML = html;
 }
 function updateWithdrawalRuleModalUI(){
@@ -34693,7 +35052,7 @@ document.getElementById("withdrawalBucketDefenseOn")?.addEventListener("change",
 ["withdrawalBasicAnnualStartAge","withdrawalBasicAnnualPeriodYears","withdrawalBasicLumpAge","withdrawalBasicHybridStartAge","withdrawalBasicHybridLumpAmount","withdrawalBasicHybridPeriodYears","withdrawalCurrentBufferYears","withdrawalRebalanceBufferYears","withdrawalRebalanceCashPct","withdrawalBucketTargetYears","withdrawalBucketFloorYears","withdrawalBucketDefenseThresholdPct","withdrawalBucketDefenseRecoveryPct","withdrawalFixedRatePct","withdrawalFixedAmountYearly","withdrawalStartCashBufferYears","withdrawalStartFixedAge"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ withdrawalCompareCache=null; renderWithdrawalRuleSummary(); syncWithdrawalStartConditionValueControl(); scheduleWithdrawalRulePreview(); }));
 document.getElementById("withdrawalStartConditionValue")?.addEventListener("input", ()=>{ persistWithdrawalStartConditionValueControl(); withdrawalCompareCache=null; renderWithdrawalRuleSummary(); scheduleWithdrawalRulePreview(); });
 document.getElementById("withdrawalRuleMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); scheduleWithdrawalRulePreview(); });
-document.getElementById("withdrawalBucketDefenseMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalBucketDefenseModeUI(); renderWithdrawalRuleSummary(); scheduleWithdrawalRulePreview(); });
+document.getElementById("withdrawalBucketDefenseMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalBucketDefenseModeUI(); renderWithdrawalRuleSummary(); updateWithdrawalCompareModeUI(); scheduleWithdrawalRulePreview(); });
 document.getElementById("withdrawalStartConditionMode")?.addEventListener("change", handleWithdrawalStartConditionModeChange);
 document.getElementById("withdrawalOrderMode")?.addEventListener("change", ()=>{ withdrawalCompareCache=null; updateWithdrawalRuleModalUI(); applyTabOrder(); scheduleWithdrawalRulePreview(); });
 document.getElementById("withdrawalRuleModal")?.addEventListener("input", (e)=>{
@@ -45916,5 +46275,93 @@ body.standard-modal-scroll-locked .page{
 }
 </style>
 
+
+
+<!-- ===== v1411: mobile simple-mode field label wrap alignment override ===== -->
+<style>
+  @media (max-width:900px), (pointer:coarse){
+    #simpleModePanel .simple-mode-field-label-main{
+      display:grid !important;
+      grid-template-columns:4px minmax(0, 1fr) !important;
+      column-gap:9px !important;
+      row-gap:0 !important;
+      align-items:start !important;
+      flex:1 1 auto !important;
+      min-width:0 !important;
+      max-width:100% !important;
+      flex-wrap:nowrap !important;
+      line-height:1.35 !important;
+    }
+    #simpleModePanel .simple-mode-field-label-main::before{
+      grid-column:1 !important;
+      grid-row:1 !important;
+      align-self:start !important;
+      margin-top:calc((1.35em - 20px) / 2) !important;
+    }
+    #simpleModePanel .simple-mode-field-label-main > span:first-child{
+      grid-column:2 !important;
+      grid-row:1 !important;
+      display:block !important;
+      min-width:0 !important;
+      max-width:100% !important;
+      line-height:1.35 !important;
+      overflow-wrap:break-word !important;
+    }
+    #simpleModePanel .simple-mode-field-label-main .simple-mode-inline-check{
+      grid-column:2 !important;
+      grid-row:auto !important;
+      justify-self:start !important;
+      margin-top:4px !important;
+    }
+  }
+</style>
+
 </body>
 </html>
+
+<!-- ===== v1413: enable horizontal scroll for 3 preview-sheet compare result tables on mobile ===== -->
+<style id="v1413-preview-compare-result-horizontal-scroll">
+  /* Scope: result tables only in the 3 preview sheets: withdrawal / crash / monte. */
+  #withdrawalCompareResultTableWrap,
+  #crashCompareResultTableWrap,
+  #monteCompareResultTableWrap{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    -webkit-overflow-scrolling:touch !important;
+    touch-action:pan-x pan-y !important;
+    overscroll-behavior-x:contain !important;
+    box-sizing:border-box !important;
+  }
+
+  #withdrawalCompareResultTableWrap .withdrawal-compare-table,
+  #crashCompareResultTableWrap .withdrawal-compare-table,
+  #monteCompareResultTableWrap .withdrawal-compare-table{
+    width:max-content !important;
+    min-width:max-content !important;
+    max-width:none !important;
+    table-layout:auto !important;
+  }
+
+  @media (max-width:900px), (pointer:coarse){
+    #withdrawalCompareResultTableWrap,
+    #crashCompareResultTableWrap,
+    #monteCompareResultTableWrap{
+      overflow-x:auto !important;
+      overflow-y:visible !important;
+      -webkit-overflow-scrolling:touch !important;
+      touch-action:pan-x pan-y !important;
+    }
+
+    #withdrawalCompareResultTableWrap .withdrawal-compare-table,
+    #crashCompareResultTableWrap .withdrawal-compare-table,
+    #monteCompareResultTableWrap .withdrawal-compare-table{
+      width:max-content !important;
+      min-width:max-content !important;
+      max-width:none !important;
+    }
+  }
+</style>
