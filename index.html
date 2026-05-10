@@ -46815,6 +46815,59 @@ body.standard-modal-scroll-locked .page{
   outline:none !important;
 }
 </style>
+
+<style id="v1450-mobile-graph-menu-size-and-menu-typography-fix">
+/* v1450: mobile graph select height + menu item typography/color only. Keep horizontal position/width/menu logic unchanged. */
+@media (max-width:900px), (pointer:coarse){
+  #chartTopBar button.graph-select.graph-custom-select-btn{
+    height:36px !important;
+    min-height:36px !important;
+    max-height:36px !important;
+    padding-top:0 !important;
+    padding-bottom:0 !important;
+  }
+}
+
+/* Match graph custom menu items to the shared three-dot / three-line menu item typography. */
+.graph-type-custom-menu button,
+#overflowMenu.overflow-menu > button,
+#tabContextMenu.tab-context-menu > button,
+#rowContextMenu.tab-context-menu > button{
+  font-size:14px !important;
+  font-weight:400 !important;
+  line-height:1.2 !important;
+  color:#111827 !important;
+  padding:9px 10px !important;
+}
+.graph-type-custom-menu button:hover,
+.graph-type-custom-menu button:focus,
+.graph-type-custom-menu button:focus-visible,
+.graph-type-custom-menu button.is-active,
+#overflowMenu.overflow-menu > button:hover,
+#overflowMenu.overflow-menu > button:focus,
+#overflowMenu.overflow-menu > button:focus-visible,
+#tabContextMenu.tab-context-menu > button:hover,
+#tabContextMenu.tab-context-menu > button:focus,
+#tabContextMenu.tab-context-menu > button:focus-visible,
+#rowContextMenu.tab-context-menu > button:hover,
+#rowContextMenu.tab-context-menu > button:focus,
+#rowContextMenu.tab-context-menu > button:focus-visible{
+  background:#f4f8ff !important;
+  color:#111827 !important;
+  outline:none !important;
+}
+@media (max-width:900px), (pointer:coarse){
+  .graph-type-custom-menu button,
+  #overflowMenu.overflow-menu > button,
+  #tabContextMenu.tab-context-menu > button,
+  #rowContextMenu.tab-context-menu > button{
+    font-size:14px !important;
+    line-height:1.2 !important;
+    color:#111827 !important;
+    padding:9px 10px !important;
+  }
+}
+</style>
 </body>
 </html>
 <!-- ===== v1413: enable horizontal scroll for 3 preview-sheet compare result tables on mobile ===== -->
@@ -46964,5 +47017,62 @@ body.standard-modal-scroll-locked .page{
 .tab-context-menu button:hover,
 .tab-context-menu button:focus{
   background:#eef5ff !important;
+}
+</style>
+
+<style id="v1451-mobile-graph-select-height-and-menu-typography-final">
+/* v1451: requested final-only adjustment for mobile graph select height and menu typography/color. */
+@media (max-width:900px), (pointer:coarse){
+  #chartTopBar button.graph-select.graph-custom-select-btn{
+    height:38px !important;
+    min-height:38px !important;
+    max-height:38px !important;
+    padding-top:0 !important;
+    padding-bottom:0 !important;
+  }
+}
+
+/* Use the shared three-dot / three-line menu item typography as the common baseline. */
+.graph-type-custom-menu button,
+#overflowMenu.overflow-menu > button,
+.overflow-menu > button,
+#tabContextMenu.tab-context-menu > button,
+#rowContextMenu.tab-context-menu > button,
+.tab-context-menu > button{
+  font-size:14px !important;
+  font-weight:400 !important;
+  line-height:1.2 !important;
+  color:#111827 !important;
+  padding:9px 10px !important;
+  border:none !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
+  transform:none !important;
+  text-decoration:none !important;
+  -webkit-text-fill-color:#111827 !important;
+}
+.graph-type-custom-menu button:hover,
+.graph-type-custom-menu button:focus,
+.graph-type-custom-menu button:focus-visible,
+.graph-type-custom-menu button.is-active,
+#overflowMenu.overflow-menu > button:hover,
+#overflowMenu.overflow-menu > button:focus,
+#overflowMenu.overflow-menu > button:focus-visible,
+.overflow-menu > button:hover,
+.overflow-menu > button:focus,
+.overflow-menu > button:focus-visible,
+#tabContextMenu.tab-context-menu > button:hover,
+#tabContextMenu.tab-context-menu > button:focus,
+#tabContextMenu.tab-context-menu > button:focus-visible,
+#rowContextMenu.tab-context-menu > button:hover,
+#rowContextMenu.tab-context-menu > button:focus,
+#rowContextMenu.tab-context-menu > button:focus-visible,
+.tab-context-menu > button:hover,
+.tab-context-menu > button:focus,
+.tab-context-menu > button:focus-visible{
+  background:#f4f8ff !important;
+  color:#111827 !important;
+  -webkit-text-fill-color:#111827 !important;
+  outline:none !important;
 }
 </style>
