@@ -46655,7 +46655,12 @@ body.standard-modal-scroll-locked .page{
             syncButtonLabel();
           }
           closeMenu();
-          button.focus({preventScroll:true});
+          requestAnimationFrame(()=>{
+            if(document.activeElement instanceof HTMLElement && menu.contains(document.activeElement)){
+              document.activeElement.blur();
+            }
+            button.blur();
+          });
         });
         menu.appendChild(item);
       });
