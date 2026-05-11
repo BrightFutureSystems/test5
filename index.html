@@ -22799,13 +22799,20 @@ function formatMonteSettingsSummary(settings){
 function formatAssetProbabilitySettingsSummary(settings){
   if(!settings) return '';
   const model = normalizeMonteModel(settings.model || 'normal');
-  const modelLabel = model === 'normal' ? '標準モデル' : (model === 'mean_reverting' ? '平均回帰' : '簡易モデル');
+  const compact = isSmallScreen();
+  const modelLabel = model === 'normal'
+    ? (compact ? '標準' : '標準モデル')
+    : (model === 'mean_reverting' ? (compact ? '上級' : '上級モデル') : (compact ? '簡易' : '簡易モデル'));
   const vol = Number(settings.effectiveVolPct);
   const volText = Number.isFinite(vol) ? formatNumberJP(vol, Math.abs(vol - Math.round(vol)) < 1e-9 ? 0 : 1) : '-';
   const trials = clampMonteTrials(settings.trials || 80);
   const drawPaths = clampMonteDrawPaths(settings.drawPaths || trials, trials);
-  const phiText = model === 'mean_reverting' ? `｜持続性 ${formatNumberJP(settings.meanRevPhi, 2)}` : '';
-  return `${modelLabel}｜ボラ ${volText}%${phiText}｜計算 ${trials}回｜表示 ${drawPaths}本`;
+  const phiText = model === 'mean_reverting'
+    ? (compact ? `｜持続${formatNumberJP(settings.meanRevPhi, 2)}` : `｜持続性 ${formatNumberJP(settings.meanRevPhi, 2)}`)
+    : '';
+  return compact
+    ? `${modelLabel}｜ボラ${volText}%${phiText}｜計算${trials}｜表示${drawPaths}`
+    : `${modelLabel}｜ボラ ${volText}%${phiText}｜計算 ${trials}回｜表示 ${drawPaths}本`;
 }
 function getPublicPensionDeduction(grossIncome, age, cfg){
   const gross = Math.max(0, Number(grossIncome) || 0);
