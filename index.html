@@ -9384,7 +9384,7 @@ function drawAssetProbabilityShell(){
       distributionMedian:null,
       lifeMedian:buildAssetProbabilityLifeMedianInfo(storedResult, currentCfg),
       medianRuinAge:Number.isFinite(Number(storedResult.medianRuinAge)) ? Number(storedResult.medianRuinAge) : null,
-      settingsSummary:(storedResult.settingsSummary && !/試行回数|です|<br>|<strong>/u.test(String(storedResult.settingsSummary))) ? String(storedResult.settingsSummary) : formatAssetProbabilitySettingsSummary(storedResult.settingsSnapshot || scenarioState?.monteCarloSettingsSnapshot || getMonteCarloSettingsFromDOM()),
+      settingsSummary:formatAssetProbabilitySettingsSummary(storedResult.settingsSnapshot || scenarioState?.monteCarloSettingsSnapshot || getMonteCarloSettingsFromDOM()),
       dirtyMessage:scenarioState?.monteCarloDirty ? "再計算が必要" : ''
     };
     if(chart) chart.destroy();
@@ -22799,7 +22799,7 @@ function formatMonteSettingsSummary(settings){
 function formatAssetProbabilitySettingsSummary(settings){
   if(!settings) return '';
   const model = normalizeMonteModel(settings.model || 'normal');
-  const compact = isSmallScreen();
+  const compact = !!(typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width:900px), (pointer:coarse)").matches);
   const modelLabel = model === 'normal'
     ? (compact ? '標準' : '標準モデル')
     : (model === 'mean_reverting' ? (compact ? '上級' : '上級モデル') : (compact ? '簡易' : '簡易モデル'));
