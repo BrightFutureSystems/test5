@@ -47154,3 +47154,127 @@ body.standard-modal-scroll-locked .page{
   margin:6px 4px !important;
 }
 </style>
+
+<!-- ===== v1455: overlay settings background lock with native modal inertia ===== -->
+<style id="v1455-overlay-settings-background-lock-final">
+/* Scope: 重ね描き設定モーダルのみ。背面ページは完全固定し、モーダル内のネイティブ慣性スクロールは維持する。 */
+html.overlay-settings-background-locked-root,
+body.overlay-settings-background-locked{
+  overflow:hidden !important;
+  overscroll-behavior:none !important;
+  height:100% !important;
+}
+body.overlay-settings-background-locked .page{
+  position:fixed !important;
+  top:var(--overlay-settings-page-top, 0px) !important;
+  left:var(--overlay-settings-page-left, 0px) !important;
+  width:var(--overlay-settings-page-width, 100%) !important;
+  max-width:none !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+  right:auto !important;
+}
+#overlaySettingsModal.show{
+  overscroll-behavior:none !important;
+  touch-action:none !important;
+}
+#overlaySettingsModal.show .overlay-settings-modal{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-y !important;
+}
+#overlaySettingsModal.show .overlay-settings-table-wrap{
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-x pan-y !important;
+}
+</style>
+<script id="v1455-overlay-settings-background-lock-final-script">
+(function(){
+  const modal = document.getElementById('overlaySettingsModal');
+  if(!modal || modal.dataset.overlaySettingsBackgroundLockV1455 === '1') return;
+  modal.dataset.overlaySettingsBackgroundLockV1455 = '1';
+
+  let locked = false;
+  let lockX = 0;
+  let lockY = 0;
+  let restoring = false;
+
+  function currentX(){
+    return window.pageXOffset || document.documentElement.scrollLeft || document.body?.scrollLeft || 0;
+  }
+  function currentY(){
+    return window.pageYOffset || document.documentElement.scrollTop || document.body?.scrollTop || 0;
+  }
+  function setWindowScroll(x, y){
+    try{ window.scrollTo(x, y); }catch(_err){}
+    try{ document.documentElement.scrollLeft = x; }catch(_err){}
+    try{ document.body.scrollLeft = x; }catch(_err){}
+    try{ document.documentElement.scrollTop = y; }catch(_err){}
+    try{ document.body.scrollTop = y; }catch(_err){}
+  }
+  function isOpen(){
+    return modal.classList.contains('show');
+  }
+  function lockBackground(){
+    if(locked) return;
+    const body = document.body;
+    const root = document.documentElement;
+    const page = document.querySelector('.page');
+    if(!body || !root || !page) return;
+    lockX = currentX();
+    lockY = currentY();
+    const rect = page.getBoundingClientRect();
+    body.style.setProperty('--overlay-settings-page-top', `${-lockY}px`);
+    body.style.setProperty('--overlay-settings-page-left', `${Math.round(rect.left)}px`);
+    body.style.setProperty('--overlay-settings-page-width', `${Math.round(rect.width)}px`);
+    root.classList.add('overlay-settings-background-locked-root');
+    body.classList.add('overlay-settings-background-locked');
+    locked = true;
+  }
+  function unlockBackground(){
+    if(!locked) return;
+    const body = document.body;
+    const root = document.documentElement;
+    root?.classList?.remove('overlay-settings-background-locked-root');
+    body?.classList?.remove('overlay-settings-background-locked');
+    body?.style?.removeProperty?.('--overlay-settings-page-top');
+    body?.style?.removeProperty?.('--overlay-settings-page-left');
+    body?.style?.removeProperty?.('--overlay-settings-page-width');
+    const x = lockX;
+    const y = lockY;
+    locked = false;
+    restoring = false;
+    lockX = 0;
+    lockY = 0;
+    requestAnimationFrame(()=>setWindowScroll(x, y));
+  }
+  function syncLock(){
+    if(isOpen()) lockBackground();
+    else unlockBackground();
+  }
+  function restoreBackgroundScroll(){
+    if(!locked || restoring) return;
+    const x = currentX();
+    const y = currentY();
+    if(Math.abs(x - lockX) < 1 && Math.abs(y - lockY) < 1) return;
+    restoring = true;
+    setWindowScroll(lockX, lockY);
+    requestAnimationFrame(()=>{
+      if(locked) setWindowScroll(lockX, lockY);
+      restoring = false;
+    });
+  }
+
+  const observer = new MutationObserver(syncLock);
+  observer.observe(modal, {attributes:true, attributeFilter:['class']});
+  window.addEventListener('scroll', restoreBackgroundScroll, {capture:true, passive:true});
+  window.addEventListener('pagehide', unlockBackground, {passive:true});
+  window.addEventListener('orientationchange', ()=>{ if(locked){ unlockBackground(); requestAnimationFrame(syncLock); } }, {passive:true});
+  syncLock();
+})();
+</script>
