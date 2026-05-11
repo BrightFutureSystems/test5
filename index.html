@@ -16349,10 +16349,10 @@ function openOverflowMenu(anchorEl){
   const anchorRect = anchorEl.getBoundingClientRect();
   const menuRect = menu.getBoundingClientRect();
   let left = anchorRect.right - menuRect.width;
-  let top = anchorRect.bottom + 6;
+  let top = anchorRect.bottom + 4;
   if(left < 8) left = 8;
   if(left + menuRect.width > window.innerWidth - 8) left = window.innerWidth - menuRect.width - 8;
-  if(top + menuRect.height > window.innerHeight - 8) top = Math.max(8, anchorRect.top - menuRect.height - 6);
+  if(top + menuRect.height > window.innerHeight - 8) top = Math.max(8, anchorRect.top - menuRect.height - 4);
   menu.style.left = `${Math.max(8, left)}px`;
   menu.style.top = `${Math.max(8, top)}px`;
 }
@@ -46153,6 +46153,16 @@ body.standard-modal-scroll-locked .page{
   function isOverlaySettingsTableScrollTarget(modal, target){
     return !!(modal && modal.id === 'overlaySettingsModal' && target instanceof Element && target.closest('.overlay-settings-table-wrap'));
   }
+  function isNativeInertialModalScrollTarget(modal, target){
+    if(!modal || !(target instanceof Element)) return false;
+    if(modal.id === 'overlaySettingsModal'){
+      return !!target.closest('.overlay-settings-modal');
+    }
+    if(modal.id === 'cashflowModal'){
+      return !!target.closest('.cashflow-table-wrap, .cashflow-modal');
+    }
+    return false;
+  }
   function getScrollableAncestorWithin(modal, target){
     let el = target instanceof Element ? target : target?.parentElement;
     while(el && el !== modal && el !== document.body && el !== document.documentElement){
@@ -46167,6 +46177,7 @@ body.standard-modal-scroll-locked .page{
   function shouldPreventWheel(modal, event){
     if(!modal) return false;
     if(!isInsideModal(modal, event.target)) return true;
+    if(isNativeInertialModalScrollTarget(modal, event.target)) return false;
     if(isOverlaySettingsTableScrollTarget(modal, event.target)){
       const dx = Math.abs(Number(event.deltaX) || 0);
       const dy = Math.abs(Number(event.deltaY) || 0);
@@ -46197,6 +46208,11 @@ body.standard-modal-scroll-locked .page{
     const currentX = event.touches && event.touches.length ? event.touches[0].clientX : null;
     if(!isInsideModal(modal, event.target)){
       if(event.cancelable) event.preventDefault();
+      lastTouchY = currentY;
+      lastTouchX = currentX;
+      return;
+    }
+    if(isNativeInertialModalScrollTarget(modal, event.target)){
       lastTouchY = currentY;
       lastTouchX = currentX;
       return;
@@ -46521,54 +46537,8 @@ body.standard-modal-scroll-locked .page{
     }
   }, {capture:true, passive:false});
 
-  let touchState = null;
-  modal.addEventListener('touchstart', (event)=>{
-    if(!isOpen() || !isInsideCard(event.target) || !event.touches || event.touches.length !== 1){
-      touchState = null;
-      return;
-    }
-    const touch = event.touches[0];
-    touchState = {
-      x: touch.clientX,
-      y: touch.clientY,
-      tableWrap: getTableWrap(event.target)
-    };
-  }, {capture:true, passive:true});
-
-  modal.addEventListener('touchmove', (event)=>{
-    if(!touchState || !isOpen() || !isInsideCard(event.target) || !event.touches || event.touches.length !== 1) return;
-    const card = getCard();
-    if(!card) return;
-    const touch = event.touches[0];
-    const dx = touch.clientX - touchState.x;
-    const dy = touch.clientY - touchState.y;
-    const absX = Math.abs(dx);
-    const absY = Math.abs(dy);
-    const tableWrap = touchState.tableWrap;
-
-    if(tableWrap && canScrollX(tableWrap) && absX > absY * 1.15){
-      tableWrap.scrollLeft -= dx;
-      if(event.cancelable) event.preventDefault();
-      event.stopPropagation();
-      touchState.x = touch.clientX;
-      touchState.y = touch.clientY;
-      return;
-    }
-
-    if(canScrollY(card) && absY > 0){
-      card.scrollTop -= dy;
-      if(event.cancelable) event.preventDefault();
-      event.stopPropagation();
-      touchState.x = touch.clientX;
-      touchState.y = touch.clientY;
-    }
-  }, {capture:true, passive:false});
-
-  function clearTouchState(){
-    touchState = null;
-  }
-  modal.addEventListener('touchend', clearTouchState, {capture:true, passive:true});
-  modal.addEventListener('touchcancel', clearTouchState, {capture:true, passive:true});
+  // Touch scrolling is intentionally left to the browser's native scroll handling so that
+  // mobile momentum / inertial scrolling remains smooth in both vertical and horizontal directions.
 })();
 </script>
 
@@ -47097,3 +47067,90 @@ body.standard-modal-scroll-locked .page{
 }
 </style>
 
+
+<style id="v1454-scroll-and-menu-unify-final">
+/* v1454: designated fixes only: smoother mobile scroll for overlay/cashflow modals and menu gap/typography unification. */
+#overlaySettingsModal .overlay-settings-modal,
+#overlaySettingsModal .overlay-settings-table-wrap,
+#cashflowModal .cashflow-modal,
+#cashflowModal .cashflow-table-wrap{
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+}
+#overlaySettingsModal .overlay-settings-modal{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  touch-action:pan-y !important;
+}
+#overlaySettingsModal .overlay-settings-table-wrap{
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  touch-action:pan-x pan-y !important;
+}
+#cashflowModal .cashflow-modal{
+  overflow:auto !important;
+  touch-action:pan-y !important;
+}
+#cashflowModal .cashflow-table-wrap{
+  overflow:auto !important;
+  touch-action:pan-x pan-y !important;
+}
+.graph-type-custom-menu,
+#overflowMenu.overflow-menu,
+.overflow-menu,
+#tabContextMenu.tab-context-menu,
+#rowContextMenu.tab-context-menu,
+.tab-context-menu{
+  font-family:Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", Meiryo, sans-serif !important;
+  color:#111827 !important;
+}
+.graph-type-custom-menu button,
+#overflowMenu.overflow-menu > button,
+.overflow-menu > button,
+#tabContextMenu.tab-context-menu > button,
+#rowContextMenu.tab-context-menu > button,
+.tab-context-menu > button{
+  min-height:35px !important;
+  padding:9px 10px !important;
+  font-size:14px !important;
+  font-weight:400 !important;
+  line-height:1.2 !important;
+  color:#111827 !important;
+  -webkit-text-fill-color:#111827 !important;
+  letter-spacing:normal !important;
+  background:transparent !important;
+  border:none !important;
+  border-radius:8px !important;
+  box-shadow:none !important;
+  transform:none !important;
+  text-decoration:none !important;
+}
+.graph-type-custom-menu button:hover,
+.graph-type-custom-menu button:focus,
+.graph-type-custom-menu button:focus-visible,
+.graph-type-custom-menu button.is-active,
+#overflowMenu.overflow-menu > button:hover,
+#overflowMenu.overflow-menu > button:focus,
+#overflowMenu.overflow-menu > button:focus-visible,
+.overflow-menu > button:hover,
+.overflow-menu > button:focus,
+.overflow-menu > button:focus-visible,
+#tabContextMenu.tab-context-menu > button:hover,
+#tabContextMenu.tab-context-menu > button:focus,
+#tabContextMenu.tab-context-menu > button:focus-visible,
+#rowContextMenu.tab-context-menu > button:hover,
+#rowContextMenu.tab-context-menu > button:focus,
+#rowContextMenu.tab-context-menu > button:focus-visible,
+.tab-context-menu > button:hover,
+.tab-context-menu > button:focus,
+.tab-context-menu > button:focus-visible{
+  background:#f4f8ff !important;
+  color:#111827 !important;
+  -webkit-text-fill-color:#111827 !important;
+  outline:none !important;
+}
+.graph-type-custom-menu .graph-type-menu-separator,
+.overflow-menu .overflow-menu-separator{
+  margin:6px 4px !important;
+}
+</style>
