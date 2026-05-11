@@ -8743,9 +8743,23 @@ function buildAssetProbabilityExpectedLifePlugin(cfg, monteInfo){
     const labelW = ctx.measureText(label).width + padX * 2;
     const labelH = compactGuideLabels ? 18 : 20;
     const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
-    const rawLabelY = yPos === "bottom"
+    let rawLabelY = yPos === "bottom"
       ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14)
       : Math.min(y.bottom - labelH / 2 - 4, y.top + 14);
+    if(yPos === "top" && monteInfo?.assetProbabilityMode){
+      const summary = String(monteInfo.settingsSummary || '');
+      if(summary){
+        const summaryX = area.left + 10;
+        const summaryY = area.top + 8;
+        const summaryW = ctx.measureText(summary).width;
+        const summaryH = 12 + (monteInfo.dirtyMessage ? 17 : 0);
+        const summaryBox = {left:summaryX - 2, right:summaryX + summaryW + 2, top:summaryY - 2, bottom:summaryY + summaryH + 2};
+        const candidateBox = {left:labelX, right:labelX + labelW, top:rawLabelY - labelH / 2, bottom:rawLabelY + labelH / 2};
+        if(labelsOverlap(summaryBox, candidateBox)){
+          rawLabelY = Math.min(y.bottom - labelH / 2 - 4, summaryBox.bottom + labelH / 2 + 6);
+        }
+      }
+    }
     const labelY = reserveSingleGuideLabelBox(chartInstance, labelX, rawLabelY, labelW, labelH, y, yPos === "bottom" ? "up" : "down");
     const alpha = getGuideLabelFadeAlpha(px, area, 28);
     if(alpha <= 0.05){
@@ -25843,9 +25857,23 @@ function pluginLines(cfg, sim, monteInfo=null, lifeGuideEntries=null, initialLif
         const labelH = compactGuideLabels ? 18 : 20;
         const labelX = Math.max(x.left + 6, Math.min(px + 8, x.right - labelW - 6));
         const offsetStep = compactGuideLabels ? 20 : 24;
-        const rawLabelY = yPos === "bottom"
+        let rawLabelY = yPos === "bottom"
           ? Math.max(y.top + labelH / 2 + 4, y.bottom - 14 - stackIndex * offsetStep)
           : Math.min(y.bottom - labelH / 2 - 4, y.top + 14 + stackIndex * offsetStep);
+        if(yPos === "top" && graphType === "assetProbability" && monteInfo?.assetProbabilityMode){
+          const summary = String(monteInfo.settingsSummary || '');
+          if(summary){
+            const summaryX = area.left + 10;
+            const summaryY = area.top + 8;
+            const summaryW = ctx.measureText(summary).width;
+            const summaryH = 12 + (monteInfo.dirtyMessage ? 17 : 0);
+            const summaryBox = {left:summaryX - 2, right:summaryX + summaryW + 2, top:summaryY - 2, bottom:summaryY + summaryH + 2};
+            const candidateBox = {left:labelX, right:labelX + labelW, top:rawLabelY - labelH / 2, bottom:rawLabelY + labelH / 2};
+            if(guideLabelsOverlap(summaryBox, candidateBox)){
+              rawLabelY = Math.min(y.bottom - labelH / 2 - 4, summaryBox.bottom + labelH / 2 + 6);
+            }
+          }
+        }
         const labelY = reserveVerticalGuideLabelBox(labelX, rawLabelY, labelW, labelH, yPos === "bottom" ? "up" : "down");
         const alpha = getGuideLabelFadeAlpha(px, area, 28);
         if(alpha <= 0.05){
