@@ -2007,11 +2007,11 @@ document.addEventListener("scroll", (ev)=>{
   .crash-test-table th:nth-child(1),.crash-test-table td:nth-child(1){width:108px;min-width:108px;}
   .crash-test-table th:nth-child(2),.crash-test-table td:nth-child(2){width:64px;min-width:64px;}
   .crash-test-table th:nth-child(3),.crash-test-table td:nth-child(3){width:118px;min-width:118px;}
-  .crash-test-table th:nth-child(4),.crash-test-table td:nth-child(4){width:220px;min-width:220px;}
+  .crash-test-table th:nth-child(4),.crash-test-table td:nth-child(4){width:286px;min-width:286px;}
   .crash-test-table th:nth-child(5),.crash-test-table td:nth-child(5){width:88px;min-width:88px;}
   .crash-test-table th:nth-child(6),.crash-test-table td:nth-child(6){width:84px;min-width:84px;}
   .crash-timing-wrap{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;width:100%;}
-  .crash-timing-type-select{width:108px !important;min-width:108px !important;}
+  .crash-timing-type-select{width:184px !important;min-width:184px !important;}
   .crash-timing-value{width:62px !important;min-width:62px !important;}
   .crash-timing-unit{display:inline-block;min-width:20px;text-align:left;}
   .crash-test-table td input[type=number],.crash-test-table td select{width:100%;max-width:100%;min-width:0;}
@@ -2043,6 +2043,9 @@ document.addEventListener("scroll", (ev)=>{
   .withdrawal-compare-split{display:inline-flex;align-items:stretch;}
   .withdrawal-compare-content{overflow:hidden;max-height:0;opacity:0;transition:max-height .24s ease, opacity .2s ease;margin-top:0;}
   .withdrawal-compare-content.is-open{opacity:1;}
+  .withdrawal-compare-header + .withdrawal-compare-content,
+  .crash-compare-header + .crash-compare-content,
+  .monte-compare-header + .withdrawal-compare-content{margin-top:8px;}
   .crash-history-table{width:100%;min-width:560px;border-collapse:collapse;table-layout:fixed;font-size:12px;}
   .crash-history-table th,.crash-history-table td{border:1px solid var(--border);padding:6px;text-align:center;vertical-align:middle;}
   .crash-history-table th{background:#fafafa;line-height:1.35;}
@@ -2073,7 +2076,7 @@ document.addEventListener("scroll", (ev)=>{
     .withdrawal-compare-table th:first-child,.withdrawal-compare-table td:first-child{width:54px;min-width:54px;}
     .withdrawal-compare-table th:nth-child(2),.withdrawal-compare-table td:nth-child(2){width:58px;min-width:58px;}
     .withdrawal-param-case-table{min-width:420px;font-size:12px;}
-    .crash-test-table{min-width:742px;font-size:12px;}
+    .crash-test-table{min-width:808px;font-size:12px;}
     .crash-history-table{min-width:560px;font-size:12px;}
   }
   .numeric-assist{display:none !important;
@@ -4351,10 +4354,10 @@ document.addEventListener("scroll", (ev)=>{
   white-space:nowrap !important;
 }
 .crash-test-table .crash-timing-type-select{
-  width:108px !important;
-  min-width:108px !important;
-  max-width:108px !important;
-  flex:0 0 108px !important;
+  width:184px !important;
+  min-width:184px !important;
+  max-width:184px !important;
+  flex:0 0 184px !important;
 }
 .crash-test-table .crash-timing-value{
   width:62px !important;
@@ -4604,6 +4607,15 @@ document.addEventListener("scroll", (ev)=>{
 #detailModePanel .person-income-table .person-income-label-line{
   white-space:nowrap;
 }
+
+#detailModePanel .person-income-table .person-income-tax-note{
+  margin-top:3px;
+  color:#64748b;
+  font-size:11px;
+  line-height:1.35;
+  font-weight:400;
+  white-space:nowrap;
+}
 @media (min-width:901px) and (pointer:fine){
   #detailModePanel .person-income-table .person-income-label-line + br{
     display:none;
@@ -4634,6 +4646,11 @@ document.addEventListener("scroll", (ev)=>{
   }
   #detailModePanel .person-income-table .person-income-label-nowrap,
   #detailModePanel .person-income-table .person-income-label-line{
+    white-space:nowrap;
+  }
+  #detailModePanel .person-income-table .person-income-mobile-break-main,
+  #detailModePanel .person-income-table .person-income-mobile-break-sub{
+    display:block;
     white-space:nowrap;
   }
 }
@@ -5996,7 +6013,42 @@ document.addEventListener("scroll", (ev)=>{
 .monte-settings-note-row .monte-settings-note{
   margin-bottom:8px !important;
 }
-</style></head>
+</style>
+<!-- ===== v1477: crash timing compare defaults, compare header trace tint, mobile withdrawal start width ===== -->
+<style id="v1477-targeted-fixes">
+@media (max-width:900px), (pointer:coarse){
+  #withdrawalStartConditionSection .withdrawal-inline-control{
+    gap:8px !important;
+    overflow:visible !important;
+  }
+  #withdrawalStartConditionSection .withdrawal-start-select{
+    flex:1 1 auto !important;
+    width:calc(100% - 92px) !important;
+    min-width:235px !important;
+    max-width:none !important;
+  }
+  #withdrawalStartConditionSection .withdrawal-inline-value{
+    flex:0 0 84px !important;
+    min-width:84px !important;
+    width:84px !important;
+    gap:4px !important;
+  }
+  #withdrawalStartConditionSection .withdrawal-inline-value .agebox{
+    width:48px !important;
+    min-width:48px !important;
+    max-width:48px !important;
+    padding-left:5px !important;
+    padding-right:5px !important;
+  }
+  #withdrawalStartConditionSection .withdrawal-inline-value .suffix{
+    flex:0 0 auto !important;
+    min-width:0 !important;
+    font-size:13px !important;
+    white-space:nowrap !important;
+  }
+}
+</style>
+</head>
 <body>
 <div class="page">
 <div id="appHero">
@@ -6465,6 +6517,7 @@ document.addEventListener("scroll", (ev)=>{
 <div class="withdrawal-inline-control">
 <select class="withdrawal-start-select" id="withdrawalStartConditionMode">
 <option value="retirement_age">リタイア年齢</option>
+<option value="post_retire_income_end_age">リタイア後収入終了年齢</option>
 <option value="cash_buffer_threshold">預貯金が生活費の指定年分以下</option>
 <option value="fixed_age">固定年齢</option>
 </select>
@@ -7001,7 +7054,7 @@ document.addEventListener("scroll", (ev)=>{
 <input id="crashTestsJson" type="hidden" value="[]"/>
 <input id="crashCompareModeState" type="hidden" value="presence"/>
 <input id="crashCompareTargetIndexState" type="hidden" value="0"/>
-<input id="crashCompareParamKeyState" type="hidden" value="timingValue"/>
+<input id="crashCompareParamKeyState" type="hidden" value="fixedTimingValue"/>
 <input id="crashCompareCaseCountState" type="hidden" value="3"/>
 <input id="crashCompareCaseJsonState" type="hidden" value=""/>
 <input id="crashCompareExpandedState" type="hidden" value="0"/>
@@ -7135,7 +7188,7 @@ document.addEventListener("scroll", (ev)=>{
 </div>
 <div class="section">
 <h2>収入</h2>
-<div class="stack-note">・公的年金以外の収入は、原則として手取りベースで入力してください。<br/>・公的年金は、税・社会保険料控除前の額面年金額を入力してください。「年金入力補助」から、ねんきん定期便ベースでも入力できます。<br/>・退職金・DC受取は、上の専用表で受取方法を管理します。<br/>・月収はリタイア年月の月まで計上し、ボーナス（年）はその年に働いた月数で按分します。年金は年金開始年齢の誕生月から受給開始として按分計上します。<br/>・リタイア後の手取りは、税金・社会保険料などを差し引いた後の金額です。直接完全リタイアする場合は、0万円にしてください。</div>
+<div class="stack-note">・年金（月・税引前）のみ、税金・社会保険料などを差し引く前の金額を入力してください。その他の収入は、税金・社会保険料などを差し引いた後の手取り額を入力してください。<br/>・「年金入力補助」から、ねんきん定期便ベースでも入力できます。<br/>・退職金（手取り）・DC受取は、上の専用表で受取方法を管理します。<br/>・手取り（月）はリタイア年月の月まで計上し、ボーナス（年・手取り）はその年に働いた月数で按分します。年金は年金開始年齢の誕生月から受給開始として按分計上します。<br/>・リタイア後の手取り（月）は、リタイア年月の翌月からリタイア後収入終了年月まで計上します。直接完全リタイアする場合は、0万円にしてください。</div>
 
 
 
@@ -7145,13 +7198,13 @@ document.addEventListener("scroll", (ev)=>{
 <table class="center-table income-table person-income-table">
 <tr><th>項目</th><th>入力</th></tr>
 <tr><td>手取り（月）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="self_salary_mode_normal" name="self_salary_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="self_salary_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="self_salary_mode_custom" name="self_salary_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><span class="mode-spacer"></span></div><input id="self_income_curve_json" type="hidden" value=""/></div></td></tr>
-<tr><td>ボーナス（年）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="self_bonus_mode_normal" name="self_bonus_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="self_bonus_year" type="number" value="0"/><span class="suffix">万円 / 年</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="self_bonus_mode_custom" name="self_bonus_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><button class="curve-btn" data-income-curve-owner="self" disabled="" id="self_income_curve_btn" type="button">カーブ編集</button></div></div></td></tr>
+<tr><td><span class="person-income-mobile-break-main">ボーナス</span><span class="person-income-mobile-break-sub">（年・手取り）</span></td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="self_bonus_mode_normal" name="self_bonus_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="self_bonus_year" type="number" value="0"/><span class="suffix">万円 / 年</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="self_bonus_mode_custom" name="self_bonus_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><button class="curve-btn" data-income-curve-owner="self" disabled="" id="self_income_curve_btn" type="button">カーブ編集</button></div></div></td></tr>
 <tr><td><span class="person-income-label-nowrap">リタイア年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="self_retire_year"></select><span class="suffix">年</span><select class="retire-month-select" id="self_retire_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="selfRetireAgeLabel">65歳0ヶ月</span>)</span><input id="self_retire_age" type="hidden" value="65"/></div></td></tr>
-<tr><td>退職金</td><td><div class="input-unit center"><input class="moneybox" id="self_retire_pay" type="number" value="0"/><span class="suffix">万円</span></div></td></tr>
+<tr><td>退職金（手取り）</td><td><div class="input-unit center"><input class="moneybox" id="self_retire_pay" type="number" value="0"/><span class="suffix">万円</span></div></td></tr>
 <tr><td><span class="person-income-label-line">リタイア後の</span><br><span class="person-income-label-line">手取り（月）</span></td><td><div class="input-unit center"><input class="moneybox" id="self_post_retire_income_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></td></tr>
 <tr><td><span class="person-income-label-line">リタイア後収入</span><br><span class="person-income-label-line">終了年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="self_post_retire_income_end_year"></select><span class="suffix">年</span><select class="retire-month-select" id="self_post_retire_income_end_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="selfPostRetireIncomeEndAgeLabel">65歳0ヶ月</span>)</span><input id="self_post_retire_income_end_age" type="hidden" value="65"/></div></td></tr>
 <tr><td><span class="person-income-label-nowrap">年金開始年齢</span></td><td><div class="input-unit center"><input class="agebox" id="self_pension_age" type="number" value="65"/><span class="suffix">歳</span></div></td></tr>
-<tr><td>年金（月）</td><td><div class="pension-helper-cell"><div class="input-unit center"><input class="moneybox" id="self_pension_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div><button class="curve-btn pension-helper-btn" id="self_pension_helper_btn" type="button">年金入力補助</button><input id="self_pension_input_mode" type="hidden" value="direct"/><input id="self_pension_helper_start_age" type="hidden" value="65"/><input id="self_pension_helper_basic_annual" type="hidden" value="0"/><input id="self_pension_helper_employee_annual" type="hidden" value="0"/></div></td></tr>
+<tr><td><span class="person-income-mobile-break-main">年金</span><span class="person-income-mobile-break-sub">（月・税引前）</span><div class="person-income-tax-note">年金のみ税引前です。</div></td><td><div class="pension-helper-cell"><div class="input-unit center"><input class="moneybox" id="self_pension_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div><button class="curve-btn pension-helper-btn" id="self_pension_helper_btn" type="button">年金入力補助</button><input id="self_pension_input_mode" type="hidden" value="direct"/><input id="self_pension_helper_start_age" type="hidden" value="65"/><input id="self_pension_helper_basic_annual" type="hidden" value="0"/><input id="self_pension_helper_employee_annual" type="hidden" value="0"/></div></td></tr>
 </table>
 </div>
 <div>
@@ -7159,13 +7212,13 @@ document.addEventListener("scroll", (ev)=>{
 <table class="center-table income-table person-income-table">
 <tr><th>項目</th><th>入力</th></tr>
 <tr><td>手取り（月）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="sp_salary_mode_normal" name="sp_salary_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="sp_salary_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="sp_salary_mode_custom" name="sp_salary_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><span class="mode-spacer"></span></div><input id="sp_income_curve_json" type="hidden" value=""/></div></td></tr>
-<tr><td>ボーナス（年）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="sp_bonus_mode_normal" name="sp_bonus_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="sp_bonus_year" type="number" value="0"/><span class="suffix">万円 / 年</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="sp_bonus_mode_custom" name="sp_bonus_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><button class="curve-btn" data-income-curve-owner="sp" disabled="" id="sp_income_curve_btn" type="button">カーブ編集</button></div></div></td></tr>
+<tr><td><span class="person-income-mobile-break-main">ボーナス</span><span class="person-income-mobile-break-sub">（年・手取り）</span></td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="sp_bonus_mode_normal" name="sp_bonus_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="sp_bonus_year" type="number" value="0"/><span class="suffix">万円 / 年</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="sp_bonus_mode_custom" name="sp_bonus_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><button class="curve-btn" data-income-curve-owner="sp" disabled="" id="sp_income_curve_btn" type="button">カーブ編集</button></div></div></td></tr>
 <tr><td><span class="person-income-label-nowrap">リタイア年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="sp_retire_year"></select><span class="suffix">年</span><select class="retire-month-select" id="sp_retire_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="spRetireAgeLabel">60歳0ヶ月</span>)</span><input id="sp_retire_age" type="hidden" value="60"/></div></td></tr>
-<tr><td>退職金</td><td><div class="input-unit center"><input class="moneybox" id="sp_retire_pay" type="number" value="0"/><span class="suffix">万円</span></div></td></tr>
+<tr><td>退職金（手取り）</td><td><div class="input-unit center"><input class="moneybox" id="sp_retire_pay" type="number" value="0"/><span class="suffix">万円</span></div></td></tr>
 <tr><td><span class="person-income-label-line">リタイア後の</span><br><span class="person-income-label-line">手取り（月）</span></td><td><div class="input-unit center"><input class="moneybox" id="sp_post_retire_income_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></td></tr>
 <tr><td><span class="person-income-label-line">リタイア後収入</span><br><span class="person-income-label-line">終了年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="sp_post_retire_income_end_year"></select><span class="suffix">年</span><select class="retire-month-select" id="sp_post_retire_income_end_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="spPostRetireIncomeEndAgeLabel">60歳0ヶ月</span>)</span><input id="sp_post_retire_income_end_age" type="hidden" value="60"/></div></td></tr>
 <tr><td><span class="person-income-label-nowrap">年金開始年齢</span></td><td><div class="input-unit center"><input class="agebox" id="sp_pension_age" type="number" value="65"/><span class="suffix">歳</span></div></td></tr>
-<tr><td>年金（月）</td><td><div class="pension-helper-cell"><div class="input-unit center"><input class="moneybox" id="sp_pension_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div><button class="curve-btn pension-helper-btn" id="sp_pension_helper_btn" type="button">年金入力補助</button><input id="sp_pension_input_mode" type="hidden" value="direct"/><input id="sp_pension_helper_start_age" type="hidden" value="65"/><input id="sp_pension_helper_basic_annual" type="hidden" value="0"/><input id="sp_pension_helper_employee_annual" type="hidden" value="0"/></div></td></tr>
+<tr><td><span class="person-income-mobile-break-main">年金</span><span class="person-income-mobile-break-sub">（月・税引前）</span><div class="person-income-tax-note">年金のみ税引前です。</div></td><td><div class="pension-helper-cell"><div class="input-unit center"><input class="moneybox" id="sp_pension_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div><button class="curve-btn pension-helper-btn" id="sp_pension_helper_btn" type="button">年金入力補助</button><input id="sp_pension_input_mode" type="hidden" value="direct"/><input id="sp_pension_helper_start_age" type="hidden" value="65"/><input id="sp_pension_helper_basic_annual" type="hidden" value="0"/><input id="sp_pension_helper_employee_annual" type="hidden" value="0"/></div></td></tr>
 </table>
 </div>
 </div>
@@ -14718,7 +14771,7 @@ const SIMPLE_MODE_BLOCKS = [
     note:"年金の開始年齢と受給額を設定します。",
     fields:[
       {key:"pensionAge", label:"年金開始年齢", unit:"歳", min:60, max:75, step:1},
-      {key:"pensionMonth", label:"年金受給額（月・税引前）", unit:"万円 / 月", min:0, max:80, step:0.5}
+      {key:"pensionMonth", label:"年金（月・税引前）", unit:"万円 / 月", min:0, max:80, step:0.5}
     ]
   }
 ];
@@ -15687,7 +15740,7 @@ function markSimpleLinkedScalarInput(inputId){
   const row = input?.closest('tr');
   if(!row) return;
   row.classList.add('simple-linked-row');
-  if(["self_post_retire_income_month", "self_post_retire_income_end_year"].includes(inputId)){
+  if(["self_bonus_year", "self_post_retire_income_month", "self_post_retire_income_end_year"].includes(inputId)){
     row.classList.add('simple-linked-label-stack-row');
   }
   addSimpleLinkedBadge(row.children?.[0]);
@@ -19773,7 +19826,7 @@ let crashTestBackdropPointerDown = false;
 let fireDiagnosisBackdropPointerDown = false;
 function clampCrashTestTimingValue(v, timingType, fallback){
   const n = Number(v);
-  const max = timingType === "after_retire" ? 60 : 120;
+  const max = (timingType === "after_retire" || timingType === "after_post_retire_income_end") ? 60 : 120;
   if(!Number.isFinite(n)) return fallback;
   return Math.max(0, Math.min(max, Math.round(n)));
 }
@@ -19788,7 +19841,10 @@ function clampCrashTestRecoveryYears(v, fallback){
   return Math.max(1, Math.min(30, Math.round(n)));
 }
 function normalizeCrashTestTimingType(value){
-  return String(value || "") === "after_retire" ? "after_retire" : "fixed";
+  const v = String(value || "");
+  if(v === "after_retire") return "after_retire";
+  if(v === "after_post_retire_income_end") return "after_post_retire_income_end";
+  return "fixed";
 }
 function normalizeCrashTestPreset(value){
   return Object.prototype.hasOwnProperty.call(CRASH_TEST_PRESETS, String(value || "")) ? String(value) : "custom";
@@ -19824,7 +19880,7 @@ function normalizeCrashTestRow(row, index=0){
   const presetConfig = getCrashTestPresetConfig(preset);
   const timingType = normalizeCrashTestTimingType(row?.timingType);
   const defaultFixedTiming = getDefaultCrashTestAge();
-  const rawTimingSource = row?.timingValue != null ? row?.timingValue : (row?.age != null ? row?.age : (timingType === "after_retire" ? 0 : defaultFixedTiming));
+  const rawTimingSource = row?.timingValue != null ? row?.timingValue : (row?.age != null ? row?.age : (timingType === "fixed" ? defaultFixedTiming : 0));
   const fixedTimingValue = clampCrashTestTimingValue(
     row?.fixedTimingValue != null ? row.fixedTimingValue : (timingType === "fixed" ? rawTimingSource : defaultFixedTiming),
     "fixed",
@@ -19835,7 +19891,12 @@ function normalizeCrashTestRow(row, index=0){
     "after_retire",
     0
   );
-  const timingValue = timingType === "after_retire" ? afterRetireTimingValue : fixedTimingValue;
+  const afterPostRetireIncomeEndTimingValue = clampCrashTestTimingValue(
+    row?.afterPostRetireIncomeEndTimingValue != null ? row.afterPostRetireIncomeEndTimingValue : (timingType === "after_post_retire_income_end" ? rawTimingSource : 0),
+    "after_post_retire_income_end",
+    0
+  );
+  const timingValue = timingType === "after_retire" ? afterRetireTimingValue : (timingType === "after_post_retire_income_end" ? afterPostRetireIncomeEndTimingValue : fixedTimingValue);
   const dropPct = clampCrashTestDropPct(row?.dropPct, presetConfig.dropPct ?? 35);
   const recoveryYears = clampCrashTestRecoveryYears(row?.recoveryYears, presetConfig.recoveryYears ?? 3);
   const fallbackName = defaultRowLabel("crashTest", index + 1);
@@ -19850,6 +19911,7 @@ function normalizeCrashTestRow(row, index=0){
     timingValue,
     fixedTimingValue,
     afterRetireTimingValue,
+    afterPostRetireIncomeEndTimingValue,
     dropPct,
     recoveryYears
   };
@@ -19891,20 +19953,24 @@ function getCrashRecoveryExtraRateForBase(baseReturn, dropRate, recoveryYears){
   if(d <= 0) return 0;
   return d / n;
 }
-function resolveCrashTestEventAge(row, retireAge){
+function resolveCrashTestEventAge(row, retireAge, postRetireIncomeEndAge){
   const normalized = normalizeCrashTestRow(row || {});
   if(normalized.timingType === "after_retire"){
     const base = Math.round(Number(retireAge) || 0);
     return Math.max(0, base + clampCrashTestTimingValue(normalized.timingValue, "after_retire", 0));
   }
+  if(normalized.timingType === "after_post_retire_income_end"){
+    const base = Math.round(Number(postRetireIncomeEndAge || retireAge) || 0);
+    return Math.max(0, base + clampCrashTestTimingValue(normalized.timingValue, "after_post_retire_income_end", 0));
+  }
   return clampCrashTestTimingValue(normalized.timingValue, "fixed", getDefaultCrashTestAge());
 }
-function getCrashAdjustmentForAge(baseReturn, age, crashTests, retireAge){
+function getCrashAdjustmentForAge(baseReturn, age, crashTests, retireAge, postRetireIncomeEndAge){
   const targetAge = Math.round(Number(age) || 0);
   const base = Number(baseReturn) || 0;
   return normalizeCrashTestsArray(crashTests).reduce((sum, row)=>{
     if(!row.enabled) return sum;
-    const eventAge = resolveCrashTestEventAge(row, retireAge);
+    const eventAge = resolveCrashTestEventAge(row, retireAge, postRetireIncomeEndAge);
     const dropRate = clampCrashTestDropPct(row.dropPct, 0) / 100;
     const recoveryYears = clampCrashTestRecoveryYears(row.recoveryYears, 1);
     if(targetAge === eventAge) return sum - dropRate;
@@ -19914,14 +19980,14 @@ function getCrashAdjustmentForAge(baseReturn, age, crashTests, retireAge){
     return sum;
   }, 0);
 }
-function applyCrashAdjustmentToReturn(baseReturn, age, crashTests, retireAge){
+function applyCrashAdjustmentToReturn(baseReturn, age, crashTests, retireAge, postRetireIncomeEndAge){
   const base = Number(baseReturn) || 0;
-  return base + getCrashAdjustmentForAge(base, age, crashTests, retireAge);
+  return base + getCrashAdjustmentForAge(base, age, crashTests, retireAge, postRetireIncomeEndAge);
 }
 function formatCrashTimingLabel(row){
-  return row.timingType === "after_retire"
-    ? `リタイア後 ${Math.round(row.timingValue)}年`
-    : `${Math.round(row.timingValue)}歳`;
+  if(row.timingType === "after_retire") return `リタイア後 ${Math.round(row.timingValue)}年`;
+  if(row.timingType === "after_post_retire_income_end") return `リタイア後収入終了後 ${Math.round(row.timingValue)}年`;
+  return `${Math.round(row.timingValue)}歳`;
 }
 function formatCrashTestSummaryLine(row){
   const recoveryYears = clampCrashTestRecoveryYears(row.recoveryYears, 1);
@@ -19948,17 +20014,39 @@ function buildCrashTestLabelCell(row, index){
 }
 function buildCrashTimingOptionLabel(type, value){
   if(type === "after_retire") return 'リタイア後';
+  if(type === "after_post_retire_income_end") return 'リタイア後収入終了後';
   return '固定';
 }
+function getCrashTimingStoredValueForType(row, type){
+  const normalizedType = normalizeCrashTestTimingType(type);
+  if(normalizedType === 'after_retire') return Math.round(Number(row.afterRetireTimingValue != null ? row.afterRetireTimingValue : 0) || 0);
+  if(normalizedType === 'after_post_retire_income_end') return Math.round(Number(row.afterPostRetireIncomeEndTimingValue != null ? row.afterPostRetireIncomeEndTimingValue : 0) || 0);
+  return Math.round(Number(row.fixedTimingValue != null ? row.fixedTimingValue : getDefaultCrashTestAge()) || getDefaultCrashTestAge());
+}
+function getCrashTimingUnit(type){
+  return normalizeCrashTestTimingType(type) === 'fixed' ? '歳' : '年';
+}
+function getCrashTimingHiddenFieldName(type){
+  const normalizedType = normalizeCrashTestTimingType(type);
+  if(normalizedType === 'after_retire') return 'afterRetireTimingValue';
+  if(normalizedType === 'after_post_retire_income_end') return 'afterPostRetireIncomeEndTimingValue';
+  return 'fixedTimingValue';
+}
+function getCrashTimingHiddenSelector(type){
+  return `[data-crash-field="${getCrashTimingHiddenFieldName(type)}"]`;
+}
 function buildCrashTimingCell(row){
-  const unit = row.timingType === "after_retire" ? '年' : '歳';
-  const fixedValue = Math.round(Number(row.fixedTimingValue != null ? row.fixedTimingValue : getDefaultCrashTestAge()) || getDefaultCrashTestAge());
-  const afterValue = Math.round(Number(row.afterRetireTimingValue != null ? row.afterRetireTimingValue : 0) || 0);
-  const fixedLabel = buildCrashTimingOptionLabel('fixed', fixedValue);
-  const afterLabel = buildCrashTimingOptionLabel('after_retire', afterValue);
-  const timingTypeOptions = `<option value="fixed" ${row.timingType === "fixed" ? "selected" : ""}>${fixedLabel}</option><option value="after_retire" ${row.timingType === "after_retire" ? "selected" : ""}>${afterLabel}</option>`;
-  const currentValue = row.timingType === "after_retire" ? afterValue : fixedValue;
-  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1" inputmode="numeric"><span class="suffix crash-timing-unit">${unit}</span><input type="hidden" data-crash-field="fixedTimingValue" value="${fixedValue}"><input type="hidden" data-crash-field="afterRetireTimingValue" value="${afterValue}"></div>`;
+  const fixedValue = getCrashTimingStoredValueForType(row, 'fixed');
+  const afterValue = getCrashTimingStoredValueForType(row, 'after_retire');
+  const afterPostValue = getCrashTimingStoredValueForType(row, 'after_post_retire_income_end');
+  const timingTypeOptions = [
+    `<option value="fixed" ${row.timingType === "fixed" ? "selected" : ""}>${buildCrashTimingOptionLabel('fixed', fixedValue)}</option>`,
+    `<option value="after_retire" ${row.timingType === "after_retire" ? "selected" : ""}>${buildCrashTimingOptionLabel('after_retire', afterValue)}</option>`,
+    `<option value="after_post_retire_income_end" ${row.timingType === "after_post_retire_income_end" ? "selected" : ""}>${buildCrashTimingOptionLabel('after_post_retire_income_end', afterPostValue)}</option>`
+  ].join('');
+  const currentValue = getCrashTimingStoredValueForType(row, row.timingType);
+  const unit = getCrashTimingUnit(row.timingType);
+  return `<div class="crash-timing-wrap" data-current-type="${row.timingType}"><select class="crash-timing-type-select" data-crash-field="timingType">${timingTypeOptions}</select><input type="number" class="agebox crash-timing-value" data-crash-field="timingValue" value="${currentValue}" step="1" inputmode="numeric"><span class="suffix crash-timing-unit">${unit}</span><input type="hidden" data-crash-field="fixedTimingValue" value="${fixedValue}"><input type="hidden" data-crash-field="afterRetireTimingValue" value="${afterValue}"><input type="hidden" data-crash-field="afterPostRetireIncomeEndTimingValue" value="${afterPostValue}"></div>`;
 }
 function getCrashTestDraftRowState(rowIndex){
   return normalizeCrashTestRow(crashTestDraft[rowIndex] || buildDefaultCrashTestRow(rowIndex), rowIndex);
@@ -19969,14 +20057,18 @@ function updateCrashTimingOptionLabels(rowEl, rowData){
   if(!select) return;
   const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
   const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+  const afterPostHidden = rowEl.querySelector('[data-crash-field="afterPostRetireIncomeEndTimingValue"]');
   const rowIndex = Math.max(0, (Number(rowEl.dataset.crashTestRow) || 1) - 1);
   const fallback = normalizeCrashTestRow(rowData || getCrashTestDraftRowState(rowIndex), rowIndex);
   const fixedValue = clampCrashTestTimingValue(fixedHidden?.value, 'fixed', fallback.fixedTimingValue);
   const afterValue = clampCrashTestTimingValue(afterHidden?.value, 'after_retire', fallback.afterRetireTimingValue);
+  const afterPostValue = clampCrashTestTimingValue(afterPostHidden?.value, 'after_post_retire_income_end', fallback.afterPostRetireIncomeEndTimingValue);
   const fixedOpt = select.querySelector('option[value="fixed"]');
   const afterOpt = select.querySelector('option[value="after_retire"]');
+  const afterPostOpt = select.querySelector('option[value="after_post_retire_income_end"]');
   if(fixedOpt) fixedOpt.textContent = buildCrashTimingOptionLabel('fixed', fixedValue);
   if(afterOpt) afterOpt.textContent = buildCrashTimingOptionLabel('after_retire', afterValue);
+  if(afterPostOpt) afterPostOpt.textContent = buildCrashTimingOptionLabel('after_post_retire_income_end', afterPostValue);
 }
 
 function applyCrashTimingRowState(rowEl, rowData){
@@ -19989,16 +20081,18 @@ function applyCrashTimingRowState(rowEl, rowData){
   const unitEl = rowEl.querySelector('.crash-timing-unit');
   const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
   const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+  const afterPostHidden = rowEl.querySelector('[data-crash-field="afterPostRetireIncomeEndTimingValue"]');
   if(wrap) wrap.dataset.currentType = row.timingType;
   if(select) select.value = row.timingType;
   if(fixedHidden) fixedHidden.value = String(row.fixedTimingValue);
   if(afterHidden) afterHidden.value = String(row.afterRetireTimingValue);
-  const currentValue = row.timingType === 'after_retire' ? row.afterRetireTimingValue : row.fixedTimingValue;
+  if(afterPostHidden) afterPostHidden.value = String(row.afterPostRetireIncomeEndTimingValue);
+  const currentValue = getCrashTimingStoredValueForType(row, row.timingType);
   if(input){
     input.value = String(currentValue);
     input.setAttribute('value', String(currentValue));
   }
-  if(unitEl) unitEl.textContent = row.timingType === 'after_retire' ? '年' : '歳';
+  if(unitEl) unitEl.textContent = getCrashTimingUnit(row.timingType);
   updateCrashTimingOptionLabels(rowEl, row);
 }
 
@@ -20011,12 +20105,14 @@ function updateCrashTestDraftRowFromDOM(rowEl){
   const timingInput = rowEl.querySelector('[data-crash-field="timingValue"]');
   const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
   const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
+  const afterPostHidden = rowEl.querySelector('[data-crash-field="afterPostRetireIncomeEndTimingValue"]');
   const fixedTimingValue = clampCrashTestTimingValue(fixedHidden?.value, 'fixed', current.fixedTimingValue);
   const afterRetireTimingValue = clampCrashTestTimingValue(afterHidden?.value, 'after_retire', current.afterRetireTimingValue);
+  const afterPostRetireIncomeEndTimingValue = clampCrashTestTimingValue(afterPostHidden?.value, 'after_post_retire_income_end', current.afterPostRetireIncomeEndTimingValue);
   const visibleValue = clampCrashTestTimingValue(
     timingInput?.value,
     timingType,
-    timingType === 'after_retire' ? afterRetireTimingValue : fixedTimingValue
+    getCrashTimingStoredValueForType({fixedTimingValue, afterRetireTimingValue, afterPostRetireIncomeEndTimingValue}, timingType)
   );
   const next = normalizeCrashTestRow({
     ...current,
@@ -20027,6 +20123,7 @@ function updateCrashTestDraftRowFromDOM(rowEl){
     timingType,
     fixedTimingValue,
     afterRetireTimingValue,
+    afterPostRetireIncomeEndTimingValue,
     timingValue: visibleValue,
     dropPct: rowEl.querySelector('[data-crash-field="dropPct"]')?.value,
     recoveryYears: rowEl.querySelector('[data-crash-field="recoveryYears"]')?.value
@@ -20063,12 +20160,14 @@ function syncCrashTestDraftFromModal(){
     const timingInput = tr.querySelector('[data-crash-field="timingValue"]');
     const fixedHidden = tr.querySelector('[data-crash-field="fixedTimingValue"]');
     const afterHidden = tr.querySelector('[data-crash-field="afterRetireTimingValue"]');
+    const afterPostHidden = tr.querySelector('[data-crash-field="afterPostRetireIncomeEndTimingValue"]');
     const fixedTimingValue = clampCrashTestTimingValue(fixedHidden?.value, 'fixed', current.fixedTimingValue);
     const afterRetireTimingValue = clampCrashTestTimingValue(afterHidden?.value, 'after_retire', current.afterRetireTimingValue);
+    const afterPostRetireIncomeEndTimingValue = clampCrashTestTimingValue(afterPostHidden?.value, 'after_post_retire_income_end', current.afterPostRetireIncomeEndTimingValue);
     const visibleValue = clampCrashTestTimingValue(
       timingInput?.value,
       timingType,
-      timingType === 'after_retire' ? afterRetireTimingValue : fixedTimingValue
+      getCrashTimingStoredValueForType({fixedTimingValue, afterRetireTimingValue, afterPostRetireIncomeEndTimingValue}, timingType)
     );
     const row = normalizeCrashTestRow({
       ...current,
@@ -20079,6 +20178,7 @@ function syncCrashTestDraftFromModal(){
       timingType,
       fixedTimingValue,
       afterRetireTimingValue,
+      afterPostRetireIncomeEndTimingValue,
       timingValue: visibleValue,
       dropPct: tr.querySelector('[data-crash-field="dropPct"]')?.value,
       recoveryYears: tr.querySelector('[data-crash-field="recoveryYears"]')?.value
@@ -20236,7 +20336,7 @@ function saveCrashTestModal(){
 function getCrashCompareStoredState(){
   const mode = document.getElementById('crashCompareModeState')?.value === 'parameter' ? 'parameter' : 'presence';
   const targetIndex = Math.max(0, Math.round(Number(document.getElementById('crashCompareTargetIndexState')?.value || 0) || 0));
-  const paramKey = String(document.getElementById('crashCompareParamKeyState')?.value || 'timingValue');
+  const paramKey = String(document.getElementById('crashCompareParamKeyState')?.value || 'fixedTimingValue');
   const caseCount = Math.max(2, Math.min(5, Math.round(Number(document.getElementById('crashCompareCaseCountState')?.value || 3) || 3)));
   const caseJson = document.getElementById('crashCompareCaseJsonState')?.value || '';
   const expanded = String(document.getElementById('crashCompareExpandedState')?.value || '0') === '1';
@@ -20375,6 +20475,24 @@ function ensureCrashCompareParamOptions(){
   const nextValue = defs.some(def=>def.key === currentValue) ? currentValue : (defs[0]?.key || '');
   paramSelect.value = nextValue;
 }
+function isCrashCompareTimingParamDef(paramDef){
+  return !!paramDef && String(paramDef.label || '').startsWith('発生時期：');
+}
+function resetCrashCompareTimingCasesForTargetRow(rowIndex){
+  if(getCrashCompareMode() !== 'parameter') return false;
+  const targetSelect = document.getElementById('crashCompareTargetIndex');
+  const paramSelect = document.getElementById('crashCompareParamKey');
+  if(!targetSelect || !paramSelect) return false;
+  const targetIndex = Math.max(0, Math.round(Number(targetSelect.value || 0) || 0));
+  if(targetIndex !== Math.max(0, Math.round(Number(rowIndex) || 0))) return false;
+  ensureCrashCompareParamOptions();
+  const {row} = getCrashCompareTargetRow(targetIndex);
+  const paramDef = getCrashCompareParamDefinition(row?.timingType, paramSelect.value || '');
+  if(!isCrashCompareTimingParamDef(paramDef)) return false;
+  rebuildCrashCompareCases(true);
+  renderCrashCompareCaseEditor();
+  return true;
+}
 function rebuildCrashCompareCases(force=false){
   const targetSelect = document.getElementById('crashCompareTargetIndex');
   const paramSelect = document.getElementById('crashCompareParamKey');
@@ -20415,13 +20533,31 @@ function buildCrashCompareCurrentModalState(){
   return {
     mode:getCrashCompareMode(),
     targetIndex:Math.max(0, Math.round(Number(document.getElementById('crashCompareTargetIndex')?.value || 0) || 0)),
-    paramKey:String(document.getElementById('crashCompareParamKey')?.value || 'timingValue'),
+    paramKey:String(document.getElementById('crashCompareParamKey')?.value || 'fixedTimingValue'),
     caseCount:Math.max(2, Math.min(5, Math.round(Number(document.getElementById('crashCompareCaseCount')?.value || 3) || 3))),
     caseJson:document.getElementById('crashCompareCaseJson')?.value || ''
   };
 }
 function syncCrashCompareHiddenFromModal(){
   setCrashCompareStoredState(buildCrashCompareCurrentModalState());
+}
+function isCrashCompareCaseJsonFixedTimingDefaultForCurrentTarget(caseJson, count){
+  const targetSelect = document.getElementById('crashCompareTargetIndex');
+  if(!targetSelect || !caseJson) return false;
+  const {row} = getCrashCompareTargetRow(targetSelect.value);
+  const fixedDef = getCrashCompareParamDefinition('fixed', 'fixedTimingValue');
+  if(!fixedDef) return false;
+  let cases = [];
+  try{
+    const parsed = JSON.parse(caseJson);
+    cases = Array.isArray(parsed) ? parsed : [];
+  }catch(_err){
+    return false;
+  }
+  const desiredCount = Math.max(2, Math.min(5, Number(count) || 3));
+  if(cases.length !== desiredCount) return false;
+  const fixedCases = buildDefaultCrashCompareCases(row, fixedDef, desiredCount);
+  return cases.every((item, idx)=>Math.abs(normalizeCrashCompareCaseValue(item?.value, fixedDef) - Number(fixedCases[idx]?.value || 0)) < 1e-9);
 }
 function syncCrashCompareModalFromHidden(){
   const state = getCrashCompareStoredState();
@@ -20434,10 +20570,22 @@ function syncCrashCompareModalFromHidden(){
   ensureCrashCompareTargetOptions();
   if(targetEl) targetEl.value = String(state.targetIndex);
   ensureCrashCompareParamOptions();
-  if(paramEl) paramEl.value = state.paramKey;
+  let forceRebuildCases = false;
+  if(paramEl){
+    const hasStoredParam = Array.from(paramEl.options || []).some(opt=>opt.value === state.paramKey);
+    if(hasStoredParam) paramEl.value = state.paramKey;
+    else forceRebuildCases = true;
+  }
   if(countEl) countEl.value = String(state.caseCount);
-  if(caseJsonEl) caseJsonEl.value = state.caseJson || '';
-  rebuildCrashCompareCases(false);
+  if(state.mode === 'parameter' && paramEl){
+    const {row} = getCrashCompareTargetRow(targetEl?.value || state.targetIndex);
+    const paramDef = getCrashCompareParamDefinition(row?.timingType, paramEl.value || '');
+    if(paramDef && isCrashCompareTimingParamDef(paramDef)){
+      forceRebuildCases = true;
+    }
+  }
+  if(caseJsonEl) caseJsonEl.value = forceRebuildCases ? '' : (state.caseJson || '');
+  rebuildCrashCompareCases(forceRebuildCases);
   renderCrashCompareCaseEditor();
 }
 function getCrashComparisonCases(cfgBase){
@@ -20914,7 +21062,10 @@ function updateCrashCompareModeUI(options={}){
   ensureCrashCompareTargetOptions();
   ensureCrashCompareParamOptions();
   if(isParameter){
-    rebuildCrashCompareCases(false);
+    const {row} = getCrashCompareTargetRow(document.getElementById('crashCompareTargetIndex')?.value || 0);
+    const paramDef = getCrashCompareParamDefinition(row?.timingType, document.getElementById('crashCompareParamKey')?.value || '');
+    const forceTimingDefaultCases = isCrashCompareTimingParamDef(paramDef);
+    rebuildCrashCompareCases(forceTimingDefaultCases);
     renderCrashCompareCaseEditor();
     if(status && !crashCompareCache) status.textContent = '・比較条件を設定し、上部の「暴落比較」を押すと、現在の確率設定とモンテカルロ法を使って、各ケースの将来資産の分布を確率的に比較します。条件差を公平に見るため、各ケースには同じ乱数列を使います。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。';
   }else{
@@ -20963,6 +21114,7 @@ function setCrashCompareExpanded(expanded, options={}){
     if(hidden) hidden.value = next ? '1' : '0';
   }
   applyCrashCompareExpandedButtonState(next);
+  if(next) updateCrashCompareModeUI({autoRun:false});
   if(current === next && content.hidden === !next){
     if(next && resizeChart) resizeCrashCompareChartSoon(20);
     return;
@@ -23203,6 +23355,18 @@ function estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths
   if(Number.isFinite(Number(yearIndex))) earned += getPostRetireIncomeAnnualAmountForYear(cfg, personKey, Number(yearIndex));
   return Math.max(0, earned);
 }
+function hasSelfIncomeCoverageForSpouseDependent(cfg, context=null){
+  const yearIndex = Number(context?.yearIndex);
+  if(!Number.isFinite(yearIndex)) return Number(context?.selfWorkedMonths || 0) > 0;
+  const selfAge = Math.max(0, Number(cfg?.age || 0) + yearIndex);
+  return estimateEarnedIncomeForSocialCoverage(cfg, 'self', selfAge, context?.selfWorkedMonths || 0, yearIndex) > 0;
+}
+function shouldTreatZeroIncomeSpouseAsDependentForSocial(cfg, personKey, age, hasOwnIncomeCoverage, context=null){
+  if(personKey !== 'sp') return false;
+  if(hasOwnIncomeCoverage) return false;
+  if(Number(age) >= 75) return false;
+  return hasSelfIncomeCoverageForSpouseDependent(cfg, context);
+}
 function estimateRetirementSocialForPerson(cfg, personKey, age, workedMonths, publicPensionGross, context=null){
   const emptySocial = (mode='work')=>({
     nationalHealth:0,
@@ -23218,6 +23382,7 @@ function estimateRetirementSocialForPerson(cfg, personKey, age, workedMonths, pu
   if(!cfg?.social?.enabled) return emptySocial('none');
   const mode = getHealthModeForPerson(cfg, personKey, age);
   const hasEmployeeCoverage = estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths, context?.yearIndex) > 0;
+  if(shouldTreatZeroIncomeSpouseAsDependentForSocial(cfg, personKey, age, hasEmployeeCoverage, context)) return emptySocial('dependent');
   let nationalHealth = 0;
   let employeeHealth = 0;
   let lateElderlyHealth = 0;
@@ -24168,7 +24333,7 @@ function processSafeAssetsForYear(cfg, age, safeAssets, deposits, yearIndex = 0,
 function getWithdrawalPolicyConfig(cfg){
   const src = cfg?.withdrawalPolicy || {};
   const mode = ["fixed_rate","fixed_amount","basic_annual","basic_lump","basic_hybrid","current","rebalance","bucket"].includes(src.mode) ? src.mode : "basic_annual";
-  const startConditionMode = ["retirement_age","cash_buffer_threshold","fixed_age"].includes(src.startConditionMode) ? src.startConditionMode : "retirement_age";
+  const startConditionMode = ["retirement_age","post_retire_income_end_age","cash_buffer_threshold","fixed_age"].includes(src.startConditionMode) ? src.startConditionMode : "retirement_age";
   let orderManualIds = [];
   try{
     orderManualIds = JSON.parse(src.orderManualJson || '[]');
@@ -24229,10 +24394,16 @@ function getHouseholdRetireAge(cfg){
   if(Number.isFinite(spouseAge) && spouseAge > 0) return spouseAge;
   return 65;
 }
-function shouldStartPlannedWithdrawal(rule, age, depTotal, annualNeed, retireAge){
+function getSelfPostRetireIncomeEndAge(cfg){
+  const postEndAge = Number(cfg?.incomeSelf?.postRetireIncomeEndAge);
+  if(Number.isFinite(postEndAge) && postEndAge > 0) return Math.round(postEndAge);
+  return Math.round(getHouseholdRetireAge(cfg));
+}
+function shouldStartPlannedWithdrawal(rule, age, depTotal, annualNeed, retireAge, postRetireIncomeEndAge){
   if(!rule) return false;
   const mode = rule.startConditionMode || 'retirement_age';
   if(mode === 'fixed_age') return age >= Math.round(Number(rule.startFixedAge || 0));
+  if(mode === 'post_retire_income_end_age') return age >= Math.round(Number(postRetireIncomeEndAge || retireAge || 0));
   if(mode === 'cash_buffer_threshold') return depTotal <= Math.max(0, Number(annualNeed || 0)) * Math.max(0, Number(rule.startCashBufferYears || 0));
   return age >= Math.round(Number(retireAge || 0));
 }
@@ -24249,9 +24420,9 @@ function computeBasicWithdrawalAmountAtStart(rule, mode, totalInvestments){
   const years = Math.max(0, Math.round(Number(rule.basicAnnualPeriodYears || 0) || 0));
   return years > 0 ? total / years : 0;
 }
-function getPlannedWithdrawalAmountForYear(rule, age, totalInvestments, depTotal=0, annualNeed=0, retireAge=65){
+function getPlannedWithdrawalAmountForYear(rule, age, totalInvestments, depTotal=0, annualNeed=0, retireAge=65, postRetireIncomeEndAge=65){
   if(!rule) return 0;
-  const startReady = shouldStartPlannedWithdrawal(rule, age, depTotal, annualNeed, retireAge);
+  const startReady = shouldStartPlannedWithdrawal(rule, age, depTotal, annualNeed, retireAge, postRetireIncomeEndAge);
   if(rule.mode === 'fixed_rate'){
     if(!startReady) return 0;
     return Math.max(0, Number(totalInvestments || 0) * Math.max(0, Number(rule.fixedRatePct || 0)));
@@ -24302,7 +24473,8 @@ function applyPlannedWithdrawalAtYearStart(cfg, age, deposits, investments, liab
   const depTotalBefore = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
   const annualNeedForStart = annualState?.annualNeedBase || 0;
   const retireAge = getHouseholdRetireAge(cfg);
-  const plannedNeed = Math.max(0, getPlannedWithdrawalAmountForYear(rule, age, currentInvestmentTotal, depTotalBefore, annualNeedForStart, retireAge));
+  const postRetireIncomeEndAge = getSelfPostRetireIncomeEndAge(cfg);
+  const plannedNeed = Math.max(0, getPlannedWithdrawalAmountForYear(rule, age, currentInvestmentTotal, depTotalBefore, annualNeedForStart, retireAge, postRetireIncomeEndAge));
   if(plannedNeed <= 0.0001) return 0;
   if(!deposits.length) deposits.push({name:"預貯金1", amount:0, rate:0});
   const beforeDepTotal = deposits.reduce((s,d)=>s + (Number(d.amount) || 0), 0);
@@ -24688,7 +24860,7 @@ function simulate(cfg, random=false, opts={}){
       }
       if(simulateProfile) addSimProfile('investmentRateRandomMs', simulateProfileNow() - randomStart);
       const crashStart = simulateProfile ? simulateProfileNow() : 0;
-      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests, cfg?.incomeSelf?.retireAge);
+      effectiveRate = applyCrashAdjustmentToReturn(effectiveRate, age, cfg?.crashTests, cfg?.incomeSelf?.retireAge, cfg?.incomeSelf?.postRetireIncomeEndAge);
       if(simulateProfile){
         addSimProfile('investmentRateCrashMs', simulateProfileNow() - crashStart);
         addSimProfileCount('investmentRateCrashChecks');
@@ -29195,6 +29367,59 @@ function buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, key, xAxi
 }
 
 
+function getIncomeCurveAgeAtYearMonthForOwner(owner, yearValue, monthValue){
+  const prefix = owner === "sp" ? "sp" : "self";
+  const birthValue = document.getElementById(prefix === "sp" ? "spouseBirthDate" : "selfBirthDate")?.value || "";
+  const ageParts = calcAgeYearMonthsAtParts(parseDateInput(birthValue), getRetireMonthEndParts(yearValue, monthValue));
+  return ageParts ? ageParts.years + ageParts.months / 12 : null;
+}
+function getIncomeCurvePostRetireIncomeInfo(owner, currentAge, fallbackRetireAge){
+  const prefix = owner === "sp" ? "sp" : "self";
+  const monthly = Math.max(0, Number(numInput(`${prefix}_post_retire_income_month`, 0)) || 0);
+  if(monthly <= 0) return null;
+  const retireYear = Number(document.getElementById(`${prefix}_retire_year`)?.value || 0);
+  const retireMonth = Number(document.getElementById(`${prefix}_retire_month`)?.value || 0);
+  const endYear = Number(document.getElementById(`${prefix}_post_retire_income_end_year`)?.value || 0);
+  const endMonth = Number(document.getElementById(`${prefix}_post_retire_income_end_month`)?.value || 0);
+  if(!retireYear || !retireMonth || !endYear || !endMonth) return null;
+  const startYm = addMonthsToYearMonth(retireYear, retireMonth, 1);
+  const endYm = {year:endYear, month:endMonth};
+  if(compareYearMonth(startYm, addMonthsToYearMonth(endYm.year, endYm.month, 1)) >= 0) return null;
+  const startAge = getIncomeCurveAgeAtYearMonthForOwner(owner, startYm.year, startYm.month);
+  const endAgeRaw = getIncomeCurveAgeAtYearMonthForOwner(owner, endYm.year, endYm.month);
+  const retireAge = Number(fallbackRetireAge) || Number(currentAge) || 0;
+  const startAgeSafe = Number.isFinite(startAge) ? startAge : retireAge;
+  const endAge = Number.isFinite(endAgeRaw) ? endAgeRaw : Math.max(startAgeSafe, retireAge);
+  if(!(endAge >= startAgeSafe - 1e-9)) return null;
+  return {
+    monthly,
+    startAge:Math.round(startAgeSafe * 1000000) / 1000000,
+    endAge:Math.round(endAge * 1000000) / 1000000
+  };
+}
+function buildIncomeCurvePostRetireIncomePoints(info, xAxisMax){
+  if(!info || !(Number(info.monthly) > 0)) return [];
+  const startAge = Number(info.startAge);
+  const endAge = Number(info.endAge);
+  const monthly = Number(info.monthly) || 0;
+  if(!Number.isFinite(startAge) || !Number.isFinite(endAge) || endAge < startAge - 1e-9) return [];
+  return [
+    {x:startAge, y:monthly},
+    {x:endAge, y:monthly},
+    {x:endAge, y:0},
+    {x:xAxisMax, y:0}
+  ];
+}
+function getIncomeCurveEndAgeWithPostRetireIncome(currentAge, retireAge, postInfo){
+  if(!postInfo) return null;
+  const current = Number(currentAge) || 0;
+  const endAge = Number(postInfo.endAge);
+  if(!Number.isFinite(endAge) || endAge <= current) return null;
+  const ratioEnd = current + (endAge - current) / 0.88;
+  return Math.max(endAge + 1, ratioEnd, Number(retireAge) || 0);
+}
+
+
 function cloneIncomeCurveBounds(bounds){
   if(!bounds) return null;
   const xMin = Number(bounds.xMin), xMax = Number(bounds.xMax);
@@ -29814,20 +30039,31 @@ function drawIncomeCurveChart(){
   const c = getIncomeOwnerConfig(activeIncomeCurveOwner);
   const currentAge = numInput("age", 50) || 50;
   const retireAge = numInput(c.retireInputId, 65) || 65;
+  const postRetireIncomeInfo = getIncomeCurvePostRetireIncomeInfo(activeIncomeCurveOwner, currentAge, retireAge);
   const postYears = Math.max(2, Math.ceil(Math.max(0, retireAge - currentAge) * 0.25));
-  const chartEndAge = retireAge + postYears;
+  const defaultChartEndAge = retireAge + postYears;
+  const postIncomeChartEndAge = getIncomeCurveEndAgeWithPostRetireIncome(currentAge, retireAge, postRetireIncomeInfo);
+  const chartEndAge = Math.max(defaultChartEndAge, postIncomeChartEndAge || defaultChartEndAge);
   const xAxisRange = getIncomeCurveXAxisRange(currentAge, chartEndAge);
   const xTickStep = xAxisRange.step;
   const seriesCfg = {salaryMonth:numInput(c.salaryInputId,0), bonusYear:numInput(c.bonusInputId,0), salaryMode:getIncomeModes(activeIncomeCurveOwner).salary, bonusMode:getIncomeModes(activeIncomeCurveOwner).bonus, incomeCurve:incomeCurveDraft, birthMonth:getIncomeCurveBirthMonthFromOwner(activeIncomeCurveOwner), retireAge};
   const salaryPoints = buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, "salary", xAxisRange.max);
   const bonusPoints = buildIncomeCurveChartPoints(seriesCfg, currentAge, retireAge, "bonus", xAxisRange.max);
+  const postRetireIncomePoints = buildIncomeCurvePostRetireIncomePoints(postRetireIncomeInfo, xAxisRange.max);
+  const incomeCurveDatasets = [
+    {label:"手取り", data:salaryPoints, parsing:false, borderColor:"#4f8eff", backgroundColor:"#4f8eff", pointRadius:0, pointHoverRadius:3, borderWidth:2.4, yAxisID:"y", spanGaps:false, tension:0, order:30},
+    {label:"ボーナス", data:bonusPoints, parsing:false, borderColor:"#f1a43a", backgroundColor:"#f1a43a", pointRadius:0, pointHoverRadius:3, borderWidth:2.4, yAxisID:"y1", spanGaps:false, tension:0, order:20}
+  ];
+  if(postRetireIncomePoints.length){
+    incomeCurveDatasets.push({label:"リタイア後収入", data:postRetireIncomePoints, parsing:false, borderColor:"#0f766e", backgroundColor:"#0f766e", pointRadius:0, pointHoverRadius:3, borderWidth:2.4, yAxisID:"y", spanGaps:false, tension:0, order:10});
+  }
   const ctx = document.getElementById("incomeCurveChart").getContext("2d");
   const isIncomeCurveCompact = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
   const autoBounds = {
     xMin:xAxisRange.min,
     xMax:xAxisRange.max,
     yMin:0,
-    yMax:getIncomeCurveNiceMax(salaryPoints, Math.max(1, Number(seriesCfg.salaryMonth || 0) || 1)),
+    yMax:getIncomeCurveNiceMax(salaryPoints.concat(postRetireIncomePoints), Math.max(1, Number(seriesCfg.salaryMonth || 0) || 1, Number(postRetireIncomeInfo?.monthly || 0) || 0)),
     y1Min:0,
     y1Max:getIncomeCurveNiceMax(bonusPoints, Math.max(1, Number(seriesCfg.bonusYear || 0) || 1))
   };
@@ -29837,10 +30073,7 @@ function drawIncomeCurveChart(){
   incomeCurveChart = new Chart(ctx, {
     type:"line",
     data:{
-      datasets:[
-        {label:"手取り（月）", data:salaryPoints, parsing:false, borderColor:"#4f8eff", backgroundColor:"#4f8eff", pointRadius:0, pointHoverRadius:3, borderWidth:2.4, yAxisID:"y", spanGaps:false, tension:0, order:20},
-        {label:"ボーナス（年）", data:bonusPoints, parsing:false, borderColor:"#f1a43a", backgroundColor:"#f1a43a", pointRadius:0, pointHoverRadius:3, borderWidth:2.4, yAxisID:"y1", spanGaps:false, tension:0, order:10}
-      ]
+      datasets:incomeCurveDatasets
     },
     options:{
       animation:false,responsive:true,maintainAspectRatio:false,
@@ -29862,8 +30095,13 @@ function drawIncomeCurveChart(){
             },
             label(ctx){
               const label = ctx.dataset?.label || "";
-              const y = Number(ctx.parsed?.y);
               const unit = label.includes("ボーナス") ? "万円 / 年" : "万円 / 月";
+              let y = Number(ctx.parsed?.y);
+              if(label === "手取り" || label === "ボーナス"){
+                const tooltipPx = Number(ctx.chart?.tooltip?.caretX);
+                const tooltipAge = Number.isFinite(tooltipPx) ? Number(ctx.chart?.scales?.x?.getValueForPixel(tooltipPx)) : Number(ctx.parsed?.x);
+                if(Number.isFinite(tooltipAge) && tooltipAge > retireAge + 1e-6) y = 0;
+              }
               return `${label}: ${formatNumberJP(y, 1)} ${unit}`;
             },
             labelPointStyle(){
@@ -29895,7 +30133,7 @@ function drawIncomeCurveChart(){
           });
         },
         sort(a,b){
-          const order = {"手取り（月）":0, "ボーナス（年）":1};
+          const order = {"手取り":0, "ボーナス":1, "リタイア後収入":2};
           return (order[a.text] ?? 99) - (order[b.text] ?? 99);
         }
       }}},
@@ -29987,7 +30225,11 @@ function drawIncomeCurveChart(){
           const padX = isIncomeCurveCompact ? 5 : 6;
           const labelW = ctx.measureText(label).width + padX * 2;
           const labelH = isIncomeCurveCompact ? 18 : 20;
-          const labelX = Math.max(area.left + 6, Math.min(px + 8, area.right - labelW - 6));
+          const postEndPx = postRetireIncomeInfo ? xScale.getPixelForValue(postRetireIncomeInfo.endAge) : NaN;
+          const shouldPushRetireLabelLeft = Number.isFinite(postEndPx) && postEndPx >= px && Math.abs(postEndPx - px) < (labelW + 52);
+          const labelX = shouldPushRetireLabelLeft
+            ? Math.max(area.left + 6, Math.min(px - labelW - 8, area.right - labelW - 6))
+            : Math.max(area.left + 6, Math.min(px + 8, area.right - labelW - 6));
           const labelY = Math.min(area.bottom - labelH / 2 - 4, area.top + 14);
           ctx.fillStyle = "rgba(255,255,255,0.90)";
           ctx.strokeStyle = "rgba(180,91,106,0.18)";
@@ -29997,6 +30239,45 @@ function drawIncomeCurveChart(){
           ctx.fill();
           ctx.stroke();
           ctx.fillStyle = retireStyle.labelColor;
+          ctx.fillText(label, labelX + padX, labelY);
+          ctx.restore();
+        }
+      },
+      {
+        id:"postRetireIncomeEndLine",
+        afterDatasetsDraw(chart){
+          if(!postRetireIncomeInfo) return;
+          const xScale=chart.scales.x;
+          const yScale=chart.scales.y;
+          const area=chart.chartArea;
+          const endAge = Number(postRetireIncomeInfo.endAge);
+          const px=xScale.getPixelForValue(endAge);
+          const ctx=chart.ctx;
+          if(!Number.isFinite(px)) return;
+          const baseStyle = typeof getRetireGuideSingleStyle === "function" ? getRetireGuideSingleStyle() : {width:1.6, dash:[6,4]};
+          const endStyle = {...baseStyle, color:"rgba(147,51,234,0.70)", labelColor:"rgba(126,34,206,0.92)"};
+          if(px >= area.left && px <= area.right) drawRetireGuideLine(ctx, xScale, yScale, area, endAge, endStyle);
+          const alpha = typeof getGuideLabelFadeAlpha === "function" ? getGuideLabelFadeAlpha(px, area, 36) : (px < area.left || px > area.right ? 0 : 1);
+          if(alpha <= 0.02) return;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.font = isIncomeCurveCompact ? "11px Arial" : "12px Arial";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          const label = "収入終了";
+          const padX = isIncomeCurveCompact ? 5 : 6;
+          const labelW = ctx.measureText(label).width + padX * 2;
+          const labelH = isIncomeCurveCompact ? 18 : 20;
+          const labelX = Math.max(area.left + 6, Math.min(px + 8, area.right - labelW - 6));
+          const labelY = Math.min(area.bottom - labelH / 2 - 4, area.top + 14);
+          ctx.fillStyle = "rgba(255,255,255,0.90)";
+          ctx.strokeStyle = "rgba(147,51,234,0.18)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(labelX, labelY - labelH / 2, labelW, labelH, 7);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = endStyle.labelColor;
           ctx.fillText(label, labelX + padX, labelY);
           ctx.restore();
         }
@@ -30200,12 +30481,17 @@ let crashCompareCache = null;
 let crashCompareRunTimer = null;
 const CRASH_COMPARE_PARAM_DEFS = {
   fixed:[
-    {key:'timingValue', label:'発生時期固定年齢', unit:'歳', step:1, min:0, max:120, fallback:60, defaultDelta:5, format:(v)=>`${formatNumberJP(v, 0)}歳`},
+    {key:'fixedTimingValue', label:'発生時期：固定年齢', unit:'歳', step:1, min:0, max:120, fallback:60, defaultDelta:5, format:(v)=>`${formatNumberJP(v, 0)}歳`},
     {key:'dropPct', label:'下落率', unit:'%', step:0.1, min:0, max:95, fallback:35, defaultDelta:5, format:(v)=>`${formatNumberJP(v, 1)}%`},
     {key:'recoveryYears', label:'回復年数', unit:'年', step:1, min:1, max:30, fallback:3, defaultDelta:1, format:(v)=>`${formatNumberJP(v, 0)}年`}
   ],
   after_retire:[
-    {key:'timingValue', label:'発生時期リタイア後年数', unit:'年後', step:1, min:0, max:60, fallback:0, defaultDelta:2, format:(v)=>`リタイア後 ${formatNumberJP(v, 0)}年`},
+    {key:'afterRetireTimingValue', label:'発生時期：リタイア後年数', unit:'年後', step:1, min:0, max:60, fallback:0, defaultDelta:2, format:(v)=>`リタイア後 ${formatNumberJP(v, 0)}年`},
+    {key:'dropPct', label:'下落率', unit:'%', step:0.1, min:0, max:95, fallback:35, defaultDelta:5, format:(v)=>`${formatNumberJP(v, 1)}%`},
+    {key:'recoveryYears', label:'回復年数', unit:'年', step:1, min:1, max:30, fallback:3, defaultDelta:1, format:(v)=>`${formatNumberJP(v, 0)}年`}
+  ],
+  after_post_retire_income_end:[
+    {key:'afterPostRetireIncomeEndTimingValue', label:'発生時期：リタイア後収入終了後年数', unit:'年後', step:1, min:0, max:60, fallback:0, defaultDelta:2, format:(v)=>`リタイア後収入終了後 ${formatNumberJP(v, 0)}年`},
     {key:'dropPct', label:'下落率', unit:'%', step:0.1, min:0, max:95, fallback:35, defaultDelta:5, format:(v)=>`${formatNumberJP(v, 1)}%`},
     {key:'recoveryYears', label:'回復年数', unit:'年', step:1, min:1, max:30, fallback:3, defaultDelta:1, format:(v)=>`${formatNumberJP(v, 0)}年`}
   ]
@@ -30790,7 +31076,9 @@ function setCrashCompareResultsVisible(visible){
 }
 
 function getCompareHeaderPaletteColor(index){
-  const palettes = ['#2563eb','#d97706','#15803d','#7c3aed','#db2777'];
+  const palettes = (typeof COMPARE_CHART_TRACE_COLORS !== 'undefined' && Array.isArray(COMPARE_CHART_TRACE_COLORS) && COMPARE_CHART_TRACE_COLORS.length)
+    ? COMPARE_CHART_TRACE_COLORS
+    : ['#cf616d','#3f73cf','#2b8b5f','#db953a','#7d5ed6'];
   return palettes[index % palettes.length];
 }
 function hexToRgbaString(hex, alpha){
@@ -30804,7 +31092,7 @@ function hexToRgbaString(hex, alpha){
 function buildCompareHeaderCols(results){
   return (results || []).map((r, idx)=>{
     const color = getCompareHeaderPaletteColor(idx);
-    const bg = hexToRgbaString(color, 0.18);
+    const bg = hexToRgbaString(color, 0.16);
     return `<th class="compare-series-head" style="background:${bg} !important;color:#1f2937 !important;">${escapeHtml(r.label || '')}</th>`;
   }).join('');
 }
@@ -34012,7 +34300,8 @@ function syncWithdrawalStartConditionValueControl(){
     return;
   }
   valueEl.readOnly = true;
-  valueEl.value = String(retireAge);
+  if(mode === 'post_retire_income_end_age') valueEl.value = String(Math.round(Number(document.getElementById('self_post_retire_income_end_age')?.value || retireAge) || retireAge));
+  else valueEl.value = String(retireAge);
   valueEl.inputMode = 'numeric';
   suffixEl.textContent = '歳';
 }
@@ -34033,6 +34322,7 @@ function getWithdrawalStartConditionSummary(){
   const mode = document.getElementById('withdrawalStartConditionMode')?.value || 'retirement_age';
   if(mode === 'cash_buffer_threshold') return `預貯金が生活費の指定年分 ${formatNumberJP(numInput('withdrawalStartCashBufferYears', 2) || 0, 1)} 年分以下になった時`;
   if(mode === 'fixed_age') return `固定年齢 ${Math.max(0, numInput('withdrawalStartFixedAge', 65) || 0)} 歳`;
+  if(mode === 'post_retire_income_end_age') return `リタイア後収入終了年齢（${Math.round(Number(document.getElementById('self_post_retire_income_end_age')?.value || getSelfPostRetireIncomeEndAge(getScenarioFromDOM())) || getHouseholdRetireAge(getScenarioFromDOM()))}歳）`;
   return `リタイア年齢（${Math.round(getHouseholdRetireAge(getScenarioFromDOM()))}歳）`;
 }
 function handleWithdrawalStartConditionModeChange(){
@@ -34266,8 +34556,8 @@ document.getElementById("crashTestRowsBody")?.addEventListener("input", (e)=>{
   const wrap = rowEl.querySelector('.crash-timing-wrap');
   if(target.matches('[data-crash-field="timingValue"]')){
     const currentType = normalizeCrashTestTimingType(rowEl.querySelector('[data-crash-field="timingType"]')?.value || wrap?.dataset.currentType);
-    const nextValue = clampCrashTestTimingValue(target.value, currentType, currentType === 'after_retire' ? 0 : getDefaultCrashTestAge());
-    const hidden = rowEl.querySelector(currentType === 'after_retire' ? '[data-crash-field="afterRetireTimingValue"]' : '[data-crash-field="fixedTimingValue"]');
+    const nextValue = clampCrashTestTimingValue(target.value, currentType, currentType === 'fixed' ? getDefaultCrashTestAge() : 0);
+    const hidden = rowEl.querySelector(getCrashTimingHiddenSelector(currentType));
     if(hidden) hidden.value = String(nextValue);
     if(wrap) wrap.dataset.currentType = currentType;
     updateCrashTimingOptionLabels(rowEl);
@@ -34288,21 +34578,21 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
     const input = rowEl.querySelector('[data-crash-field="timingValue"]');
     const fixedHidden = rowEl.querySelector('[data-crash-field="fixedTimingValue"]');
     const afterHidden = rowEl.querySelector('[data-crash-field="afterRetireTimingValue"]');
-    const previousType = normalizeCrashTestTimingType(wrap?.dataset.currentType || getCrashTestDraftRowState(rowIndex).timingType);
-    const previousFallback = previousType === 'after_retire'
-      ? clampCrashTestTimingValue(afterHidden?.value, 'after_retire', getCrashTestDraftRowState(rowIndex).afterRetireTimingValue)
-      : clampCrashTestTimingValue(fixedHidden?.value, 'fixed', getCrashTestDraftRowState(rowIndex).fixedTimingValue);
+    const afterPostHidden = rowEl.querySelector('[data-crash-field="afterPostRetireIncomeEndTimingValue"]');
+    const currentState = getCrashTestDraftRowState(rowIndex);
+    const previousType = normalizeCrashTestTimingType(wrap?.dataset.currentType || currentState.timingType);
+    const previousFallback = getCrashTimingStoredValueForType({
+      fixedTimingValue: clampCrashTestTimingValue(fixedHidden?.value, 'fixed', currentState.fixedTimingValue),
+      afterRetireTimingValue: clampCrashTestTimingValue(afterHidden?.value, 'after_retire', currentState.afterRetireTimingValue),
+      afterPostRetireIncomeEndTimingValue: clampCrashTestTimingValue(afterPostHidden?.value, 'after_post_retire_income_end', currentState.afterPostRetireIncomeEndTimingValue)
+    }, previousType);
     const currentVisible = clampCrashTestTimingValue(input?.value, previousType, previousFallback);
-    if(previousType === 'after_retire'){
-      if(afterHidden) afterHidden.value = String(currentVisible);
-    }else{
-      if(fixedHidden) fixedHidden.value = String(currentVisible);
-    }
+    const previousHidden = rowEl.querySelector(getCrashTimingHiddenSelector(previousType));
+    if(previousHidden) previousHidden.value = String(currentVisible);
     const nextType = normalizeCrashTestTimingType(target.value);
     if(wrap) wrap.dataset.currentType = nextType;
-    const nextValue = nextType === 'after_retire'
-      ? clampCrashTestTimingValue(afterHidden?.value, 'after_retire', 0)
-      : clampCrashTestTimingValue(fixedHidden?.value, 'fixed', getDefaultCrashTestAge());
+    const nextHidden = rowEl.querySelector(getCrashTimingHiddenSelector(nextType));
+    const nextValue = clampCrashTestTimingValue(nextHidden?.value, nextType, nextType === 'fixed' ? getDefaultCrashTestAge() : 0);
     if(input){
       input.value = String(nextValue);
       input.setAttribute('value', String(nextValue));
@@ -34312,6 +34602,7 @@ document.getElementById("crashTestRowsBody")?.addEventListener("change", (e)=>{
     renderCrashTestSummary(crashTestDraft);
     refreshCrashPreviewGraph();
     crashCompareCache = null;
+    resetCrashCompareTimingCasesForTargetRow(rowIndex);
     updateCrashCompareModeUI({autoRun:false});
     return;
   }
