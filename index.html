@@ -4586,6 +4586,58 @@ document.addEventListener("scroll", (ev)=>{
     padding-bottom:0 !important;
   }
 }
+
+/* ===== v1461: Side/Barista FIRE wording/layout refinements ===== */
+.simple-mode-card-title{
+  min-height:44px;
+  align-items:flex-start !important;
+}
+.simple-mode-card-title-main{
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+.simple-mode-card-note{
+  flex:1 1 auto;
+  min-width:0;
+}
+#detailModePanel .person-income-table .person-income-label-nowrap,
+#detailModePanel .person-income-table .person-income-label-line{
+  white-space:nowrap;
+}
+@media (min-width:901px) and (pointer:fine){
+  #detailModePanel .person-income-table .person-income-label-line + br{
+    display:none;
+  }
+  #detailModePanel .person-income-table tr.simple-linked-label-stack-row > td:first-child{
+    white-space:nowrap;
+  }
+  #detailModePanel .person-income-table tr.simple-linked-label-stack-row > td:first-child .simple-linked-badge{
+    display:block;
+    width:max-content;
+    margin:4px auto 0;
+  }
+}
+@media (max-width:900px), (pointer:coarse){
+  #detailModePanel .person-income-table{
+    table-layout:fixed;
+    width:100%;
+  }
+  #detailModePanel .person-income-table th:first-child,
+  #detailModePanel .person-income-table td:first-child{
+    width:40%;
+    min-width:40%;
+  }
+  #detailModePanel .person-income-table th:nth-child(2),
+  #detailModePanel .person-income-table td:nth-child(2){
+    width:60%;
+    min-width:60%;
+  }
+  #detailModePanel .person-income-table .person-income-label-nowrap,
+  #detailModePanel .person-income-table .person-income-label-line{
+    white-space:nowrap;
+  }
+}
+
 </style>
 <!-- ===== v827: special table visual unification only (cashflow + compare tables / CSS tail append) ===== -->
 <style>
@@ -7083,32 +7135,36 @@ document.addEventListener("scroll", (ev)=>{
 </div>
 <div class="section">
 <h2>収入</h2>
-<div class="stack-note">・公的年金以外の収入は、原則として手取りベースで入力してください。<br/>・公的年金は、税・社会保険料控除前の額面年金額を入力してください。「年金入力補助」から、ねんきん定期便ベースでも入力できます。<br/>・退職金・DC受取は、上の専用表で受取方法を管理します。<br/>・月収はリタイア年月の月まで計上し、ボーナス（年）はその年に働いた月数で按分します。年金は年金開始年齢の誕生月から受給開始として按分計上します。</div>
+<div class="stack-note">・公的年金以外の収入は、原則として手取りベースで入力してください。<br/>・公的年金は、税・社会保険料控除前の額面年金額を入力してください。「年金入力補助」から、ねんきん定期便ベースでも入力できます。<br/>・退職金・DC受取は、上の専用表で受取方法を管理します。<br/>・月収はリタイア年月の月まで計上し、ボーナス（年）はその年に働いた月数で按分します。年金は年金開始年齢の誕生月から受給開始として按分計上します。<br/>・リタイア後の手取りは、税金・社会保険料などを差し引いた後の金額です。直接完全リタイアする場合は、0万円にしてください。</div>
 
 
 
 <div class="grid2">
 <div>
 <div class="subhead">本人</div>
-<table class="center-table income-table">
+<table class="center-table income-table person-income-table">
 <tr><th>項目</th><th>入力</th></tr>
 <tr><td>手取り（月）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="self_salary_mode_normal" name="self_salary_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="self_salary_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="self_salary_mode_custom" name="self_salary_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><span class="mode-spacer"></span></div><input id="self_income_curve_json" type="hidden" value=""/></div></td></tr>
 <tr><td>ボーナス（年）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="self_bonus_mode_normal" name="self_bonus_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="self_bonus_year" type="number" value="0"/><span class="suffix">万円 / 年</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="self_bonus_mode_custom" name="self_bonus_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><button class="curve-btn" data-income-curve-owner="self" disabled="" id="self_income_curve_btn" type="button">カーブ編集</button></div></div></td></tr>
-<tr><td>リタイア年月</td><td><div class="retire-inline"><select class="retire-year-select" id="self_retire_year"></select><span class="suffix">年</span><select class="retire-month-select" id="self_retire_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="selfRetireAgeLabel">65歳0ヶ月</span>)</span><input id="self_retire_age" type="hidden" value="65"/></div></td></tr>
+<tr><td><span class="person-income-label-nowrap">リタイア年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="self_retire_year"></select><span class="suffix">年</span><select class="retire-month-select" id="self_retire_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="selfRetireAgeLabel">65歳0ヶ月</span>)</span><input id="self_retire_age" type="hidden" value="65"/></div></td></tr>
 <tr><td>退職金</td><td><div class="input-unit center"><input class="moneybox" id="self_retire_pay" type="number" value="0"/><span class="suffix">万円</span></div></td></tr>
-<tr><td>年金開始年齢</td><td><div class="input-unit center"><input class="agebox" id="self_pension_age" type="number" value="65"/><span class="suffix">歳</span></div></td></tr>
+<tr><td><span class="person-income-label-line">リタイア後の</span><br><span class="person-income-label-line">手取り（月）</span></td><td><div class="input-unit center"><input class="moneybox" id="self_post_retire_income_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></td></tr>
+<tr><td><span class="person-income-label-line">リタイア後収入</span><br><span class="person-income-label-line">終了年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="self_post_retire_income_end_year"></select><span class="suffix">年</span><select class="retire-month-select" id="self_post_retire_income_end_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="selfPostRetireIncomeEndAgeLabel">65歳0ヶ月</span>)</span><input id="self_post_retire_income_end_age" type="hidden" value="65"/></div></td></tr>
+<tr><td><span class="person-income-label-nowrap">年金開始年齢</span></td><td><div class="input-unit center"><input class="agebox" id="self_pension_age" type="number" value="65"/><span class="suffix">歳</span></div></td></tr>
 <tr><td>年金（月）</td><td><div class="pension-helper-cell"><div class="input-unit center"><input class="moneybox" id="self_pension_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div><button class="curve-btn pension-helper-btn" id="self_pension_helper_btn" type="button">年金入力補助</button><input id="self_pension_input_mode" type="hidden" value="direct"/><input id="self_pension_helper_start_age" type="hidden" value="65"/><input id="self_pension_helper_basic_annual" type="hidden" value="0"/><input id="self_pension_helper_employee_annual" type="hidden" value="0"/></div></td></tr>
 </table>
 </div>
 <div>
 <div class="subhead">配偶者</div>
-<table class="center-table income-table">
+<table class="center-table income-table person-income-table">
 <tr><th>項目</th><th>入力</th></tr>
 <tr><td>手取り（月）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="sp_salary_mode_normal" name="sp_salary_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="sp_salary_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="sp_salary_mode_custom" name="sp_salary_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><span class="mode-spacer"></span></div><input id="sp_income_curve_json" type="hidden" value=""/></div></td></tr>
 <tr><td>ボーナス（年）</td><td><div class="income-mode-cell"><div class="income-mode-line income-mode-line-normal"><div class="mode-left"><input checked="" id="sp_bonus_mode_normal" name="sp_bonus_mode" type="radio" value="normal"/><span class="mode-label">定額</span></div><div class="input-unit center"><input class="moneybox" id="sp_bonus_year" type="number" value="0"/><span class="suffix">万円 / 年</span></div></div><div class="income-mode-line income-mode-line-button"><div class="mode-left"><input id="sp_bonus_mode_custom" name="sp_bonus_mode" type="radio" value="custom"/><span class="mode-label">カスタム</span></div><button class="curve-btn" data-income-curve-owner="sp" disabled="" id="sp_income_curve_btn" type="button">カーブ編集</button></div></div></td></tr>
-<tr><td>リタイア年月</td><td><div class="retire-inline"><select class="retire-year-select" id="sp_retire_year"></select><span class="suffix">年</span><select class="retire-month-select" id="sp_retire_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="spRetireAgeLabel">60歳0ヶ月</span>)</span><input id="sp_retire_age" type="hidden" value="60"/></div></td></tr>
+<tr><td><span class="person-income-label-nowrap">リタイア年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="sp_retire_year"></select><span class="suffix">年</span><select class="retire-month-select" id="sp_retire_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="spRetireAgeLabel">60歳0ヶ月</span>)</span><input id="sp_retire_age" type="hidden" value="60"/></div></td></tr>
 <tr><td>退職金</td><td><div class="input-unit center"><input class="moneybox" id="sp_retire_pay" type="number" value="0"/><span class="suffix">万円</span></div></td></tr>
-<tr><td>年金開始年齢</td><td><div class="input-unit center"><input class="agebox" id="sp_pension_age" type="number" value="65"/><span class="suffix">歳</span></div></td></tr>
+<tr><td><span class="person-income-label-line">リタイア後の</span><br><span class="person-income-label-line">手取り（月）</span></td><td><div class="input-unit center"><input class="moneybox" id="sp_post_retire_income_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div></td></tr>
+<tr><td><span class="person-income-label-line">リタイア後収入</span><br><span class="person-income-label-line">終了年月</span></td><td><div class="retire-inline"><select class="retire-year-select" id="sp_post_retire_income_end_year"></select><span class="suffix">年</span><select class="retire-month-select" id="sp_post_retire_income_end_month"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="spPostRetireIncomeEndAgeLabel">60歳0ヶ月</span>)</span><input id="sp_post_retire_income_end_age" type="hidden" value="60"/></div></td></tr>
+<tr><td><span class="person-income-label-nowrap">年金開始年齢</span></td><td><div class="input-unit center"><input class="agebox" id="sp_pension_age" type="number" value="65"/><span class="suffix">歳</span></div></td></tr>
 <tr><td>年金（月）</td><td><div class="pension-helper-cell"><div class="input-unit center"><input class="moneybox" id="sp_pension_month" step="0.1" type="number" value="0"/><span class="suffix">万円 / 月</span></div><button class="curve-btn pension-helper-btn" id="sp_pension_helper_btn" type="button">年金入力補助</button><input id="sp_pension_input_mode" type="hidden" value="direct"/><input id="sp_pension_helper_start_age" type="hidden" value="65"/><input id="sp_pension_helper_basic_annual" type="hidden" value="0"/><input id="sp_pension_helper_employee_annual" type="hidden" value="0"/></div></td></tr>
 </table>
 </div>
@@ -10454,12 +10510,21 @@ function currentSelfRetireAgeValue(data){
   const raw = data && data.self_retire_age != null ? +data.self_retire_age : (+document.getElementById("self_retire_age")?.value || 65);
   return Number.isFinite(raw) ? raw : 65;
 }
+function getSimpleModeLifeAfterFromAge(retireAge){
+  const n = Math.round(Number(retireAge) || 0);
+  return Math.max(0, Math.min(120, n));
+}
+function getSimpleModeLifeBeforeToAge(currentAge, retireAge){
+  const current = Math.max(0, Math.round(Number(currentAge) || 0));
+  const retire = getSimpleModeLifeAfterFromAge(retireAge);
+  return Math.max(current, Math.min(120, retire - 1));
+}
 function getDefaultRangeRowAges(prefix, index, data = {}){
   const currentAge = currentAgeValue(data);
   if(prefix === "life") {
     const retireAge = currentSelfRetireAgeValue(data);
-    if(index === 1) return {fromAge: currentAge, toAge: retireAge};
-    if(index === 2) return {fromAge: Math.min(120, retireAge + 1), toAge: 120};
+    if(index === 1) return {fromAge: currentAge, toAge: getSimpleModeLifeBeforeToAge(currentAge, retireAge)};
+    if(index === 2) return {fromAge: getSimpleModeLifeAfterFromAge(retireAge), toAge: 120};
   }
   return {fromAge: currentAge, toAge: 120};
 }
@@ -10822,11 +10887,11 @@ function deleteDynamicRow(type, index){
       setRowLabelMeta(next, "sumInv", 1, defaultRowLabel("sumInv", 1), false);
     }else if(type === "life"){
       next.life1_fromAge = currentAge;
-      next.life1_toAge = retireAge;
+      next.life1_toAge = getSimpleModeLifeBeforeToAge(currentAge, retireAge);
       next.life1_fromAge_auto = "1";
       next.life1_toAge_auto = "1";
       next.life1_timeUnit = "age";
-      next.life2_fromAge = Math.min(120, retireAge + 1);
+      next.life2_fromAge = getSimpleModeLifeAfterFromAge(retireAge);
       next.life2_toAge = 120;
       next.life2_fromAge_auto = "1";
       next.life2_toAge_auto = "1";
@@ -10966,7 +11031,7 @@ function deleteDynamicRow(type, index){
     const currentAge = Math.max(0, Math.round(Number(currentAgeValue(next)) || 0));
     const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
     next.life1_fromAge = currentAge;
-    next.life1_toAge = retireAge;
+    next.life1_toAge = getSimpleModeLifeBeforeToAge(currentAge, retireAge);
     next.life1_fromAge_auto = "1";
     next.life1_toAge_auto = "1";
     next.life1_timeUnit = "age";
@@ -10982,7 +11047,7 @@ function deleteDynamicRow(type, index){
     const next = {...data};
     const currentAge = Math.max(0, Math.round(Number(currentAgeValue(next)) || 0));
     const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
-    next.life2_fromAge = Math.min(120, retireAge + 1);
+    next.life2_fromAge = getSimpleModeLifeAfterFromAge(retireAge);
     next.life2_toAge = 120;
     next.life2_fromAge_auto = "1";
     next.life2_toAge_auto = "1";
@@ -11591,6 +11656,21 @@ function migrateLegacyData(data){
     const spAgeParts = calcAgeYearMonthsAtParts(parseDateInput(data.spouseBirthDate || ""), getRetireMonthEndParts(data.sp_retire_year, data.sp_retire_month));
     if(spAgeParts) data.sp_retire_age = spAgeParts.years + spAgeParts.months / 12;
   }
+  ["self","sp"].forEach(prefix=>{
+    if(data[`${prefix}_post_retire_income_month`] == null || data[`${prefix}_post_retire_income_month`] === "") data[`${prefix}_post_retire_income_month`] = 0;
+    if(data[`${prefix}_post_retire_income_end_year`] == null || data[`${prefix}_post_retire_income_end_year`] === "") data[`${prefix}_post_retire_income_end_year`] = data[`${prefix}_retire_year`] || "";
+    if(data[`${prefix}_post_retire_income_end_month`] == null || data[`${prefix}_post_retire_income_end_month`] === "") data[`${prefix}_post_retire_income_end_month`] = data[`${prefix}_retire_month`] || 1;
+    const retireYm = {year:Number(data[`${prefix}_retire_year`] || 0), month:Number(data[`${prefix}_retire_month`] || 0)};
+    let endYm = {year:Number(data[`${prefix}_post_retire_income_end_year`] || 0), month:Number(data[`${prefix}_post_retire_income_end_month`] || 0)};
+    if(retireYm.year > 0 && retireYm.month > 0 && (!endYm.year || !endYm.month || compareYearMonth(endYm, retireYm) < 0)){
+      data[`${prefix}_post_retire_income_end_year`] = retireYm.year;
+      data[`${prefix}_post_retire_income_end_month`] = retireYm.month;
+      endYm = {...retireYm};
+    }
+    const birthValue = prefix === "sp" ? data.spouseBirthDate : data.selfBirthDate;
+    const endAgeParts = calcAgeYearMonthsAtParts(parseDateInput(birthValue || ""), getRetireMonthEndParts(data[`${prefix}_post_retire_income_end_year`], data[`${prefix}_post_retire_income_end_month`]));
+    if(endAgeParts) data[`${prefix}_post_retire_income_end_age`] = endAgeParts.years + endAgeParts.months / 12;
+  });
   data.selfAgeDisplay = data.selfBirthDate ? (calcAgeFromBirthDate(data.selfBirthDate, data.baseDate) ?? "") : (data.age ?? "");
   data.spouseAgeDisplay = data.spouseBirthDate ? (calcAgeFromBirthDate(data.spouseBirthDate, data.baseDate) ?? "") : (data.spouseAge ?? "");
   if(data.selfAgeDisplay !== "") data.age = data.selfAgeDisplay;
@@ -13215,6 +13295,52 @@ function syncRetireFieldsForPrefix(prefix){
   const ageParts = calcAgeYearMonthsAtParts(birthParts, retireParts);
   if(labelEl) labelEl.textContent = ageParts ? formatAgeYearMonthsLabel(ageParts) : '';
   if(hiddenAgeEl) hiddenAgeEl.value = ageParts ? String(ageParts.years + ageParts.months / 12) : '';
+  syncPostRetireIncomeEndFieldsForPrefix(prefix);
+}
+function syncPostRetireIncomeEndYearSelectOptions(prefix, explicitData = null){
+  const yearEl = document.getElementById(`${prefix}_post_retire_income_end_year`);
+  const monthEl = document.getElementById(`${prefix}_post_retire_income_end_month`);
+  if(!yearEl) return;
+  const birthValue = explicitData ? (prefix === 'sp' ? (explicitData.spouseBirthDate || '') : (explicitData.selfBirthDate || '')) : (document.getElementById(prefix === 'sp' ? 'spouseBirthDate' : 'selfBirthDate')?.value || '');
+  const baseDateValue = explicitData ? (explicitData.baseDate || '') : (document.getElementById('baseDate')?.value || '');
+  const retireYear = explicitData ? Number(explicitData[`${prefix}_retire_year`] || 0) : Number(document.getElementById(`${prefix}_retire_year`)?.value || 0);
+  const retireMonth = explicitData ? Number(explicitData[`${prefix}_retire_month`] || 0) : Number(document.getElementById(`${prefix}_retire_month`)?.value || 0);
+  const fallbackAge = explicitData ? Number(explicitData[`${prefix}_post_retire_income_end_age`] || explicitData[`${prefix}_retire_age`] || 65) : Number(document.getElementById(`${prefix}_post_retire_income_end_age`)?.value || document.getElementById(`${prefix}_retire_age`)?.value || 65);
+  const fallbackYm = (retireYear && retireMonth) ? {year:retireYear, month:retireMonth} : deriveRetireYearMonthFromAge(fallbackAge, birthValue, baseDateValue);
+  let selectedYear = explicitData ? Number(explicitData[`${prefix}_post_retire_income_end_year`] || yearEl.value || 0) : Number(yearEl.value || 0);
+  let selectedMonth = explicitData ? Number(explicitData[`${prefix}_post_retire_income_end_month`] || monthEl?.value || 0) : Number(monthEl?.value || 0);
+  if(!selectedYear) selectedYear = Number(fallbackYm.year || 0);
+  if(monthEl && !selectedMonth){
+    selectedMonth = Number(fallbackYm.month || 1);
+    monthEl.value = String(selectedMonth);
+  }
+  const range = getRetireYearRangeParts(birthValue, baseDateValue, selectedYear);
+  const clampedYear = Math.min(range.maxYear, Math.max(range.minYear, Math.round(Number(selectedYear) || range.minYear)));
+  yearEl.innerHTML = buildRetireYearOptionsHtml(clampedYear, birthValue, baseDateValue);
+  yearEl.value = String(clampedYear);
+  if(monthEl) monthEl.value = String(Math.min(12, Math.max(1, selectedMonth || Number(fallbackYm.month || 1))));
+}
+function syncPostRetireIncomeEndFieldsForPrefix(prefix){
+  const birthValue = document.getElementById(prefix === 'sp' ? 'spouseBirthDate' : 'selfBirthDate')?.value || '';
+  const retireYearEl = document.getElementById(`${prefix}_retire_year`);
+  const retireMonthEl = document.getElementById(`${prefix}_retire_month`);
+  const yearEl = document.getElementById(`${prefix}_post_retire_income_end_year`);
+  const monthEl = document.getElementById(`${prefix}_post_retire_income_end_month`);
+  const hiddenAgeEl = document.getElementById(`${prefix}_post_retire_income_end_age`);
+  const labelEl = document.getElementById(prefix === 'sp' ? 'spPostRetireIncomeEndAgeLabel' : 'selfPostRetireIncomeEndAgeLabel');
+  if(!yearEl || !monthEl) return;
+  const retireYm = {year:Number(retireYearEl?.value || 0), month:Number(retireMonthEl?.value || 0)};
+  let endYm = {year:Number(yearEl.value || 0), month:Number(monthEl.value || 0)};
+  if(retireYm.year > 0 && retireYm.month > 0 && (!endYm.year || !endYm.month || compareYearMonth(endYm, retireYm) < 0)){
+    endYm = {...retireYm};
+    yearEl.value = String(endYm.year);
+    monthEl.value = String(endYm.month);
+  }
+  const endParts = getRetireMonthEndParts(yearEl.value, monthEl.value);
+  const birthParts = parseDateInput(birthValue);
+  const ageParts = calcAgeYearMonthsAtParts(birthParts, endParts);
+  if(labelEl) labelEl.textContent = ageParts ? formatAgeYearMonthsLabel(ageParts) : '';
+  if(hiddenAgeEl) hiddenAgeEl.value = ageParts ? String(ageParts.years + ageParts.months / 12) : '';
 }
 function getSchoolYearValue(baseDateValue){
   const base = parseDateInput(baseDateValue);
@@ -13908,6 +14034,8 @@ function setAllInputs(data, options = {}){
   }
   syncRetireYearSelectOptions("self", migrated);
   syncRetireYearSelectOptions("sp", migrated);
+  syncPostRetireIncomeEndYearSelectOptions("self", migrated);
+  syncPostRetireIncomeEndYearSelectOptions("sp", migrated);
   __setAllInputsMark('syncRetireYearSelectOptions');
   syncLoanBuyYearSelectOptions(migrated);
   __setAllInputsMark('syncLoanBuyYearSelectOptions');
@@ -13926,7 +14054,11 @@ function setAllInputs(data, options = {}){
       return;
     }
     if(el.type === "checkbox" || el.type === "radio") el.checked = parseStoredCheckboxValue(val, false);
-    else el.value = val;
+    else{
+      el.value = val;
+      const timeMeta = getTimeFieldMeta(id);
+      if(timeMeta) setTimeFieldStoredAge(id, val);
+    }
   });
   applySimpleAutoInflManagedDefaultsToDOM(migrated);
   if(options?.resetTabScopedControls) applyTabScopedControlsAfterSetAllInputs(migrated);
@@ -14552,46 +14684,57 @@ const SIMPLE_MODE_BLOCKS = [
   },
   {
     key:"working",
-    title:"現役期",
-    note:"退職前の収支を簡易に調整します。",
+    title:"リタイア前",
+    note:"リタイア前の収支を簡易調整します。",
     fields:[
       {key:"salaryMonth", label:"手取り（月）", unit:"万円 / 月", min:0, max:200, step:1, help:"手取りをカスタム設定中は、簡単モードでは変更できません。"},
       {key:"bonusYear", label:"ボーナス（年・手取り）", unit:"万円 / 年", min:0, max:400, step:1, help:"ボーナスをカスタム設定中は、簡単モードでは変更できません。"},
-      {key:"lifeBefore", label:"現役期の生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1, help:"生活費には家賃・教育費を含めません。子どもの人数・年齢に応じた標準的な教育費は、自動的に計算に含まれます。"},
-      {key:"rent", label:"家賃（現役期・老後共通）", unit:"万円 / 月", min:0, max:50, step:0.5, help:"家賃は現役期・老後共通です。"}
+      {key:"lifeBefore", label:"リタイア前の生活費（月・家賃/教育費除く）", unit:"万円 / 月", min:0, max:100, step:1, help:"生活費には家賃・教育費を含めません。子どもの人数・年齢に応じた標準的な教育費は、自動的に計算に含まれます。"},
+      {key:"rent", label:"家賃（リタイア前後共通）", unit:"万円 / 月", min:0, max:50, step:0.5, help:"家賃はリタイア前後で共通です。"}
     ]
   },
   {
     key:"retire",
-    title:"退職条件",
-    note:"退職時点そのものに効く代表条件です。",
+    title:"リタイア条件",
+    note:"リタイア年齢と退職金を設定します。",
     fields:[
       {key:"retireAge", label:"リタイア年齢", unit:"歳", min:40, max:75, step:1},
       {key:"retirePay", label:"退職金（手取り）", unit:"万円", min:0, max:10000, step:10}
     ]
   },
   {
+    key:"postRetire",
+    title:"リタイア後",
+    note:"リタイア後の収支を簡易調整します。",
+    fields:[
+      {key:"postRetireIncomeMonth", label:"リタイア後の手取り（月）", unit:"万円 / 月", min:0, max:100, step:0.5, help:"リタイア後も働く場合の手取り収入を入力します。直接完全リタイアする場合は、0万円にしてください。"},
+      {key:"postRetireIncomeEndAge", label:"リタイア後収入終了年齢", unit:"歳", min:40, max:90, step:1},
+      {key:"lifeAfter", label:"リタイア後の生活費（月）", unit:"万円 / 月", min:0, max:100, step:1}
+    ]
+  },
+  {
     key:"after",
-    title:"老後",
-    note:"老後の収支条件を調整します。",
+    title:"年金",
+    note:"年金の開始年齢と受給額を設定します。",
     fields:[
       {key:"pensionAge", label:"年金開始年齢", unit:"歳", min:60, max:75, step:1},
-      {key:"pensionMonth", label:"年金受給額（月・税引前）", unit:"万円 / 月", min:0, max:80, step:0.5},
-      {key:"lifeAfter", label:"退職後の生活費（月）", unit:"万円 / 月", min:0, max:100, step:1}
+      {key:"pensionMonth", label:"年金受給額（月・税引前）", unit:"万円 / 月", min:0, max:80, step:0.5}
     ]
   }
 ];
 const SIMPLE_MODE_NAV_ITEMS = [
   { id:"basicInfoSection", title:"基本情報" },
   { id:"simpleSectionAssets", title:"資産・前提", blockKey:"assets" },
-  { id:"simpleSectionWorking", title:"現役期", blockKey:"working" },
-  { id:"simpleSectionRetire", title:"退職条件", blockKey:"retire" },
-  { id:"simpleSectionOldage", title:"老後", blockKey:"after" }
+  { id:"simpleSectionWorking", title:"リタイア前", blockKey:"working" },
+  { id:"simpleSectionRetire", title:"リタイア条件", blockKey:"retire" },
+  { id:"simpleSectionPostRetire", title:"リタイア後", blockKey:"postRetire" },
+  { id:"simpleSectionOldage", title:"年金", blockKey:"after" }
 ];
 const SIMPLE_MODE_BLOCK_SECTION_IDS = {
   assets:"simpleSectionAssets",
   working:"simpleSectionWorking",
   retire:"simpleSectionRetire",
+  postRetire:"simpleSectionPostRetire",
   after:"simpleSectionOldage"
 };
 const SIMPLE_MODE_FIELDS = SIMPLE_MODE_BLOCKS.flatMap(block=>block.fields);
@@ -14648,33 +14791,74 @@ function getSimpleModePeriodAutoTargetAge(rowKey, kind, currentAge, retireAge){
     case "sumInv1":
       return kind === "from" ? currentAge : retireAge;
     case "life1":
-      return kind === "from" ? currentAge : retireAge;
+      return kind === "from" ? currentAge : getSimpleModeLifeBeforeToAge(currentAge, retireAge);
     case "life2":
-      return kind === "from" ? Math.min(120, retireAge + 1) : 120;
+      return kind === "from" ? getSimpleModeLifeAfterFromAge(retireAge) : 120;
     case "rent1":
       return kind === "from" ? currentAge : 120;
     default:
       return kind === "from" ? currentAge : retireAge;
   }
 }
+function setSimpleModeAutoAgeInputValue(fieldId, storedAge, currentAge = currentAgeValue(), baseYear = currentBaseYearValue()){
+  const el = document.getElementById(fieldId);
+  if(!el) return;
+  const timeMeta = getTimeFieldMeta(fieldId);
+  const mode = timeMeta && document.getElementById(getTimeModeSelectId(timeMeta.prefix, timeMeta.index))?.value === "year" ? "year" : "age";
+  const age = Math.round(Number(storedAge) || 0);
+  setTimeFieldStoredAge(fieldId, age);
+  setNumericInputValue(fieldId, convertStoredAgeToDisplayValue(age, mode, currentAge, baseYear));
+  setTimeFieldStoredAge(fieldId, age);
+}
 function syncSimpleModePeriodAutoAgesInDOM(rowKeys = SIMPLE_MODE_PERIOD_AUTO_ROW_KEYS){
   let changed = false;
   const currentAge = getSimpleModeCurrentAge();
+  const baseYear = currentBaseYearValue();
   const retireAge = Math.max(currentAge, getSimpleModeRetireAge());
   (Array.isArray(rowKeys) ? rowKeys : [rowKeys]).forEach(rowKey=>{
     ["from","to"].forEach(kind=>{
       if(!isSimpleModePeriodAutoAge(rowKey, kind)) return;
       const target = getSimpleModePeriodAutoTargetAge(rowKey, kind, currentAge, retireAge);
-      const el = document.getElementById(`${rowKey}_${kind}Age`);
+      const fieldId = `${rowKey}_${kind}Age`;
+      const el = document.getElementById(fieldId);
       if(!el) return;
-      const currentValue = numValue(el.value, target);
+      const mode = document.getElementById(getTimeModeSelectId(rowKey.replace(/\d+$/, ""), Number((rowKey.match(/\d+$/) || [1])[0])))?.value === "year" ? "year" : "age";
+      const currentValue = getTimeFieldStoredAge(fieldId, mode, currentAge, baseYear);
       if(Math.abs(currentValue - target) > 0.0000001){
-        setNumericInputValue(`${rowKey}_${kind}Age`, target);
+        setSimpleModeAutoAgeInputValue(fieldId, target, currentAge, baseYear);
         changed = true;
       }
     });
   });
   return changed;
+}
+function getSelfRetireAgeForSimpleLifeSync(){
+  syncRetireFieldsForPrefix("self");
+  const hiddenAge = Number(document.getElementById("self_retire_age")?.value);
+  if(Number.isFinite(hiddenAge) && hiddenAge > 0) return Math.round(hiddenAge);
+  const fallback = calcAgeAtYearMonth(
+    document.getElementById('selfBirthDate')?.value || '',
+    document.getElementById('self_retire_year')?.value,
+    document.getElementById('self_retire_month')?.value
+  );
+  return Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : getSimpleModeRetireAge();
+}
+function forceSyncSimpleModeLifeAgesToRetireInDOM(){
+  const currentAge = getSimpleModeCurrentAge();
+  const retireAge = Math.max(currentAge, getSelfRetireAgeForSimpleLifeSync());
+  const targets = {
+    life1_fromAge:currentAge,
+    life1_toAge:getSimpleModeLifeBeforeToAge(currentAge, retireAge),
+    life2_fromAge:getSimpleModeLifeAfterFromAge(retireAge),
+    life2_toAge:120
+  };
+  setSimpleModePeriodAutoAge("life1", "from", true);
+  setSimpleModePeriodAutoAge("life1", "to", true);
+  setSimpleModePeriodAutoAge("life2", "from", true);
+  setSimpleModePeriodAutoAge("life2", "to", true);
+  const baseYear = currentBaseYearValue();
+  Object.entries(targets).forEach(([id, value])=>setSimpleModeAutoAgeInputValue(id, value, currentAge, baseYear));
+  return targets;
 }
 function getSimpleModeSumInvAutoAgeFlagEl(kind){
   return getSimpleModePeriodAutoAgeFlagEl("sumInv1", kind);
@@ -14839,7 +15023,7 @@ function updateSimpleModeFieldBounds(key, value = null){
   const rangeEl = document.getElementById(getSimpleModeRangeId(key));
   const numberEl = document.getElementById(getSimpleModeNumberId(key));
   const currentAge = getSimpleModeCurrentAge();
-  const min = key === "retireAge" ? Math.max(numValue(def.min, 0), currentAge) : numValue(def.min, 0);
+  const min = key === "retireAge" ? Math.max(numValue(def.min, 0), currentAge) : (key === "postRetireIncomeEndAge" ? Math.max(numValue(def.min, 0), getSimpleModeRetireAge()) : numValue(def.min, 0));
   const max = getSimpleModeNiceMax(value, {...def, min});
   [rangeEl, numberEl].forEach(el=>{
     if(!el) return;
@@ -14920,9 +15104,17 @@ function getSimpleModeRetireAge(){
   const fallback = calcAgeAtYearMonth(document.getElementById('selfBirthDate')?.value || '', document.getElementById('self_retire_year')?.value, document.getElementById('self_retire_month')?.value);
   return Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : 65;
 }
+function getSimpleModePostRetireIncomeEndAge(){
+  const hidden = Number(document.getElementById("self_post_retire_income_end_age")?.value);
+  if(Number.isFinite(hidden) && hidden > 0) return Math.round(hidden);
+  const fallback = calcAgeAtYearMonth(document.getElementById('selfBirthDate')?.value || '', document.getElementById('self_post_retire_income_end_year')?.value, document.getElementById('self_post_retire_income_end_month')?.value);
+  return Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : getSimpleModeRetireAge();
+}
 function updateSimpleModeConstraints(){
   const retireDef = getSimpleModeFieldDef("retireAge");
   if(retireDef) updateSimpleModeFieldBounds("retireAge", getSimpleModeRetireAge());
+  const postEndDef = getSimpleModeFieldDef("postRetireIncomeEndAge");
+  if(postEndDef) updateSimpleModeFieldBounds("postRetireIncomeEndAge", getSimpleModePostRetireIncomeEndAge());
 }
 function setSimpleModeFieldUIValue(key, value){
   const def = getSimpleModeFieldDef(key);
@@ -14969,6 +15161,8 @@ function collectSimpleModeValuesFromUI(){
     rent:getSimpleModeFieldValue("rent"),
     retireAge:getSimpleModeFieldValue("retireAge"),
     retirePay:getSimpleModeFieldValue("retirePay"),
+    postRetireIncomeMonth:getSimpleModeFieldValue("postRetireIncomeMonth"),
+    postRetireIncomeEndAge:getSimpleModeFieldValue("postRetireIncomeEndAge"),
     pensionAge:getSimpleModeFieldValue("pensionAge"),
     pensionMonth:getSimpleModeFieldValue("pensionMonth"),
     lifeAfter:getSimpleModeFieldValue("lifeAfter")
@@ -15007,6 +15201,8 @@ function readSimpleModeValuesFromDetail(){
     rent:numInput("rent1_val", 0),
     retireAge:getSimpleModeRetireAge(),
     retirePay:numInput("self_retire_pay", 0),
+    postRetireIncomeMonth:numInput("self_post_retire_income_month", 0),
+    postRetireIncomeEndAge:getSimpleModePostRetireIncomeEndAge(),
     pensionAge:numInput("self_pension_age", 0),
     pensionMonth:numInput("self_pension_month", 0),
     lifeAfter:numInput("life2_val", 0)
@@ -15026,7 +15222,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
   const next = migrateLegacyData(deepClone(data || getAllInputs()));
   const values = simpleValues || readSimpleModeValuesFromDetail();
   const currentAge = Math.max(0, Math.round(Number(currentAgeValue(next)) || 0));
-  const retireAge = Math.max(currentAge, Math.round(Number(next.self_retire_age) || Number(values.retireAge) || getSimpleModeRetireAge() || 65));
+  const retireAge = Math.max(currentAge, Math.round(Number(values.retireAge) || Number(next.self_retire_age) || getSimpleModeRetireAge() || 65));
   const inflEnabled = isSimpleInflationEnabled(values.inflRate);
   let changed = false;
   const ensureDep1 = !(next.dep1_owner != null || next.dep1_amount != null || next.dep1_cur != null || next.dep1_rate != null);
@@ -15093,7 +15289,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
   const ensureLife1 = !(next.life1_fromAge != null || next.life1_toAge != null || next.life1_val != null);
   if(ensureLife1){
     next.life1_fromAge = currentAge;
-    next.life1_toAge = retireAge;
+    next.life1_toAge = getSimpleModeLifeBeforeToAge(currentAge, retireAge);
     next.life1_val = Number(values.lifeBefore) || 0;
     next.life1_timeUnit = "age";
     next.life1_fromAge_auto = "1";
@@ -15112,12 +15308,13 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
       changed = true;
     }
     if(next.life1_toAge_auto == null || next.life1_toAge_auto === ""){
-      next.life1_toAge_auto = Math.abs((Number(next.life1_toAge) || 0) - retireAge) <= 0.0000001 ? "1" : "0";
+      const life1DefaultTo = getSimpleModeLifeBeforeToAge(currentAge, retireAge);
+      next.life1_toAge_auto = Math.abs((Number(next.life1_toAge) || 0) - life1DefaultTo) <= 0.0000001 ? "1" : "0";
       changed = true;
     }
     if(life1LooksLikeInitialUnsplit){
       next.life1_fromAge = currentAge;
-      next.life1_toAge = retireAge;
+      next.life1_toAge = getSimpleModeLifeBeforeToAge(currentAge, retireAge);
       next.life1_fromAge_auto = "1";
       next.life1_toAge_auto = "1";
       next.life1_timeUnit = "age";
@@ -15132,7 +15329,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
         }
       }
       if(String(next.life1_toAge_auto || "1") !== "0"){
-        const autoToAge = retireAge;
+        const autoToAge = getSimpleModeLifeBeforeToAge(currentAge, retireAge);
         if(Math.abs((Number(next.life1_toAge) || 0) - autoToAge) > 0.0000001){
           next.life1_toAge = autoToAge;
           changed = true;
@@ -15142,7 +15339,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
   }
   const ensureLife2 = !(next.life2_fromAge != null || next.life2_toAge != null || next.life2_val != null);
   if(ensureLife2){
-    next.life2_fromAge = Math.min(120, retireAge + 1);
+    next.life2_fromAge = getSimpleModeLifeAfterFromAge(retireAge);
     next.life2_toAge = 120;
     next.life2_val = Number(values.lifeAfter) || 0;
     next.life2_timeUnit = "age";
@@ -15152,7 +15349,7 @@ function ensureSimpleRepresentativeSlots(data, simpleValues = null){
     setRowLabelMeta(next, "life", 2, defaultRowLabel("life", 2), false);
     changed = true;
   } else {
-    const life2DefaultFrom = Math.min(120, retireAge + 1);
+    const life2DefaultFrom = getSimpleModeLifeAfterFromAge(retireAge);
     const life2DefaultTo = 120;
     if(next.life2_fromAge_auto == null || next.life2_fromAge_auto === ""){
       next.life2_fromAge_auto = Math.abs((Number(next.life2_fromAge) || 0) - life2DefaultFrom) <= 0.0000001 ? "1" : "0";
@@ -15293,14 +15490,28 @@ function writeSimpleModeValueToDetailByKey(key, simpleValue){
     case "retireAge": {
       const retireYm = deriveRetireYearMonthFromAge(simpleValue, document.getElementById("selfBirthDate")?.value || "", document.getElementById("baseDate")?.value || "");
       const retireYearEl = document.getElementById("self_retire_year");
+      const retireMonthEl = document.getElementById("self_retire_month");
       if(retireYearEl && retireYm.year) retireYearEl.value = String(retireYm.year);
+      if(retireMonthEl && retireYm.month) retireMonthEl.value = String(retireYm.month);
       syncRetireFieldsForPrefix("self");
-      syncSimpleModeSumInvAutoAgesInDOM();
+      forceSyncSimpleModeLifeAgesToRetireInDOM();
       break;
     }
     case "retirePay":
       setNumericInputValue("self_retire_pay", simpleValue);
       break;
+    case "postRetireIncomeMonth":
+      setNumericInputValue("self_post_retire_income_month", simpleValue);
+      break;
+    case "postRetireIncomeEndAge": {
+      const endYm = deriveRetireYearMonthFromAge(simpleValue, document.getElementById("selfBirthDate")?.value || "", document.getElementById("baseDate")?.value || "");
+      const endYearEl = document.getElementById("self_post_retire_income_end_year");
+      const endMonthEl = document.getElementById("self_post_retire_income_end_month");
+      if(endYearEl && endYm.year) endYearEl.value = String(endYm.year);
+      if(endMonthEl && endYm.month) endMonthEl.value = String(endYm.month);
+      syncPostRetireIncomeEndFieldsForPrefix("self");
+      break;
+    }
     case "pensionAge":
       setNumericInputValue("self_pension_age", simpleValue);
       break;
@@ -15341,6 +15552,8 @@ const SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP = {
   bonusYear:"self_bonus_year",
   rent:"rent1_val",
   retirePay:"self_retire_pay",
+  postRetireIncomeMonth:"self_post_retire_income_month",
+  postRetireIncomeEndAge:["self_post_retire_income_end_year","self_post_retire_income_end_month","self_post_retire_income_end_age"],
   pensionMonth:"self_pension_month",
   pensionAge:"self_pension_age",
   retireAge:[
@@ -15350,12 +15563,27 @@ const SIMPLE_MODE_RANGE_SCENARIO_PATCH_MAP = {
     "withdrawalBasicAnnualStartAge",
     "withdrawalBasicHybridStartAge",
     "withdrawalBasicLumpAge",
-    "withdrawalStartConditionValue"
+    "withdrawalStartConditionValue",
+    "sumInv1_fromAge",
+    "sumInv1_toAge",
+    "life1_fromAge",
+    "life1_toAge",
+    "life2_fromAge",
+    "life2_toAge",
+    "life1_fromAge_auto",
+    "life1_toAge_auto",
+    "life2_fromAge_auto",
+    "life2_toAge_auto"
   ]
 };
 function getSimpleModePatchInputValue(dataKey){
   const sourceEl = document.getElementById(dataKey);
   if(!sourceEl) return undefined;
+  const timeMeta = getTimeFieldMeta(dataKey);
+  if(timeMeta){
+    const mode = document.getElementById(getTimeModeSelectId(timeMeta.prefix, timeMeta.index))?.value === "year" ? "year" : "age";
+    return String(getTimeFieldStoredAge(dataKey, mode, currentAgeValue(), currentBaseYearValue()));
+  }
   return sourceEl.dataset.numericReady === "1" ? sanitizeNumericText(sourceEl.value, true) : sourceEl.value;
 }
 function patchCurrentScenarioDataForSimpleModeRangeKey(key){
@@ -15437,7 +15665,7 @@ function previewSimpleModeFieldInput(key, rawValue){
   applySimpleModeFieldValue(key, rawValue, false);
 }
 function clearSimpleLinkedHighlights(){
-  document.querySelectorAll('.simple-linked-row').forEach(el=>el.classList.remove('simple-linked-row'));
+  document.querySelectorAll('.simple-linked-row').forEach(el=>el.classList.remove('simple-linked-row', 'simple-linked-label-stack-row'));
   document.querySelectorAll('.simple-linked-badge').forEach(el=>el.remove());
 }
 function addSimpleLinkedBadge(cell){
@@ -15459,6 +15687,9 @@ function markSimpleLinkedScalarInput(inputId){
   const row = input?.closest('tr');
   if(!row) return;
   row.classList.add('simple-linked-row');
+  if(["self_post_retire_income_month", "self_post_retire_income_end_year"].includes(inputId)){
+    row.classList.add('simple-linked-label-stack-row');
+  }
   addSimpleLinkedBadge(row.children?.[0]);
 }
 function applySimpleLinkedHighlights(){
@@ -15469,7 +15700,7 @@ function applySimpleLinkedHighlights(){
   markSimpleLinkedRow(document.querySelector('#lifeRows tr:nth-child(1)'));
   markSimpleLinkedRow(document.querySelector('#lifeRows tr:nth-child(2)'));
   markSimpleLinkedRow(document.querySelector('#rentRows tr:nth-child(1)'));
-  ["inflRate","self_salary_month","self_bonus_year","self_retire_year","self_retire_pay","self_pension_age","self_pension_month"].forEach(markSimpleLinkedScalarInput);
+  ["inflRate","self_salary_month","self_bonus_year","self_retire_year","self_retire_pay","self_post_retire_income_month","self_post_retire_income_end_year","self_pension_age","self_pension_month"].forEach(markSimpleLinkedScalarInput);
 }
 
 function updateDetailStickyTop(){
@@ -17284,6 +17515,10 @@ function getScenarioFromDOM(){
       retireMonth:numInput("self_retire_month", 0),
       retireAge:numInput("self_retire_age", 200)||200,
       retirePay:numInput("self_retire_pay", 0),
+      postRetireIncomeMonth:numInput("self_post_retire_income_month", 0),
+      postRetireIncomeEndYear:numInput("self_post_retire_income_end_year", 0),
+      postRetireIncomeEndMonth:numInput("self_post_retire_income_end_month", 0),
+      postRetireIncomeEndAge:numInput("self_post_retire_income_end_age", 200)||200,
       pensionMonth:numInput("self_pension_month", 0),
       pensionAge:numInput("self_pension_age", 200)||200
     },
@@ -17298,6 +17533,10 @@ function getScenarioFromDOM(){
       retireMonth:numInput("sp_retire_month", 0),
       retireAge:numInput("sp_retire_age", 200)||200,
       retirePay:numInput("sp_retire_pay", 0),
+      postRetireIncomeMonth:numInput("sp_post_retire_income_month", 0),
+      postRetireIncomeEndYear:numInput("sp_post_retire_income_end_year", 0),
+      postRetireIncomeEndMonth:numInput("sp_post_retire_income_end_month", 0),
+      postRetireIncomeEndAge:numInput("sp_post_retire_income_end_age", 200)||200,
       pensionMonth:numInput("sp_pension_month", 0),
       pensionAge:numInput("sp_pension_age", 200)||200
     },
@@ -19364,6 +19603,32 @@ function getPensionAnnualAmountForYear(cfg, personKey, yearIndex){
   return getProratedMonthlyAmountForPeriod(monthlyAmount, overlap.start, overlap.endExclusive);
 }
 
+function getPostRetireIncomePeriodForPerson(cfg, personKey){
+  const source = personKey === 'sp' ? cfg?.incomeSp : cfg?.incomeSelf;
+  const monthly = Math.max(0, Number(source?.postRetireIncomeMonth || 0) || 0);
+  if(monthly <= 0) return null;
+  const retireYm = getRetireYearMonthForPerson(cfg, personKey);
+  if(!retireYm) return null;
+  let endYm = {year:Number(source?.postRetireIncomeEndYear || 0) || 0, month:Number(source?.postRetireIncomeEndMonth || 0) || 0};
+  if(!endYm.year || !endYm.month || compareYearMonth(endYm, retireYm) < 0) endYm = {...retireYm};
+  const startYm = addMonthsToYearMonth(retireYm.year, retireYm.month, 1);
+  if(compareYearMonth(startYm, addMonthsToYearMonth(endYm.year, endYm.month, 1)) >= 0) return null;
+  return {
+    monthly,
+    start:{year:startYm.year, month:startYm.month, day:1},
+    endExclusive:{...addMonthsToYearMonth(endYm.year, endYm.month, 1), day:1}
+  };
+}
+function getPostRetireIncomeAnnualAmountForYear(cfg, personKey, yearIndex){
+  const period = getPostRetireIncomePeriodForPerson(cfg, personKey);
+  if(!period) return 0;
+  const simStartParts = getSimulationYearStartParts(cfg, yearIndex);
+  const simEndExclusiveParts = getSimulationYearEndExclusiveParts(cfg, yearIndex);
+  if(!simStartParts || !simEndExclusiveParts) return 0;
+  const overlap = getOverlapPeriodParts(simStartParts, simEndExclusiveParts, period.start, period.endExclusive);
+  if(!overlap) return 0;
+  return getProratedMonthlyAmountForPeriod(period.monthly, overlap.start, overlap.endExclusive);
+}
 function getIncomeForYear(cfg, age, yearIndex, investments, receiptState){
   const parts = {self:0,spouse:0,pension:0,regular:0,extra:0,childAllowance:0,insurance:0,retirePay:0,interest:0};
 
@@ -19372,12 +19637,14 @@ function getIncomeForYear(cfg, age, yearIndex, investments, receiptState){
 
   const selfWorkedMonths = getWorkedMonthsForYear(cfg, "self", yearIndex);
   if(selfWorkedMonths > 0) parts.self += selfIncomeCurve.salaryMonth * selfWorkedMonths + selfIncomeCurve.bonusYear * (selfWorkedMonths / 12);
+  parts.self += getPostRetireIncomeAnnualAmountForYear(cfg, "self", yearIndex);
   const selfPensionAnnual = getPensionAnnualAmountForYear(cfg, "self", yearIndex);
   parts.pension += selfPensionAnnual;
   parts.pensionSelf = (parts.pensionSelf || 0) + selfPensionAnnual;
 
   const spWorkedMonths = getWorkedMonthsForYear(cfg, "sp", yearIndex);
   if(spWorkedMonths > 0) parts.spouse += spIncomeCurve.salaryMonth * spWorkedMonths + spIncomeCurve.bonusYear * (spWorkedMonths / 12);
+  parts.spouse += getPostRetireIncomeAnnualAmountForYear(cfg, "sp", yearIndex);
   const spousePensionAnnual = getPensionAnnualAmountForYear(cfg, "sp", yearIndex);
   parts.pension += spousePensionAnnual;
   parts.pensionSpouse = (parts.pensionSpouse || 0) + spousePensionAnnual;
@@ -22925,12 +23192,16 @@ function isNationalPensionExemptAsDependent(cfg, personKey, mode, context=null){
   }
   return true;
 }
-function estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths){
+function estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths, yearIndex=null){
   const months = Math.max(0, Number(workedMonths || 0));
-  if(months <= 0) return 0;
-  const incomeCfg = personKey === 'sp' ? cfg?.incomeSp : cfg?.incomeSelf;
-  const curve = buildIncomeCurveSeries(incomeCfg, cfg?.age, age);
-  return Math.max(0, (Number(curve?.salaryMonth || 0) * months) + (Number(curve?.bonusYear || 0) * (months / 12)));
+  let earned = 0;
+  if(months > 0){
+    const incomeCfg = personKey === 'sp' ? cfg?.incomeSp : cfg?.incomeSelf;
+    const curve = buildIncomeCurveSeries(incomeCfg, cfg?.age, age);
+    earned += Math.max(0, (Number(curve?.salaryMonth || 0) * months) + (Number(curve?.bonusYear || 0) * (months / 12)));
+  }
+  if(Number.isFinite(Number(yearIndex))) earned += getPostRetireIncomeAnnualAmountForYear(cfg, personKey, Number(yearIndex));
+  return Math.max(0, earned);
 }
 function estimateRetirementSocialForPerson(cfg, personKey, age, workedMonths, publicPensionGross, context=null){
   const emptySocial = (mode='work')=>({
@@ -22946,7 +23217,7 @@ function estimateRetirementSocialForPerson(cfg, personKey, age, workedMonths, pu
   });
   if(!cfg?.social?.enabled) return emptySocial('none');
   const mode = getHealthModeForPerson(cfg, personKey, age);
-  const hasEmployeeCoverage = estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths) > 0;
+  const hasEmployeeCoverage = estimateEarnedIncomeForSocialCoverage(cfg, personKey, age, workedMonths, context?.yearIndex) > 0;
   let nationalHealth = 0;
   let employeeHealth = 0;
   let lateElderlyHealth = 0;
@@ -22998,8 +23269,8 @@ function buildAnnualYearlyRow(cfg, age, yearIndex, incomeObj, expenseObj, social
   const calendarWindow = getCalendarYearWindow(cfg, yearIndex);
   const selfPension = getPensionAnnualAmountForYear(cfg, 'self', yearIndex);
   const spousePension = getPensionAnnualAmountForYear(cfg, 'sp', yearIndex);
-  const workSelf = (()=>{ const curve=buildIncomeCurveSeries(cfg.incomeSelf, cfg.age, age); const wm=getWorkedMonthsForYear(cfg, 'self', yearIndex); return wm > 0 ? curve.salaryMonth * wm + curve.bonusYear * (wm / 12) : 0; })();
-  const workSpouse = (()=>{ const curve=buildIncomeCurveSeries(cfg.incomeSp, cfg.age, age); const wm=getWorkedMonthsForYear(cfg, 'sp', yearIndex); return wm > 0 ? curve.salaryMonth * wm + curve.bonusYear * (wm / 12) : 0; })();
+  const workSelf = (()=>{ const curve=buildIncomeCurveSeries(cfg.incomeSelf, cfg.age, age); const wm=getWorkedMonthsForYear(cfg, 'self', yearIndex); return (wm > 0 ? curve.salaryMonth * wm + curve.bonusYear * (wm / 12) : 0) + getPostRetireIncomeAnnualAmountForYear(cfg, 'self', yearIndex); })();
+  const workSpouse = (()=>{ const curve=buildIncomeCurveSeries(cfg.incomeSp, cfg.age, age); const wm=getWorkedMonthsForYear(cfg, 'sp', yearIndex); return (wm > 0 ? curve.salaryMonth * wm + curve.bonusYear * (wm / 12) : 0) + getPostRetireIncomeAnnualAmountForYear(cfg, 'sp', yearIndex); })();
   const investmentContribution = (annualState?.totalContributed || 0);
   const investmentEnding = invTotal;
   const interest = Number(incomeObj.parts?.interest || 0);
@@ -23134,7 +23405,7 @@ function estimateSocialAndTaxForYear(cfg, age, yearIndex, incomeObj){
   const selfPension = getPensionAnnualAmountForYear(cfg, 'self', yearIndex);
   const spPension = getPensionAnnualAmountForYear(cfg, 'sp', yearIndex);
   const spouseAge = Math.max(0, Number(cfg.spouseAge || 0) + yearIndex);
-  const socialContext = {selfWorkedMonths, spWorkedMonths};
+  const socialContext = {selfWorkedMonths, spWorkedMonths, yearIndex};
   const selfSocial = estimateRetirementSocialForPerson(cfg, 'self', age, selfWorkedMonths, selfPension, socialContext);
   const spSocial = estimateRetirementSocialForPerson(cfg, 'sp', spouseAge, spWorkedMonths, spPension, socialContext);
   applyHouseholdKokuhoBaseToSocialResults(cfg, selfSocial, spSocial);
@@ -24232,8 +24503,8 @@ function buildMonteStaticSeries(cfg){
     const spIncomeCurve = buildIncomeCurveSeries(cfg.incomeSp, cfg.age, age);
     const selfWorkedMonths = getWorkedMonthsForYear(cfg, "self", yearIndex);
     const spWorkedMonths = getWorkedMonthsForYear(cfg, "sp", yearIndex);
-    const selfWork = selfWorkedMonths > 0 ? selfIncomeCurve.salaryMonth * selfWorkedMonths + selfIncomeCurve.bonusYear * (selfWorkedMonths / 12) : 0;
-    const spouseWork = spWorkedMonths > 0 ? spIncomeCurve.salaryMonth * spWorkedMonths + spIncomeCurve.bonusYear * (spWorkedMonths / 12) : 0;
+    const selfWork = (selfWorkedMonths > 0 ? selfIncomeCurve.salaryMonth * selfWorkedMonths + selfIncomeCurve.bonusYear * (selfWorkedMonths / 12) : 0) + getPostRetireIncomeAnnualAmountForYear(cfg, "self", yearIndex);
+    const spouseWork = (spWorkedMonths > 0 ? spIncomeCurve.salaryMonth * spWorkedMonths + spIncomeCurve.bonusYear * (spWorkedMonths / 12) : 0) + getPostRetireIncomeAnnualAmountForYear(cfg, "sp", yearIndex);
     const selfPension = getPensionAnnualAmountForYear(cfg, "self", yearIndex);
     const spousePension = getPensionAnnualAmountForYear(cfg, "sp", yearIndex);
     const pension = selfPension + spousePension;
@@ -24677,9 +24948,26 @@ function getAxisBounds(arr, cfg, symmetric=false){
     return {min:-limit, max:limit};
   }
 
-  if(cfg?._graphType === "incomeExpense" || cfg?._graphType === "cashflow"){
-    // v1112/v1120: 収入／支出グラフと年間収支グラフは単一表示・重ね書きとも同じオートスケール経路を使う。
-    // データ上下端から最低10%の余白を確保したうえで、最寄りのniceなy軸補助線に丸める。
+  if(cfg?._graphType === "incomeExpense"){
+    // v1471: 収入／支出グラフは、nice丸めで上下が広がり過ぎないよう tick間隔を一段細かくする。
+    // データ上下端の最低10%余白は維持しつつ、プラス側・マイナス側を画面内で大きく見せる。
+    const dataMin = Math.min(minVal, 0);
+    const dataMax = Math.max(maxVal, 0);
+    const dataSpan = Math.max(dataMax - dataMin, Math.max(Math.abs(dataMin), Math.abs(dataMax), 1));
+    const targetMin = dataMin - dataSpan * 0.10;
+    const targetMax = dataMax + dataSpan * 0.10;
+    const targetSpan = Math.max(targetMax - targetMin, 1);
+    const step = niceNumber(targetSpan / 8);
+    let min = Math.floor(targetMin / step) * step;
+    let max = Math.ceil(targetMax / step) * step;
+    if(min > 0) min = 0;
+    if(max < 0) max = 0;
+    if(min === max){ min -= step; max += step; }
+    return {min, max};
+  }
+
+  if(cfg?._graphType === "cashflow"){
+    // v1112/v1120: 年間収支グラフは既存のオートスケール経路を維持する。
     const dataMin = Math.min(minVal, 0);
     const dataMax = Math.max(maxVal, 0);
     const dataSpan = Math.max(dataMax - dataMin, Math.max(Math.abs(dataMin), Math.abs(dataMax), 1));
@@ -36324,7 +36612,8 @@ function commitMainInputChange(e){
     setSimpleModePeriodAutoAge("rent1", "to", false);
   }
   if(["age","baseDate","selfBirthDate","self_retire_year","self_retire_month"].includes(el.id)){
-    syncSimpleModePeriodAutoAgesInDOM();
+    if(el.id === "self_retire_year" || el.id === "self_retire_month") forceSyncSimpleModeLifeAgesToRetireInDOM();
+    else syncSimpleModePeriodAutoAgesInDOM();
   }
   markCurrentScenarioMonteCarloDirty();
   updatePeriodDisplays();
@@ -36383,13 +36672,26 @@ document.addEventListener("input", (e)=>{
   previewBirthDateDerivedFieldsOnInput(el);
 }, true);
 
+function syncSelfRetireLinkedPeriodAgesInDOM(){
+  syncRetireFieldsForPrefix("self");
+  forceSyncSimpleModeLifeAgesToRetireInDOM();
+  updatePeriodDisplays();
+}
 ["self_retire_year","self_retire_month"].forEach(id=>{
-  document.getElementById(id)?.addEventListener("input", ()=>syncRetireFieldsForPrefix("self"));
-  document.getElementById(id)?.addEventListener("change", ()=>syncRetireFieldsForPrefix("self"));
+  document.getElementById(id)?.addEventListener("input", syncSelfRetireLinkedPeriodAgesInDOM);
+  document.getElementById(id)?.addEventListener("change", syncSelfRetireLinkedPeriodAgesInDOM);
 });
 ["sp_retire_year","sp_retire_month"].forEach(id=>{
   document.getElementById(id)?.addEventListener("input", ()=>syncRetireFieldsForPrefix("sp"));
   document.getElementById(id)?.addEventListener("change", ()=>syncRetireFieldsForPrefix("sp"));
+});
+["self_post_retire_income_end_year","self_post_retire_income_end_month"].forEach(id=>{
+  document.getElementById(id)?.addEventListener("input", ()=>syncPostRetireIncomeEndFieldsForPrefix("self"));
+  document.getElementById(id)?.addEventListener("change", ()=>syncPostRetireIncomeEndFieldsForPrefix("self"));
+});
+["sp_post_retire_income_end_year","sp_post_retire_income_end_month"].forEach(id=>{
+  document.getElementById(id)?.addEventListener("input", ()=>syncPostRetireIncomeEndFieldsForPrefix("sp"));
+  document.getElementById(id)?.addEventListener("change", ()=>syncPostRetireIncomeEndFieldsForPrefix("sp"));
 });
 
 ["age","self_retire_year","self_retire_month","sp_retire_year","sp_retire_month","self_salary_month","self_bonus_year","sp_salary_month","sp_bonus_year"].forEach(id=>{
