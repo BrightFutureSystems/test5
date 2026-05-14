@@ -13921,7 +13921,7 @@ function getAllInputs(){
     const timeMeta = getTimeFieldMeta(el.id);
     if(timeMeta){
       const mode = document.getElementById(getTimeModeSelectId(timeMeta.prefix, timeMeta.index))?.value === "year" ? "year" : "age";
-      data[el.id] = getTimeFieldStoredAge(el.id, mode, currentAge, baseYear);
+      data[el.id] = syncTimeFieldStoredAge(el.id, mode, currentAge, baseYear);
       return;
     }
     if(el.dataset.numericReady === "1") data[el.id] = sanitizeNumericText(el.value, true);
@@ -13931,6 +13931,7 @@ function getAllInputs(){
 }
 function syncCurrentScenarioFromDOM(persistLocal = false){
   if(!scenarios.length || currentTab < 0 || !scenarios[currentTab]) return;
+  syncSimpleModeAutoStoredAgesInDOM();
   const scenario = scenarios[currentTab];
   const prevData = migrateLegacyData(scenario.data || {});
   const nextData = migrateLegacyData(getAllInputs());
@@ -14177,6 +14178,9 @@ function setAllInputs(data, options = {}){
   const nextContext = {currentAge: currentAgeValue(migrated), baseYear: currentBaseYearValue(migrated)};
   refreshAllTimeDisplays(nextContext, nextContext);
   __setAllInputsMark('refreshAllTimeDisplays');
+  syncSimpleModePeriodAutoAgesInDOM();
+  syncSimpleModeAutoStoredAgesInDOM();
+  __setAllInputsMark('syncSimpleModeAutoAges');
   updateIncomeCurveControls();
   __setAllInputsMark('updateIncomeCurveControls');
   updateChildAllowanceSummary(migrated);
@@ -14906,6 +14910,28 @@ function setSimpleModeAutoAgeInputValue(fieldId, storedAge, currentAge = current
   setTimeFieldStoredAge(fieldId, age);
   setNumericInputValue(fieldId, convertStoredAgeToDisplayValue(age, mode, currentAge, baseYear));
   setTimeFieldStoredAge(fieldId, age);
+}
+function syncSimpleModeAutoStoredAgesInDOM(rowKeys = SIMPLE_MODE_PERIOD_AUTO_ROW_KEYS){
+  const currentAge = getSimpleModeCurrentAge();
+  const baseYear = currentBaseYearValue();
+  let changed = false;
+  (Array.isArray(rowKeys) ? rowKeys : [rowKeys]).forEach(rowKey=>{
+    ["from","to"].forEach(kind=>{
+      if(!isSimpleModePeriodAutoAge(rowKey, kind)) return;
+      const fieldId = `${rowKey}_${kind}Age`;
+      const el = document.getElementById(fieldId);
+      if(!el) return;
+      const timeMeta = getTimeFieldMeta(fieldId);
+      const mode = timeMeta && document.getElementById(getTimeModeSelectId(timeMeta.prefix, timeMeta.index))?.value === "year" ? "year" : "age";
+      const syncedAge = syncTimeFieldStoredAge(fieldId, mode, currentAge, baseYear);
+      const cachedAge = Number(sanitizeNumericText(el.dataset.storedAge || '', true));
+      if(!Number.isFinite(cachedAge) || Math.abs(cachedAge - syncedAge) > 0.0000001){
+        setTimeFieldStoredAge(fieldId, syncedAge);
+        changed = true;
+      }
+    });
+  });
+  return changed;
 }
 function syncSimpleModePeriodAutoAgesInDOM(rowKeys = SIMPLE_MODE_PERIOD_AUTO_ROW_KEYS){
   let changed = false;
@@ -15679,7 +15705,7 @@ function getSimpleModePatchInputValue(dataKey){
   const timeMeta = getTimeFieldMeta(dataKey);
   if(timeMeta){
     const mode = document.getElementById(getTimeModeSelectId(timeMeta.prefix, timeMeta.index))?.value === "year" ? "year" : "age";
-    return String(getTimeFieldStoredAge(dataKey, mode, currentAgeValue(), currentBaseYearValue()));
+    return String(syncTimeFieldStoredAge(dataKey, mode, currentAgeValue(), currentBaseYearValue()));
   }
   return sourceEl.dataset.numericReady === "1" ? sanitizeNumericText(sourceEl.value, true) : sourceEl.value;
 }
@@ -21640,6 +21666,21 @@ function evaluateFireDiagnosisResult(cfg, sim, options){
   }
   return {...evalScore, found, reasonCode, reasonText};
 }
+function syncRetireLinkedAutoAgesInScenarioData(data, retireAge){
+  const next = data || {};
+  const currentAge = currentAgeValue(next);
+  const retire = Math.max(currentAge, Math.round(Number(retireAge) || 0));
+  (Array.isArray(SIMPLE_MODE_PERIOD_AUTO_ROW_KEYS) ? SIMPLE_MODE_PERIOD_AUTO_ROW_KEYS : ["sumInv1","life1","life2","rent1"]).forEach(rowKey=>{
+    ["from","to"].forEach(kind=>{
+      const flagKey = `${rowKey}_${kind}Age_auto`;
+      if(String(next[flagKey] ?? "1") === "0") return;
+      const targetKey = `${rowKey}_${kind}Age`;
+      next[targetKey] = getSimpleModePeriodAutoTargetAge(rowKey, kind, currentAge, retire);
+      next[flagKey] = "1";
+    });
+  });
+  return next;
+}
 function buildScenarioDataForRetireAge(baseData, retireAge){
   const next = migrateLegacyData(deepClone(baseData || {}));
   const retireTotalMonths = Math.max(0, Math.round((Number(retireAge) || 0) * 12));
@@ -21647,35 +21688,47 @@ function buildScenarioDataForRetireAge(baseData, retireAge){
   next.self_retire_year = ym.year || next.self_retire_year || '';
   next.self_retire_month = ym.month || next.self_retire_month || 1;
   next.self_retire_age = retireTotalMonths / 12;
+  syncRetireLinkedAutoAgesInScenarioData(next, retireTotalMonths / 12);
   return next;
+}
+function runFireDiagnosisTrialAtRetireTotalMonths(baseData, retireTotalMonths, options){
+  const requestedRetireTotalMonths = Math.max(0, Math.round(Number(retireTotalMonths) || 0));
+  const requestedRetireAge = requestedRetireTotalMonths / 12;
+  const baseSnapshot = migrateLegacyData(deepClone(baseData || getAllInputs()));
+  const activeState = captureActiveInputState();
+  try{
+    const trialData = buildScenarioDataForRetireAge(baseSnapshot, requestedRetireAge);
+    setAllInputs(trialData);
+    const cfg = getScenarioFromDOM();
+    if(!options?.applyCrash) cfg.crashTests = [];
+    const effectiveRetireTotalMonths = getRetireTotalMonthsFromCfg(cfg, 'self');
+    const staticSeries = getOrBuildMonteStaticSeries(trialData, cfg);
+    const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries);
+    const expenseSeries = Array.isArray(expenseSeriesBundle?.values) ? expenseSeriesBundle.values : null;
+    const sim = simulate(cfg, false, {compact:true, staticSeries, expenseSeries});
+    const judged = evaluateFireDiagnosisResult(cfg, sim, options);
+    return {
+      retireAge: effectiveRetireTotalMonths / 12,
+      requestedRetireAge,
+      requestedRetireTotalMonths,
+      retireAgeYears: Math.floor(effectiveRetireTotalMonths / 12),
+      retireAgeMonths: effectiveRetireTotalMonths % 12,
+      retireTotalMonths: effectiveRetireTotalMonths,
+      sim,
+      cfg,
+      ...judged,
+      retireAsset: Number(sim?.retireAsset) || 0,
+      terminalAsset: judged.terminalAsset,
+      minAsset: judged.minAsset
+    };
+  } finally {
+    setAllInputs(baseSnapshot);
+    restoreActiveInputState(activeState);
+  }
 }
 function runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options){
   const normalizedRetireYears = Math.max(0, Math.round(Number(retireYears) || 0));
-  const requestedRetireTotalMonths = normalizedRetireYears * 12;
-  const trialData = buildScenarioDataForRetireAge(baseData, normalizedRetireYears);
-  setAllInputs(trialData);
-  const cfg = getScenarioFromDOM();
-  if(!options?.applyCrash) cfg.crashTests = [];
-  const effectiveRetireTotalMonths = getRetireTotalMonthsFromCfg(cfg, 'self');
-  const staticSeries = getOrBuildMonteStaticSeries(trialData, cfg);
-  const expenseSeriesBundle = buildAnnualExpenseSeriesForSimulation(cfg, staticSeries);
-  const expenseSeries = Array.isArray(expenseSeriesBundle?.values) ? expenseSeriesBundle.values : null;
-  const sim = simulate(cfg, false, {compact:true, staticSeries, expenseSeries});
-  const judged = evaluateFireDiagnosisResult(cfg, sim, options);
-  return {
-    retireAge: effectiveRetireTotalMonths / 12,
-    requestedRetireAge: normalizedRetireYears,
-    requestedRetireTotalMonths,
-    retireAgeYears: Math.floor(effectiveRetireTotalMonths / 12),
-    retireAgeMonths: effectiveRetireTotalMonths % 12,
-    retireTotalMonths: effectiveRetireTotalMonths,
-    sim,
-    cfg,
-    ...judged,
-    retireAsset: Number(sim?.retireAsset) || 0,
-    terminalAsset: judged.terminalAsset,
-    minAsset: judged.minAsset
-  };
+  return runFireDiagnosisTrialAtRetireTotalMonths(baseData, normalizedRetireYears * 12, options);
 }
 function interpolateFireDiagnosisValue(a, b, ratio){
   const av = Number(a);
@@ -21808,18 +21861,11 @@ async function runFireDiagnosisTrial(baseData, retireAge, options){
   const requestedRetireTotalMonths = Math.max(0, Math.round(normalizedRetireAge * 12));
   const retireYears = Math.floor(requestedRetireTotalMonths / 12);
   const retireMonths = requestedRetireTotalMonths % 12;
-  if(retireMonths === 0){
-    if(options?.progressReporter) await options.progressReporter(10, {detail:`${retireYears}歳の条件を準備中`});
-    const wholeTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
-    if(options?.progressReporter) await options.progressReporter(100, {detail:`${retireYears}歳の判定完了`});
-    return wholeTrial;
-  }
-  if(options?.progressReporter) await options.progressReporter(10, {detail:`${retireYears}歳の条件を準備中`});
-  const lowerTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears, options);
-  if(options?.progressReporter) await options.progressReporter(55, {detail:`${retireYears + 1}歳の条件を準備中`});
-  const upperTrial = runFireDiagnosisTrialAtWholeYear(baseData, retireYears + 1, options);
-  if(options?.progressReporter) await options.progressReporter(90, {detail:'月単位結果を補間中'});
-  return buildInterpolatedFireDiagnosisTrial(requestedRetireTotalMonths, lowerTrial, upperTrial, options);
+  const detailAge = retireMonths === 0 ? `${retireYears}歳` : `${retireYears}歳${retireMonths}ヶ月`;
+  if(options?.progressReporter) await options.progressReporter(10, {detail:`${detailAge}の条件を準備中`});
+  const trial = runFireDiagnosisTrialAtRetireTotalMonths(baseData, requestedRetireTotalMonths, options);
+  if(options?.progressReporter) await options.progressReporter(100, {detail:`${detailAge}の判定完了`});
+  return trial;
 }
 function buildFireDiagnosisSuccessPayload(trial, options, checkedFrom, checkedTo){
   return {
