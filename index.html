@@ -22609,7 +22609,11 @@ function buildFireDiagnosisGuideLabelTopLayerPlugin(id, options={}){
         if(!dataset?.fireGuideLabel && !dataset?.fireGuideFullLabel && !dataset?.fireTerminalPointLabel && !dataset?.fireAssetLifeMarkerLabel) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
-        if(x < xScale.left || x > xScale.right) return;
+        if(xVal < Number(xScale.min) || xVal > Number(xScale.max) || x < xScale.left || x > xScale.right) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+        ctx.clip();
         drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x);
         const label = mode === 'assetLife' ? String(dataset.fireAssetLifeMarkerLabel || '').trim() : String(dataset.fireTerminalPointLabel || '').trim();
         if(label && !label.includes('FIRE:')){
@@ -22624,6 +22628,7 @@ function buildFireDiagnosisGuideLabelTopLayerPlugin(id, options={}){
           ctx.fillText(label, labelX, labelY);
           ctx.restore();
         }
+        ctx.restore();
       });
     }
   };
@@ -22862,14 +22867,19 @@ function isFireDiagnosisScaleEndpointValue(scale, value){
   const eps = range * 1e-9 + 1e-9;
   return Math.abs(n - min) <= eps || Math.abs(n - max) <= eps;
 }
+function isFireDiagnosisScaleOutsideValue(scale, value){
+  if(!scale) return false;
+  const n = Number(value);
+  const min = Number(scale.min);
+  const max = Number(scale.max);
+  if(!Number.isFinite(n) || !Number.isFinite(min) || !Number.isFinite(max)) return false;
+  const range = Math.max(1e-9, Math.abs(max - min));
+  const eps = range * 1e-9 + 1e-9;
+  return n < min - eps || n > max + eps;
+}
 function isFireDiagnosisScaleEdgeTick(scale, value, axis){
-  if(!scale || typeof scale.getPixelForValue !== 'function') return false;
-  const pixel = Number(scale.getPixelForValue(value));
-  if(!Number.isFinite(pixel)) return false;
-  // 端ラベル以外の通常tickは、見切れる直前まで残す。
-  const edgePx = -1;
-  if(axis === 'x') return pixel < Number(scale.left) + edgePx || pixel > Number(scale.right) - edgePx;
-  return pixel < Number(scale.top) + edgePx || pixel > Number(scale.bottom) - edgePx;
+  // 通常tickはChart.js標準のclipに任せ、早めのピクセル端判定では消さない。
+  return false;
 }
 function formatFireDiagnosisDynamicNumber(value, range, opts={}){
   const num = Number(value);
@@ -22889,9 +22899,10 @@ function formatFireDiagnosisXAxisTick(value, index, ticks, kind){
   const zoomed = isFireDiagnosisChartZoomed(kind);
   const n = Number(value);
   if(!Number.isFinite(n)) return '';
-  if(zoomed && isFireDiagnosisScaleEndpointValue(scale, n)) return '';
+  if(zoomed && isFireDiagnosisScaleOutsideValue(scale, n)) return '';
   if(zoomed && isFireDiagnosisScaleEdgeTick(scale, n, 'x')) return '';
   // FIRE診断のx軸は年齢なので、小数値は表示しない。
+  // 非整数のscale.min/max由来tickはここで消えるが、通常の整数tickは端でも早く消さない。
   const rounded = Math.round(n);
   if(Math.abs(n - rounded) > 1e-6) return '';
   const label = String(rounded);
@@ -22899,7 +22910,7 @@ function formatFireDiagnosisXAxisTick(value, index, ticks, kind){
   for(let i = 0; i < Number(index || 0); i++){
     const prevValue = Number(list[i]?.value);
     if(!Number.isFinite(prevValue)) continue;
-    if(zoomed && isFireDiagnosisScaleEndpointValue(scale, prevValue)) continue;
+    if(zoomed && isFireDiagnosisScaleOutsideValue(scale, prevValue)) continue;
     if(zoomed && isFireDiagnosisScaleEdgeTick(scale, prevValue, 'x')) continue;
     const prevRounded = Math.round(prevValue);
     if(Math.abs(prevValue - prevRounded) <= 1e-6 && String(prevRounded) === label) return '';
@@ -22911,7 +22922,7 @@ function formatFireDiagnosisYAxisTick(value, index, ticks, kind, opts={}){
   const zoomed = isFireDiagnosisChartZoomed(kind);
   const n = Number(value);
   if(!Number.isFinite(n)) return '';
-  if(zoomed && isFireDiagnosisScaleEndpointValue(scale, n)) return '';
+  if(zoomed && isFireDiagnosisScaleOutsideValue(scale, n)) return '';
   if(zoomed && isFireDiagnosisScaleEdgeTick(scale, n, 'y')) return '';
   const range = scale ? Math.abs(Number(scale.max) - Number(scale.min)) : 0;
   const divisor = Math.max(1e-9, Number(opts?.divisor) || 1);
@@ -24631,8 +24642,11 @@ function renderAssetLifeDiagnosisChart(result){
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
-        if(x < xScale.left || x > xScale.right) return;
+        if(xVal < Number(xScale.min) || xVal > Number(xScale.max) || x < xScale.left || x > xScale.right) return;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+        ctx.clip();
         ctx.beginPath();
         ctx.strokeStyle = dataset.borderColor || '#64748b';
         ctx.lineWidth = 1.4;
@@ -24681,8 +24695,8 @@ function renderAssetLifeDiagnosisChart(result){
       interaction:{mode:'assetLifeNearestX', intersect:false, axis:'xy', hitRadius:7},
       plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>formatAssetLifeAgeText(value, value >= 120), 'assetLife')},
       scales:{
-        y:{min:yRange.min, max:yRange.max, title:{display:true,text:'資産寿命（歳）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'assetLife'); }}},
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'assetLife'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        y:{min:yRange.min, max:yRange.max, title:{display:true,text:'資産寿命（歳）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{includeBounds:false, autoSkip:false, maxTicksLimit:20, padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'assetLife'); }}},
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'assetLife'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
@@ -24835,8 +24849,11 @@ function renderAssetLifeSuccessRateChart(result){
         const yVal = Number(point?.y);
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
-        if(x < xScale.left || x > xScale.right) return;
+        if(xVal < Number(xScale.min) || xVal > Number(xScale.max) || x < xScale.left || x > xScale.right) return;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+        ctx.clip();
         ctx.beginPath();
         ctx.strokeStyle = dataset.borderColor || '#64748b';
         ctx.lineWidth = 1.4;
@@ -24862,8 +24879,8 @@ function renderAssetLifeSuccessRateChart(result){
       interaction:{mode:'assetLifeNearestX', intersect:false, axis:'xy', hitRadius:7},
       plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>`${value.toFixed(1)}%`, 'successRate')},
       scales:{
-        y:{min:0, max:100, title:{display:true,text:'成功率（%）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'successRate'); }}},
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'successRate'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        y:{min:0, max:100, title:{display:true,text:'成功率（%）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{includeBounds:false, autoSkip:false, maxTicksLimit:20, padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'successRate'); }}},
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'successRate'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
@@ -25072,7 +25089,11 @@ function renderAssetLifeTerminalAssetChart(result){
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
+        if(xVal < Number(xScale.min) || xVal > Number(xScale.max) || x < xScale.left || x > xScale.right) return;
         ctx.save();
+        ctx.beginPath();
+        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+        ctx.clip();
         ctx.beginPath();
         ctx.strokeStyle = dataset.borderColor || '#64748b';
         ctx.lineWidth = 1.4;
@@ -25127,9 +25148,9 @@ function renderAssetLifeTerminalAssetChart(result){
           grid:makeGridWithoutZeroLine({tickLength:0, color:COMMON_MAIN_GRID_LINE_COLOR, lineWidth:1}),
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1},
           title:{display:true,text:`寿命時残高（${unitSpec.label}）`, padding:{top:0,bottom:2}},
-          ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'terminal', {divisor:Number(unitSpec?.divisor) || 1}); }}
+          ticks:{includeBounds:false, autoSkip:false, maxTicksLimit:20, padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'terminal', {divisor:Number(unitSpec?.divisor) || 1}); }}
         },
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'terminal'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'terminal'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
