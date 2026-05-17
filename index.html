@@ -22572,11 +22572,18 @@ function getFireDiagnosisGuideLabelOpacity(xScale, x){
   if(x > xScale.right) return Math.max(0, 1 - ((x - xScale.right) / fadePx));
   return 1;
 }
+function isFireDiagnosisGuideLabelFadeZoneVisible(xScale, x){
+  const fadePx = 42;
+  if(!xScale || !Number.isFinite(Number(x))) return false;
+  return x >= Number(xScale.left) - fadePx && x <= Number(xScale.right) + fadePx;
+}
+function getFireDiagnosisFreeLabelOpacity(xScale, sourceX){
+  // 左右移動しないラベルは、位置を動かさず、縦線x位置だけでその場フェードする。
+  return getFireDiagnosisGuideLabelOpacity(xScale, Number(sourceX));
+}
 function getFireDiagnosisGuideLabelBoxRect(ctx, xScale, yScale, dataset, x, chart){
   const baseLabel = String(dataset?.fireGuideFullLabel || '').trim();
   if(!baseLabel || !xScale || !yScale) return null;
-  const opacity = getFireDiagnosisGuideLabelOpacity(xScale, x);
-  if(opacity <= 0) return null;
   const isRight = String(dataset.fireGuideSide || '') === 'right';
   const padX = 5;
   const labelH = 18;
@@ -22584,9 +22591,22 @@ function getFireDiagnosisGuideLabelBoxRect(ctx, xScale, yScale, dataset, x, char
   ctx.font = '600 11px Arial, sans-serif';
   const labelW = ctx.measureText(baseLabel).width + padX * 2;
   ctx.restore();
-  let labelX = isRight ? x + 6 : x - labelW - 6;
-  // 画面端で見切れそうになったら、plotArea内の左右端へ押し戻す。
-  labelX = Math.max(xScale.left + 2, Math.min(xScale.right - labelW - 2, labelX));
+  const rawLabelX = isRight ? x + 6 : x - labelW - 6;
+  const minLabelX = xScale.left + 2;
+  const maxLabelX = xScale.right - labelW - 2;
+  // 見切れそうになる量を使って、端に押し戻しながら徐々に消す。
+  const fadePx = 42;
+  const leftOverflow = Math.max(0, minLabelX - rawLabelX);
+  const rightOverflow = Math.max(0, rawLabelX - maxLabelX);
+  const overflow = Math.max(leftOverflow, rightOverflow);
+  const lineOpacity = getFireDiagnosisGuideLabelOpacity(xScale, x);
+  const clipOpacity = Math.max(0, 1 - (overflow / fadePx));
+  const opacity = Math.min(lineOpacity, clipOpacity);
+  if(opacity <= 0) return null;
+  // ラベルが本来ある側と反対側の端では押し込まない。
+  // 左側ラベル: 左端でだけ右へ押し戻す。右端では元位置のままフェード。
+  // 右側ラベル: 右端でだけ左へ押し戻す。左端では元位置のままフェード。
+  let labelX = isRight ? Math.min(maxLabelX, rawLabelX) : Math.max(minLabelX, rawLabelX);
   const baseY = Math.max(yScale.top + 4, Math.min(yScale.bottom - labelH - 2, yScale.bottom - labelH - 4));
   let labelY = baseY;
   const rank = Math.max(0, Number(dataset.fireAssetLifeSeriesRank || 0) - 1);
@@ -22617,6 +22637,11 @@ function drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x, chart=n
   const rect = getFireDiagnosisGuideLabelBoxRect(ctx, xScale, yScale, dataset, x, chart);
   if(!rect) return;
   ctx.save();
+  // FIRE年齢boxedラベルは、左右軸の外へ出た部分を表示しない。
+  // 反対側の端では押し込まず、軸を境に自然に見切れるようにする。
+  ctx.beginPath();
+  ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+  ctx.clip();
   ctx.globalAlpha = rect.opacity;
   ctx.font = '600 11px Arial, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.82)';
@@ -22652,7 +22677,7 @@ function buildFireDiagnosisGuideLabelTopLayerPlugin(id, options={}){
         if(!dataset?.fireGuideLabel && !dataset?.fireGuideFullLabel && !dataset?.fireTerminalPointLabel && !dataset?.fireAssetLifeMarkerLabel) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
-        if(xVal < Number(xScale.min) || xVal > Number(xScale.max)) return;
+        if(!isFireDiagnosisGuideLabelFadeZoneVisible(xScale, x)) return;
         ctx.save();
         drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x, chart);
         const label = mode === 'assetLife' ? String(dataset.fireAssetLifeMarkerLabel || '').trim() : String(dataset.fireTerminalPointLabel || '').trim();
@@ -22663,9 +22688,10 @@ function buildFireDiagnosisGuideLabelTopLayerPlugin(id, options={}){
           ctx.fillStyle = dataset.borderColor || '#64748b';
           ctx.textAlign = side === 'right' ? 'left' : 'right';
           ctx.textBaseline = 'bottom';
-          const labelX = side === 'right' ? Math.min(x + 5, xScale.right - 14) : Math.max(x - 5, xScale.left + 14);
+          const labelX = side === 'right' ? (x + 5) : (x - 5);
           const labelY = Math.max(y - 3, yScale.top + 12);
-          ctx.fillText(label, labelX, labelY);
+          ctx.globalAlpha = getFireDiagnosisFreeLabelOpacity(xScale, x);
+          if(ctx.globalAlpha > 0) ctx.fillText(label, labelX, labelY);
           ctx.restore();
         }
         ctx.restore();
@@ -24754,13 +24780,14 @@ function renderAssetLifeDiagnosisChart(result){
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
-        if(xVal < Number(xScale.min) || xVal > Number(xScale.max)) return;
+        if(!isFireDiagnosisGuideLabelFadeZoneVisible(xScale, x)) return;
         const lineVisible = x >= xScale.left && x <= xScale.right;
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
-        ctx.clip();
         if(lineVisible){
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+          ctx.clip();
           ctx.beginPath();
           ctx.strokeStyle = dataset.borderColor || '#64748b';
           ctx.lineWidth = 1.4;
@@ -24768,30 +24795,37 @@ function renderAssetLifeDiagnosisChart(result){
           ctx.moveTo(x, yScale.top);
           ctx.lineTo(x, yScale.bottom);
           ctx.stroke();
+          ctx.restore();
         }
         const topLabel = String(dataset.fireGuideTopLabel || '').trim();
         if(topLabel){
           const isRight = String(dataset.fireGuideSide || '') === 'right';
           const rank = Math.max(0, Number(dataset.fireAssetLifeSeriesRank || 0) - 1);
+          ctx.save();
           ctx.font = '600 11px Arial, sans-serif';
           ctx.fillStyle = dataset.borderColor || '#64748b';
           ctx.textAlign = isRight ? 'left' : 'right';
           ctx.textBaseline = 'top';
-          const labelX = isRight ? Math.min(x + 5, xScale.right - 4) : Math.max(x - 5, xScale.left + 4);
+          const labelX = isRight ? (x + 5) : (x - 5);
           const labelY = yScale.top + 6 + rank * 13 + (isRight ? 13 : 0);
-          ctx.fillText(topLabel, labelX, labelY);
+          ctx.globalAlpha = getFireDiagnosisFreeLabelOpacity(xScale, x);
+          if(ctx.globalAlpha > 0) ctx.fillText(topLabel, labelX, labelY);
+          ctx.restore();
         }
         drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x, chart);
         const markerLabel = String(dataset.fireAssetLifeMarkerLabel || '').trim();
         if(markerLabel){
           const side = String(dataset.fireAssetLifePointLabelSide || '') === 'right' ? 'right' : 'left';
+          ctx.save();
           ctx.font = '600 12px Arial, sans-serif';
           ctx.fillStyle = dataset.borderColor || '#64748b';
           ctx.textAlign = side === 'right' ? 'left' : 'right';
           ctx.textBaseline = 'bottom';
-          const labelX = side === 'right' ? Math.min(x + 5, xScale.right - 14) : Math.max(x - 5, xScale.left + 14);
+          const labelX = side === 'right' ? (x + 5) : (x - 5);
           const labelY = Math.max(y - 3, yScale.top + 12);
-          ctx.fillText(markerLabel, labelX, labelY);
+          ctx.globalAlpha = getFireDiagnosisFreeLabelOpacity(xScale, x);
+          if(ctx.globalAlpha > 0) ctx.fillText(markerLabel, labelX, labelY);
+          ctx.restore();
         }
         ctx.restore();
       });
@@ -24964,13 +24998,14 @@ function renderAssetLifeSuccessRateChart(result){
         const yVal = Number(point?.y);
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
-        if(xVal < Number(xScale.min) || xVal > Number(xScale.max)) return;
+        if(!isFireDiagnosisGuideLabelFadeZoneVisible(xScale, x)) return;
         const lineVisible = x >= xScale.left && x <= xScale.right;
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
-        ctx.clip();
         if(lineVisible){
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+          ctx.clip();
           ctx.beginPath();
           ctx.strokeStyle = dataset.borderColor || '#64748b';
           ctx.lineWidth = 1.4;
@@ -24978,6 +25013,7 @@ function renderAssetLifeSuccessRateChart(result){
           ctx.moveTo(x, yScale.top);
           ctx.lineTo(x, yScale.bottom);
           ctx.stroke();
+          ctx.restore();
         }
         drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x, chart);
         ctx.restore();
@@ -25207,13 +25243,14 @@ function renderAssetLifeTerminalAssetChart(result){
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
-        if(xVal < Number(xScale.min) || xVal > Number(xScale.max)) return;
+        if(!isFireDiagnosisGuideLabelFadeZoneVisible(xScale, x)) return;
         const lineVisible = x >= xScale.left && x <= xScale.right;
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
-        ctx.clip();
         if(lineVisible){
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+          ctx.clip();
           ctx.beginPath();
           ctx.strokeStyle = dataset.borderColor || '#64748b';
           ctx.lineWidth = 1.4;
@@ -25221,30 +25258,37 @@ function renderAssetLifeTerminalAssetChart(result){
           ctx.moveTo(x, yScale.top);
           ctx.lineTo(x, yScale.bottom);
           ctx.stroke();
+          ctx.restore();
         }
         const topLabel = String(dataset.fireGuideTopLabel || '').trim();
         if(topLabel){
           const isRight = String(dataset.fireGuideSide || '') === 'right';
           const rank = Math.max(0, Number(dataset.fireAssetLifeSeriesRank || 0) - 1);
+          ctx.save();
           ctx.font = '600 11px Arial, sans-serif';
           ctx.fillStyle = dataset.borderColor || '#64748b';
           ctx.textAlign = isRight ? 'left' : 'right';
           ctx.textBaseline = 'top';
-          const labelX = isRight ? Math.min(x + 5, xScale.right - 4) : Math.max(x - 5, xScale.left + 4);
+          const labelX = isRight ? (x + 5) : (x - 5);
           const labelY = yScale.top + 6 + rank * 13 + (isRight ? 13 : 0);
-          ctx.fillText(topLabel, labelX, labelY);
+          ctx.globalAlpha = getFireDiagnosisFreeLabelOpacity(xScale, x);
+          if(ctx.globalAlpha > 0) ctx.fillText(topLabel, labelX, labelY);
+          ctx.restore();
         }
         drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x, chart);
         const pointLabel = String(dataset.fireTerminalPointLabel || '').trim();
         if(pointLabel && !pointLabel.includes('FIRE:')){
           const side = String(dataset.firePointLabelSide || '') === 'right' ? 'right' : 'left';
+          ctx.save();
           ctx.font = '600 12px Arial, sans-serif';
           ctx.fillStyle = dataset.borderColor || '#64748b';
           ctx.textAlign = side === 'right' ? 'left' : 'right';
           ctx.textBaseline = 'bottom';
-          const labelX = side === 'right' ? Math.min(x + 5, xScale.right - 14) : Math.max(x - 5, xScale.left + 14);
+          const labelX = side === 'right' ? (x + 5) : (x - 5);
           const labelY = Math.max(y - 3, yScale.top + 12);
-          ctx.fillText(pointLabel, labelX, labelY);
+          ctx.globalAlpha = getFireDiagnosisFreeLabelOpacity(xScale, x);
+          if(ctx.globalAlpha > 0) ctx.fillText(pointLabel, labelX, labelY);
+          ctx.restore();
         }
         ctx.restore();
       });
