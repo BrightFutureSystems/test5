@@ -23174,6 +23174,21 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
     const rect = canvas.getBoundingClientRect();
     return {x:touch.clientX - rect.left, y:touch.clientY - rect.top};
   };
+  const updateFireDiagnosisTooltipFromTouch = (touch)=>{
+    const chart = getChart();
+    if(!chart || !(touch instanceof Touch)) return false;
+    const pt = getTouchPoint(touch);
+    if(!isInsideChartArea(pt)) return false;
+    const eventPosition = {x:pt.x, y:pt.y};
+    const elements = chart.getElementsAtEventForMode({type:'touchmove', chart, native:touch}, 'assetLifeNearestX', {intersect:false, axis:'xy'}, false) || [];
+    if(!elements.length){
+      return false;
+    }
+    chart.setActiveElements(elements);
+    chart.tooltip?.setActiveElements?.(elements, eventPosition);
+    chart.update('none');
+    return true;
+  };
   const getTouchDistance = (a, b)=>Math.hypot((b.x - a.x), (b.y - a.y));
   const finishTouchInteraction = ()=>{
     if(!touchState) return null;
@@ -23214,15 +23229,21 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
       const zoomed = isFireDiagnosisChartZoomed(kind);
       // 非ズーム時も、グラフ上でtooltipを出している間は画面スクロールに渡さない。
       // ズーム時は、touchstart時点で即pan確定せず、ゆっくり移動ならtooltip追従、速い/明確な移動だけpanへ移行する。
+      const now = Date.now();
+      const tooltipHit = updateFireDiagnosisTooltipFromTouch(e.touches[0]);
       touchState = {
         type: zoomed ? 'tooltipOrPan' : 'tooltipOnly',
         startX:pt.x, startY:pt.y,
-        startTime:Date.now(),
+        lastX:pt.x, lastY:pt.y,
+        startTime:now,
+        lastMoveTime:now,
         startMinX:Number(chart.scales.x.min), startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min), startMaxY:Number(chart.scales.y.max),
         plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
         plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
-        moved:false
+        moved:false,
+        tooltipMoved:false,
+        tooltipHit
       };
       if(e.cancelable) e.preventDefault();
     }
@@ -23287,27 +23308,42 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
     }
     if(touchState.type === 'tooltipOnly' || touchState.type === 'tooltipOrPan' || touchState.type === 'pan'){
       if(e.touches.length !== 1) return;
-      const pt = getTouchPoint(e.touches[0]);
+      const touch = e.touches[0];
+      const pt = getTouchPoint(touch);
+      const now = Date.now();
       const dx = pt.x - touchState.startX;
       const dy = pt.y - touchState.startY;
+      const stepDx = pt.x - Number(touchState.lastX ?? touchState.startX);
+      const stepDy = pt.y - Number(touchState.lastY ?? touchState.startY);
+      const dt = Math.max(1, now - Number(touchState.lastMoveTime || now));
+      const stepVelocity = Math.hypot(stepDx, stepDy) / dt;
       const dist = Math.hypot(dx, dy);
-      const elapsed = Math.max(1, Date.now() - Number(touchState.startTime || Date.now()));
-      const speed = dist / elapsed;
+      touchState.lastX = pt.x;
+      touchState.lastY = pt.y;
+      touchState.lastMoveTime = now;
       if(touchState.type === 'tooltipOnly'){
-        touchState.moved = touchState.moved || dist >= MIN_TOUCH_MOVE;
+        if(dist >= 2) touchState.tooltipMoved = true;
+        const nextHit = updateFireDiagnosisTooltipFromTouch(touch);
+        if(nextHit) touchState.tooltipHit = true;
         if(e.cancelable) e.preventDefault();
         return;
       }
       if(touchState.type === 'tooltipOrPan'){
-        const panByFastMove = dist >= 12 && speed >= 0.45;
-        const panByClearDrag = dist >= 26;
-        if(!panByFastMove && !panByClearDrag){
-          // ゆっくり移動中はtooltip追従を優先し、panへ入らない。
+        const tooltipHit = !!touchState.tooltipHit;
+        const shouldPanBecauseNoTooltip = !tooltipHit && dist >= MIN_TOUCH_MOVE;
+        const fastFlick = tooltipHit && dist >= 12 && stepVelocity >= 0.42;
+        const quickDrag = tooltipHit && dist >= 28 && (now - Number(touchState.startTime || now)) <= 180;
+        if(!shouldPanBecauseNoTooltip && !fastFlick && !quickDrag){
+          if(dist >= 2) touchState.tooltipMoved = true;
+          const nextHit = updateFireDiagnosisTooltipFromTouch(touch);
+          if(nextHit) touchState.tooltipHit = true;
           if(e.cancelable) e.preventDefault();
           return;
         }
       }
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
+      chart.setActiveElements([]);
+      chart.tooltip?.setActiveElements?.([], {x:0, y:0});
       touchState.type = 'pan';
       touchState.moved = true;
       const isXZoomed = Math.abs(touchState.startMinX - auto.xMin) > 1e-9 || Math.abs(touchState.startMaxX - auto.xMax) > 1e-9;
