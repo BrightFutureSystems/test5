@@ -2014,6 +2014,7 @@ document.addEventListener("scroll", (ev)=>{
     text-align:left;
   }
   .fire-diagnosis-chart-section{
+    position:relative;
     margin-top:18px;
   }
   #fireDiagnosisTerminalAssetSection{
@@ -2023,6 +2024,27 @@ document.addEventListener("scroll", (ev)=>{
     font-weight:700;
     color:#334155;
     margin-bottom:8px;
+  }
+  .fire-diagnosis-external-tooltip{
+    z-index:65;
+    max-width:min(620px, calc(100vw - 36px));
+  }
+  .fire-diagnosis-external-tooltip .chart-external-tooltip-label-cell{
+    max-width:none;
+  }
+  .fire-diagnosis-external-tooltip .chart-external-tooltip-label{
+    max-width:none;
+  }
+  .fire-diagnosis-external-tooltip .chart-external-tooltip-label > span:last-child{
+    overflow:visible;
+    text-overflow:clip;
+    white-space:nowrap;
+  }
+  .fire-diagnosis-external-tooltip .chart-external-tooltip-strong-row .chart-external-tooltip-value:empty{
+    display:none;
+    width:0;
+    min-width:0;
+    padding-left:0;
   }
   .fire-asset-life-table-wrap{
     margin-top:10px;
@@ -22587,6 +22609,7 @@ function buildFireDiagnosisGuideLabelTopLayerPlugin(id, options={}){
         if(!dataset?.fireGuideLabel && !dataset?.fireGuideFullLabel && !dataset?.fireTerminalPointLabel && !dataset?.fireAssetLifeMarkerLabel) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
+        if(x < xScale.left || x > xScale.right) return;
         drawFireDiagnosisGuideLabelBox(ctx, xScale, yScale, dataset, x);
         const label = mode === 'assetLife' ? String(dataset.fireAssetLifeMarkerLabel || '').trim() : String(dataset.fireTerminalPointLabel || '').trim();
         if(label && !label.includes('FIRE:')){
@@ -22784,6 +22807,692 @@ function ensureFireDiagnosisSmartTooltipPositioner(){
     return {x:outX, y:outY, xAlign, yAlign:placeBelow ? 'top' : 'bottom'};
   };
 }
+
+
+const fireDiagnosisChartViewStates = {
+  assetLife:{autoBounds:null, overrideBounds:null, selectionGuide:null, zoomState:null, panState:null, suppressClickUntil:0},
+  terminal:{autoBounds:null, overrideBounds:null, selectionGuide:null, zoomState:null, panState:null, suppressClickUntil:0},
+  successRate:{autoBounds:null, overrideBounds:null, selectionGuide:null, zoomState:null, panState:null, suppressClickUntil:0}
+};
+function getFireDiagnosisChartViewState(kind){
+  if(!fireDiagnosisChartViewStates[kind]){
+    fireDiagnosisChartViewStates[kind] = {autoBounds:null, overrideBounds:null, selectionGuide:null, zoomState:null, panState:null, suppressClickUntil:0};
+  }
+  return fireDiagnosisChartViewStates[kind];
+}
+function cloneFireDiagnosisChartBounds(bounds){
+  if(!bounds) return null;
+  const xMin = Number(bounds.xMin), xMax = Number(bounds.xMax), yMin = Number(bounds.yMin), yMax = Number(bounds.yMax);
+  if(!Number.isFinite(xMin) || !Number.isFinite(xMax) || !Number.isFinite(yMin) || !Number.isFinite(yMax)) return null;
+  if(xMax <= xMin || yMax <= yMin) return null;
+  return {xMin, xMax, yMin, yMax};
+}
+function setFireDiagnosisChartAutoBounds(kind, bounds){
+  const state = getFireDiagnosisChartViewState(kind);
+  state.autoBounds = cloneFireDiagnosisChartBounds(bounds);
+}
+function getFireDiagnosisChartEffectiveBounds(kind){
+  const state = getFireDiagnosisChartViewState(kind);
+  return cloneFireDiagnosisChartBounds(state.overrideBounds || state.autoBounds);
+}
+function isFireDiagnosisChartZoomed(kind){
+  const state = getFireDiagnosisChartViewState(kind);
+  const auto = state.autoBounds;
+  const over = state.overrideBounds;
+  if(!auto || !over) return false;
+  return Math.abs(auto.xMin - over.xMin) > 1e-9 ||
+         Math.abs(auto.xMax - over.xMax) > 1e-9 ||
+         Math.abs(auto.yMin - over.yMin) > 1e-9 ||
+         Math.abs(auto.yMax - over.yMax) > 1e-9;
+}
+function resetFireDiagnosisChartScale(kind){
+  const state = getFireDiagnosisChartViewState(kind);
+  state.overrideBounds = null;
+  state.selectionGuide = null;
+  state.zoomState = null;
+  state.panState = null;
+}
+function isFireDiagnosisScaleEndpointValue(scale, value){
+  if(!scale) return false;
+  const n = Number(value);
+  const min = Number(scale.min);
+  const max = Number(scale.max);
+  if(!Number.isFinite(n) || !Number.isFinite(min) || !Number.isFinite(max)) return false;
+  const range = Math.max(1e-9, Math.abs(max - min));
+  const eps = range * 1e-9 + 1e-9;
+  return Math.abs(n - min) <= eps || Math.abs(n - max) <= eps;
+}
+function isFireDiagnosisScaleEdgeTick(scale, value, axis){
+  if(!scale || typeof scale.getPixelForValue !== 'function') return false;
+  const pixel = Number(scale.getPixelForValue(value));
+  if(!Number.isFinite(pixel)) return false;
+  // 端ラベル以外の通常tickは、見切れる直前まで残す。
+  const edgePx = -1;
+  if(axis === 'x') return pixel < Number(scale.left) + edgePx || pixel > Number(scale.right) - edgePx;
+  return pixel < Number(scale.top) + edgePx || pixel > Number(scale.bottom) - edgePx;
+}
+function formatFireDiagnosisDynamicNumber(value, range, opts={}){
+  const num = Number(value);
+  if(!Number.isFinite(num)) return '';
+  const absRange = Math.abs(Number(range) || 0);
+  const abs = Math.abs(num);
+  let digits = 0;
+  if(opts.forceInteger) digits = 0;
+  else if(absRange > 0 && absRange <= 1) digits = 2;
+  else if(absRange > 0 && absRange <= 5) digits = 1;
+  else if(abs > 0 && abs < 10) digits = 1;
+  const rounded = digits ? Number(num.toFixed(digits)) : Math.round(num);
+  return rounded.toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:0});
+}
+function formatFireDiagnosisXAxisTick(value, index, ticks, kind){
+  const scale = this;
+  const zoomed = isFireDiagnosisChartZoomed(kind);
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '';
+  if(zoomed && isFireDiagnosisScaleEndpointValue(scale, n)) return '';
+  if(zoomed && isFireDiagnosisScaleEdgeTick(scale, n, 'x')) return '';
+  // FIRE診断のx軸は年齢なので、小数値は表示しない。
+  const rounded = Math.round(n);
+  if(Math.abs(n - rounded) > 1e-6) return '';
+  const label = String(rounded);
+  const list = Array.isArray(ticks) ? ticks : [];
+  for(let i = 0; i < Number(index || 0); i++){
+    const prevValue = Number(list[i]?.value);
+    if(!Number.isFinite(prevValue)) continue;
+    if(zoomed && isFireDiagnosisScaleEndpointValue(scale, prevValue)) continue;
+    if(zoomed && isFireDiagnosisScaleEdgeTick(scale, prevValue, 'x')) continue;
+    const prevRounded = Math.round(prevValue);
+    if(Math.abs(prevValue - prevRounded) <= 1e-6 && String(prevRounded) === label) return '';
+  }
+  return label;
+}
+function formatFireDiagnosisYAxisTick(value, index, ticks, kind, opts={}){
+  const scale = this;
+  const zoomed = isFireDiagnosisChartZoomed(kind);
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '';
+  if(zoomed && isFireDiagnosisScaleEndpointValue(scale, n)) return '';
+  if(zoomed && isFireDiagnosisScaleEdgeTick(scale, n, 'y')) return '';
+  const range = scale ? Math.abs(Number(scale.max) - Number(scale.min)) : 0;
+  const divisor = Math.max(1e-9, Number(opts?.divisor) || 1);
+  const scaled = n / divisor;
+  const scaledRange = range / divisor;
+  return formatFireDiagnosisDynamicNumber(scaled, scaledRange, {forceInteger: !!opts?.forceInteger && !zoomed});
+}
+function captureFireDiagnosisChartAutoBounds(chart, kind){
+  if(!chart?.scales?.x || !chart?.scales?.y) return;
+  const bounds = {
+    xMin:Number(chart.scales.x.min),
+    xMax:Number(chart.scales.x.max),
+    yMin:Number(chart.scales.y.min),
+    yMax:Number(chart.scales.y.max)
+  };
+  setFireDiagnosisChartAutoBounds(kind, bounds);
+}
+function applyFireDiagnosisChartScaleOverrides(chart, kind){
+  if(!chart?.options?.scales?.x || !chart?.options?.scales?.y) return;
+  const bounds = getFireDiagnosisChartEffectiveBounds(kind);
+  if(!bounds) return;
+  chart.options.scales.x.min = bounds.xMin;
+  chart.options.scales.x.max = bounds.xMax;
+  chart.options.scales.y.min = bounds.yMin;
+  chart.options.scales.y.max = bounds.yMax;
+}
+function buildFireDiagnosisChartSelectionGuidePlugin(kind){
+  return {
+    id:`fireDiagnosisSelectionGuide_${kind}`,
+    afterDatasetsDraw(chart){
+      const guide = getFireDiagnosisChartViewState(kind).selectionGuide;
+      if(!guide?.axis || !chart?.chartArea) return;
+      const {ctx, chartArea:area} = chart;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+      ctx.lineWidth = 1.5;
+      ctx.fillStyle = 'rgba(37,99,235,0.18)';
+      ctx.strokeStyle = 'rgba(37,99,235,0.95)';
+      if(guide.axis === 'x'){
+        const left = Math.max(area.left, Math.min(area.right, Math.min(guide.startPx, guide.currentPx)));
+        const right = Math.max(area.left, Math.min(area.right, Math.max(guide.startPx, guide.currentPx)));
+        ctx.fillRect(left, area.top, Math.max(1, right - left), area.bottom - area.top);
+        ctx.beginPath(); ctx.moveTo(left, area.top); ctx.lineTo(left, area.bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(right, area.top); ctx.lineTo(right, area.bottom); ctx.stroke();
+      }else if(guide.axis === 'y'){
+        const top = Math.max(area.top, Math.min(area.bottom, Math.min(guide.startPx, guide.currentPx)));
+        const bottom = Math.max(area.top, Math.min(area.bottom, Math.max(guide.startPx, guide.currentPx)));
+        ctx.fillRect(area.left, top, area.right - area.left, Math.max(1, bottom - top));
+        ctx.beginPath(); ctx.moveTo(area.left, top); ctx.lineTo(area.right, top); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(area.left, bottom); ctx.lineTo(area.right, bottom); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  };
+}
+function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
+  if(!(canvas instanceof HTMLCanvasElement)) return;
+  const initKey = `fireDiagnosisScaleInteractionInit_${kind}`;
+  if(canvas.dataset[initKey] === '1') return;
+  canvas.dataset[initKey] = '1';
+  const AXIS_X_BAND = 30;
+  const AXIS_Y_BAND = 34;
+  const MIN_DRAG_PX = 6;
+  const getState = ()=>getFireDiagnosisChartViewState(kind);
+  const getPoint = (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    return {x:e.clientX - rect.left, y:e.clientY - rect.top};
+  };
+  const getAxisZone = (pt)=>{
+    const chart = getChart();
+    if(!chart?.chartArea || !chart?.scales?.x || !chart?.scales?.y) return null;
+    const area = chart.chartArea;
+    if(pt.x >= area.left && pt.x <= area.right && pt.y >= area.bottom && pt.y <= area.bottom + AXIS_X_BAND) return 'x';
+    if(pt.x >= Math.max(0, area.left - AXIS_Y_BAND) && pt.x <= area.left && pt.y >= area.top && pt.y <= area.bottom) return 'y';
+    return null;
+  };
+  const isInsideChartArea = (pt)=>{
+    const area = getChart()?.chartArea;
+    return !!area && pt.x >= area.left && pt.x <= area.right && pt.y >= area.top && pt.y <= area.bottom;
+  };
+  const finishSelectionZoom = ()=>{
+    const state = getState();
+    const zoomState = state.zoomState;
+    if(!zoomState){ state.selectionGuide = null; return; }
+    state.zoomState = null;
+    state.selectionGuide = null;
+    const chart = getChart();
+    if(chart) chart.update('none');
+    if(!zoomState.moved || !chart?.scales?.x || !chart?.scales?.y) return;
+    const bounds = cloneFireDiagnosisChartBounds(getFireDiagnosisChartEffectiveBounds(kind));
+    if(!bounds) return;
+    if(zoomState.axis === 'x'){
+      const xScale = chart.scales.x;
+      const minPx = Math.max(xScale.left, Math.min(xScale.right, Math.min(zoomState.startPx, zoomState.currentPx)));
+      const maxPx = Math.max(xScale.left, Math.min(xScale.right, Math.max(zoomState.startPx, zoomState.currentPx)));
+      if(maxPx - minPx < MIN_DRAG_PX) return;
+      const valueA = xScale.getValueForPixel(minPx);
+      const valueB = xScale.getValueForPixel(maxPx);
+      if(!Number.isFinite(valueA) || !Number.isFinite(valueB) || Math.abs(valueA - valueB) <= 1e-9) return;
+      bounds.xMin = Math.min(valueA, valueB);
+      bounds.xMax = Math.max(valueA, valueB);
+    }else if(zoomState.axis === 'y'){
+      const yScale = chart.scales.y;
+      const minPx = Math.max(yScale.top, Math.min(yScale.bottom, Math.min(zoomState.startPx, zoomState.currentPx)));
+      const maxPx = Math.max(yScale.top, Math.min(yScale.bottom, Math.max(zoomState.startPx, zoomState.currentPx)));
+      if(maxPx - minPx < MIN_DRAG_PX) return;
+      const valueA = yScale.getValueForPixel(minPx);
+      const valueB = yScale.getValueForPixel(maxPx);
+      if(!Number.isFinite(valueA) || !Number.isFinite(valueB) || Math.abs(valueA - valueB) <= 1e-12) return;
+      bounds.yMin = Math.min(valueA, valueB);
+      bounds.yMax = Math.max(valueA, valueB);
+    }
+    getState().overrideBounds = bounds;
+    applyFireDiagnosisChartScaleOverrides(chart, kind);
+    getState().suppressClickUntil = Date.now() + 250;
+    chart.update('none');
+  };
+  const finishPan = ()=>{
+    const state = getState();
+    if(!state.panState) return;
+    const moved = !!state.panState.moved;
+    state.panState = null;
+    canvas.classList.remove('chart-pan-active');
+    if(moved) state.suppressClickUntil = Date.now() + 250;
+  };
+  canvas.addEventListener('mousedown', (e)=>{
+    if(e.button !== 0) return;
+    if(!isFinePointerDevice()) return;
+    const pt = getPoint(e);
+    const axis = getAxisZone(pt);
+    const state = getState();
+    if(axis){
+      state.zoomState = {axis, startPx:axis === 'x' ? pt.x : pt.y, currentPx:axis === 'x' ? pt.x : pt.y, moved:false};
+      state.selectionGuide = {axis, startPx:state.zoomState.startPx, currentPx:state.zoomState.currentPx};
+      const chart = getChart();
+      if(chart) chart.update('none');
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if(!isFireDiagnosisChartZoomed(kind)) return;
+    if(!isInsideChartArea(pt)) return;
+    const chart = getChart();
+    if(!chart?.scales?.x || !chart?.scales?.y) return;
+    state.panState = {
+      startX:pt.x, startY:pt.y,
+      startMinX:Number(chart.scales.x.min), startMaxX:Number(chart.scales.x.max),
+      startMinY:Number(chart.scales.y.min), startMaxY:Number(chart.scales.y.max),
+      plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+      plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
+      moved:false
+    };
+    canvas.classList.add('chart-pan-active');
+    e.preventDefault();
+  });
+  const handleGlobalPointerMove = (e)=>{
+    const chart = getChart();
+    const state = getState();
+    if(state.zoomState){
+      const pt = getPoint(e);
+      const coord = state.zoomState.axis === 'x' ? pt.x : pt.y;
+      if(!state.zoomState.moved && Math.abs(coord - state.zoomState.startPx) < MIN_DRAG_PX) return;
+      state.zoomState.moved = true;
+      state.zoomState.currentPx = coord;
+      state.selectionGuide = {axis:state.zoomState.axis, startPx:state.zoomState.startPx, currentPx:coord};
+      if(chart) chart.update('none');
+      if(e.cancelable) e.preventDefault();
+      return;
+    }
+    const panState = state.panState;
+    if(!panState || !chart?.scales?.x || !chart?.scales?.y) return;
+    const pt = getPoint(e);
+    const dx = pt.x - panState.startX;
+    const dy = pt.y - panState.startY;
+    if(!panState.moved && Math.abs(dx) + Math.abs(dy) < MIN_DRAG_PX) return;
+    panState.moved = true;
+    const auto = cloneFireDiagnosisChartBounds(state.autoBounds);
+    if(!auto) return;
+    const isXZoomed = Math.abs(panState.startMinX - auto.xMin) > 1e-9 || Math.abs(panState.startMaxX - auto.xMax) > 1e-9;
+    const isYZoomed = Math.abs(panState.startMinY - auto.yMin) > 1e-9 || Math.abs(panState.startMaxY - auto.yMax) > 1e-9;
+    const pxToValueX = (panState.startMaxX - panState.startMinX) / Math.max(1, panState.plotWidth || 1);
+    const pxToValueY = (panState.startMaxY - panState.startMinY) / Math.max(1, panState.plotHeight || 1);
+    let newMinX = panState.startMinX, newMaxX = panState.startMaxX;
+    if(isXZoomed){
+      newMinX = panState.startMinX - dx * pxToValueX;
+      newMaxX = panState.startMaxX - dx * pxToValueX;
+      const rangeX = newMaxX - newMinX;
+      if(rangeX <= (auto.xMax - auto.xMin)){
+        if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
+        if(newMaxX > auto.xMax){ newMinX -= (newMaxX - auto.xMax); newMaxX = auto.xMax; }
+      }
+    }
+    let newMinY = panState.startMinY, newMaxY = panState.startMaxY;
+    if(isYZoomed){
+      newMinY = panState.startMinY + dy * pxToValueY;
+      newMaxY = panState.startMaxY + dy * pxToValueY;
+      const rangeY = newMaxY - newMinY;
+      if(rangeY <= (auto.yMax - auto.yMin)){
+        if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
+        if(newMaxY > auto.yMax){ newMinY -= (newMaxY - auto.yMax); newMaxY = auto.yMax; }
+      }
+    }
+    state.overrideBounds = {xMin:newMinX, xMax:newMaxX, yMin:newMinY, yMax:newMaxY};
+    applyFireDiagnosisChartScaleOverrides(chart, kind);
+    chart.update('none');
+    if(e.cancelable) e.preventDefault();
+  };
+  const handleGlobalPointerUp = ()=>{
+    finishSelectionZoom();
+    finishPan();
+  };
+  document.addEventListener('mousemove', handleGlobalPointerMove, {passive:false, capture:true});
+  window.addEventListener('mousemove', handleGlobalPointerMove, {passive:false});
+  document.addEventListener('mouseup', handleGlobalPointerUp, true);
+  window.addEventListener('mouseup', handleGlobalPointerUp);
+  document.addEventListener('pointerup', handleGlobalPointerUp, true);
+  document.addEventListener('pointercancel', handleGlobalPointerUp, true);
+  window.addEventListener('blur', handleGlobalPointerUp);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) handleGlobalPointerUp(); });
+  canvas.addEventListener('dblclick', (e)=>{
+    if(!isFireDiagnosisChartZoomed(kind)) return;
+    resetFireDiagnosisChartScale(kind);
+    const chart = getChart();
+    if(chart){
+      applyFireDiagnosisChartScaleOverrides(chart, kind);
+      chart.update('none');
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  let touchState = null;
+  let lastTapTime = 0;
+  let lastTapPoint = null;
+  const MIN_TOUCH_MOVE = 6;
+  const getTouchPoint = (touch)=>{
+    const rect = canvas.getBoundingClientRect();
+    return {x:touch.clientX - rect.left, y:touch.clientY - rect.top};
+  };
+  const getTouchDistance = (a, b)=>Math.hypot((b.x - a.x), (b.y - a.y));
+  const finishTouchInteraction = ()=>{
+    if(!touchState) return null;
+    const endedState = touchState;
+    touchState = null;
+    if(endedState.moved) getState().suppressClickUntil = Date.now() + 300;
+    return endedState;
+  };
+  canvas.addEventListener('touchstart', (e)=>{
+    const chart = getChart();
+    if(!chart?.scales?.x || !chart?.scales?.y) return;
+    if(e.touches.length >= 2){
+      const a = getTouchPoint(e.touches[0]);
+      const b = getTouchPoint(e.touches[1]);
+      const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
+      if(!isInsideChartArea(center)) return;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      touchState = {
+        type:'pinch',
+        startA:a, startB:b,
+        startDist:Math.max(1, getTouchDistance(a, b)),
+        startCenter:center,
+        startMinX:Number(xScale.min), startMaxX:Number(xScale.max),
+        startMinY:Number(yScale.min), startMaxY:Number(yScale.max),
+        startValueAX:xScale.getValueForPixel(a.x),
+        startValueBX:xScale.getValueForPixel(b.x),
+        startValueAY:yScale.getValueForPixel(a.y),
+        startValueBY:yScale.getValueForPixel(b.y),
+        moved:false
+      };
+      if(e.cancelable) e.preventDefault();
+      return;
+    }
+    if(e.touches.length === 1 && isFireDiagnosisChartZoomed(kind)){
+      const pt = getTouchPoint(e.touches[0]);
+      if(!isInsideChartArea(pt)) return;
+      // ズーム中の1本指操作は、touchstart時点で即pan確定しない。
+      // 小さい移動はChart.js側のtooltip操作に残し、明確な移動だけpanへ移行する。
+      touchState = {
+        type:'tooltipOrPan',
+        startX:pt.x, startY:pt.y,
+        startMinX:Number(chart.scales.x.min), startMaxX:Number(chart.scales.x.max),
+        startMinY:Number(chart.scales.y.min), startMaxY:Number(chart.scales.y.max),
+        plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
+        plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
+        moved:false
+      };
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchmove', (e)=>{
+    const chart = getChart();
+    if(!touchState || !chart?.scales?.x || !chart?.scales?.y) return;
+    const auto = cloneFireDiagnosisChartBounds(getState().autoBounds);
+    if(!auto) return;
+    if(touchState.type === 'pinch'){
+      if(e.touches.length < 2) return;
+      const a = getTouchPoint(e.touches[0]);
+      const b = getTouchPoint(e.touches[1]);
+      const center = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
+      const dist = Math.max(1, getTouchDistance(a, b));
+      const delta = Math.abs(dist - touchState.startDist) + Math.abs(center.x - touchState.startCenter.x) + Math.abs(center.y - touchState.startCenter.y);
+      if(!touchState.moved && delta < MIN_TOUCH_MOVE) return;
+      touchState.moved = true;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const xLeft = xScale.left, xRight = xScale.right, xWidth = Math.max(1, xRight - xLeft);
+      const yTop = yScale.top, yBottom = yScale.bottom, yHeight = Math.max(1, yBottom - yTop);
+      const outerRangeX = Math.max(1e-9, auto.xMax - auto.xMin);
+      const outerRangeY = Math.max(1e-12, auto.yMax - auto.yMin);
+      let newMinX = touchState.startMinX, newMaxX = touchState.startMaxX;
+      const t1x = (a.x - xLeft) / xWidth;
+      const t2x = (b.x - xLeft) / xWidth;
+      const dtX = t2x - t1x;
+      if(Math.abs(dtX) > 0.001){
+        let newRangeX = (touchState.startValueBX - touchState.startValueAX) / dtX;
+        if(Number.isFinite(newRangeX)){
+          newRangeX = Math.max(1e-9, Math.min(outerRangeX, Math.abs(newRangeX)));
+          newMinX = touchState.startValueAX - t1x * newRangeX;
+          newMaxX = newMinX + newRangeX;
+          if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
+          if(newMaxX > auto.xMax){ newMinX -= (newMaxX - auto.xMax); newMaxX = auto.xMax; }
+          newMinX = Math.max(auto.xMin, newMinX);
+          newMaxX = Math.min(auto.xMax, newMaxX);
+        }
+      }
+      let newMinY = touchState.startMinY, newMaxY = touchState.startMaxY;
+      const t1y = (yBottom - a.y) / yHeight;
+      const t2y = (yBottom - b.y) / yHeight;
+      const dtY = t2y - t1y;
+      if(Math.abs(dtY) > 0.001){
+        let newRangeY = (touchState.startValueBY - touchState.startValueAY) / dtY;
+        if(Number.isFinite(newRangeY)){
+          newRangeY = Math.max(1e-12, Math.min(outerRangeY, Math.abs(newRangeY)));
+          newMinY = touchState.startValueAY - t1y * newRangeY;
+          newMaxY = newMinY + newRangeY;
+          if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
+          if(newMaxY > auto.yMax){ newMinY -= (newMaxY - auto.yMax); newMaxY = auto.yMax; }
+          newMinY = Math.max(auto.yMin, newMinY);
+          newMaxY = Math.min(auto.yMax, newMaxY);
+        }
+      }
+      getState().overrideBounds = {xMin:newMinX, xMax:newMaxX, yMin:newMinY, yMax:newMaxY};
+      applyFireDiagnosisChartScaleOverrides(chart, kind);
+      chart.update('none');
+      if(e.cancelable) e.preventDefault();
+      return;
+    }
+    if(touchState.type === 'tooltipOrPan' || touchState.type === 'pan'){
+      if(e.touches.length !== 1) return;
+      const pt = getTouchPoint(e.touches[0]);
+      const dx = pt.x - touchState.startX;
+      const dy = pt.y - touchState.startY;
+      if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
+      touchState.type = 'pan';
+      touchState.moved = true;
+      const isXZoomed = Math.abs(touchState.startMinX - auto.xMin) > 1e-9 || Math.abs(touchState.startMaxX - auto.xMax) > 1e-9;
+      const isYZoomed = Math.abs(touchState.startMinY - auto.yMin) > 1e-9 || Math.abs(touchState.startMaxY - auto.yMax) > 1e-9;
+      const pxToValueX = (touchState.startMaxX - touchState.startMinX) / Math.max(1, touchState.plotWidth || 1);
+      const pxToValueY = (touchState.startMaxY - touchState.startMinY) / Math.max(1, touchState.plotHeight || 1);
+      let newMinX = touchState.startMinX, newMaxX = touchState.startMaxX;
+      if(isXZoomed){
+        newMinX = touchState.startMinX - dx * pxToValueX;
+        newMaxX = touchState.startMaxX - dx * pxToValueX;
+        const rangeX = newMaxX - newMinX;
+        if(rangeX <= (auto.xMax - auto.xMin)){
+          if(newMinX < auto.xMin){ newMaxX += (auto.xMin - newMinX); newMinX = auto.xMin; }
+          if(newMaxX > auto.xMax){ newMinX -= (newMaxX - auto.xMax); newMaxX = auto.xMax; }
+        }
+      }
+      let newMinY = touchState.startMinY, newMaxY = touchState.startMaxY;
+      if(isYZoomed){
+        newMinY = touchState.startMinY + dy * pxToValueY;
+        newMaxY = touchState.startMaxY + dy * pxToValueY;
+        const rangeY = newMaxY - newMinY;
+        if(rangeY <= (auto.yMax - auto.yMin)){
+          if(newMinY < auto.yMin){ newMaxY += (auto.yMin - newMinY); newMinY = auto.yMin; }
+          if(newMaxY > auto.yMax){ newMinY -= (newMaxY - auto.yMax); newMaxY = auto.yMax; }
+        }
+      }
+      getState().overrideBounds = {xMin:newMinX, xMax:newMaxX, yMin:newMinY, yMax:newMaxY};
+      applyFireDiagnosisChartScaleOverrides(chart, kind);
+      chart.update('none');
+      if(e.cancelable) e.preventDefault();
+    }
+  }, {passive:false});
+  const handleTouchEnd = ()=>{
+    const endedState = finishTouchInteraction();
+    if(endedState && !endedState.moved){
+      const now = Date.now();
+      const pt = endedState.startCenter ? endedState.startCenter : {x:endedState.startX, y:endedState.startY};
+      const closeEnough = !lastTapPoint || Math.hypot((pt?.x || 0) - (lastTapPoint.x || 0), (pt?.y || 0) - (lastTapPoint.y || 0)) <= 28;
+      if(lastTapTime && (now - lastTapTime) <= 350 && closeEnough){
+        lastTapTime = 0;
+        lastTapPoint = null;
+        getState().suppressClickUntil = Date.now() + 400;
+        resetFireDiagnosisChartScale(kind);
+        const chart = getChart();
+        if(chart){
+          applyFireDiagnosisChartScaleOverrides(chart, kind);
+          chart.update('none');
+        }
+        return;
+      }
+      lastTapTime = now;
+      lastTapPoint = pt;
+    }
+  };
+  canvas.addEventListener('touchend', handleTouchEnd, {passive:true});
+  canvas.addEventListener('touchcancel', handleTouchEnd, {passive:true});
+  canvas.addEventListener('click', (e)=>{
+    if(Date.now() < getState().suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+}
+function getFireDiagnosisTooltipSection(chartInstance){
+  if(!chartInstance?.canvas) return null;
+  return chartInstance.canvas.closest('.fire-diagnosis-chart-section') || null;
+}
+function getOrCreateFireDiagnosisExternalTooltip(chartInstance, tooltipKind){
+  const section = getFireDiagnosisTooltipSection(chartInstance);
+  if(!section) return null;
+  const kind = String(tooltipKind || 'default');
+  let tooltipEl = section.querySelector(`.fire-diagnosis-external-tooltip[data-fire-tooltip-kind="${kind}"]`);
+  if(!tooltipEl){
+    tooltipEl = document.createElement('div');
+    tooltipEl.className = 'chart-external-tooltip fire-diagnosis-external-tooltip';
+    tooltipEl.hidden = true;
+    tooltipEl.setAttribute('data-fire-tooltip-kind', kind);
+    section.appendChild(tooltipEl);
+  }
+  return tooltipEl;
+}
+function getFireDiagnosisTooltipOpaqueColor(color){
+  const raw = (typeof color === 'string' && color.trim()) ? color.trim() : '#64748b';
+  const rgba = raw.match(/^rgba?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+  if(rgba){
+    const r = Math.max(0, Math.min(255, Number(rgba[1]) || 0));
+    const g = Math.max(0, Math.min(255, Number(rgba[2]) || 0));
+    const b = Math.max(0, Math.min(255, Number(rgba[3]) || 0));
+    const a = rgba[4] == null ? 1 : Math.max(0, Math.min(1, Number(rgba[4]) || 0));
+    const mix = v => Math.round(v * a + 255 * (1 - a));
+    return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+  }
+  return raw;
+}
+function buildFireDiagnosisTooltipSwatch(color, visible=true){
+  const emptyClass = visible ? '' : ' chart-external-tooltip-swatch-empty';
+  const fillColor = visible ? getFireDiagnosisTooltipOpaqueColor(color) : 'transparent';
+  return `<span class="chart-external-tooltip-swatch${emptyClass}" style="background:${escapeAttr(fillColor)};"></span>`;
+}
+function buildFireDiagnosisExternalTooltipHtml(dataPoints, formatValue, tooltipKind){
+  const ordered = (Array.isArray(dataPoints) ? dataPoints.slice() : []).sort((a, b)=>{
+    const ar = Number(a?.dataset?.fireAssetLifeSeriesRank ?? 99);
+    const br = Number(b?.dataset?.fireAssetLifeSeriesRank ?? 99);
+    if(ar !== br) return ar - br;
+    const ak = Number(a?.dataset?.fireAssetLifeKindRank ?? 99);
+    const bk = Number(b?.dataset?.fireAssetLifeKindRank ?? 99);
+    const ay = Number(a?.parsed?.y);
+    const by = Number(b?.parsed?.y);
+    if(Number.isFinite(ay) && Number.isFinite(by) && ay !== by) return by - ay;
+    if(ak !== bk) return ak - bk;
+    return Number(a?.datasetIndex || 0) - Number(b?.datasetIndex || 0);
+  });
+  const first = ordered[0];
+  if(!first) return '';
+  const age = first?.parsed?.x ?? first?.raw?.x ?? first?.label;
+  const title = `リタイア年齢：${formatFireDiagnosisTooltipAge(age)}`;
+  const rows = [];
+  ordered.forEach(dp=>{
+    const ds = dp?.dataset || {};
+    const color = ds.fireTooltipBackgroundColor || ds.pointBackgroundColor || ds.backgroundColor || ds.borderColor || '#64748b';
+    const value = Number(dp?.parsed?.y);
+    if(!Number.isFinite(value)) return;
+    if(tooltipKind === 'terminal' && ds.fireTerminalMarker){
+      const explicit = String(ds.fireTerminalTooltipLabel || '').trim();
+      if(explicit){
+        const lines = explicit.split('\n').filter(line=>line.trim() !== '');
+        lines.forEach((line, index)=>rows.push({label:line.trim(), value:'', color, swatch:index === 0}));
+        return;
+      }
+      const guide = String(ds.fireGuideLabel || ds.fireTerminalPointLabel || ds.label || '').trim();
+      const pct = String(ds.fireTerminalPointLabel || '').trim();
+      const label = (pct && pct !== guide && !pct.includes('FIRE:')) ? `${guide}: ${pct}` : (guide || String(ds.label || ''));
+      rows.push({label, value:'', color, swatch:true});
+      return;
+    }
+    if(tooltipKind !== 'terminal' && ds.fireAssetLifeMarker){
+      const explicit = String(ds.fireAssetLifeTooltipLabel || '').trim();
+      if(explicit){
+        const lines = explicit.split('\n').filter(line=>line.trim() !== '');
+        lines.forEach((line, index)=>rows.push({label:line.trim(), value:'', color, swatch:index === 0}));
+        return;
+      }
+      const guideLabel = String(ds.fireGuideLabel || '').trim();
+      const markerLabel = String(ds.fireAssetLifeMarkerLabel || '').trim();
+      const label = guideLabel && markerLabel ? `${guideLabel}: ${markerLabel}` : (guideLabel || (markerLabel ? `${ds.label}: ${markerLabel}` : `${ds.label || ''}`));
+      rows.push({label, value:'', color, swatch:true});
+      return;
+    }
+    rows.push({label:String(ds.label || ''), value:formatValue(value), color, swatch:true});
+  });
+  if(!rows.length) return '';
+  const body = rows.map(row=>`<div class="chart-external-tooltip-row${row.value ? '' : ' chart-external-tooltip-strong-row'}"><span class="chart-external-tooltip-label-cell"><span class="chart-external-tooltip-label">${buildFireDiagnosisTooltipSwatch(row.color, row.swatch !== false)}<span>${escapeAttr(row.label)}</span></span></span><span class="chart-external-tooltip-value">${row.value ? escapeAttr(row.value) : ''}</span></div>`).join('');
+  return `<div class="chart-external-tooltip-title">${escapeAttr(title)}</div><div class="chart-external-tooltip-body">${body}</div>`;
+}
+function positionFireDiagnosisExternalTooltip(tooltipEl, chartInstance, tooltip){
+  const section = getFireDiagnosisTooltipSection(chartInstance);
+  const canvas = chartInstance?.canvas;
+  const area = chartInstance?.chartArea;
+  if(!tooltipEl || !section || !canvas || !area) return;
+  const sectionRect = section.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const canvasLeft = canvasRect.left - sectionRect.left + (section.scrollLeft || 0);
+  const canvasTop = canvasRect.top - sectionRect.top + (section.scrollTop || 0);
+  const dataPoints = Array.isArray(tooltip?.dataPoints) ? tooltip.dataPoints : [];
+  const xs = [];
+  const ys = [];
+  dataPoints.forEach(dp=>{
+    const meta = chartInstance.getDatasetMeta(dp.datasetIndex);
+    const element = meta?.data?.[dp.dataIndex];
+    const props = element?.getProps ? element.getProps(['x','y'], true) : element;
+    const px = Number(props?.x);
+    const py = Number(props?.y);
+    if(Number.isFinite(px)) xs.push(px);
+    if(Number.isFinite(py)) ys.push(py);
+  });
+  const fallbackX = Number(tooltip?.caretX);
+  const fallbackY = Number(tooltip?.caretY);
+  const centerX = xs.length ? (xs.reduce((sum, v)=>sum + v, 0) / xs.length) : (Number.isFinite(fallbackX) ? fallbackX : ((area.left + area.right) / 2));
+  const minY = ys.length ? Math.min(...ys) : (Number.isFinite(fallbackY) ? fallbackY : ((area.top + area.bottom) / 2));
+  const maxY = ys.length ? Math.max(...ys) : minY;
+  const spaceAbove = minY - area.top;
+  const spaceBelow = area.bottom - maxY;
+  const placeAbove = spaceAbove >= spaceBelow;
+  const gap = 10;
+  const edgeMargin = 8;
+  const tooltipWidth = tooltipEl.offsetWidth || 220;
+  const tooltipHeight = tooltipEl.offsetHeight || 120;
+  let left = canvasLeft + centerX - tooltipWidth / 2;
+  const maxLeft = Math.max(edgeMargin, section.clientWidth - tooltipWidth - edgeMargin);
+  left = Math.max(edgeMargin, Math.min(left, maxLeft));
+  // 上配置: 点群上端(minY)から10px上にtooltip下端を置く
+  // 下配置: 点群下端(maxY)から10px下にtooltip上端を置く
+  let top = placeAbove
+    ? (canvasTop + minY - tooltipHeight - gap)
+    : (canvasTop + maxY + gap);
+  tooltipEl.style.left = `${Math.round(left)}px`;
+  tooltipEl.style.top = `${Math.round(top)}px`;
+}
+function renderFireDiagnosisExternalTooltip(context, formatValue, tooltipKind){
+  const chartInstance = context?.chart;
+  const tooltip = context?.tooltip;
+  const tooltipEl = getOrCreateFireDiagnosisExternalTooltip(chartInstance, tooltipKind);
+  if(!tooltipEl || !chartInstance || !tooltip || tooltip.opacity === 0){
+    if(tooltipEl) tooltipEl.hidden = true;
+    return;
+  }
+  const dataPoints = Array.isArray(tooltip.dataPoints) ? tooltip.dataPoints : [];
+  if(!dataPoints.length){
+    tooltipEl.hidden = true;
+    return;
+  }
+  const html = buildFireDiagnosisExternalTooltipHtml(dataPoints, formatValue, tooltipKind);
+  if(!html){
+    tooltipEl.hidden = true;
+    return;
+  }
+  tooltipEl.innerHTML = html;
+  tooltipEl.hidden = false;
+  positionFireDiagnosisExternalTooltip(tooltipEl, chartInstance, tooltip);
+}
+function makeFireDiagnosisExternalTooltipOptions(formatValue, tooltipKind){
+  const base = makeAssetLifeDiagnosisTooltipOptions(formatValue);
+  base.enabled = false;
+  base.external = (context)=>renderFireDiagnosisExternalTooltip(context, formatValue, tooltipKind);
+  return base;
+}
+
 function makeAssetLifeDiagnosisTooltipOptions(formatValue){
   ensureFireDiagnosisSmartTooltipPositioner();
   return {
@@ -23922,6 +24631,7 @@ function renderAssetLifeDiagnosisChart(result){
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
         const y = yScale.getPixelForValue(yVal);
+        if(x < xScale.left || x > xScale.right) return;
         ctx.save();
         ctx.beginPath();
         ctx.strokeStyle = dataset.borderColor || '#64748b';
@@ -23962,20 +24672,24 @@ function renderAssetLifeDiagnosisChart(result){
   fireDiagnosisProbabilityChart = new Chart(canvas.getContext('2d'), {
     type:'line',
     data:{labels:[], datasets},
-    plugins:[assetLifeGuidePlugin, buildFireDiagnosisGuideLabelTopLayerPlugin('assetLifeGuideLabelTopLayerPlugin', {mode:'assetLife'})],
+    plugins:[assetLifeGuidePlugin, buildFireDiagnosisChartSelectionGuidePlugin('assetLife'), buildFireDiagnosisGuideLabelTopLayerPlugin('assetLifeGuideLabelTopLayerPlugin', {mode:'assetLife'})],
     options:{
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:12, top:24, bottom:4, left:0}},
+      layout:{padding:{right:12, top:16, bottom:16, left:0}},
       interaction:{mode:'assetLifeNearestX', intersect:false, axis:'xy', hitRadius:7},
-      plugins:{legend:{display:false}, tooltip:makeAssetLifeDiagnosisTooltipOptions(value=>formatAssetLifeAgeText(value, value >= 120))},
+      plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>formatAssetLifeAgeText(value, value >= 120), 'assetLife')},
       scales:{
-        y:{min:yRange.min, max:yRange.max, title:{display:true,text:'資産寿命（歳）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, afterBuildTicks(axis){ axis.ticks = (axis.ticks || []).filter(t=>{ const n=Number(t.value); return Number.isFinite(n) && Math.abs(n % 10) < 1e-9; }); }, ticks:{padding:4, callback(value){ const n=Number(value); return Number.isFinite(n) && Math.abs(n % 10) < 1e-9 ? formatScaledAxisNumber(n) : ''; }}},
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        y:{min:yRange.min, max:yRange.max, title:{display:true,text:'資産寿命（歳）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'assetLife'); }}},
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'assetLife'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
+  captureFireDiagnosisChartAutoBounds(fireDiagnosisProbabilityChart, 'assetLife');
+  applyFireDiagnosisChartScaleOverrides(fireDiagnosisProbabilityChart, 'assetLife');
+  fireDiagnosisProbabilityChart.update('none');
+  setupFireDiagnosisChartScaleInteractions('assetLife', canvas, ()=>fireDiagnosisProbabilityChart);
   setupFireDiagnosisProbabilityLegendToggle(fireDiagnosisProbabilityChart, legendEl);
 }
 
@@ -24121,6 +24835,7 @@ function renderAssetLifeSuccessRateChart(result){
         const yVal = Number(point?.y);
         if(!Number.isFinite(xVal) || !Number.isFinite(yVal)) return;
         const x = xScale.getPixelForValue(xVal);
+        if(x < xScale.left || x > xScale.right) return;
         ctx.save();
         ctx.beginPath();
         ctx.strokeStyle = dataset.borderColor || '#64748b';
@@ -24138,20 +24853,24 @@ function renderAssetLifeSuccessRateChart(result){
   fireDiagnosisSuccessRateChart = new Chart(canvas.getContext('2d'), {
     type:'line',
     data:{labels:[], datasets},
-    plugins:[thresholdLinePlugin, buildFireDiagnosisGuideLabelTopLayerPlugin('assetLifeSuccessRateGuideLabelTopLayerPlugin', {mode:'assetLife'})],
+    plugins:[thresholdLinePlugin, buildFireDiagnosisChartSelectionGuidePlugin('successRate'), buildFireDiagnosisGuideLabelTopLayerPlugin('assetLifeSuccessRateGuideLabelTopLayerPlugin', {mode:'assetLife'})],
     options:{
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:12, top:24, bottom:4, left:0}},
+      layout:{padding:{right:12, top:16, bottom:16, left:0}},
       interaction:{mode:'assetLifeNearestX', intersect:false, axis:'xy', hitRadius:7},
-      plugins:{legend:{display:false}, tooltip:makeAssetLifeDiagnosisTooltipOptions(value=>`${value.toFixed(1)}%`)},
+      plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>`${value.toFixed(1)}%`, 'successRate')},
       scales:{
-        y:{min:0, max:100, title:{display:true,text:'成功率（%）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{padding:4, callback(value){ const num = Number(value); if(!Number.isFinite(num)) return ''; return formatScaledAxisNumber(num); }}},
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        y:{min:0, max:100, title:{display:true,text:'成功率（%）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'successRate'); }}},
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'successRate'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
+  captureFireDiagnosisChartAutoBounds(fireDiagnosisSuccessRateChart, 'successRate');
+  applyFireDiagnosisChartScaleOverrides(fireDiagnosisSuccessRateChart, 'successRate');
+  fireDiagnosisSuccessRateChart.update('none');
+  setupFireDiagnosisChartScaleInteractions('successRate', canvas, ()=>fireDiagnosisSuccessRateChart);
   setupFireDiagnosisProbabilityLegendToggle(fireDiagnosisSuccessRateChart, legendEl);
 }
 
@@ -24392,15 +25111,15 @@ function renderAssetLifeTerminalAssetChart(result){
   fireDiagnosisTerminalAssetChart = new Chart(canvas.getContext('2d'), {
     type:'line',
     data:{labels:[], datasets},
-    plugins:[referenceLinePlugin, buildFireDiagnosisGuideLabelTopLayerPlugin('terminalAssetGuideLabelTopLayerPlugin', {mode:'terminal'})],
+    plugins:[referenceLinePlugin, buildFireDiagnosisChartSelectionGuidePlugin('terminal'), buildFireDiagnosisGuideLabelTopLayerPlugin('terminalAssetGuideLabelTopLayerPlugin', {mode:'terminal'})],
     options:{
       animation:false,
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{right:12, top:24, bottom:4, left:0}},
+      layout:{padding:{right:12, top:16, bottom:16, left:0}},
       interaction:{mode:'assetLifeNearestX', intersect:false, axis:'xy', hitRadius:7},
       hover:{mode:'assetLifeNearestX', intersect:false, axis:'xy'},
-      plugins:{legend:{display:false}, tooltip:makeFireDiagnosisTerminalTooltipOptions(value=>`${Math.round(value).toLocaleString()}万円`)},
+      plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>`${Math.round(value).toLocaleString()}万円`, 'terminal')},
       scales:{
         y:{
           min:axisRange.min,
@@ -24408,12 +25127,16 @@ function renderAssetLifeTerminalAssetChart(result){
           grid:makeGridWithoutZeroLine({tickLength:0, color:COMMON_MAIN_GRID_LINE_COLOR, lineWidth:1}),
           border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1},
           title:{display:true,text:`寿命時残高（${unitSpec.label}）`, padding:{top:0,bottom:2}},
-          ticks:{padding:4, callback(value){ const scaled = (Number(value) || 0) / (Number(unitSpec?.divisor) || 1); const nearInt = Math.abs(scaled - Math.round(scaled)) < 1e-6; const nearHalf = Math.abs(scaled * 2 - Math.round(scaled * 2)) < 1e-6; if(!nearInt && !nearHalf) return ''; return formatScaledAxisNumber(scaled); }}
+          ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'terminal', {divisor:Number(unitSpec?.divisor) || 1}); }}
         },
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value){ return formatScaledAxisNumber(Number(value)); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'terminal'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
+  captureFireDiagnosisChartAutoBounds(fireDiagnosisTerminalAssetChart, 'terminal');
+  applyFireDiagnosisChartScaleOverrides(fireDiagnosisTerminalAssetChart, 'terminal');
+  fireDiagnosisTerminalAssetChart.update('none');
+  setupFireDiagnosisChartScaleInteractions('terminal', canvas, ()=>fireDiagnosisTerminalAssetChart);
   setupFireDiagnosisProbabilityLegendToggle(fireDiagnosisTerminalAssetChart, legendEl);
 }
 
