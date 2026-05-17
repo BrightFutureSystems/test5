@@ -23246,7 +23246,9 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
         plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
         moved:false,
         tooltipMoved:false,
-        tooltipHit
+        tooltipHit,
+        hadTooltipAtStart:tooltipHit,
+        noTooltipPanCandidate:!tooltipHit
       };
       if(e.cancelable) e.preventDefault();
     }
@@ -23332,14 +23334,17 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
         return;
       }
       if(touchState.type === 'tooltipOrPan'){
+        const hadTooltipAtStart = !!touchState.hadTooltipAtStart;
+        const nextHit = updateFireDiagnosisTooltipFromTouch(touch);
+        if(nextHit) touchState.tooltipHit = true;
         const tooltipHit = !!touchState.tooltipHit;
-        const shouldPanBecauseNoTooltip = !tooltipHit && dist >= MIN_TOUCH_MOVE;
+        const shouldPanBecauseNoTooltip = !hadTooltipAtStart && !tooltipHit && dist >= MIN_TOUCH_MOVE;
+        // tooltipが出ている操作では、メイングラフ同様、速い移動か短時間の明確なドラッグだけpanへ移行する。
+        // ゆっくり移動は距離が伸びてもtooltip追従を継続する。
         const fastFlick = tooltipHit && dist >= 12 && stepVelocity >= 0.42;
         const quickDrag = tooltipHit && dist >= 28 && (now - Number(touchState.startTime || now)) <= 180;
         if(!shouldPanBecauseNoTooltip && !fastFlick && !quickDrag){
           if(dist >= 2) touchState.tooltipMoved = true;
-          const nextHit = updateFireDiagnosisTooltipFromTouch(touch);
-          if(nextHit) touchState.tooltipHit = true;
           if(e.cancelable) e.preventDefault();
           return;
         }
