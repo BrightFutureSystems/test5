@@ -24661,11 +24661,15 @@ function renderAssetLifeDiagnosisChart(result){
     const graphSeries = getFireDiagnosisAnnualGraphSeries(series);
     fireDiagnosisDebugLogSeries(`資産寿命グラフ 一定利率系列 ${label}`, graphSeries, {graph:'assetLife', type:'normal', key});
     datasets.push({label, fireLegendKey:key, data:buildAssetLifePointSeries(graphSeries, 'assetLifeAge'), borderColor:color, backgroundColor:color, pointBackgroundColor:color, pointBorderColor:color, pointBorderWidth:1, pointRadius:(ctx)=>getFireDiagnosisDatasetPointRadius(ctx,3), pointHoverRadius:(ctx)=>getFireDiagnosisDatasetPointHoverRadius(ctx,4), pointHitRadius:(ctx)=>getFireDiagnosisDatasetPointHitRadius(ctx,6), pointStyle:'circle', borderWidth:2.0, order:drawOrder, tension:0, fill:false, fireAssetLifeSeriesRank:seriesRank, fireAssetLifeKindRank:20});
-    const fireAge = getNormalFireGraphMarkerAge(resultPart);
-    const markerY = Number.isFinite(Number(resultPart?.assetLifeAge)) ? Number(resultPart.assetLifeAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'assetLifeAge', lifeExpect);
-    const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
-    const marker = buildAssetLifeMarker(`${label} FIRE可能年齢`, fireAge, markerY, color, key, {vertical:true, seriesRank, guideLabel:'FIRE', guideSide:'left', topLabel:'', fullLabel:`FIRE: ${fireAgeText}`, tooltipLabel:`FIRE可能年齢：${fireAgeText}\n資産寿命：${formatAssetLifeAgeText(markerY, markerY >= 120)}`});
-    if(marker) datasets.push(marker);
+    if(resultPart?.found){
+      const fireAge = getNormalFireGraphMarkerAge(resultPart);
+      if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, fireAge)){
+        const markerY = Number.isFinite(Number(resultPart?.assetLifeAge)) ? Number(resultPart.assetLifeAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'assetLifeAge', lifeExpect);
+        const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
+        const marker = buildAssetLifeMarker(`${label} FIRE可能年齢`, fireAge, markerY, color, key, {vertical:true, seriesRank, guideLabel:'FIRE', guideSide:'left', topLabel:'', fullLabel:`FIRE: ${fireAgeText}`, tooltipLabel:`FIRE可能年齢：${fireAgeText}\n資産寿命：${formatAssetLifeAgeText(markerY, markerY >= 120)}`});
+        if(marker) datasets.push(marker);
+      }
+    }
     if((result?.judgementMode === 'safe' || resultPart?.safeFound) && resultPart?.safeFound){
       const safeAge = getNormalFireGraphSafeMarkerAge(resultPart);
       if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, safeAge)){
@@ -24686,12 +24690,16 @@ function renderAssetLifeDiagnosisChart(result){
     const medianOrder = key === 'withCrash' || (key === 'single' && result?.mode === 'with_crash') ? 30 : 40;
     datasets.push({label:`${label} 一定利率`, fireLegendKey:`${key}:fixed`, data:buildAssetLifePointSeries(graphSeries, 'fixed'), borderColor:fixedColor, backgroundColor:fixedColor, pointBackgroundColor:fixedColor, pointBorderColor:fixedColor, pointRadius:0, pointHoverRadius:3, pointHitRadius:6, borderWidth:ASSET_LIFE_MONTE_FIXED_LINE_WIDTH, borderDash:[], tension:0, fill:false, order:fixedOrder, fireAssetLifeSeriesRank:seriesRank, fireAssetLifeKindRank:30, fireTooltipBackgroundColor:fixedColor, fireTooltipBorderColor:fixedColor});
     datasets.push({label:`${label} 中央値`, fireLegendKey:`${key}:median`, data:buildAssetLifePointSeries(graphSeries, 'median'), borderColor:color, backgroundColor:color, pointBackgroundColor:color, pointBorderColor:color, pointRadius:0, pointHoverRadius:3, pointHitRadius:6, borderWidth:ASSET_LIFE_MONTE_MEDIAN_LINE_WIDTH, tension:0, fill:false, order:medianOrder, fireAssetLifeSeriesRank:seriesRank, fireAssetLifeKindRank:20, fireTooltipBackgroundColor:color, fireTooltipBorderColor:color});
-    const fireAge = getMonteCarloFireGraphMarkerAge(resultPart);
-    const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
-    const markerY = Number.isFinite(Number(resultPart?.assetLifeJudgementAtFireAge)) ? Number(resultPart.assetLifeJudgementAtFireAge) : (Number.isFinite(Number(resultPart?.assetLifeMedianAtFireAge)) ? Number(resultPart.assetLifeMedianAtFireAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'median', Number(resultPart?.judgementPointY) || lifeExpect));
-    const successLabel = formatFireDiagnosisSuccessRateLabel(resultPart?.successRateAtFireAge);
-    const marker = buildAssetLifeMarker(`${label} FIRE可能年齢`, fireAge, markerY, color, key, {vertical:true, markerLabel:'', pointLabelSide:'left', guideLabel:'FIRE', guideSide:'left', topLabel:'', fullLabel:`FIRE: ${fireAgeText}`, seriesRank, tooltipLabel:`FIRE可能年齢：${fireAgeText}${successLabel ? `\n成功率：${successLabel}` : ''}\n判定資産寿命：${formatAssetLifeAgeText(markerY, markerY >= 120)}`});
-    if(marker) datasets.push(marker);
+    if(resultPart?.found){
+      const fireAge = getMonteCarloFireGraphMarkerAge(resultPart);
+      if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, fireAge)){
+        const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
+        const markerY = Number.isFinite(Number(resultPart?.assetLifeJudgementAtFireAge)) ? Number(resultPart.assetLifeJudgementAtFireAge) : (Number.isFinite(Number(resultPart?.assetLifeMedianAtFireAge)) ? Number(resultPart.assetLifeMedianAtFireAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'median', Number(resultPart?.judgementPointY) || lifeExpect));
+        const successLabel = formatFireDiagnosisSuccessRateLabel(resultPart?.successRateAtFireAge);
+        const marker = buildAssetLifeMarker(`${label} FIRE可能年齢`, fireAge, markerY, color, key, {vertical:true, markerLabel:'', pointLabelSide:'left', guideLabel:'FIRE', guideSide:'left', topLabel:'', fullLabel:`FIRE: ${fireAgeText}`, seriesRank, tooltipLabel:`FIRE可能年齢：${fireAgeText}${successLabel ? `\n成功率：${successLabel}` : ''}\n判定資産寿命：${formatAssetLifeAgeText(markerY, markerY >= 120)}`});
+        if(marker) datasets.push(marker);
+      }
+    }
     if((result?.judgementMode === 'safe' || resultPart?.safeFound) && resultPart?.safeFound){
       const safeAge = getMonteCarloFireGraphSafeMarkerAge(resultPart);
       if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, safeAge)){
@@ -24950,11 +24958,15 @@ function renderAssetLifeSuccessRateChart(result){
         fireAssetLifeSeriesRank:seriesRank, fireAssetLifeKindRank:10, fireTooltipBackgroundColor:color, fireTooltipBorderColor:color
       });
     }
-    const fireAge = getMonteCarloFireGraphMarkerAge(resultPart);
-    const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
-    const fireY = Number.isFinite(Number(resultPart?.successRateAtFireAge)) ? Number(resultPart.successRateAtFireAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'fireSuccessRate', threshold);
-    const fireMarker = buildAssetLifeMarker(`${label} FIRE可能年齢`, fireAge, fireY, color, `${key}:fire`, {vertical:true, markerLabel:'', pointLabelSide:'left', guideLabel:'FIRE', guideSide:'left', topLabel:'', fullLabel:`FIRE: ${fireAgeText}`, seriesRank, tooltipLabel:`FIRE可能年齢：${fireAgeText}\n成功率：${formatFireDiagnosisSuccessRateLabel(fireY)}`});
-    if(fireMarker) datasets.push(fireMarker);
+    if(resultPart?.found){
+      const fireAge = getMonteCarloFireGraphMarkerAge(resultPart);
+      if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, fireAge)){
+        const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
+        const fireY = Number.isFinite(Number(resultPart?.successRateAtFireAge)) ? Number(resultPart.successRateAtFireAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'fireSuccessRate', threshold);
+        const fireMarker = buildAssetLifeMarker(`${label} FIRE可能年齢`, fireAge, fireY, color, `${key}:fire`, {vertical:true, markerLabel:'', pointLabelSide:'left', guideLabel:'FIRE', guideSide:'left', topLabel:'', fullLabel:`FIRE: ${fireAgeText}`, seriesRank, tooltipLabel:`FIRE可能年齢：${fireAgeText}\n成功率：${formatFireDiagnosisSuccessRateLabel(fireY)}`});
+        if(fireMarker) datasets.push(fireMarker);
+      }
+    }
     if(hasSafe && resultPart?.safeFound){
       const safeAge = getMonteCarloFireGraphSafeMarkerAge(resultPart);
       if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, safeAge)){
@@ -25155,11 +25167,15 @@ function renderAssetLifeTerminalAssetChart(result){
       fireTooltipBackgroundColor:color,
       fireTooltipBorderColor:color
     });
-    const fireAge = getNormalFireGraphMarkerAge(resultPart);
-    const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
-    const fireMarkerY = Number.isFinite(Number(resultPart?.terminalAsset)) ? Number(resultPart.terminalAsset) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'terminalAsset', 0);
-    const marker = buildFireDiagnosisMarkerDataset(`${label} FIRE可能年齢`, fireAge, fireMarkerY, color, key);
-    if(marker){ marker.fireGuideLabel = 'FIRE'; marker.fireGuideTopLabel = ''; marker.fireGuideFullLabel = `FIRE: ${fireAgeText}`; marker.fireGuideSide = 'left'; marker.fireTerminalMarker = true; marker.fireTerminalPointLabel = ''; marker.fireTerminalTooltipLabel = `FIRE可能年齢：${fireAgeText}\n寿命時残高：${Math.round(Number(fireMarkerY) || 0).toLocaleString()}万円`; marker.firePointLabelSide = 'left'; marker.fireAssetLifeSeriesRank = key === 'withCrash' || (key === 'single' && result?.mode === 'with_crash') ? 2 : 1; marker.fireAssetLifeKindRank = 0; datasets.push(marker); }
+    if(resultPart?.found){
+      const fireAge = getNormalFireGraphMarkerAge(resultPart);
+      if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, fireAge)){
+        const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
+        const fireMarkerY = Number.isFinite(Number(resultPart?.terminalAsset)) ? Number(resultPart.terminalAsset) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'terminalAsset', 0);
+        const marker = buildFireDiagnosisMarkerDataset(`${label} FIRE可能年齢`, fireAge, fireMarkerY, color, key);
+        if(marker){ marker.fireGuideLabel = 'FIRE'; marker.fireGuideTopLabel = ''; marker.fireGuideFullLabel = `FIRE: ${fireAgeText}`; marker.fireGuideSide = 'left'; marker.fireTerminalMarker = true; marker.fireTerminalPointLabel = ''; marker.fireTerminalTooltipLabel = `FIRE可能年齢：${fireAgeText}\n寿命時残高：${Math.round(Number(fireMarkerY) || 0).toLocaleString()}万円`; marker.firePointLabelSide = 'left'; marker.fireAssetLifeSeriesRank = key === 'withCrash' || (key === 'single' && result?.mode === 'with_crash') ? 2 : 1; marker.fireAssetLifeKindRank = 0; datasets.push(marker); }
+      }
+    }
     if(safeMode && resultPart?.safeFound){
       const safeAge = getNormalFireGraphSafeMarkerAge(resultPart);
       if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, safeAge)){
@@ -25181,10 +25197,14 @@ function renderAssetLifeTerminalAssetChart(result){
     const fixedColor = (typeof hexToRgbaString === 'function') ? hexToRgbaString(color, 0.68) : color;
     datasets.push({label:`${label} 一定利率`, fireLegendKey:`${key}:fixed`, data:terminalPointSeries(graphSeries, 'terminalAssetFixedRate'), borderColor:fixedColor, backgroundColor:fixedColor, pointBackgroundColor:fixedColor, pointBorderColor:fixedColor, pointRadius:0, pointHoverRadius:3, pointHitRadius:6, borderWidth:ASSET_LIFE_MONTE_FIXED_LINE_WIDTH, tension:0, fill:false, order:key === 'withCrash' ? 35 : 45, fireAssetLifeSeriesRank:seriesRank, fireAssetLifeKindRank:30});
     datasets.push({label:`${label} 中央値`, fireLegendKey:`${key}:median`, data:terminalPointSeries(graphSeries, 'terminalAssetMedian'), borderColor:color, backgroundColor:color, pointBackgroundColor:color, pointBorderColor:color, pointRadius:0, pointHoverRadius:3, pointHitRadius:6, borderWidth:ASSET_LIFE_MONTE_MEDIAN_LINE_WIDTH, tension:0, fill:false, order:key === 'withCrash' ? 30 : 40, fireAssetLifeSeriesRank:seriesRank, fireAssetLifeKindRank:20});
-    const fireAge = getMonteCarloFireGraphMarkerAge(resultPart);
-    const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
-    const marker = buildFireDiagnosisMarkerDataset(`${label} FIRE可能年齢`, fireAge, 0, color, key);
-    if(marker){ marker.fireGuideLabel = 'FIRE'; marker.fireGuideTopLabel = ''; marker.fireGuideFullLabel = `FIRE: ${fireAgeText}`; marker.fireGuideSide = 'left'; marker.fireTerminalMarker = true; const markerJudgement = Number.isFinite(Number(resultPart?.terminalAssetJudgementAtFireAge)) ? Number(resultPart.terminalAssetJudgementAtFireAge) : (Number.isFinite(Number(resultPart?.terminalAssetMedianAtFireAge)) ? Number(resultPart.terminalAssetMedianAtFireAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'terminalAssetMedian', null)); const successLabel = formatFireDiagnosisSuccessRateLabel(resultPart?.successRateAtFireAge); marker.fireTerminalPointLabel = ''; marker.fireTerminalTooltipLabel = `FIRE可能年齢：${fireAgeText}${successLabel ? `\n成功率：${successLabel}` : ''}\n判定残高：${Math.round(Number(markerJudgement ?? 0) || 0).toLocaleString()}万円`; marker.firePointLabelSide = 'left'; marker.fireAssetLifeSeriesRank = seriesRank; marker.fireAssetLifeKindRank = 0; datasets.push(marker); }
+    if(resultPart?.found){
+      const fireAge = getMonteCarloFireGraphMarkerAge(resultPart);
+      if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, fireAge)){
+        const fireAgeText = formatFireDiagnosisAgeText(resultPart?.fireAgeYears ?? resultPart?.firePossibleAge, resultPart?.fireAgeMonths ?? 0);
+        const marker = buildFireDiagnosisMarkerDataset(`${label} FIRE可能年齢`, fireAge, 0, color, key);
+        if(marker){ marker.fireGuideLabel = 'FIRE'; marker.fireGuideTopLabel = ''; marker.fireGuideFullLabel = `FIRE: ${fireAgeText}`; marker.fireGuideSide = 'left'; marker.fireTerminalMarker = true; const markerJudgement = Number.isFinite(Number(resultPart?.terminalAssetJudgementAtFireAge)) ? Number(resultPart.terminalAssetJudgementAtFireAge) : (Number.isFinite(Number(resultPart?.terminalAssetMedianAtFireAge)) ? Number(resultPart.terminalAssetMedianAtFireAge) : getFireDiagnosisValueFromSeriesAtAge(graphSeries, fireAge, 'terminalAssetMedian', null)); const successLabel = formatFireDiagnosisSuccessRateLabel(resultPart?.successRateAtFireAge); marker.fireTerminalPointLabel = ''; marker.fireTerminalTooltipLabel = `FIRE可能年齢：${fireAgeText}${successLabel ? `\n成功率：${successLabel}` : ''}\n判定残高：${Math.round(Number(markerJudgement ?? 0) || 0).toLocaleString()}万円`; marker.firePointLabelSide = 'left'; marker.fireAssetLifeSeriesRank = seriesRank; marker.fireAssetLifeKindRank = 0; datasets.push(marker); }
+      }
+    }
     if(safeMode && resultPart?.safeFound){
       const safeAge = getMonteCarloFireGraphSafeMarkerAge(resultPart);
       if(isFireDiagnosisMarkerAgeInsideGraphSeries(graphSeries, safeAge)){
