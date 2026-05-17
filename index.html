@@ -21638,10 +21638,16 @@ function openFireDiagnosisModal(){
   updateScenarioScopedModalTitles();
   loadFireDiagnosisDraftToModal();
   lastFireDiagnosisResult = null;
-  destroyFireDiagnosisProbabilityChart();
-  destroyFireDiagnosisSuccessRateChart();
+  destroyAllFireDiagnosisCharts();
   const resultEl = document.getElementById('fireDiagnosisResult');
   if(resultEl) resultEl.innerHTML = '診断条件を確認して「診断実行」を押してください。';
+  const terminalSection = document.getElementById('fireDiagnosisTerminalAssetSection');
+  terminalSection?.classList.add('withdrawal-rule-hidden');
+  const terminalLegendEl = document.getElementById('fireDiagnosisTerminalAssetLegend');
+  terminalLegendEl?.classList.add('withdrawal-rule-hidden');
+  terminalLegendEl?.setAttribute('aria-hidden', 'true');
+  document.getElementById('fireDiagnosisTerminalAssetChartWrap')?.classList.add('withdrawal-rule-hidden');
+  document.getElementById('fireDiagnosisTerminalAssetAxisNote')?.classList.add('withdrawal-rule-hidden');
   const assetLifeSection = document.getElementById('fireDiagnosisAssetLifeSection');
   assetLifeSection?.classList.add('withdrawal-rule-hidden');
   const legendEl = document.getElementById('fireDiagnosisProbabilityLegend');
@@ -22576,6 +22582,19 @@ function isFireDiagnosisGuideLabelFadeZoneVisible(xScale, x){
   const fadePx = 42;
   if(!xScale || !Number.isFinite(Number(x))) return false;
   return x >= Number(xScale.left) - fadePx && x <= Number(xScale.right) + fadePx;
+}
+function getFireDiagnosisHorizontalGuideFadeAlpha(yScale, y, fadeEdge=28){
+  if(!yScale || !Number.isFinite(Number(y))) return 0;
+  const top = Number(yScale.top);
+  const bottom = Number(yScale.bottom);
+  const yy = Number(y);
+  if(!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return 0;
+  const dist = Math.min(yy - top, bottom - yy);
+  return Math.max(0, Math.min(1, dist / Math.max(1, Number(fadeEdge) || 28)));
+}
+function isFireDiagnosisHorizontalGuideLineVisible(yScale, y){
+  if(!yScale || !Number.isFinite(Number(y))) return false;
+  return Number(y) >= Number(yScale.top) && Number(y) <= Number(yScale.bottom);
 }
 function getFireDiagnosisFreeLabelOpacity(xScale, sourceX){
   // 左右移動しないラベルは、位置を動かさず、縦線x位置だけでその場フェードする。
@@ -24763,14 +24782,19 @@ function renderAssetLifeDiagnosisChart(result){
       if(!yScale || !xScale) return;
       const ctx = chart.ctx;
       const y = yScale.getPixelForValue(lifeExpect);
+      const labelAlpha = getFireDiagnosisHorizontalGuideFadeAlpha(yScale, y, 28);
+      const lineVisible = isFireDiagnosisHorizontalGuideLineVisible(yScale, y);
+      if(!lineVisible && labelAlpha <= 0.02) return;
       ctx.save();
-      ctx.beginPath();
-      ctx.strokeStyle = '#5b7c99';
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([7,5]);
-      ctx.moveTo(xScale.left, Math.round(y) + 0.5);
-      ctx.lineTo(xScale.right, Math.round(y) + 0.5);
-      ctx.stroke();
+      if(lineVisible){
+        ctx.beginPath();
+        ctx.strokeStyle = '#5b7c99';
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([7,5]);
+        ctx.moveTo(xScale.left, Math.round(y) + 0.5);
+        ctx.lineTo(xScale.right, Math.round(y) + 0.5);
+        ctx.stroke();
+      }
       const text = '想定寿命';
       ctx.font = '600 11px Arial, sans-serif';
       const padX = 5;
@@ -24778,7 +24802,13 @@ function renderAssetLifeDiagnosisChart(result){
       const labelH = 18;
       const labelX = Math.max(xScale.left + 6, Math.min(xScale.right - labelW - 6, xScale.right - labelW - 10));
       const rawLabelY = y + labelH / 2 + 6;
-      const labelY = Math.min(yScale.bottom - labelH / 2 - 4, Math.max(yScale.top + labelH / 2 + 4, rawLabelY));
+      // 下端側は従来どおり押し戻す。上端側は押し戻さず、線についていかせる。
+      const labelY = Math.min(yScale.bottom - labelH / 2 - 4, rawLabelY);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+      ctx.clip();
+      ctx.globalAlpha = labelAlpha;
       ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(255,255,255,0.78)';
       ctx.strokeStyle = 'rgba(91,124,153,0.18)';
@@ -24791,6 +24821,7 @@ function renderAssetLifeDiagnosisChart(result){
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, labelX + padX, labelY);
+      ctx.restore();
       ctx.restore();
     },
     afterDatasetsDraw(chart){
@@ -25007,6 +25038,7 @@ function renderAssetLifeSuccessRateChart(result){
       const xScale = chart.scales?.x;
       if(!yScale || !xScale) return;
       const y = yScale.getPixelForValue(threshold);
+      if(!isFireDiagnosisHorizontalGuideLineVisible(yScale, y)) return;
       const ctx = chart.ctx;
       ctx.save();
       ctx.beginPath();
@@ -25263,6 +25295,7 @@ function renderAssetLifeTerminalAssetChart(result){
       drawCommonZeroLine(ctx, xScale, yScale);
       if(!safeMode) return;
       const y = yScale.getPixelForValue(threshold);
+      if(!isFireDiagnosisHorizontalGuideLineVisible(yScale, y)) return;
       ctx.save();
       ctx.beginPath();
       ctx.strokeStyle = '#0f766e';
