@@ -22894,6 +22894,15 @@ function formatFireDiagnosisDynamicNumber(value, range, opts={}){
   const rounded = digits ? Number(num.toFixed(digits)) : Math.round(num);
   return rounded.toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:0});
 }
+function getFireDiagnosisXAxisTickStep(scale){
+  const chartWidth = Number(scale?.right) - Number(scale?.left);
+  const range = Math.abs(Number(scale?.max) - Number(scale?.min));
+  if(!Number.isFinite(chartWidth) || chartWidth <= 0 || !Number.isFinite(range) || range <= 0) return 1;
+  const isTouchLike = !isFinePointerDevice();
+  if(!isTouchLike) return 1;
+  const pxPerYear = chartWidth / range;
+  return pxPerYear < 44 ? 2 : 1;
+}
 function formatFireDiagnosisXAxisTick(value, index, ticks, kind){
   const scale = this;
   const zoomed = isFireDiagnosisChartZoomed(kind);
@@ -22905,6 +22914,8 @@ function formatFireDiagnosisXAxisTick(value, index, ticks, kind){
   // 非整数のscale.min/max由来tickはここで消えるが、通常の整数tickは端でも早く消さない。
   const rounded = Math.round(n);
   if(Math.abs(n - rounded) > 1e-6) return '';
+  const step = getFireDiagnosisXAxisTickStep(scale);
+  if(step > 1 && Math.abs(rounded % step) > 1e-6) return '';
   const label = String(rounded);
   const list = Array.isArray(ticks) ? ticks : [];
   for(let i = 0; i < Number(index || 0); i++){
@@ -23197,20 +23208,23 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
       if(e.cancelable) e.preventDefault();
       return;
     }
-    if(e.touches.length === 1 && isFireDiagnosisChartZoomed(kind)){
+    if(e.touches.length === 1){
       const pt = getTouchPoint(e.touches[0]);
       if(!isInsideChartArea(pt)) return;
-      // ズーム中の1本指操作は、touchstart時点で即pan確定しない。
-      // 小さい移動はChart.js側のtooltip操作に残し、明確な移動だけpanへ移行する。
+      const zoomed = isFireDiagnosisChartZoomed(kind);
+      // 非ズーム時も、グラフ上でtooltipを出している間は画面スクロールに渡さない。
+      // ズーム時は、touchstart時点で即pan確定せず、ゆっくり移動ならtooltip追従、速い/明確な移動だけpanへ移行する。
       touchState = {
-        type:'tooltipOrPan',
+        type: zoomed ? 'tooltipOrPan' : 'tooltipOnly',
         startX:pt.x, startY:pt.y,
+        startTime:Date.now(),
         startMinX:Number(chart.scales.x.min), startMaxX:Number(chart.scales.x.max),
         startMinY:Number(chart.scales.y.min), startMaxY:Number(chart.scales.y.max),
         plotWidth:Math.max(1, chart.chartArea.right - chart.chartArea.left),
         plotHeight:Math.max(1, chart.chartArea.bottom - chart.chartArea.top),
         moved:false
       };
+      if(e.cancelable) e.preventDefault();
     }
   }, {passive:false});
   canvas.addEventListener('touchmove', (e)=>{
@@ -23271,11 +23285,28 @@ function setupFireDiagnosisChartScaleInteractions(kind, canvas, getChart){
       if(e.cancelable) e.preventDefault();
       return;
     }
-    if(touchState.type === 'tooltipOrPan' || touchState.type === 'pan'){
+    if(touchState.type === 'tooltipOnly' || touchState.type === 'tooltipOrPan' || touchState.type === 'pan'){
       if(e.touches.length !== 1) return;
       const pt = getTouchPoint(e.touches[0]);
       const dx = pt.x - touchState.startX;
       const dy = pt.y - touchState.startY;
+      const dist = Math.hypot(dx, dy);
+      const elapsed = Math.max(1, Date.now() - Number(touchState.startTime || Date.now()));
+      const speed = dist / elapsed;
+      if(touchState.type === 'tooltipOnly'){
+        touchState.moved = touchState.moved || dist >= MIN_TOUCH_MOVE;
+        if(e.cancelable) e.preventDefault();
+        return;
+      }
+      if(touchState.type === 'tooltipOrPan'){
+        const panByFastMove = dist >= 12 && speed >= 0.45;
+        const panByClearDrag = dist >= 26;
+        if(!panByFastMove && !panByClearDrag){
+          // ゆっくり移動中はtooltip追従を優先し、panへ入らない。
+          if(e.cancelable) e.preventDefault();
+          return;
+        }
+      }
       if(!touchState.moved && Math.abs(dx) + Math.abs(dy) < MIN_TOUCH_MOVE) return;
       touchState.type = 'pan';
       touchState.moved = true;
@@ -24696,7 +24727,7 @@ function renderAssetLifeDiagnosisChart(result){
       plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>formatAssetLifeAgeText(value, value >= 120), 'assetLife')},
       scales:{
         y:{min:yRange.min, max:yRange.max, title:{display:true,text:'資産寿命（歳）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{includeBounds:false, autoSkip:false, maxTicksLimit:20, padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'assetLife'); }}},
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'assetLife'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, minRotation:0, maxRotation:0, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'assetLife'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
@@ -24880,7 +24911,7 @@ function renderAssetLifeSuccessRateChart(result){
       plugins:{legend:{display:false}, tooltip:makeFireDiagnosisExternalTooltipOptions(value=>`${value.toFixed(1)}%`, 'successRate')},
       scales:{
         y:{min:0, max:100, title:{display:true,text:'成功率（%）', padding:{top:0,bottom:2}}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, ticks:{includeBounds:false, autoSkip:false, maxTicksLimit:20, padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'successRate'); }}},
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'successRate'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, minRotation:0, maxRotation:0, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'successRate'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
@@ -25150,7 +25181,7 @@ function renderAssetLifeTerminalAssetChart(result){
           title:{display:true,text:`寿命時残高（${unitSpec.label}）`, padding:{top:0,bottom:2}},
           ticks:{includeBounds:false, autoSkip:false, maxTicksLimit:20, padding:4, callback(value, index, ticks){ return formatFireDiagnosisYAxisTick.call(this, value, index, ticks, 'terminal', {divisor:Number(unitSpec?.divisor) || 1}); }}
         },
-        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'terminal'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
+        x:{type:'linear', title:{display:true,text:'リタイア年齢（歳）', padding:{top:2,bottom:0}}, ticks:{includeBounds:false, stepSize:1, autoSkip:false, maxTicksLimit:30, minRotation:0, maxRotation:0, padding:4, callback(value, index, ticks){ return formatFireDiagnosisXAxisTick.call(this, value, index, ticks, 'terminal'); }}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}}
       }
     }
   });
