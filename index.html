@@ -21472,18 +21472,21 @@ function setFireDiagnosisStoredSettings(settings){
   if(toHidden) toHidden.value = String(to);
 }
 function destroyFireDiagnosisProbabilityChart(){
+  resetFireDiagnosisChartScale('assetLife');
   if(fireDiagnosisProbabilityChart){
     fireDiagnosisProbabilityChart.destroy();
     fireDiagnosisProbabilityChart = null;
   }
 }
 function destroyFireDiagnosisTerminalAssetChart(){
+  resetFireDiagnosisChartScale('terminal');
   if(fireDiagnosisTerminalAssetChart){
     fireDiagnosisTerminalAssetChart.destroy();
     fireDiagnosisTerminalAssetChart = null;
   }
 }
 function destroyFireDiagnosisSuccessRateChart(){
+  resetFireDiagnosisChartScale('successRate');
   if(fireDiagnosisSuccessRateChart){
     fireDiagnosisSuccessRateChart.destroy();
     fireDiagnosisSuccessRateChart = null;
