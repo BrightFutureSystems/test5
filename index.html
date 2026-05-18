@@ -1954,6 +1954,13 @@ document.addEventListener("scroll", (ev)=>{
   .fire-diagnosis-radio-row label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-weight:500;color:#27445c;}
   .fire-diagnosis-radio-row input[type=radio]{margin:0;}
   .fire-diagnosis-safe-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .fire-diagnosis-income-range{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .fire-diagnosis-income-points{margin-top:6px;color:#64748b;font-size:12px;line-height:1.5;}
+  .fire-diagnosis-income-local-note{margin-top:6px;color:#64748b;font-size:12px;line-height:1.5;}
+  .fire-diagnosis-income-end-inline{margin:0;transform:none;width:auto;justify-content:flex-start;}
+  .fire-diagnosis-contour-chart-wrap{height:320px;}
+  @media (max-width:900px), (pointer:coarse){.fire-diagnosis-contour-chart-wrap{height:280px;}.fire-diagnosis-income-end-inline{max-width:100%;}}
+  
   .fire-diagnosis-safe-check{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-weight:500;color:#27445c;}
   .fire-diagnosis-safe-check input[type=checkbox]{margin:0;}
   .fire-diagnosis-safe-minimum{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
@@ -2066,6 +2073,8 @@ document.addEventListener("scroll", (ev)=>{
     white-space:nowrap;
   }
   .fire-asset-life-result-table th{background:#fafafa;line-height:1.35;}
+  .fire-diagnosis-summary-table-block{margin-top:14px;}
+  .fire-diagnosis-summary-table-title{font-weight:700;margin:0 0 6px;color:var(--text);}
 
 .fire-asset-life-safe{color:#0f766e;font-weight:700;}
   .fire-asset-life-result-table td.fire-asset-life-ok,
@@ -6983,12 +6992,14 @@ document.addEventListener("scroll", (ev)=>{
 <div class="withdrawal-rule-section">
 <div class="withdrawal-rule-section-title">診断設定</div>
 <div class="withdrawal-rule-fields">
-<div class="withdrawal-rule-field withdrawal-rule-field-wide"><label for="fireDiagnosisContentSelect">診断内容</label><select id="fireDiagnosisContentSelect"><option value="asset_life">現在条件でFIRE診断</option><option disabled="" value="side_fire">年齢×リタイア後収入でFIRE診断（今後追加）</option></select></div>
+<div class="withdrawal-rule-field withdrawal-rule-field-wide"><label for="fireDiagnosisContentSelect">診断内容</label><select id="fireDiagnosisContentSelect"><option value="asset_life">現在条件でFIRE診断</option><option value="retire_income_map">リタイア年齢×リタイア後収入でFIRE診断</option></select></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>診断方式</label><div class="fire-diagnosis-radio-row" role="radiogroup" aria-label="診断方式"><label><input checked="" id="fireDiagnosisTypeNormalRadio" name="fireDiagnosisTypeRadio" type="radio" value="normal"/>一定利率診断</label><label><input id="fireDiagnosisTypeMonteCarloRadio" name="fireDiagnosisTypeRadio" type="radio" value="monte_carlo"/>モンテカルロ診断</label></div></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide" id="fireDiagnosisModeField"><label for="fireDiagnosisModeSelect">暴落ケース</label><select id="fireDiagnosisModeSelect"><option value="normal">暴落なし</option><option value="with_crash">暴落あり</option><option value="compare_crash">暴落なし／あり比較</option></select></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>安全重視判定</label><div class="fire-diagnosis-safe-row"><label class="fire-diagnosis-safe-check"><input id="fireDiagnosisSafeJudgementCheckbox" type="checkbox"/>安全重視判定を含める</label><div class="fire-diagnosis-safe-minimum" id="fireDiagnosisRequiredTerminalAssetField"><span>寿命時最低残高</span><div class="input-unit"><input class="moneybox" disabled="" id="fireDiagnosisRequiredTerminalAssetInput" min="0" step="10" type="number" value="1000"/><span class="suffix">万円</span></div></div></div></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden" id="fireDiagnosisRequiredSuccessRateField"><label for="fireDiagnosisRequiredSuccessRateInput">成功率しきい値</label><div class="input-unit"><input class="ratebox" id="fireDiagnosisRequiredSuccessRateInput" max="100" min="1" step="1" type="number" value="80"/><span class="suffix">%</span></div></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>探索年齢</label><div class="fire-diagnosis-age-range"><div class="fire-diagnosis-age-item"><span>開始</span><div class="input-unit"><input class="agebox" id="fireDiagnosisAgeFromInput" max="120" min="0" step="1" type="number" value="40"/><span class="suffix">歳</span></div></div><div class="fire-diagnosis-age-item"><span>終了</span><div class="input-unit"><input class="agebox" id="fireDiagnosisAgeToInput" max="120" min="0" step="1" type="number" value="70"/><span class="suffix">歳</span></div></div></div></div>
+<div class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden" id="fireDiagnosisRetireIncomeRangeField"><label>リタイア後の手取り（月）</label><div class="fire-diagnosis-income-range"><div class="fire-diagnosis-age-item"><span>開始</span><div class="input-unit"><input class="moneybox" id="fireDiagnosisIncomeFromInput" min="0" step="0.5" type="number" value="0"/><span class="suffix">万円／月</span></div></div><div class="fire-diagnosis-age-item"><span>終了</span><div class="input-unit"><input class="moneybox" id="fireDiagnosisIncomeToInput" min="0" step="0.5" type="number" value="20"/><span class="suffix">万円／月</span></div></div><div class="fire-diagnosis-age-item"><span>データ数</span><div class="input-unit"><select id="fireDiagnosisIncomePointsSelect"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option selected="" value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select><span class="suffix">点</span></div></div></div><div class="fire-diagnosis-income-points" id="fireDiagnosisIncomePointsPreview">計算する月収：0 / 5 / 10 / 15 / 20 万円／月</div></div>
+<div class="withdrawal-rule-field withdrawal-rule-field-wide withdrawal-rule-hidden" id="fireDiagnosisRetireIncomeEndField"><label>リタイア後収入終了年月</label><div class="retire-inline fire-diagnosis-income-end-inline"><select class="retire-year-select" id="fireDiagnosisIncomeEndYearSelect"></select><span class="suffix">年</span><select class="retire-month-select" id="fireDiagnosisIncomeEndMonthSelect"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span class="suffix">月</span><span class="readonly-retire-age-inline">(<span class="readonly-retire-age-text" id="fireDiagnosisIncomeEndAgeLabel">65歳0ヶ月</span>)</span></div><div class="fire-diagnosis-income-local-note">この診断内だけで使用します。メイン画面の入力値は変更されません。</div></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide"><label>判定条件</label><div class="withdrawal-rule-summary" id="fireDiagnosisConditionSummary">FIRE可能年齢：想定寿命まで総資産が一度もマイナスにならないこと</div></div>
 <div class="withdrawal-rule-field withdrawal-rule-field-wide" id="fireDiagnosisMonteNote"><div class="withdrawal-rule-summary">暴落ケースでは「暴落なし」「暴落あり」「暴落なし／あり比較」を選べます。暴落ありでは、設定済みの暴落シナリオを診断に反映します。</div></div>
 </div>
@@ -7013,6 +7024,18 @@ document.addEventListener("scroll", (ev)=>{
   <div aria-hidden="true" class="fire-probability-legend withdrawal-rule-hidden" id="fireDiagnosisSuccessRateLegend"></div>
   <div class="withdrawal-compare-chart-wrap withdrawal-rule-hidden" id="fireDiagnosisSuccessRateChartWrap" style="margin-top:10px;"><canvas id="fireDiagnosisSuccessRateChart"></canvas></div>
   <div class="fire-probability-axis-note withdrawal-rule-hidden" id="fireDiagnosisSuccessRateAxisNote">・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。</div>
+</div>
+<div class="fire-diagnosis-chart-section withdrawal-rule-hidden" id="fireDiagnosisIncomeTerminalSection">
+  <div class="fire-diagnosis-chart-title">リタイア年齢×リタイア後収入：寿命時残高</div>
+  <div class="fire-probability-legend fire-diagnosis-contour-legend withdrawal-rule-hidden" id="fireDiagnosisIncomeTerminalLegend"></div>
+  <div class="withdrawal-compare-chart-wrap fire-diagnosis-contour-chart-wrap" id="fireDiagnosisIncomeTerminalChartWrap" style="margin-top:10px;"><canvas id="fireDiagnosisIncomeTerminalChart"></canvas></div>
+  <div class="fire-probability-axis-note" id="fireDiagnosisIncomeTerminalAxisNote">・横軸はリタイア年齢、縦軸はリタイア後の手取り（月）です。色と等高線は寿命時残高を表します。</div>
+</div>
+<div class="fire-diagnosis-chart-section withdrawal-rule-hidden" id="fireDiagnosisIncomeAssetLifeSection">
+  <div class="fire-diagnosis-chart-title">リタイア年齢×リタイア後収入：資産寿命</div>
+  <div class="fire-probability-legend fire-diagnosis-contour-legend withdrawal-rule-hidden" id="fireDiagnosisIncomeAssetLifeLegend"></div>
+  <div class="withdrawal-compare-chart-wrap fire-diagnosis-contour-chart-wrap" id="fireDiagnosisIncomeAssetLifeChartWrap" style="margin-top:10px;"><canvas id="fireDiagnosisIncomeAssetLifeChart"></canvas></div>
+  <div class="fire-probability-axis-note" id="fireDiagnosisIncomeAssetLifeAxisNote">・横軸はリタイア年齢、縦軸はリタイア後の手取り（月）です。色と等高線は資産寿命を表します。</div>
 </div>
 <div class="fire-asset-life-table-wrap withdrawal-rule-hidden" id="fireDiagnosisAssetLifeTableWrap"></div>
 </div>
@@ -7154,6 +7177,11 @@ document.addEventListener("scroll", (ev)=>{
 <input id="fireDiagnosisShowProbabilityGraph" type="hidden" value="true"/>
 <input id="fireDiagnosisAgeFrom" type="hidden" value="40"/>
 <input id="fireDiagnosisAgeTo" type="hidden" value="70"/>
+<input id="fireDiagnosisIncomeFrom" type="hidden" value="0"/>
+<input id="fireDiagnosisIncomeTo" type="hidden" value="20"/>
+<input id="fireDiagnosisIncomePoints" type="hidden" value="5"/>
+<input id="fireDiagnosisIncomeEndYear" type="hidden" value=""/>
+<input id="fireDiagnosisIncomeEndMonth" type="hidden" value=""/>
 <input id="sumInv1_fromAge_auto" type="hidden" value="1"/>
 <input id="sumInv1_toAge_auto" type="hidden" value="1"/>
 <input id="life1_fromAge_auto" type="hidden" value="1"/>
@@ -7666,6 +7694,8 @@ let inputModeScrollPositions = {simple:0, detail:0};
 let fireDiagnosisProbabilityChart = null;
 let fireDiagnosisTerminalAssetChart = null;
 let fireDiagnosisSuccessRateChart = null;
+let fireDiagnosisIncomeTerminalChart = null;
+let fireDiagnosisIncomeAssetLifeChart = null;
 let lastFireDiagnosisResult = null;
 let defaultScenarioTemplate = null;
 let educationDetailDraft = null;
@@ -21426,9 +21456,104 @@ function resolveFireDiagnosisRequiredTerminalAsset(preferredValue){
   }
   return 1000;
 }
+
+function normalizeFireDiagnosisContent(value){
+  return String(value || '') === 'retire_income_map' ? 'retire_income_map' : 'asset_life';
+}
+function getFireDiagnosisContentFromModal(){
+  return normalizeFireDiagnosisContent(document.getElementById('fireDiagnosisContentSelect')?.value || document.getElementById('fireDiagnosisContent')?.value || 'asset_life');
+}
+function getFireDiagnosisRetireIncomeDefaultEndYm(){
+  const year = Number(document.getElementById('self_post_retire_income_end_year')?.value || 0) || 0;
+  const month = Number(document.getElementById('self_post_retire_income_end_month')?.value || 0) || 0;
+  if(year && month) return {year, month};
+  const data = getAllInputs();
+  return {
+    year:Number(data.self_post_retire_income_end_year || data.self_retire_year || 0) || 0,
+    month:Number(data.self_post_retire_income_end_month || data.self_retire_month || 1) || 1
+  };
+}
+function calculateFireDiagnosisRetireIncomePoints(fromValue, toValue, countValue){
+  const from = Math.max(0, Number(fromValue) || 0);
+  const to = Math.max(from, Number(toValue) || from);
+  const count = Math.max(2, Math.min(10, Math.round(Number(countValue) || 5)));
+  if(count <= 1) return [from];
+  const step = (to - from) / (count - 1);
+  return Array.from({length:count}, (_, idx)=>{
+    const raw = idx === count - 1 ? to : from + step * idx;
+    return Math.round(raw * 10) / 10;
+  });
+}
+function formatFireDiagnosisIncomePointValue(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '0';
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, '');
+}
+function syncFireDiagnosisRetireIncomePointsPreview(){
+  const fromEl = document.getElementById('fireDiagnosisIncomeFromInput');
+  const toEl = document.getElementById('fireDiagnosisIncomeToInput');
+  const pointsEl = document.getElementById('fireDiagnosisIncomePointsSelect');
+  if(fromEl && toEl && Number(toEl.value) < Number(fromEl.value)) toEl.value = fromEl.value;
+  const points = calculateFireDiagnosisRetireIncomePoints(fromEl?.value, toEl?.value, pointsEl?.value);
+  const preview = document.getElementById('fireDiagnosisIncomePointsPreview');
+  if(preview) preview.textContent = `計算する月収：${points.map(formatFireDiagnosisIncomePointValue).join(' / ')} 万円／月`;
+  return points;
+}
+function syncFireDiagnosisRetireIncomeEndYearOptions(){
+  const yearEl = document.getElementById('fireDiagnosisIncomeEndYearSelect');
+  const monthEl = document.getElementById('fireDiagnosisIncomeEndMonthSelect');
+  if(!yearEl || !monthEl) return;
+  const birthValue = document.getElementById('selfBirthDate')?.value || '';
+  const baseDateValue = document.getElementById('baseDate')?.value || '';
+  let selectedYear = Number(yearEl.value || document.getElementById('fireDiagnosisIncomeEndYear')?.value || 0) || 0;
+  let selectedMonth = Number(monthEl.value || document.getElementById('fireDiagnosisIncomeEndMonth')?.value || 0) || 0;
+  if(!selectedYear || !selectedMonth){
+    const fallback = getFireDiagnosisRetireIncomeDefaultEndYm();
+    selectedYear = selectedYear || fallback.year;
+    selectedMonth = selectedMonth || fallback.month;
+  }
+  const range = getRetireYearRangeParts(birthValue, baseDateValue, selectedYear || undefined);
+  const clampedYear = Math.min(range.maxYear, Math.max(range.minYear, Math.round(Number(selectedYear) || range.minYear)));
+  yearEl.innerHTML = buildRetireYearOptionsHtml(clampedYear, birthValue, baseDateValue);
+  yearEl.value = String(clampedYear);
+  monthEl.value = String(Math.min(12, Math.max(1, Math.round(Number(selectedMonth) || 1))));
+  syncFireDiagnosisRetireIncomeEndAgeLabel();
+}
+function syncFireDiagnosisRetireIncomeEndAgeLabel(){
+  const yearEl = document.getElementById('fireDiagnosisIncomeEndYearSelect');
+  const monthEl = document.getElementById('fireDiagnosisIncomeEndMonthSelect');
+  const labelEl = document.getElementById('fireDiagnosisIncomeEndAgeLabel');
+  const birthValue = document.getElementById('selfBirthDate')?.value || '';
+  const endParts = getRetireMonthEndParts(yearEl?.value, monthEl?.value);
+  const ageParts = calcAgeYearMonthsAtParts(parseDateInput(birthValue), endParts);
+  if(labelEl) labelEl.textContent = ageParts ? formatAgeYearMonthsLabel(ageParts) : '';
+}
+function hideRetireIncomeFireDiagnosisSections(){
+  document.getElementById('fireDiagnosisIncomeTerminalSection')?.classList.add('withdrawal-rule-hidden');
+  document.getElementById('fireDiagnosisIncomeAssetLifeSection')?.classList.add('withdrawal-rule-hidden');
+  const terminalLegend = document.getElementById('fireDiagnosisIncomeTerminalLegend');
+  const assetLifeLegend = document.getElementById('fireDiagnosisIncomeAssetLifeLegend');
+  if(terminalLegend){ terminalLegend.classList.add('withdrawal-rule-hidden'); terminalLegend.innerHTML = ''; }
+  if(assetLifeLegend){ assetLifeLegend.classList.add('withdrawal-rule-hidden'); assetLifeLegend.innerHTML = ''; }
+  const wrap = document.getElementById('fireDiagnosisAssetLifeTableWrap');
+  if(wrap){ wrap.classList.add('withdrawal-rule-hidden'); wrap.innerHTML = ''; }
+}
+function destroyFireDiagnosisIncomeTerminalChart(){
+  if(fireDiagnosisIncomeTerminalChart){
+    fireDiagnosisIncomeTerminalChart.destroy();
+    fireDiagnosisIncomeTerminalChart = null;
+  }
+}
+function destroyFireDiagnosisIncomeAssetLifeChart(){
+  if(fireDiagnosisIncomeAssetLifeChart){
+    fireDiagnosisIncomeAssetLifeChart.destroy();
+    fireDiagnosisIncomeAssetLifeChart = null;
+  }
+}
+
 function getFireDiagnosisStoredSettings(){
   const current = Math.round(Number(currentAgeValue()) || 0);
-  const diagnosisContent = 'asset_life';
+  const diagnosisContent = normalizeFireDiagnosisContent(document.getElementById('fireDiagnosisContent')?.value || 'asset_life');
   const diagnosisType = (document.getElementById('fireDiagnosisType')?.value || 'normal') === 'monte_carlo' ? 'monte_carlo' : 'normal';
   const storedMode = document.getElementById('fireDiagnosisMode')?.value || 'compare_crash';
   const mode = storedMode === 'with_crash' ? 'with_crash' : (storedMode === 'compare_crash' ? 'compare_crash' : 'normal');
@@ -21438,20 +21563,32 @@ function getFireDiagnosisStoredSettings(){
   const showProbabilityGraph = String(document.getElementById('fireDiagnosisShowProbabilityGraph')?.value || 'true') !== 'false';
   const ageFrom = Math.max(current, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeFrom')?.value || current) || current)));
   const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeTo')?.value || Math.max(ageFrom, 70)) || Math.max(ageFrom, 70))));
-  return {diagnosisContent, diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
+  const fallbackEnd = getFireDiagnosisRetireIncomeDefaultEndYm();
+  const incomeFrom = Math.max(0, Number(document.getElementById('fireDiagnosisIncomeFrom')?.value || 0) || 0);
+  const incomeTo = Math.max(incomeFrom, Number(document.getElementById('fireDiagnosisIncomeTo')?.value || 20) || 20);
+  const incomePoints = Math.max(2, Math.min(10, Math.round(Number(document.getElementById('fireDiagnosisIncomePoints')?.value || 5) || 5)));
+  const incomeEndYear = Number(document.getElementById('fireDiagnosisIncomeEndYear')?.value || fallbackEnd.year || 0) || 0;
+  const incomeEndMonth = Number(document.getElementById('fireDiagnosisIncomeEndMonth')?.value || fallbackEnd.month || 1) || 1;
+  return {diagnosisContent, diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo, incomeFrom, incomeTo, incomePoints, incomeEndYear, incomeEndMonth};
 }
 function setFireDiagnosisStoredSettings(settings){
   const safe = settings || {};
   const current = Math.round(Number(currentAgeValue()) || 0);
   const from = Math.max(current, Math.min(120, Math.round(Number(safe.ageFrom ?? document.getElementById('fireDiagnosisAgeFrom')?.value ?? current) || current)));
   const to = Math.max(from, Math.min(120, Math.round(Number(safe.ageTo ?? document.getElementById('fireDiagnosisAgeTo')?.value ?? Math.max(from, 70)) || Math.max(from, 70))));
-  const diagnosisContent = 'asset_life';
+  const diagnosisContent = normalizeFireDiagnosisContent(safe.diagnosisContent ?? document.getElementById('fireDiagnosisContent')?.value ?? 'asset_life');
   const diagnosisType = safe.diagnosisType === 'monte_carlo' ? 'monte_carlo' : 'normal';
   const mode = safe.mode === 'with_crash' ? 'with_crash' : (safe.mode === 'compare_crash' ? 'compare_crash' : 'normal');
   const judgementMode = safe.judgementMode === 'safe' ? 'safe' : 'standard';
   const requiredTerminalAsset = resolveFireDiagnosisRequiredTerminalAsset(safe.requiredTerminalAsset ?? document.getElementById('fireDiagnosisRequiredTerminalAsset')?.value);
   const requiredSuccessRate = Math.max(1, Math.min(100, Math.round(Number(safe.requiredSuccessRate ?? document.getElementById('fireDiagnosisRequiredSuccessRate')?.value ?? 80) || 80)));
   const showProbabilityGraph = safe.showProbabilityGraph == null ? String(document.getElementById('fireDiagnosisShowProbabilityGraph')?.value || 'true') !== 'false' : !!safe.showProbabilityGraph;
+  const fallbackEnd = getFireDiagnosisRetireIncomeDefaultEndYm();
+  const incomeFrom = Math.max(0, Number(safe.incomeFrom ?? document.getElementById('fireDiagnosisIncomeFrom')?.value ?? 0) || 0);
+  const incomeTo = Math.max(incomeFrom, Number(safe.incomeTo ?? document.getElementById('fireDiagnosisIncomeTo')?.value ?? 20) || 20);
+  const incomePoints = Math.max(2, Math.min(10, Math.round(Number(safe.incomePoints ?? document.getElementById('fireDiagnosisIncomePoints')?.value ?? 5) || 5)));
+  const incomeEndYear = Number(safe.incomeEndYear ?? document.getElementById('fireDiagnosisIncomeEndYear')?.value ?? fallbackEnd.year ?? 0) || 0;
+  const incomeEndMonth = Number(safe.incomeEndMonth ?? document.getElementById('fireDiagnosisIncomeEndMonth')?.value ?? fallbackEnd.month ?? 1) || 1;
   const contentHidden = document.getElementById('fireDiagnosisContent');
   const typeHidden = document.getElementById('fireDiagnosisType');
   const modeHidden = document.getElementById('fireDiagnosisMode');
@@ -21470,6 +21607,16 @@ function setFireDiagnosisStoredSettings(settings){
   if(showGraphHidden) showGraphHidden.value = showProbabilityGraph ? 'true' : 'false';
   if(fromHidden) fromHidden.value = String(from);
   if(toHidden) toHidden.value = String(to);
+  const incomeFromHidden = document.getElementById('fireDiagnosisIncomeFrom');
+  const incomeToHidden = document.getElementById('fireDiagnosisIncomeTo');
+  const incomePointsHidden = document.getElementById('fireDiagnosisIncomePoints');
+  const incomeEndYearHidden = document.getElementById('fireDiagnosisIncomeEndYear');
+  const incomeEndMonthHidden = document.getElementById('fireDiagnosisIncomeEndMonth');
+  if(incomeFromHidden) incomeFromHidden.value = String(incomeFrom);
+  if(incomeToHidden) incomeToHidden.value = String(incomeTo);
+  if(incomePointsHidden) incomePointsHidden.value = String(incomePoints);
+  if(incomeEndYearHidden) incomeEndYearHidden.value = String(incomeEndYear);
+  if(incomeEndMonthHidden) incomeEndMonthHidden.value = String(incomeEndMonth);
 }
 function destroyFireDiagnosisProbabilityChart(){
   resetFireDiagnosisChartScale('assetLife');
@@ -21496,6 +21643,8 @@ function destroyAllFireDiagnosisCharts(){
   destroyFireDiagnosisProbabilityChart();
   destroyFireDiagnosisTerminalAssetChart();
   destroyFireDiagnosisSuccessRateChart();
+  destroyFireDiagnosisIncomeTerminalChart();
+  destroyFireDiagnosisIncomeAssetLifeChart();
 }
 function getFireDiagnosisTypeFromModal(){
   const checked = document.querySelector('input[name="fireDiagnosisTypeRadio"]:checked');
@@ -21515,9 +21664,18 @@ function setFireDiagnosisJudgementModeToModal(judgementMode){
   if(checkbox) checkbox.checked = judgementMode === 'safe';
 }
 function updateFireDiagnosisJudgementUi(){
-  const diagnosisContent = 'asset_life';
-  const diagnosisType = getFireDiagnosisTypeFromModal();
+  const diagnosisContent = getFireDiagnosisContentFromModal();
+  let diagnosisType = getFireDiagnosisTypeFromModal();
   const mode = getFireDiagnosisJudgementModeFromModal();
+  const isRetireIncomeMap = diagnosisContent === 'retire_income_map';
+  if(isRetireIncomeMap && diagnosisType !== 'normal'){
+    setFireDiagnosisTypeToModal('normal');
+    diagnosisType = 'normal';
+  }
+  const normalRadio = document.getElementById('fireDiagnosisTypeNormalRadio');
+  const monteRadio = document.getElementById('fireDiagnosisTypeMonteCarloRadio');
+  if(normalRadio) normalRadio.disabled = false;
+  if(monteRadio) monteRadio.disabled = isRetireIncomeMap;
   const resultModeField = document.getElementById('fireDiagnosisModeField');
   const resultModeSelect = document.getElementById('fireDiagnosisModeSelect');
   const terminalField = document.getElementById('fireDiagnosisRequiredTerminalAssetField');
@@ -21526,7 +21684,18 @@ function updateFireDiagnosisJudgementUi(){
   const summary = document.getElementById('fireDiagnosisConditionSummary');
   const isMonte = diagnosisType === 'monte_carlo';
   if(resultModeField) resultModeField.classList.remove('withdrawal-rule-hidden');
-  if(resultModeSelect) resultModeSelect.disabled = false;
+  if(resultModeSelect){
+    resultModeSelect.disabled = false;
+    const compareOption = resultModeSelect.querySelector('option[value="compare_crash"]');
+    if(compareOption) compareOption.disabled = isRetireIncomeMap;
+    if(isRetireIncomeMap && resultModeSelect.value === 'compare_crash') resultModeSelect.value = 'normal';
+  }
+  document.getElementById('fireDiagnosisRetireIncomeRangeField')?.classList.toggle('withdrawal-rule-hidden', !isRetireIncomeMap);
+  document.getElementById('fireDiagnosisRetireIncomeEndField')?.classList.toggle('withdrawal-rule-hidden', !isRetireIncomeMap);
+  if(isRetireIncomeMap){
+    syncFireDiagnosisRetireIncomeEndYearOptions();
+    syncFireDiagnosisRetireIncomePointsPreview();
+  }
   const terminalInput = document.getElementById('fireDiagnosisRequiredTerminalAssetInput');
   if(terminalInput) terminalInput.disabled = mode !== 'safe';
   if(terminalField) terminalField.classList.toggle('is-disabled', mode !== 'safe');
@@ -21535,17 +21704,22 @@ function updateFireDiagnosisJudgementUi(){
     monteNote.classList.remove('withdrawal-rule-hidden');
     const noteBody = monteNote.querySelector('.withdrawal-rule-summary');
     if(noteBody){
-      noteBody.textContent = isMonte
-        ? (diagnosisContent === 'asset_life'
+      if(isRetireIncomeMap){
+        noteBody.textContent = 'リタイア年齢とリタイア後の手取り（月）を組み合わせて、寿命時残高・資産寿命の等高線を計算します。暴落ケースは、実行前に選んだ片方だけを計算します。';
+      }else{
+        noteBody.textContent = isMonte
           ? '各リタイア年齢について、寿命時残高・資産寿命・FIRE成功率を計算します。FIRE可能年齢は、指定した成功率を満たす最初のリタイア年齢です。'
-          : 'モンテカルロ診断では、確率（モンテカルロ）設定の計算回数・利回りモデル・乱数シード設定を利用します。固定シード値を使用する場合は同じ乱数列で再現計算し、使用しない場合は診断のたびに新しい乱数列で計算します。暴落なし／あり比較では、各回の比較で両方に同じ乱数列を使います。固定シード値を使用しない場合は、実行のたびに新しい共通乱数列で比較します。')
-        : (diagnosisContent === 'asset_life'
-          ? '現在条件を固定し、リタイア年齢ごとの寿命時残高・資産寿命を1歳刻みで計算します。FIRE可能年齢は、月単位で判定した正式値です。'
-          : '暴落ケースでは「暴落なし」「暴落あり」「暴落なし／あり比較」を選べます。暴落ありでは、設定済みの暴落シナリオを診断に反映します。比較では、暴落なしと暴落ありのFIRE可能年齢を比較します。');
+          : '現在条件を固定し、リタイア年齢ごとの寿命時残高・資産寿命を1歳刻みで計算します。FIRE可能年齢は、月単位で判定した正式値です。';
+      }
     }
   }
   if(summary){
-    if(isMonte){
+    if(isRetireIncomeMap){
+      const threshold = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
+      summary.innerHTML = mode === 'safe'
+        ? `通常FIRE：想定寿命まで総資産が一度もマイナスにならないこと。安全FIRE：さらに寿命時残高が <strong>${Math.round(threshold).toLocaleString()}万円以上</strong> であること。`
+        : 'FIRE可能条件：想定寿命まで総資産が一度もマイナスにならないこと';
+    }else if(isMonte){
       const threshold = Math.max(1, Math.min(100, Math.round(Number(document.getElementById('fireDiagnosisRequiredSuccessRateInput')?.value || 80) || 80)));
       if(mode === 'safe'){
         const terminalThreshold = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
@@ -21553,10 +21727,10 @@ function updateFireDiagnosisJudgementUi(){
       } else {
         summary.innerHTML = `モンテカルロ診断：各 trial で想定寿命まで総資産が一度もマイナスにならない trial の比率が <strong>${threshold}%以上</strong> であること`;
       }
-    } else if(mode === 'safe'){
+    }else if(mode === 'safe'){
       const threshold = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
       summary.innerHTML = `安全重視：想定寿命まで総資産が一度もマイナスにならず、寿命時残高が <strong>${Math.round(threshold).toLocaleString()}万円以上</strong> であること`;
-    } else {
+    }else{
       summary.textContent = 'FIRE可能年齢：想定寿命まで総資産が一度もマイナスにならないこと';
     }
   }
@@ -21569,29 +21743,49 @@ function loadFireDiagnosisDraftToModal(){
   const successRateEl = document.getElementById('fireDiagnosisRequiredSuccessRateInput');
   const fromEl = document.getElementById('fireDiagnosisAgeFromInput');
   const toEl = document.getElementById('fireDiagnosisAgeToInput');
-  if(contentEl) contentEl.value = 'asset_life';
-  setFireDiagnosisTypeToModal(settings.diagnosisType);
-  if(modeEl) modeEl.value = settings.mode;
+  if(contentEl) contentEl.value = settings.diagnosisContent;
+  setFireDiagnosisTypeToModal(settings.diagnosisContent === 'retire_income_map' ? 'normal' : settings.diagnosisType);
+  if(modeEl) modeEl.value = settings.diagnosisContent === 'retire_income_map' && settings.mode === 'compare_crash' ? 'normal' : settings.mode;
   setFireDiagnosisJudgementModeToModal(settings.judgementMode);
   if(requiredEl) requiredEl.value = String(Math.round(settings.requiredTerminalAsset));
   if(successRateEl) successRateEl.value = String(settings.requiredSuccessRate);
   if(fromEl) fromEl.value = String(settings.ageFrom);
   if(toEl) toEl.value = String(settings.ageTo);
+  const incomeFromEl = document.getElementById('fireDiagnosisIncomeFromInput');
+  const incomeToEl = document.getElementById('fireDiagnosisIncomeToInput');
+  const incomePointsEl = document.getElementById('fireDiagnosisIncomePointsSelect');
+  if(incomeFromEl) incomeFromEl.value = String(settings.incomeFrom);
+  if(incomeToEl) incomeToEl.value = String(settings.incomeTo);
+  if(incomePointsEl) incomePointsEl.value = String(settings.incomePoints);
+  const endYearEl = document.getElementById('fireDiagnosisIncomeEndYearSelect');
+  const endMonthEl = document.getElementById('fireDiagnosisIncomeEndMonthSelect');
+  if(endYearEl) endYearEl.value = String(settings.incomeEndYear || getFireDiagnosisRetireIncomeDefaultEndYm().year || '');
+  if(endMonthEl) endMonthEl.value = String(settings.incomeEndMonth || getFireDiagnosisRetireIncomeDefaultEndYm().month || 1);
+  syncFireDiagnosisRetireIncomeEndYearOptions();
+  syncFireDiagnosisRetireIncomePointsPreview();
   updateFireDiagnosisJudgementUi();
 }
 function getFireDiagnosisSettingsFromModal(){
   const current = Math.round(Number(currentAgeValue()) || 0);
-  const diagnosisContent = 'asset_life';
-  const diagnosisType = getFireDiagnosisTypeFromModal();
+  const diagnosisContent = getFireDiagnosisContentFromModal();
+  const diagnosisType = diagnosisContent === 'retire_income_map' ? 'normal' : getFireDiagnosisTypeFromModal();
   const rawMode = document.getElementById('fireDiagnosisModeSelect')?.value || 'normal';
-  const mode = rawMode === 'with_crash' ? 'with_crash' : (rawMode === 'compare_crash' ? 'compare_crash' : 'normal');
+  const mode = diagnosisContent === 'retire_income_map'
+    ? (rawMode === 'with_crash' ? 'with_crash' : 'normal')
+    : (rawMode === 'with_crash' ? 'with_crash' : (rawMode === 'compare_crash' ? 'compare_crash' : 'normal'));
   const judgementMode = getFireDiagnosisJudgementModeFromModal();
   const requiredTerminalAsset = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
   const requiredSuccessRate = Math.max(1, Math.min(100, Math.round(Number(document.getElementById('fireDiagnosisRequiredSuccessRateInput')?.value || 80) || 80)));
   const showProbabilityGraph = String(document.getElementById('fireDiagnosisShowProbabilityGraph')?.value || 'true') !== 'false';
   const ageFrom = Math.max(current, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeFromInput')?.value || current) || current)));
   const ageTo = Math.max(ageFrom, Math.min(120, Math.round(Number(document.getElementById('fireDiagnosisAgeToInput')?.value || Math.max(ageFrom,70)) || Math.max(ageFrom,70))));
-  return {diagnosisContent, diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo};
+  const incomeFrom = Math.max(0, Number(document.getElementById('fireDiagnosisIncomeFromInput')?.value || 0) || 0);
+  const incomeTo = Math.max(incomeFrom, Number(document.getElementById('fireDiagnosisIncomeToInput')?.value || 20) || 20);
+  const incomePoints = Math.max(2, Math.min(10, Math.round(Number(document.getElementById('fireDiagnosisIncomePointsSelect')?.value || 5) || 5)));
+  const fallbackEnd = getFireDiagnosisRetireIncomeDefaultEndYm();
+  const incomeEndYear = Number(document.getElementById('fireDiagnosisIncomeEndYearSelect')?.value || fallbackEnd.year || 0) || 0;
+  const incomeEndMonth = Number(document.getElementById('fireDiagnosisIncomeEndMonthSelect')?.value || fallbackEnd.month || 1) || 1;
+  return {diagnosisContent, diagnosisType, mode, judgementMode, requiredTerminalAsset, requiredSuccessRate, showProbabilityGraph, ageFrom, ageTo, incomeFrom, incomeTo, incomePoints, incomeEndYear, incomeEndMonth};
 }
 function getModalScrollbarGap(){
   const innerW = Number(window.innerWidth) || 0;
@@ -21664,6 +21858,7 @@ function openFireDiagnosisModal(){
   document.getElementById('fireDiagnosisAssetLifeSection')?.classList.add('withdrawal-rule-hidden');
   const assetLifeTable = document.getElementById('fireDiagnosisAssetLifeTableWrap');
   if(assetLifeTable){ assetLifeTable.classList.add('withdrawal-rule-hidden'); assetLifeTable.innerHTML = ''; }
+  hideRetireIncomeFireDiagnosisSections();
   const modal = document.getElementById('fireDiagnosisModal');
   modal?.classList.add('show');
   modal?.setAttribute('aria-hidden', 'false');
@@ -21873,6 +22068,9 @@ function applyFireDiagnosisMonthlyScenarioOverridesToCfg(cfg, scenarioData, reti
     cfg.incomeSelf.retireYear = Number(retireYm.year || scenarioData.self_retire_year || cfg.incomeSelf.retireYear || 0) || 0;
     cfg.incomeSelf.retireMonth = Number(retireYm.month || scenarioData.self_retire_month || cfg.incomeSelf.retireMonth || 0) || 0;
     cfg.incomeSelf.retireAge = totalMonths / 12;
+    if(scenarioData.self_post_retire_income_month != null){
+      cfg.incomeSelf.postRetireIncomeMonth = Math.max(0, Number(scenarioData.self_post_retire_income_month) || 0);
+    }
 
     let endYm = {
       year:Number(scenarioData.self_post_retire_income_end_year || cfg.incomeSelf.postRetireIncomeEndYear || 0) || 0,
@@ -24494,6 +24692,922 @@ async function runCurrentConditionFireDiagnosisEngine(request, scenarioDataOverr
   return {...single, diagnosisContent:'asset_life', diagnosisType:'normal', checkedFrom:settings.ageFrom, checkedTo:settings.ageTo, judgementMode:settings.judgementMode, requiredTerminalAsset:settings.requiredTerminalAsset};
 }
 
+
+function buildRetireIncomeFireScenarioData(baseData, retireAge, incomeMonthlyManYen, endYear, endMonth){
+  const next = buildScenarioDataForRetireAge(baseData, retireAge);
+  next.self_post_retire_income_month = Math.max(0, Number(incomeMonthlyManYen) || 0);
+  next.self_post_retire_income_end_year = Number(endYear || next.self_post_retire_income_end_year || 0) || 0;
+  next.self_post_retire_income_end_month = Number(endMonth || next.self_post_retire_income_end_month || 1) || 1;
+  const ageParts = calcAgeYearMonthsAtParts(parseDateInput(next.selfBirthDate || ''), getRetireMonthEndParts(next.self_post_retire_income_end_year, next.self_post_retire_income_end_month));
+  if(ageParts) next.self_post_retire_income_end_age = ageParts.totalMonths / 12;
+  return next;
+}
+function isRetireIncomeFirePointReached(point, requiredTerminalAsset=0){
+  if(!point) return false;
+  const reachedLife = !!point.reachedLife || Number(point.assetLifeAge) >= Number(point.lifeExpect || 0);
+  const terminalAsset = Number(point.terminalAsset);
+  return reachedLife && Number.isFinite(terminalAsset) && terminalAsset >= Math.max(0, Number(requiredTerminalAsset) || 0);
+}
+function getRetireIncomeFireBoundaryScore(point, requiredTerminalAsset=0){
+  if(!point) return NaN;
+  const terminalScore = Number(point.terminalAsset) - Math.max(0, Number(requiredTerminalAsset) || 0);
+  const lifeScore = (Number(point.assetLifeAge) - Number(point.lifeExpect || 0)) * 100000;
+  if(!Number.isFinite(terminalScore) || !Number.isFinite(lifeScore)) return NaN;
+  return Math.min(terminalScore, lifeScore);
+}
+function buildRetireIncomeFireBoundary(xAges, yIncomes, pointGrid, requiredTerminalAsset){
+  const boundary = [];
+  for(let xi=0; xi<xAges.length; xi++){
+    let found = null;
+    let prev = null;
+    for(let yi=0; yi<yIncomes.length; yi++){
+      const point = pointGrid?.[yi]?.[xi];
+      const ok = isRetireIncomeFirePointReached(point, requiredTerminalAsset);
+      if(ok){
+        if(!prev){
+          found = {age:xAges[xi], income:yIncomes[yi]};
+        }else{
+          const prevScore = getRetireIncomeFireBoundaryScore(prev.point, requiredTerminalAsset);
+          const curScore = getRetireIncomeFireBoundaryScore(point, requiredTerminalAsset);
+          let t = 1;
+          if(Number.isFinite(prevScore) && Number.isFinite(curScore) && curScore !== prevScore){
+            t = Math.max(0, Math.min(1, (0 - prevScore) / (curScore - prevScore)));
+          }
+          found = {age:xAges[xi], income:prev.income + (yIncomes[yi] - prev.income) * t};
+        }
+        break;
+      }
+      prev = {point, income:yIncomes[yi]};
+    }
+    if(found) boundary.push(found);
+  }
+  return boundary;
+}
+async function runRetireIncomeFireDiagnosisFixedRate(request){
+  const settings = {...(request?.settings || {})};
+  const baseScenario = migrateLegacyData(deepClone(request?.scenarioData || getAllInputs()));
+  const xAges = [];
+  for(let age = Math.max(0, Math.round(Number(settings.ageFrom) || 0)); age <= Math.max(0, Math.round(Number(settings.ageTo) || 0)); age++) xAges.push(age);
+  const yMonthlyIncomes = calculateFireDiagnosisRetireIncomePoints(settings.incomeFrom, settings.incomeTo, settings.incomePoints);
+  const terminalAssetGrid = [];
+  const assetLifeGrid = [];
+  const pointGrid = [];
+  const total = Math.max(1, xAges.length * yMonthlyIncomes.length);
+  let done = 0;
+  let lifeExpect = null;
+  const applyCrash = settings.mode === 'with_crash';
+  for(let yi=0; yi<yMonthlyIncomes.length; yi++){
+    const income = yMonthlyIncomes[yi];
+    const terminalRow = [];
+    const lifeRow = [];
+    const pointRow = [];
+    for(let xi=0; xi<xAges.length; xi++){
+      const age = xAges[xi];
+      if(settings.progressReporter){
+        await settings.progressReporter((done / total) * 100, {detail:`${age}歳・月収${formatFireDiagnosisIncomePointValue(income)}万円を計算中（${done + 1} / ${total}点）`});
+      }
+      const scenario = buildRetireIncomeFireScenarioData(baseScenario, age, income, settings.incomeEndYear, settings.incomeEndMonth);
+      const trial = runFireDiagnosisTrialAtWholeYear(scenario, age, {
+        applyCrash,
+        judgementMode:settings.judgementMode,
+        requiredTerminalAsset:settings.requiredTerminalAsset
+      });
+      const life = getAssetLifeAgeFromSimulation(trial?.cfg, trial?.sim, settings);
+      const le = getLifeExpectCalendarYearEndAge(trial?.cfg);
+      if(!Number.isFinite(Number(lifeExpect))) lifeExpect = le;
+      const point = {
+        age,
+        income,
+        terminalAsset:Number(trial?.terminalAsset || 0) || 0,
+        minAsset:Number(trial?.minAsset || 0) || 0,
+        assetLifeAge:Number(life?.age),
+        capped:!!life?.capped,
+        lifeExpect:le,
+        reachedLife:Number(life?.age) >= le
+      };
+      terminalRow.push(point.terminalAsset);
+      lifeRow.push(point.assetLifeAge);
+      pointRow.push(point);
+      done++;
+      if(settings.progressReporter) await new Promise(resolve=>setTimeout(resolve, 0));
+    }
+    terminalAssetGrid.push(terminalRow);
+    assetLifeGrid.push(lifeRow);
+    pointGrid.push(pointRow);
+  }
+  const fireBoundary = buildRetireIncomeFireBoundary(xAges, yMonthlyIncomes, pointGrid, 0);
+  const safeFireBoundary = settings.judgementMode === 'safe'
+    ? buildRetireIncomeFireBoundary(xAges, yMonthlyIncomes, pointGrid, settings.requiredTerminalAsset)
+    : [];
+  if(settings.progressReporter) await settings.progressReporter(100, {detail:'等高線グラフを準備中'});
+  return {
+    diagnosisContent:'retire_income_map',
+    diagnosisType:'normal',
+    mode:applyCrash ? 'with_crash' : 'normal',
+    judgementMode:settings.judgementMode,
+    requiredTerminalAsset:settings.requiredTerminalAsset,
+    checkedFrom:settings.ageFrom,
+    checkedTo:settings.ageTo,
+    incomeFrom:settings.incomeFrom,
+    incomeTo:settings.incomeTo,
+    incomePoints:settings.incomePoints,
+    incomeEndYear:settings.incomeEndYear,
+    incomeEndMonth:settings.incomeEndMonth,
+    xAges,
+    yMonthlyIncomes,
+    terminalAssetGrid,
+    assetLifeGrid,
+    pointGrid,
+    fireBoundary,
+    safeFireBoundary,
+    lifeExpect:Number(lifeExpect) || Number(currentAgeValue()) || 90
+  };
+}
+function getGridFiniteValues(grid){
+  const out = [];
+  (Array.isArray(grid) ? grid : []).forEach(row=>{
+    (Array.isArray(row) ? row : []).forEach(v=>{ const n = Number(v); if(Number.isFinite(n)) out.push(n); });
+  });
+  return out;
+}
+function clampColorChannel(v){ return Math.max(0, Math.min(255, Math.round(Number(v) || 0))); }
+function mixRgb(a, b, t){
+  const ratio = Math.max(0, Math.min(1, Number(t) || 0));
+  return [0,1,2].map(i=>clampColorChannel(a[i] + (b[i] - a[i]) * ratio));
+}
+function rgbCss(rgb, alpha=1){ return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`; }
+const RETIRE_INCOME_CONTOUR_SUBDIVISIONS = 8;
+const RETIRE_INCOME_CONTOUR_COLORS = [
+  [53,42,135],[28,73,174],[24,110,201],[18,145,206],[20,169,187],
+  [62,184,154],[122,190,120],[181,188,91],[232,190,66],[252,217,56],[249,251,14]
+];
+function getRetireIncomeMatlabLikeColor(t, alpha=0.78){
+  const v = Math.max(0, Math.min(1, Number(t) || 0));
+  const scaled = v * (RETIRE_INCOME_CONTOUR_COLORS.length - 1);
+  const i = Math.max(0, Math.min(RETIRE_INCOME_CONTOUR_COLORS.length - 2, Math.floor(scaled)));
+  const localT = scaled - i;
+  return rgbCss(mixRgb(RETIRE_INCOME_CONTOUR_COLORS[i], RETIRE_INCOME_CONTOUR_COLORS[i + 1], localT), alpha);
+}
+function getRetireIncomeContourBandColor(value, levels, minValue, maxValue){
+  const v = Number(value);
+  if(!Number.isFinite(v)) return 'rgba(255,255,255,0)';
+  const lv = Array.isArray(levels) ? levels.filter(x=>Number.isFinite(Number(x))).map(Number).sort((a,b)=>a-b) : [];
+  if(lv.length >= 2){
+    let band = 0;
+    while(band < lv.length && v >= lv[band]) band++;
+    return getRetireIncomeMatlabLikeColor(band / Math.max(1, lv.length), 0.74);
+  }
+  const min = Number.isFinite(Number(minValue)) ? Number(minValue) : v;
+  const max = Number.isFinite(Number(maxValue)) ? Number(maxValue) : v;
+  return getRetireIncomeMatlabLikeColor((v - min) / Math.max(1e-9, max - min), 0.74);
+}
+function chooseRetireIncomeContourStep(range, candidates, targetCount=10){
+  const r = Math.abs(Number(range) || 0);
+  const vals = (Array.isArray(candidates) ? candidates : []).map(Number).filter(v=>Number.isFinite(v) && v > 0).sort((a,b)=>a-b);
+  if(!vals.length) return 1;
+  for(const step of vals){
+    if(r / step <= targetCount) return step;
+  }
+  return vals[vals.length - 1];
+}
+function buildRetireIncomeContourLevels(kind, values, lifeExpect){
+  const finite = (Array.isArray(values) ? values : []).map(Number).filter(Number.isFinite);
+  if(!finite.length) return [];
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  const range = max - min;
+  const levels = [];
+  if(kind === 'terminal'){
+    let step = 1000;
+    if(range > 24000) step = 2000;
+    if(range > 48000) step = 5000;
+    const start = Math.floor(min / step) * step;
+    const end = Math.ceil(max / step) * step;
+    for(let v=start; v<=end + step * 0.001; v+=step){
+      if(v >= min - step * 0.001 && v <= max + step * 0.001) levels.push(Math.round(v));
+    }
+    if(min < 0 && max > 0 && !levels.includes(0)) levels.push(0);
+  }else{
+    let step = 5;
+    if(range > 55) step = 10;
+    if(range > 95) step = 20;
+    const start = Math.floor(min / step) * step;
+    const end = Math.ceil(max / step) * step;
+    for(let v=start; v<=end + step * 0.001; v+=step){
+      if(v >= min - step * 0.001 && v <= max + step * 0.001) levels.push(Math.round(v * 10) / 10);
+    }
+    const le = Number(lifeExpect);
+    if(Number.isFinite(le) && le >= min && le <= max && !levels.some(v=>Math.abs(v - le) < Math.max(0.05, step * 0.08))) levels.push(le);
+  }
+  return [...new Set(levels.map(v=>Number(Number(v).toFixed(6))))].sort((a,b)=>a-b);
+}
+function formatRetireIncomeContourLevelLabel(kind, level, lifeExpect){
+  const n = Number(level);
+  if(kind === 'terminal'){
+    if(Math.abs(n) < 1e-7) return '0万円';
+    if(Math.abs(n) >= 10000 && Math.abs(n % 10000) < 1e-7) return `${formatFireDiagnosisIncomePointValue(n / 10000)}億円`;
+    return `${Math.round(n).toLocaleString()}万円`;
+  }
+  if(Number.isFinite(Number(lifeExpect)) && Math.abs(n - Number(lifeExpect)) < 0.05) return `想定${Math.round(n)}歳`;
+  return `${Math.round(n)}歳`;
+}
+function getRetireIncomeGridForKind(result, kind){
+  return kind === 'terminal' ? result?.terminalAssetGrid : result?.assetLifeGrid;
+}
+function clampRetireIncomeGridIndex(i, max){ return Math.max(0, Math.min(max, i)); }
+function catmullRomRetireIncome(p0, p1, p2, p3, t){
+  const tt = t * t;
+  const ttt = tt * t;
+  return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2*p0 - 5*p1 + 4*p2 - p3) * tt + (-p0 + 3*p1 - 3*p2 + p3) * ttt);
+}
+function sampleRetireIncomeGridCubic(grid, xIndexFloat, yIndexFloat){
+  const rows = Array.isArray(grid) ? grid : [];
+  const ny = rows.length;
+  const nx = ny ? (Array.isArray(rows[0]) ? rows[0].length : 0) : 0;
+  if(nx <= 0 || ny <= 0) return NaN;
+  const xBase = Math.floor(xIndexFloat);
+  const yBase = Math.floor(yIndexFloat);
+  const tx = xIndexFloat - xBase;
+  const ty = yIndexFloat - yBase;
+  const rowSamples = [];
+  for(let m=-1; m<=2; m++){
+    const yy = clampRetireIncomeGridIndex(yBase + m, ny - 1);
+    const vals = [];
+    for(let n=-1; n<=2; n++){
+      const xx = clampRetireIncomeGridIndex(xBase + n, nx - 1);
+      vals.push(Number(rows[yy]?.[xx]));
+    }
+    if(vals.some(v=>!Number.isFinite(v))) return NaN;
+    rowSamples.push(catmullRomRetireIncome(vals[0], vals[1], vals[2], vals[3], tx));
+  }
+  return catmullRomRetireIncome(rowSamples[0], rowSamples[1], rowSamples[2], rowSamples[3], ty);
+}
+function buildRetireIncomeFineContourData(result, kind, subdivisions=RETIRE_INCOME_CONTOUR_SUBDIVISIONS){
+  if(!result) return null;
+  const cacheKey = `__retireIncomeFineContour_${kind}_${subdivisions}`;
+  if(result[cacheKey]) return result[cacheKey];
+  const xs = Array.isArray(result.xAges) ? result.xAges.map(Number).filter(Number.isFinite) : [];
+  const ys = Array.isArray(result.yMonthlyIncomes) ? result.yMonthlyIncomes.map(Number).filter(Number.isFinite) : [];
+  const sourceGrid = getRetireIncomeGridForKind(result, kind);
+  if(xs.length < 2 || ys.length < 2 || !Array.isArray(sourceGrid)) return null;
+  const sub = Math.max(2, Math.round(Number(subdivisions) || RETIRE_INCOME_CONTOUR_SUBDIVISIONS));
+  const xFine = [];
+  const yFine = [];
+  for(let xi=0; xi<xs.length-1; xi++){
+    for(let k=0; k<sub; k++) xFine.push(xs[xi] + (xs[xi+1] - xs[xi]) * (k / sub));
+  }
+  xFine.push(xs[xs.length-1]);
+  for(let yi=0; yi<ys.length-1; yi++){
+    for(let k=0; k<sub; k++) yFine.push(ys[yi] + (ys[yi+1] - ys[yi]) * (k / sub));
+  }
+  yFine.push(ys[ys.length-1]);
+  const gridFine = yFine.map((_, yfi)=>{
+    const yIndexFloat = yfi / sub;
+    return xFine.map((__, xfi)=>sampleRetireIncomeGridCubic(sourceGrid, xfi / sub, yIndexFloat));
+  });
+  const values = getGridFiniteValues(gridFine);
+  const levels = buildRetireIncomeContourLevels(kind, values, result.lifeExpect);
+  const out = {xFine, yFine, gridFine, values, levels, min:values.length ? Math.min(...values) : NaN, max:values.length ? Math.max(...values) : NaN};
+  result[cacheKey] = out;
+  return out;
+}
+function getRetireIncomeContourSegments(fineData, level){
+  const xs = fineData?.xFine || [];
+  const ys = fineData?.yFine || [];
+  const grid = fineData?.gridFine || [];
+  const segments = [];
+  if(xs.length < 2 || ys.length < 2) return segments;
+  const interpEdge = (x0,y0,v0,x1,y1,v1)=>{
+    const a = Number(v0), b = Number(v1), lv = Number(level);
+    if(!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(lv) || a === b) return null;
+    if(lv < Math.min(a,b) || lv > Math.max(a,b)) return null;
+    const t = Math.max(0, Math.min(1, (lv - a) / (b - a)));
+    return {x:x0 + (x1 - x0) * t, y:y0 + (y1 - y0) * t};
+  };
+  for(let yi=0; yi<ys.length-1; yi++){
+    for(let xi=0; xi<xs.length-1; xi++){
+      const c = [
+        {x:xs[xi], y:ys[yi], v:grid[yi]?.[xi]},
+        {x:xs[xi+1], y:ys[yi], v:grid[yi]?.[xi+1]},
+        {x:xs[xi+1], y:ys[yi+1], v:grid[yi+1]?.[xi+1]},
+        {x:xs[xi], y:ys[yi+1], v:grid[yi+1]?.[xi]}
+      ];
+      const pts = [];
+      [[0,1],[1,2],[2,3],[3,0]].forEach(([a,b])=>{
+        const pt = interpEdge(c[a].x, c[a].y, c[a].v, c[b].x, c[b].y, c[b].v);
+        if(pt && !pts.some(p=>Math.abs(p.x - pt.x) < 1e-9 && Math.abs(p.y - pt.y) < 1e-9)) pts.push(pt);
+      });
+      if(pts.length === 2){
+        segments.push([pts[0], pts[1]]);
+      }else if(pts.length === 4){
+        segments.push([pts[0], pts[1]], [pts[2], pts[3]]);
+      }
+    }
+  }
+  return segments;
+}
+function getRetireIncomeContourPointKey(point){
+  return `${Number(point?.x || 0).toFixed(6)},${Number(point?.y || 0).toFixed(6)}`;
+}
+function buildRetireIncomeContourPolylines(fineData, level){
+  const segments = getRetireIncomeContourSegments(fineData, level);
+  if(!segments.length) return [];
+  const nodeMap = new Map();
+  const edgeList = [];
+  const getNode = (point)=>{
+    const key = getRetireIncomeContourPointKey(point);
+    let node = nodeMap.get(key);
+    if(!node){
+      node = {key, x:Number(point.x), y:Number(point.y), edges:[]};
+      nodeMap.set(key, node);
+    }
+    return node;
+  };
+  segments.forEach(seg=>{
+    if(!Array.isArray(seg) || seg.length < 2) return;
+    const a = getNode(seg[0]);
+    const b = getNode(seg[1]);
+    if(a.key === b.key) return;
+    const edge = {a:a.key, b:b.key, visited:false};
+    edgeList.push(edge);
+    a.edges.push(edge);
+    b.edges.push(edge);
+  });
+  const nextUnvisitedEdge = node=>node?.edges?.find(edge=>!edge.visited) || null;
+  const buildPolylineFrom = (startKey, edge)=>{
+    if(!edge || edge.visited) return [];
+    const polyline = [];
+    let currentKey = startKey;
+    let currentEdge = edge;
+    let guard = 0;
+    while(currentEdge && !currentEdge.visited && guard < 50000){
+      guard++;
+      currentEdge.visited = true;
+      const currentNode = nodeMap.get(currentKey);
+      if(!polyline.length) polyline.push({x:currentNode.x, y:currentNode.y});
+      const nextKey = currentEdge.a === currentKey ? currentEdge.b : currentEdge.a;
+      const nextNode = nodeMap.get(nextKey);
+      polyline.push({x:nextNode.x, y:nextNode.y});
+      currentKey = nextKey;
+      const candidate = nextUnvisitedEdge(nextNode);
+      currentEdge = candidate && candidate !== currentEdge ? candidate : null;
+    }
+    return polyline;
+  };
+  const polylines = [];
+  Array.from(nodeMap.values()).forEach(node=>{
+    const degree = node.edges.filter(edge=>!edge.visited).length;
+    if(degree === 1){
+      const line = buildPolylineFrom(node.key, nextUnvisitedEdge(node));
+      if(line.length >= 2) polylines.push(line);
+    }
+  });
+  edgeList.forEach(edge=>{
+    if(edge.visited) return;
+    const line = buildPolylineFrom(edge.a, edge);
+    if(line.length >= 2) polylines.push(line);
+  });
+  return polylines;
+}
+function getRetireIncomePolylineLength(polyline){
+  let total = 0;
+  for(let i=1; i<(Array.isArray(polyline) ? polyline.length : 0); i++){
+    total += Math.hypot(Number(polyline[i].x) - Number(polyline[i-1].x), Number(polyline[i].y) - Number(polyline[i-1].y));
+  }
+  return total;
+}
+function getRetireIncomePolylineLabelPlacementAtFraction(polyline, fraction){
+  if(!Array.isArray(polyline) || polyline.length < 2) return null;
+  const f = Math.max(0.05, Math.min(0.95, Number(fraction) || 0.5));
+  const lengths = [];
+  let total = 0;
+  for(let i=1; i<polyline.length; i++){
+    const segLen = Math.hypot(Number(polyline[i].x) - Number(polyline[i-1].x), Number(polyline[i].y) - Number(polyline[i-1].y));
+    lengths.push(segLen);
+    total += segLen;
+  }
+  if(total <= 0) return null;
+  const target = total * f;
+  let acc = 0;
+  for(let i=1; i<polyline.length; i++){
+    const segLen = lengths[i-1];
+    if(acc + segLen >= target){
+      const a = polyline[i-1];
+      const b = polyline[i];
+      const t = segLen > 0 ? (target - acc) / segLen : 0.5;
+      return {
+        x:Number(a.x) + (Number(b.x) - Number(a.x)) * t,
+        y:Number(a.y) + (Number(b.y) - Number(a.y)) * t,
+        ax:Number(a.x), ay:Number(a.y), bx:Number(b.x), by:Number(b.y),
+        totalLength:total
+      };
+    }
+    acc += segLen;
+  }
+  const lastA = polyline[polyline.length - 2];
+  const lastB = polyline[polyline.length - 1];
+  return {
+    x:Number(lastB.x), y:Number(lastB.y),
+    ax:Number(lastA.x), ay:Number(lastA.y), bx:Number(lastB.x), by:Number(lastB.y),
+    totalLength:total
+  };
+}
+function getRetireIncomePolylinePixelLength(polyline, xScale, yScale){
+  if(!Array.isArray(polyline) || polyline.length < 2 || !xScale || !yScale) return 0;
+  let total = 0;
+  for(let i=1; i<polyline.length; i++){
+    const x0 = xScale.getPixelForValue(polyline[i-1].x);
+    const y0 = yScale.getPixelForValue(polyline[i-1].y);
+    const x1 = xScale.getPixelForValue(polyline[i].x);
+    const y1 = yScale.getPixelForValue(polyline[i].y);
+    total += Math.hypot(x1 - x0, y1 - y0);
+  }
+  return total;
+}
+function getRetireIncomePolylineLabelPlacements(polyline, xScale, yScale){
+  const pixelLength = getRetireIncomePolylinePixelLength(polyline, xScale, yScale);
+  if(pixelLength < 90) return [];
+  const fractions = pixelLength >= 420 ? [0.33, 0.66] : [0.5];
+  return fractions.map(f=>getRetireIncomePolylineLabelPlacementAtFraction(polyline, f)).filter(Boolean);
+}
+function getRetireIncomeOpaqueContourBandColor(value, levels, minValue, maxValue){
+  const color = getRetireIncomeContourBandColor(value, levels, minValue, maxValue);
+  const m = String(color || '').match(/rgba?\(([^)]+)\)/i);
+  if(!m) return 'rgba(255,255,255,0.96)';
+  const parts = m[1].split(',').map(v=>Number(v.trim()));
+  return `rgba(${Math.round(parts[0] || 255)},${Math.round(parts[1] || 255)},${Math.round(parts[2] || 255)},0.98)`;
+}
+function drawRetireIncomeContourLabel(ctx, xScale, yScale, placement, text, fine){
+  if(!placement || !text) return false;
+  const lx = xScale.getPixelForValue(placement.x);
+  const ly = yScale.getPixelForValue(placement.y);
+  const x0 = xScale.getPixelForValue(placement.ax), y0 = yScale.getPixelForValue(placement.ay);
+  const x1 = xScale.getPixelForValue(placement.bx), y1 = yScale.getPixelForValue(placement.by);
+  if(!Number.isFinite(lx) || !Number.isFinite(ly) || !Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return false;
+  if(lx < xScale.left + 18 || lx > xScale.right - 18 || ly < yScale.top + 14 || ly > yScale.bottom - 14) return false;
+  let rawAngle = Math.atan2(y1 - y0, x1 - x0);
+  if(rawAngle > Math.PI / 2) rawAngle -= Math.PI;
+  if(rawAngle < -Math.PI / 2) rawAngle += Math.PI;
+  const angle = Math.max(-Math.PI * 0.42, Math.min(Math.PI * 0.42, rawAngle));
+  const bgValue = sampleRetireIncomeFineGridBilinear(fine, placement.x, placement.y);
+  const coverColor = getRetireIncomeOpaqueContourBandColor(bgValue, fine?.levels || [], fine?.min, fine?.max);
+  ctx.save();
+  ctx.translate(lx, ly);
+  ctx.rotate(angle);
+  ctx.font = '400 13px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const metrics = ctx.measureText(text);
+  const textWidth = Math.max(20, metrics.width);
+  const gapWidth = textWidth + 8;
+  ctx.strokeStyle = coverColor;
+  ctx.lineWidth = 3.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-gapWidth / 2, 0);
+  ctx.lineTo(gapWidth / 2, 0);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(15,23,42,0.98)';
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+  return true;
+}
+function sampleRetireIncomeFineGridBilinear(fine, xValue, yValue){
+  const xs = fine?.xFine || [];
+  const ys = fine?.yFine || [];
+  const grid = fine?.gridFine || [];
+  const x = Number(xValue), y = Number(yValue);
+  if(xs.length < 2 || ys.length < 2 || !Number.isFinite(x) || !Number.isFinite(y)) return NaN;
+  if(x < xs[0] || x > xs[xs.length - 1] || y < ys[0] || y > ys[ys.length - 1]) return NaN;
+  const findIndex = (arr, v)=>{
+    let lo = 0, hi = arr.length - 2;
+    while(lo <= hi){
+      const mid = Math.floor((lo + hi) / 2);
+      if(arr[mid] <= v && v <= arr[mid + 1]) return mid;
+      if(v < arr[mid]) hi = mid - 1;
+      else lo = mid + 1;
+    }
+    return Math.max(0, Math.min(arr.length - 2, lo));
+  };
+  const xi = findIndex(xs, x);
+  const yi = findIndex(ys, y);
+  const x0 = xs[xi], x1 = xs[xi + 1];
+  const y0 = ys[yi], y1 = ys[yi + 1];
+  const tx = x1 === x0 ? 0 : (x - x0) / (x1 - x0);
+  const ty = y1 === y0 ? 0 : (y - y0) / (y1 - y0);
+  const v00 = Number(grid[yi]?.[xi]);
+  const v10 = Number(grid[yi]?.[xi + 1]);
+  const v01 = Number(grid[yi + 1]?.[xi]);
+  const v11 = Number(grid[yi + 1]?.[xi + 1]);
+  if([v00, v10, v01, v11].some(v=>!Number.isFinite(v))) return NaN;
+  const v0 = v00 + (v10 - v00) * tx;
+  const v1 = v01 + (v11 - v01) * tx;
+  return v0 + (v1 - v0) * ty;
+}
+function drawRetireIncomeContourBands(ctx, xScale, yScale, fine){
+  const levels = fine?.levels || [];
+  if(!fine || !Array.isArray(levels)) return;
+  const plotWidth = Math.max(1, Math.round(xScale.right - xScale.left));
+  const plotHeight = Math.max(1, Math.round(yScale.bottom - yScale.top));
+  const off = document.createElement('canvas');
+  off.width = plotWidth;
+  off.height = plotHeight;
+  const offCtx = off.getContext('2d', {willReadFrequently:true});
+  if(!offCtx) return;
+  const image = offCtx.createImageData(plotWidth, plotHeight);
+  const parseRgba = color=>{
+    const m = String(color || '').match(/rgba?\(([^)]+)\)/i);
+    if(!m) return [255,255,255,255];
+    const parts = m[1].split(',').map(v=>Number(v.trim()));
+    const alpha = parts.length > 3 ? Math.max(0, Math.min(255, Math.round(parts[3] * 255))) : 255;
+    return [Math.round(parts[0] || 0), Math.round(parts[1] || 0), Math.round(parts[2] || 0), alpha];
+  };
+  const colorCache = new Map();
+  let offset = 0;
+  for(let py=0; py<plotHeight; py++){
+    const canvasY = yScale.top + py + 0.5;
+    const yValue = yScale.getValueForPixel ? yScale.getValueForPixel(canvasY) : (Number(yScale.max) - (py / Math.max(1, plotHeight - 1)) * (Number(yScale.max) - Number(yScale.min)));
+    for(let px=0; px<plotWidth; px++){
+      const canvasX = xScale.left + px + 0.5;
+      const xValue = xScale.getValueForPixel ? xScale.getValueForPixel(canvasX) : (Number(xScale.min) + (px / Math.max(1, plotWidth - 1)) * (Number(xScale.max) - Number(xScale.min)));
+      const value = sampleRetireIncomeFineGridBilinear(fine, xValue, yValue);
+      const bandColor = getRetireIncomeContourBandColor(value, levels, fine.min, fine.max);
+      let rgba = colorCache.get(bandColor);
+      if(!rgba){
+        rgba = parseRgba(bandColor);
+        colorCache.set(bandColor, rgba);
+      }
+      image.data[offset++] = rgba[0];
+      image.data[offset++] = rgba[1];
+      image.data[offset++] = rgba[2];
+      image.data[offset++] = rgba[3];
+    }
+  }
+  offCtx.putImageData(image, 0, 0);
+  ctx.drawImage(off, xScale.left, yScale.top, plotWidth, plotHeight);
+}
+function buildRetireIncomeIsoBoundaryFromFineData(fineData, level){
+  const xs = fineData?.xFine || [];
+  const ys = fineData?.yFine || [];
+  const grid = fineData?.gridFine || [];
+  const out = [];
+  const lv = Number(level);
+  if(!Number.isFinite(lv) || xs.length < 2 || ys.length < 2) return out;
+  for(let xi=0; xi<xs.length; xi++){
+    const col = ys.map((_, yi)=>Number(grid[yi]?.[xi]));
+    if(col.some(v=>!Number.isFinite(v))) continue;
+    if(col[0] >= lv){
+      out.push({x:xs[xi], y:ys[0]});
+      continue;
+    }
+    for(let yi=1; yi<ys.length; yi++){
+      const prev = col[yi - 1], cur = col[yi];
+      if((prev <= lv && cur >= lv) || (prev >= lv && cur <= lv)){
+        const t = cur === prev ? 0 : (lv - prev) / (cur - prev);
+        out.push({x:xs[xi], y:ys[yi - 1] + (ys[yi] - ys[yi - 1]) * Math.max(0, Math.min(1, t))});
+        break;
+      }
+    }
+  }
+  return out;
+}
+function buildRetireIncomeChartFireBoundary(result, kind, requiredTerminalAsset=0, safe=false){
+  if(!result) return [];
+  if(safe){
+    const fineTerminal = buildRetireIncomeFineContourData(result, 'terminal');
+    return buildRetireIncomeIsoBoundaryFromFineData(fineTerminal, Math.max(0, Number(requiredTerminalAsset) || 0)).map(p=>({age:p.x, income:p.y}));
+  }
+  if(kind === 'terminal'){
+    const fineTerminal = buildRetireIncomeFineContourData(result, 'terminal');
+    return buildRetireIncomeIsoBoundaryFromFineData(fineTerminal, 0).map(p=>({age:p.x, income:p.y}));
+  }
+  const fineLife = buildRetireIncomeFineContourData(result, 'assetLife');
+  return buildRetireIncomeIsoBoundaryFromFineData(fineLife, Number(result.lifeExpect || 0)).map(p=>({age:p.x, income:p.y}));
+}
+function drawRetireIncomeContourLines(ctx, xScale, yScale, fine, kind, data){
+  const levels = fine?.levels || [];
+  levels.forEach(level=>{
+    const isKey = (kind === 'terminal' && Math.abs(level) < 1e-7) || (kind === 'assetLife' && Math.abs(level - Number(data.lifeExpect || 0)) < 0.05);
+    ctx.strokeStyle = isKey ? 'rgba(15,23,42,0.82)' : 'rgba(15,23,42,0.52)';
+    ctx.lineWidth = isKey ? 1.8 : 1.0;
+    ctx.setLineDash([]);
+    const polylines = buildRetireIncomeContourPolylines(fine, level);
+    polylines.forEach(polyline=>{
+      if(!Array.isArray(polyline) || polyline.length < 2) return;
+      ctx.beginPath();
+      const start = polyline[0];
+      ctx.moveTo(xScale.getPixelForValue(start.x), yScale.getPixelForValue(start.y));
+      for(let i=1; i<polyline.length; i++){
+        ctx.lineTo(xScale.getPixelForValue(polyline[i].x), yScale.getPixelForValue(polyline[i].y));
+      }
+      ctx.stroke();
+    });
+  });
+}
+function drawRetireIncomeContourLabels(ctx, xScale, yScale, fine, kind, data){
+  const labelBoxes = [];
+  const levels = fine?.levels || [];
+  const plotCenterX = (xScale.left + xScale.right) / 2;
+  const plotCenterY = (yScale.top + yScale.bottom) / 2;
+  levels.forEach(level=>{
+    const text = formatRetireIncomeContourLevelLabel(kind, level, data.lifeExpect);
+    const polylines = buildRetireIncomeContourPolylines(fine, level)
+      .map(polyline=>{
+        const pixelLength = getRetireIncomePolylinePixelLength(polyline, xScale, yScale);
+        const centerPlacement = getRetireIncomePolylineLabelPlacementAtFraction(polyline, 0.5);
+        if(!centerPlacement) return null;
+        const px = xScale.getPixelForValue(centerPlacement.x);
+        const py = yScale.getPixelForValue(centerPlacement.y);
+        const centerPenalty = Math.abs(px - plotCenterX) * 0.004 + Math.abs(py - plotCenterY) * 0.003;
+        return {polyline, pixelLength, score:pixelLength - centerPenalty};
+      })
+      .filter(Boolean)
+      .filter(item=>item.pixelLength >= 58)
+      .sort((a,b)=>b.score-a.score);
+    let drawn = 0;
+    const fractionSets = [[0.5], [0.35,0.65], [0.22,0.78]];
+    for(const item of polylines){
+      for(const fractions of fractionSets){
+        for(const fraction of fractions){
+          const placement = getRetireIncomePolylineLabelPlacementAtFraction(item.polyline, fraction);
+          if(!placement) continue;
+          const px = xScale.getPixelForValue(placement.x);
+          const py = yScale.getPixelForValue(placement.y);
+          const tooClose = labelBoxes.some(box=>Math.abs(px - box.x) < 58 && Math.abs(py - box.y) < 22);
+          if(tooClose && drawn > 0) continue;
+          if(drawRetireIncomeContourLabel(ctx, xScale, yScale, placement, text, fine)){
+            labelBoxes.push({x:px, y:py});
+            drawn++;
+            break;
+          }
+        }
+        if(drawn > 0) break;
+      }
+      if(drawn >= 1) break;
+    }
+  });
+}
+function buildRetireIncomeContourPlugin(kind, contourData){
+  return {
+    id:`retireIncomeContour_${kind}`,
+    beforeDatasetsDraw(chart){
+      const xScale = chart.scales?.x;
+      const yScale = chart.scales?.y;
+      if(!xScale || !yScale) return;
+      const data = contourData || {};
+      const fine = buildRetireIncomeFineContourData(data, kind);
+      if(!fine || !fine.values?.length) return;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+      ctx.clip();
+      drawRetireIncomeContourBands(ctx, xScale, yScale, fine);
+      drawRetireIncomeContourLines(ctx, xScale, yScale, fine, kind, data);
+      ctx.restore();
+    },
+    afterDatasetsDraw(chart){
+      const xScale = chart.scales?.x;
+      const yScale = chart.scales?.y;
+      if(!xScale || !yScale) return;
+      const data = contourData || {};
+      const fine = buildRetireIncomeFineContourData(data, kind);
+      if(!fine || !fine.values?.length) return;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
+      ctx.clip();
+      drawRetireIncomeContourLabels(ctx, xScale, yScale, fine, kind, data);
+      ctx.restore();
+    }
+  };
+}
+function buildRetireIncomeFireGridPointDataset(result, kind){
+  const data = [];
+  (Array.isArray(result?.pointGrid) ? result.pointGrid : []).forEach(row=>{
+    (Array.isArray(row) ? row : []).forEach(point=>{
+      if(!point) return;
+      data.push({x:point.age, y:point.income, terminalAsset:point.terminalAsset, assetLifeAge:point.assetLifeAge, lifeExpect:point.lifeExpect, capped:point.capped});
+    });
+  });
+  return {
+    label:'計算点',
+    data,
+    parsing:false,
+    showLine:false,
+    pointRadius:0,
+    pointHoverRadius:4,
+    borderWidth:0,
+    backgroundColor:'rgba(15,23,42,0.001)',
+    fireRetireIncomeGrid:true,
+    fireRetireIncomeKind:kind
+  };
+}
+function buildRetireIncomeBoundaryDataset(points, label, color, dashPattern, legendKey=''){
+  const key = String(legendKey || label || '').trim();
+  return {
+    label,
+    fireLegendKey:key,
+    data:(Array.isArray(points) ? points : []).map(p=>({x:Number(p.age), y:Number(p.income)})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)),
+    parsing:false,
+    showLine:true,
+    borderColor:color,
+    backgroundColor:color,
+    borderWidth:3.2,
+    borderDash:Array.isArray(dashPattern) ? dashPattern : [],
+    pointRadius:0,
+    pointHoverRadius:3,
+    tension:0.18,
+    fireRetireIncomeBoundary:true,
+    fireRetireIncomeBoundaryKey:key
+  };
+}
+function getRetireIncomeBoundaryLegendItems(result){
+  const items = [{key:'fire', label:'FIRE', color:'#d63b3b', width:3.2, dash:''}];
+  if(result?.judgementMode === 'safe') items.push({key:'safeFire', label:'安全FIRE', color:'#d63b3b', width:3.2, dash:'8 5'});
+  return items;
+}
+function buildRetireIncomeLegendHtml(result){
+  return buildFireDiagnosisProbabilityLegendHtml(getRetireIncomeBoundaryLegendItems(result));
+}
+function updateRetireIncomeContourLegend(kind, result, chart){
+  const legendId = kind === 'terminal' ? 'fireDiagnosisIncomeTerminalLegend' : 'fireDiagnosisIncomeAssetLifeLegend';
+  const legendEl = document.getElementById(legendId);
+  if(!legendEl) return;
+  legendEl.innerHTML = buildRetireIncomeLegendHtml(result);
+  legendEl.classList.remove('withdrawal-rule-hidden');
+  legendEl.setAttribute('aria-hidden', 'false');
+  setupFireDiagnosisProbabilityLegendToggle(chart, legendEl);
+}
+function formatRetireIncomeBoundaryIncomeCell(value){
+  const n = Number(value);
+  return Number.isFinite(n) ? `${n.toFixed(1)}万円/月` : '—';
+}
+function formatRetireIncomeBoundaryAgeCell(value){
+  if(!Number.isFinite(Number(value))) return '—';
+  const totalMonths = Math.max(0, Math.round(Number(value) * 12));
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  return `${years}歳${months}ヶ月`;
+}
+function interpolateRetireIncomeBoundaryIncome(boundary, age){
+  const pts = (Array.isArray(boundary) ? boundary : []).map(p=>({age:Number(p.age), income:Number(p.income)})).filter(p=>Number.isFinite(p.age) && Number.isFinite(p.income)).sort((a,b)=>a.age-b.age);
+  const targetAge = Number(age);
+  if(!Number.isFinite(targetAge) || !pts.length) return NaN;
+  for(let i=0; i<pts.length; i++){
+    if(Math.abs(pts[i].age - targetAge) < 1e-9) return pts[i].income;
+    if(i > 0 && pts[i-1].age <= targetAge && targetAge <= pts[i].age){
+      const prev = pts[i-1], cur = pts[i];
+      const t = cur.age === prev.age ? 0 : (targetAge - prev.age) / (cur.age - prev.age);
+      return prev.income + (cur.income - prev.income) * t;
+    }
+  }
+  return NaN;
+}
+function interpolateRetireIncomeBoundaryAge(boundary, income){
+  const pts = (Array.isArray(boundary) ? boundary : []).map(p=>({age:Number(p.age), income:Number(p.income)})).filter(p=>Number.isFinite(p.age) && Number.isFinite(p.income)).sort((a,b)=>a.age-b.age);
+  const targetIncome = Number(income);
+  if(!Number.isFinite(targetIncome) || !pts.length) return NaN;
+  if(pts[0].income <= targetIncome) return pts[0].age;
+  for(let i=1; i<pts.length; i++){
+    const prev = pts[i-1], cur = pts[i];
+    if(prev.income > targetIncome && cur.income <= targetIncome){
+      const t = cur.income === prev.income ? 0 : (targetIncome - prev.income) / (cur.income - prev.income);
+      return prev.age + (cur.age - prev.age) * Math.max(0, Math.min(1, t));
+    }
+    if(Math.abs(cur.income - targetIncome) < 1e-9) return cur.age;
+  }
+  return NaN;
+}
+function buildRetireIncomeSummaryTablesHtml(result){
+  if(!result) return '';
+  const ages = Array.isArray(result.xAges) ? result.xAges.map(Number).filter(Number.isFinite) : [];
+  const incomes = Array.isArray(result.yMonthlyIncomes) ? result.yMonthlyIncomes.map(Number).filter(Number.isFinite) : [];
+  if(!ages.length || !incomes.length) return '';
+  const fireBoundary = buildRetireIncomeChartFireBoundary(result, 'terminal', 0, false);
+  const safeBoundary = result.judgementMode === 'safe' ? buildRetireIncomeChartFireBoundary(result, 'terminal', result?.requiredTerminalAsset, true) : [];
+  const ageRows = ages.map(age=>{
+    const fireIncome = interpolateRetireIncomeBoundaryIncome(fireBoundary, age);
+    const safeIncome = result.judgementMode === 'safe' ? interpolateRetireIncomeBoundaryIncome(safeBoundary, age) : NaN;
+    return `<tr><td>${Math.round(age)}歳</td><td>${formatRetireIncomeBoundaryIncomeCell(fireIncome)}</td><td>${result.judgementMode === 'safe' ? formatRetireIncomeBoundaryIncomeCell(safeIncome) : '—'}</td></tr>`;
+  }).join('');
+  const incomeRows = incomes.map(income=>{
+    const fireAge = interpolateRetireIncomeBoundaryAge(fireBoundary, income);
+    const safeAge = result.judgementMode === 'safe' ? interpolateRetireIncomeBoundaryAge(safeBoundary, income) : NaN;
+    return `<tr><td>${formatFireDiagnosisIncomePointValue(income)}万円/月</td><td>${formatRetireIncomeBoundaryAgeCell(fireAge)}</td><td>${result.judgementMode === 'safe' ? formatRetireIncomeBoundaryAgeCell(safeAge) : '—'}</td></tr>`;
+  }).join('');
+  return [
+    '<div class="fire-diagnosis-summary-table-block">',
+    '<div class="fire-diagnosis-summary-table-title">リタイア年齢ごとの必要月収</div>',
+    '<table class="fire-asset-life-result-table">',
+    '<thead><tr><th>リタイア年齢</th><th>FIREに必要な月収</th><th>安全FIREに必要な月収</th></tr></thead>',
+    `<tbody>${ageRows}</tbody>`,
+    '</table>',
+    '</div>',
+    '<div class="fire-diagnosis-summary-table-block">',
+    '<div class="fire-diagnosis-summary-table-title">月収ごとのFIRE可能年齢</div>',
+    '<table class="fire-asset-life-result-table">',
+    '<thead><tr><th>月収</th><th>FIRE可能年齢</th><th>安全FIRE可能年齢</th></tr></thead>',
+    `<tbody>${incomeRows}</tbody>`,
+    '</table>',
+    '</div>'
+  ].join('');
+}
+function renderRetireIncomeSummaryTables(result){
+  const wrap = document.getElementById('fireDiagnosisAssetLifeTableWrap');
+  if(!wrap) return;
+  const html = buildRetireIncomeSummaryTablesHtml(result);
+  if(html){
+    wrap.innerHTML = html;
+    wrap.classList.remove('withdrawal-rule-hidden');
+  }else{
+    wrap.innerHTML = '';
+    wrap.classList.add('withdrawal-rule-hidden');
+  }
+}
+function renderRetireIncomeFireChart(result, kind){
+  const canvasId = kind === 'terminal' ? 'fireDiagnosisIncomeTerminalChart' : 'fireDiagnosisIncomeAssetLifeChart';
+  const sectionId = kind === 'terminal' ? 'fireDiagnosisIncomeTerminalSection' : 'fireDiagnosisIncomeAssetLifeSection';
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  if(kind === 'terminal') destroyFireDiagnosisIncomeTerminalChart();
+  else destroyFireDiagnosisIncomeAssetLifeChart();
+  document.getElementById(sectionId)?.classList.remove('withdrawal-rule-hidden');
+  const fireLine = buildRetireIncomeChartFireBoundary(result, kind, 0, false);
+  const safeLine = buildRetireIncomeChartFireBoundary(result, kind, result?.requiredTerminalAsset, true);
+  const datasets = [
+    buildRetireIncomeFireGridPointDataset(result, kind),
+    buildRetireIncomeBoundaryDataset(fireLine, 'FIRE', '#d63b3b', [], 'fire')
+  ];
+  if(result?.judgementMode === 'safe') datasets.push(buildRetireIncomeBoundaryDataset(safeLine, '安全FIRE', '#d63b3b', [8,5], 'safeFire'));
+  const xMin = Math.min(...result.xAges), xMax = Math.max(...result.xAges);
+  const yMin = Math.min(...result.yMonthlyIncomes), yMax = Math.max(...result.yMonthlyIncomes);
+  const chart = new Chart(canvas.getContext('2d'), {
+    type:'line',
+    data:{datasets},
+    plugins:[buildRetireIncomeContourPlugin(kind, result)],
+    options:{
+      animation:false,
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{right:14, top:12, bottom:10, left:0}},
+      interaction:{mode:'nearest', intersect:false, axis:'xy'},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          filter(ctx){ return !!ctx.dataset?.fireRetireIncomeGrid; },
+          callbacks:{
+            title(items){
+              const raw = items?.[0]?.raw || {};
+              return `${Math.round(Number(raw.x) || 0)}歳 / 月収${formatFireDiagnosisIncomePointValue(raw.y)}万円`;
+            },
+            label(ctx){
+              const raw = ctx.raw || {};
+              if(kind === 'terminal') return `寿命時残高：約${Math.round(Number(raw.terminalAsset || 0)).toLocaleString()}万円`;
+              return `資産寿命：${formatAssetLifeAgeText(raw.assetLifeAge, raw.capped || Number(raw.assetLifeAge) >= 120)}`;
+            },
+            afterLabel(ctx){
+              const raw = ctx.raw || {};
+              return kind === 'assetLife' ? `想定寿命：${Math.round(Number(raw.lifeExpect || result.lifeExpect || 0))}歳` : '';
+            }
+          }
+        }
+      },
+      scales:{
+        x:{type:'linear', min:xMin, max:xMax, title:{display:true,text:'リタイア年齢（歳）'}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, afterBuildTicks(axis){ axis.ticks = (Array.isArray(result.xAges) ? result.xAges : []).map(v=>({value:Number(v)})).filter(t=>Number.isFinite(t.value)); }, ticks:{includeBounds:true, autoSkip:false, minRotation:0, maxRotation:0, callback(value){ return Number.isInteger(Number(value)) ? String(Math.round(Number(value))) : ''; }}},
+        y:{type:'linear', min:yMin, max:yMax, title:{display:true,text:'リタイア後の手取り（月・万円）'}, grid:{tickLength:0, color:COMPARE_CHART_GRID_COLOR, lineWidth:1}, border:{color:COMPARE_CHART_AXIS_BORDER_COLOR, width:1}, afterBuildTicks(axis){ axis.ticks = (Array.isArray(result.yMonthlyIncomes) ? result.yMonthlyIncomes : []).map(v=>({value:Number(v)})).filter(t=>Number.isFinite(t.value)); }, ticks:{includeBounds:true, autoSkip:false, callback(value){ return `${formatFireDiagnosisIncomePointValue(value)}`; }}}
+      }
+    }
+  });
+  updateRetireIncomeContourLegend(kind, result, chart);
+  if(kind === 'terminal') fireDiagnosisIncomeTerminalChart = chart;
+  else fireDiagnosisIncomeAssetLifeChart = chart;
+}
+function renderRetireIncomeFireDiagnosisResult(result){
+  hideRetireIncomeFireDiagnosisSections();
+  if(!result || result.diagnosisContent !== 'retire_income_map') return;
+  renderRetireIncomeFireChart(result, 'terminal');
+  renderRetireIncomeFireChart(result, 'assetLife');
+  renderRetireIncomeSummaryTables(result);
+}
+function formatRetireIncomeFireDiagnosisResultHtml(result){
+  if(!result) return '<div>診断結果を表示できませんでした。</div>';
+  const modeLabel = result.mode === 'with_crash' ? '暴落あり' : '暴落なし';
+  const incomeText = (result.yMonthlyIncomes || []).map(formatFireDiagnosisIncomePointValue).join(' / ');
+  const lines = [];
+  lines.push('<div><strong>診断内容</strong>：リタイア年齢×リタイア後収入でFIRE診断</div>');
+  lines.push('<div><strong>診断方式</strong>：一定利率診断</div>');
+  lines.push(`<div>暴落ケース：${modeLabel}</div>`);
+  lines.push(`<div>リタイア年齢：${Math.round(Number(result.checkedFrom) || 0)}歳 ～ ${Math.round(Number(result.checkedTo) || 0)}歳</div>`);
+  lines.push(`<div>リタイア後の手取り（月）：${incomeText} 万円／月</div>`);
+  lines.push(`<div>リタイア後収入終了年月：${Math.round(Number(result.incomeEndYear) || 0)}年${Math.round(Number(result.incomeEndMonth) || 0)}月</div>`);
+  lines.push(`<div>安全重視判定：${result.judgementMode === 'safe' ? '含める' : '含めない'}</div>`);
+  if(result.judgementMode === 'safe') lines.push(`<div>寿命時最低残高：${Math.round(resolveFireDiagnosisRequiredTerminalAsset(result.requiredTerminalAsset)).toLocaleString()}万円</div>`);
+  lines.push('<div style="margin-top:6px;">寿命時残高と資産寿命の等高線グラフを表示しています。</div>');
+  return lines.join('');
+}
+
 function formatFireDiagnosisMetric(label, value){
   return `<div>${label}：${value}</div>`;
 }
@@ -25573,20 +26687,28 @@ function formatFireDiagnosisResultHtml(result){
 // 将来サーバーAPI化する場合は、この request 形状を境界にする。UIは request を作り、計算エンジンは request/result だけを扱う。
 function buildFireDiagnosisEngineRequest(baseData, settings){
   const safeSettings = {...(settings || {})};
-  safeSettings.diagnosisContent = 'asset_life';
-  safeSettings.diagnosisType = safeSettings.diagnosisType === 'monte_carlo' ? 'monte_carlo' : 'normal';
-  safeSettings.mode = safeSettings.mode === 'with_crash' ? 'with_crash' : (safeSettings.mode === 'compare_crash' ? 'compare_crash' : 'normal');
+  safeSettings.diagnosisContent = normalizeFireDiagnosisContent(safeSettings.diagnosisContent || 'asset_life');
+  safeSettings.diagnosisType = safeSettings.diagnosisContent === 'retire_income_map' ? 'normal' : (safeSettings.diagnosisType === 'monte_carlo' ? 'monte_carlo' : 'normal');
+  safeSettings.mode = safeSettings.diagnosisContent === 'retire_income_map'
+    ? (safeSettings.mode === 'with_crash' ? 'with_crash' : 'normal')
+    : (safeSettings.mode === 'with_crash' ? 'with_crash' : (safeSettings.mode === 'compare_crash' ? 'compare_crash' : 'normal'));
   safeSettings.judgementMode = safeSettings.judgementMode === 'safe' ? 'safe' : 'standard';
   safeSettings.ageFrom = Math.max(0, Math.round(Number(safeSettings.ageFrom) || 0));
   safeSettings.ageTo = Math.max(safeSettings.ageFrom, Math.round(Number(safeSettings.ageTo) || safeSettings.ageFrom));
   safeSettings.requiredTerminalAsset = Math.max(0, Number(safeSettings.requiredTerminalAsset) || 0);
   safeSettings.requiredSuccessRate = Math.max(1, Math.min(100, Math.round(Number(safeSettings.requiredSuccessRate || 80) || 80)));
+  safeSettings.incomeFrom = Math.max(0, Number(safeSettings.incomeFrom || 0) || 0);
+  safeSettings.incomeTo = Math.max(safeSettings.incomeFrom, Number(safeSettings.incomeTo || 20) || 20);
+  safeSettings.incomePoints = Math.max(2, Math.min(10, Math.round(Number(safeSettings.incomePoints || 5) || 5)));
+  const fallbackEnd = getFireDiagnosisRetireIncomeDefaultEndYm();
+  safeSettings.incomeEndYear = Number(safeSettings.incomeEndYear || fallbackEnd.year || 0) || 0;
+  safeSettings.incomeEndMonth = Number(safeSettings.incomeEndMonth || fallbackEnd.month || 1) || 1;
   const scenarioData = migrateLegacyData(deepClone(baseData || getAllInputs()));
   const monteSettings = safeSettings.diagnosisType === 'monte_carlo'
     ? normalizeMonteSettingsForAssetProbabilityRun(getMonteCarloSettingsFromDOM())
     : null;
   return {
-    requestType:'fireDiagnosis',
+    requestType:safeSettings.diagnosisContent === 'retire_income_map' ? 'retireIncomeFireDiagnosis' : 'fireDiagnosis',
     requestVersion:1,
     scenarioData,
     settings:safeSettings,
@@ -25601,6 +26723,9 @@ async function runFireDiagnosisEngine(request){
   const originalData = migrateLegacyData(deepClone(request?.scenarioData || getAllInputs()));
   const activeState = captureActiveInputState();
   try{
+    if(normalizeFireDiagnosisContent(request?.settings?.diagnosisContent) === 'retire_income_map'){
+      return await runRetireIncomeFireDiagnosisFixedRate(request);
+    }
     return await runCurrentConditionFireDiagnosisEngine(request, originalData);
   } finally {
     setAllInputs(originalData);
@@ -25626,6 +26751,8 @@ async function runFireDiagnosis(){
   terminalLegendEl?.setAttribute('aria-hidden', 'true');
   document.getElementById('fireDiagnosisTerminalAssetChartWrap')?.classList.add('withdrawal-rule-hidden');
   document.getElementById('fireDiagnosisTerminalAssetAxisNote')?.classList.add('withdrawal-rule-hidden');
+  const assetLifeSectionForRun = document.getElementById('fireDiagnosisAssetLifeSection');
+  assetLifeSectionForRun?.classList.add('withdrawal-rule-hidden');
   const legendEl = document.getElementById('fireDiagnosisProbabilityLegend');
   legendEl?.classList.add('withdrawal-rule-hidden');
   legendEl?.setAttribute('aria-hidden', 'true');
@@ -25639,26 +26766,19 @@ async function runFireDiagnosis(){
   document.getElementById('fireDiagnosisSuccessRateSection')?.classList.add('withdrawal-rule-hidden');
   const assetLifeTable = document.getElementById('fireDiagnosisAssetLifeTableWrap');
   if(assetLifeTable){ assetLifeTable.classList.add('withdrawal-rule-hidden'); assetLifeTable.innerHTML = ''; }
+  hideRetireIncomeFireDiagnosisSections();
   const resultEl = document.getElementById('fireDiagnosisResult');
   if(resultEl){
-    if(settings.diagnosisContent === 'asset_life'){
+    if(settings.diagnosisContent === 'retire_income_map'){
+      resultEl.innerHTML = '診断中...（リタイア年齢×リタイア後収入の寿命時残高・資産寿命を計算します）';
+    } else {
       resultEl.innerHTML = settings.mode === 'compare_crash'
         ? '診断中...（暴落なしと暴落ありの資産寿命を順番に計算します）'
         : '診断中...（現在条件で寿命時残高・資産寿命を計算します）';
-    } else if(settings.diagnosisType === 'monte_carlo'){
-      resultEl.innerHTML = settings.mode === 'compare_crash'
-        ? '診断中...（成功率しきい値ベースで暴落なしと暴落ありを順番に計算します）'
-        : (settings.mode === 'with_crash'
-          ? '診断中...（成功率しきい値ベースで暴落ありケースを計算します）'
-          : '診断中...（成功率しきい値ベースで暴落なしケースを計算します）');
-    } else {
-      resultEl.innerHTML = settings.mode === 'compare_crash'
-        ? '診断中...（暴落なしと暴落ありを二分探索で順番に計算します）'
-        : '診断中...（二分探索で計算します）';
     }
   }
-  const progressLabel = settings.diagnosisType === 'monte_carlo' ? '現在条件FIREモンテカルロ診断中...' : '現在条件FIRE一定利率診断中...';
-  const progressDetail = settings.mode === 'compare_crash' ? '暴落なし／ありを順番に計算中' : '寿命時残高・資産寿命を探索中';
+  const progressLabel = settings.diagnosisContent === 'retire_income_map' ? 'リタイア年齢×リタイア後収入FIRE診断中...' : (settings.diagnosisType === 'monte_carlo' ? '現在条件FIREモンテカルロ診断中...' : '現在条件FIRE一定利率診断中...');
+  const progressDetail = settings.diagnosisContent === 'retire_income_map' ? '年齢×月収の計算点を順番に計算中' : (settings.mode === 'compare_crash' ? '暴落なし／ありを順番に計算中' : '寿命時残高・資産寿命を探索中');
   showFireDiagnosisProgressOverlay(progressLabel, progressDetail);
   await reportFireDiagnosisProgress(0, {force:true, label:progressLabel, detail:progressDetail});
   let result = null;
@@ -25680,12 +26800,16 @@ async function runFireDiagnosis(){
     if(result.withCrash) result.withCrash.requiredTerminalAsset = settings.requiredTerminalAsset;
   }
   lastFireDiagnosisResult = result;
-  if(resultEl) resultEl.innerHTML = formatFireDiagnosisResultHtml(result);
+  if(resultEl) resultEl.innerHTML = result?.diagnosisContent === 'retire_income_map' ? formatRetireIncomeFireDiagnosisResultHtml(result) : formatFireDiagnosisResultHtml(result);
   if(result){
-    renderAssetLifeTerminalAssetChart(result);
-    renderAssetLifeDiagnosisChart(result);
-    renderAssetLifeSuccessRateChart(result);
-    formatAssetLifeDiagnosisTable(result);
+    if(result.diagnosisContent === 'retire_income_map'){
+      renderRetireIncomeFireDiagnosisResult(result);
+    }else{
+      renderAssetLifeTerminalAssetChart(result);
+      renderAssetLifeDiagnosisChart(result);
+      renderAssetLifeSuccessRateChart(result);
+      formatAssetLifeDiagnosisTable(result);
+    }
   }
   await reportFireDiagnosisProgress(100, {force:true, label:progressLabel, detail:'完了'});
   hideFireDiagnosisProgressOverlay(220);
@@ -37436,6 +38560,9 @@ document.getElementById("fireDiagnosisModeSelect")?.addEventListener("change", u
 document.getElementById("fireDiagnosisSafeJudgementCheckbox")?.addEventListener("change", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisRequiredTerminalAssetInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
 document.getElementById("fireDiagnosisRequiredSuccessRateInput")?.addEventListener("input", updateFireDiagnosisJudgementUi);
+["fireDiagnosisIncomeFromInput","fireDiagnosisIncomeToInput"].forEach(id=>document.getElementById(id)?.addEventListener("input", ()=>{ syncFireDiagnosisRetireIncomePointsPreview(); updateFireDiagnosisJudgementUi(); }));
+document.getElementById("fireDiagnosisIncomePointsSelect")?.addEventListener("change", ()=>{ syncFireDiagnosisRetireIncomePointsPreview(); updateFireDiagnosisJudgementUi(); });
+["fireDiagnosisIncomeEndYearSelect","fireDiagnosisIncomeEndMonthSelect"].forEach(id=>document.getElementById(id)?.addEventListener("change", ()=>{ syncFireDiagnosisRetireIncomeEndAgeLabel(); updateFireDiagnosisJudgementUi(); }));
 document.getElementById("fireDiagnosisModal")?.addEventListener("mousedown", (_e)=>{
   // v1308: 通常モーダルは外側クリックで閉じない。
 });
@@ -50269,6 +51396,59 @@ body.standard-modal-scroll-locked .page{
     padding:9px 10px !important;
   }
 }
+</style>
+
+<style id="v1609-retire-income-legend-match-main-chart">
+  .fire-diagnosis-contour-legend.chart-line-legend{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    flex-wrap:wrap !important;
+    gap:6px 18px !important;
+    min-height:22px !important;
+    margin:0 0 4px !important;
+    padding:0 8px 0 !important;
+    color:#4b5563 !important;
+    font-size:13px !important;
+    font-weight:600 !important;
+    line-height:1.3 !important;
+  }
+  .fire-diagnosis-contour-legend .chart-line-legend-item{
+    display:inline-flex !important;
+    align-items:center !important;
+    gap:8px !important;
+    white-space:nowrap !important;
+    border:none !important;
+    background:transparent !important;
+    color:inherit !important;
+    padding:2px 0 !important;
+    margin:0 !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+    cursor:pointer !important;
+    font:inherit !important;
+  }
+  .fire-diagnosis-contour-legend .chart-line-legend-item:hover,
+  .fire-diagnosis-contour-legend .chart-line-legend-item:focus{
+    background:transparent !important;
+    color:#0f172a !important;
+    box-shadow:none !important;
+  }
+  .fire-diagnosis-contour-legend .chart-line-legend-sample:not(.chart-bar-legend-sample){
+    width:50px !important;
+    flex-basis:50px !important;
+  }
+  .fire-diagnosis-contour-legend .chart-line-legend-label{
+    color:inherit !important;
+    font:inherit !important;
+  }
+  .fire-diagnosis-contour-legend .chart-line-legend-item.is-hidden{
+    opacity:.42 !important;
+  }
+  .fire-diagnosis-contour-legend .chart-line-legend-item.is-hidden .chart-line-legend-label{
+    text-decoration:line-through !important;
+    text-decoration-thickness:1.5px !important;
+  }
 </style>
 </body>
 </html>
