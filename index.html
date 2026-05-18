@@ -7035,7 +7035,7 @@ document.addEventListener("scroll", (ev)=>{
   <div class="fire-diagnosis-chart-title">リタイア年齢×リタイア後収入：資産寿命</div>
   <div class="fire-probability-legend fire-diagnosis-contour-legend withdrawal-rule-hidden" id="fireDiagnosisIncomeAssetLifeLegend"></div>
   <div class="withdrawal-compare-chart-wrap fire-diagnosis-contour-chart-wrap" id="fireDiagnosisIncomeAssetLifeChartWrap" style="margin-top:10px;"><canvas id="fireDiagnosisIncomeAssetLifeChart"></canvas></div>
-  <div class="fire-probability-axis-note" id="fireDiagnosisIncomeAssetLifeAxisNote">・横軸はリタイア年齢、縦軸はリタイア後の手取り（月）です。色と等高線は資産寿命を表します。</div>
+  <div class="fire-probability-axis-note" id="fireDiagnosisIncomeAssetLifeAxisNote">・横軸はリタイア年齢、縦軸はリタイア後の手取り（月）です。色と等高線は資産寿命を表します。<br>・資産寿命の等高線は、推定資産枯渇時点の実年齢です。FIRE線は想定寿命の年末時点まで資産が残る条件のため、誕生日によっては想定寿命より少し上の等高線上に表示されます。</div>
 </div>
 <div class="fire-asset-life-table-wrap withdrawal-rule-hidden" id="fireDiagnosisAssetLifeTableWrap"></div>
 </div>
@@ -24861,14 +24861,24 @@ function getRetireIncomeContourBandColor(value, levels, minValue, maxValue){
   const max = Number.isFinite(Number(maxValue)) ? Number(maxValue) : v;
   return getRetireIncomeMatlabLikeColor((v - min) / Math.max(1e-9, max - min), 0.74);
 }
-function chooseRetireIncomeContourStep(range, candidates, targetCount=10){
+function chooseRetireIncomeContourStep(range, candidates, targetCount=12, maxCount=16){
   const r = Math.abs(Number(range) || 0);
   const vals = (Array.isArray(candidates) ? candidates : []).map(Number).filter(v=>Number.isFinite(v) && v > 0).sort((a,b)=>a-b);
   if(!vals.length) return 1;
+  if(r <= 0) return vals[0];
+  let best = vals[vals.length - 1];
+  let bestScore = Infinity;
   for(const step of vals){
-    if(r / step <= targetCount) return step;
+    const count = r / step;
+    const overPenalty = count > maxCount ? (count - maxCount) * 6 : 0;
+    const underPenalty = count < Math.max(4, targetCount * 0.45) ? (Math.max(4, targetCount * 0.45) - count) * 2 : 0;
+    const score = Math.abs(count - targetCount) + overPenalty + underPenalty;
+    if(score < bestScore){
+      bestScore = score;
+      best = step;
+    }
   }
-  return vals[vals.length - 1];
+  return best;
 }
 function buildRetireIncomeContourLevels(kind, values, lifeExpect){
   const finite = (Array.isArray(values) ? values : []).map(Number).filter(Number.isFinite);
@@ -24880,7 +24890,8 @@ function buildRetireIncomeContourLevels(kind, values, lifeExpect){
   if(kind === 'terminal'){
     let step = 1000;
     if(range > 24000) step = 2000;
-    if(range > 48000) step = 5000;
+    if(range > 60000) step = 5000;
+    if(range > 140000) step = 10000;
     const start = Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
     for(let v=start; v<=end + step * 0.001; v+=step){
@@ -24888,9 +24899,9 @@ function buildRetireIncomeContourLevels(kind, values, lifeExpect){
     }
     if(min < 0 && max > 0 && !levels.includes(0)) levels.push(0);
   }else{
-    let step = 5;
-    if(range > 55) step = 10;
-    if(range > 95) step = 20;
+    let step = 2;
+    if(range > 70) step = 5;
+    if(range > 140) step = 10;
     const start = Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
     for(let v=start; v<=end + step * 0.001; v+=step){
@@ -24905,7 +24916,12 @@ function formatRetireIncomeContourLevelLabel(kind, level, lifeExpect){
   const n = Number(level);
   if(kind === 'terminal'){
     if(Math.abs(n) < 1e-7) return '0万円';
-    if(Math.abs(n) >= 10000 && Math.abs(n % 10000) < 1e-7) return `${formatFireDiagnosisIncomePointValue(n / 10000)}億円`;
+    if(Math.abs(n) >= 10000){
+      const oku = n / 10000;
+      const rounded = Math.round(oku * 10) / 10;
+      const text = Math.abs(rounded - Math.round(rounded)) < 1e-9 ? String(Math.round(rounded)) : rounded.toFixed(1);
+      return `${text}億円`;
+    }
     return `${Math.round(n).toLocaleString()}万円`;
   }
   if(Number.isFinite(Number(lifeExpect)) && Math.abs(n - Number(lifeExpect)) < 0.05) return `想定${Math.round(n)}歳`;
@@ -25099,7 +25115,10 @@ function getRetireIncomePolylineLabelPlacementAtFraction(polyline, fraction){
         x:Number(a.x) + (Number(b.x) - Number(a.x)) * t,
         y:Number(a.y) + (Number(b.y) - Number(a.y)) * t,
         ax:Number(a.x), ay:Number(a.y), bx:Number(b.x), by:Number(b.y),
-        totalLength:total
+        totalLength:total,
+        polyline,
+        segmentIndex:i,
+        fraction:f
       };
     }
     acc += segLen;
@@ -25109,7 +25128,10 @@ function getRetireIncomePolylineLabelPlacementAtFraction(polyline, fraction){
   return {
     x:Number(lastB.x), y:Number(lastB.y),
     ax:Number(lastA.x), ay:Number(lastA.y), bx:Number(lastB.x), by:Number(lastB.y),
-    totalLength:total
+    totalLength:total,
+    polyline,
+    segmentIndex:polyline.length - 1,
+    fraction:f
   };
 }
 function getRetireIncomePolylinePixelLength(polyline, xScale, yScale){
@@ -25137,38 +25159,121 @@ function getRetireIncomeOpaqueContourBandColor(value, levels, minValue, maxValue
   const parts = m[1].split(',').map(v=>Number(v.trim()));
   return `rgba(${Math.round(parts[0] || 255)},${Math.round(parts[1] || 255)},${Math.round(parts[2] || 255)},0.98)`;
 }
-function drawRetireIncomeContourLabel(ctx, xScale, yScale, placement, text, fine){
-  if(!placement || !text) return false;
-  const lx = xScale.getPixelForValue(placement.x);
-  const ly = yScale.getPixelForValue(placement.y);
-  const x0 = xScale.getPixelForValue(placement.ax), y0 = yScale.getPixelForValue(placement.ay);
-  const x1 = xScale.getPixelForValue(placement.bx), y1 = yScale.getPixelForValue(placement.by);
-  if(!Number.isFinite(lx) || !Number.isFinite(ly) || !Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return false;
-  if(lx < xScale.left + 18 || lx > xScale.right - 18 || ly < yScale.top + 14 || ly > yScale.bottom - 14) return false;
+function getRetireIncomeContourLabelAngle(placement, xScale, yScale){
+  const polyline = Array.isArray(placement?.polyline) ? placement.polyline : null;
+  const segIndex = Number(placement?.segmentIndex || 1);
+  let ax = placement.ax, ay = placement.ay, bx = placement.bx, by = placement.by;
+  if(polyline && polyline.length >= 4){
+    const i0 = Math.max(0, segIndex - 3);
+    const i1 = Math.min(polyline.length - 1, segIndex + 2);
+    if(i1 > i0){
+      ax = Number(polyline[i0].x); ay = Number(polyline[i0].y);
+      bx = Number(polyline[i1].x); by = Number(polyline[i1].y);
+    }
+  }
+  const x0 = xScale.getPixelForValue(ax), y0 = yScale.getPixelForValue(ay);
+  const x1 = xScale.getPixelForValue(bx), y1 = yScale.getPixelForValue(by);
   let rawAngle = Math.atan2(y1 - y0, x1 - x0);
   if(rawAngle > Math.PI / 2) rawAngle -= Math.PI;
   if(rawAngle < -Math.PI / 2) rawAngle += Math.PI;
-  const angle = Math.max(-Math.PI * 0.42, Math.min(Math.PI * 0.42, rawAngle));
-  const bgValue = sampleRetireIncomeFineGridBilinear(fine, placement.x, placement.y);
-  const coverColor = getRetireIncomeOpaqueContourBandColor(bgValue, fine?.levels || [], fine?.min, fine?.max);
+  return Math.max(-Math.PI * 0.46, Math.min(Math.PI * 0.46, rawAngle));
+}
+function getRetireIncomePointToBoundaryDistancePx(x, y, boundary, xScale, yScale){
+  const pts = (Array.isArray(boundary) ? boundary : []).map(p=>({x:xScale.getPixelForValue(Number(p.age)), y:yScale.getPixelForValue(Number(p.income))})).filter(p=>Number.isFinite(p.x) && Number.isFinite(p.y));
+  if(pts.length < 2) return Infinity;
+  let best = Infinity;
+  for(let i=1; i<pts.length; i++){
+    const ax = pts[i-1].x, ay = pts[i-1].y, bx = pts[i].x, by = pts[i].y;
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 <= 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
+    const px = ax + dx * t, py = ay + dy * t;
+    best = Math.min(best, Math.hypot(x - px, y - py));
+  }
+  return best;
+}
+function measureRetireIncomeContourLabel(ctx, text){
   ctx.save();
-  ctx.translate(lx, ly);
-  ctx.rotate(angle);
+  ctx.font = '400 13px Arial, sans-serif';
+  const width = Math.max(24, ctx.measureText(String(text || '')).width + 10);
+  ctx.restore();
+  return {width, height:16};
+}
+function buildRetireIncomeContourLabelInfos(ctx, xScale, yScale, fine, kind, data){
+  const labelBoxes = [];
+  const infos = [];
+  const levels = fine?.levels || [];
+  const plotCenterX = (xScale.left + xScale.right) / 2;
+  const plotCenterY = (yScale.top + yScale.bottom) / 2;
+  const fireBoundary = buildRetireIncomeChartFireBoundary(data, kind, 0, false);
+  const safeBoundary = data?.judgementMode === 'safe' ? buildRetireIncomeChartFireBoundary(data, kind, data?.requiredTerminalAsset, true) : [];
+  levels.forEach((level, levelIndex)=>{
+    const text = formatRetireIncomeContourLevelLabel(kind, level, data.lifeExpect);
+    const candidateFractionsBase = [0.18, 0.32, 0.5, 0.68, 0.82];
+    const rotate = levelIndex % candidateFractionsBase.length;
+    const candidateFractions = candidateFractionsBase.slice(rotate).concat(candidateFractionsBase.slice(0, rotate));
+    const candidates = [];
+    const polylines = buildRetireIncomeContourPolylines(fine, level)
+      .map(polyline=>{
+        const pixelLength = getRetireIncomePolylinePixelLength(polyline, xScale, yScale);
+        const centerPlacement = getRetireIncomePolylineLabelPlacementAtFraction(polyline, 0.5);
+        if(!centerPlacement) return null;
+        const px = xScale.getPixelForValue(centerPlacement.x);
+        const py = yScale.getPixelForValue(centerPlacement.y);
+        const centerPenalty = Math.abs(px - plotCenterX) * 0.004 + Math.abs(py - plotCenterY) * 0.003;
+        return {polyline, pixelLength, score:pixelLength - centerPenalty};
+      })
+      .filter(Boolean)
+      .filter(item=>item.pixelLength >= 58)
+      .sort((a,b)=>b.score-a.score);
+    for(const item of polylines){
+      for(const fraction of candidateFractions){
+        const placement = getRetireIncomePolylineLabelPlacementAtFraction(item.polyline, fraction);
+        if(!placement) continue;
+        const x = xScale.getPixelForValue(placement.x);
+        const y = yScale.getPixelForValue(placement.y);
+        if(!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        if(x < xScale.left + 18 || x > xScale.right - 18 || y < yScale.top + 14 || y > yScale.bottom - 14) continue;
+        const angle = getRetireIncomeContourLabelAngle(placement, xScale, yScale);
+        const size = measureRetireIncomeContourLabel(ctx, text);
+        const distFire = getRetireIncomePointToBoundaryDistancePx(x, y, fireBoundary, xScale, yScale);
+        const distSafe = getRetireIncomePointToBoundaryDistancePx(x, y, safeBoundary, xScale, yScale);
+        const minBoundaryDist = Math.min(distFire, distSafe);
+        const overlaps = labelBoxes.some(box=>Math.abs(x - box.x) < Math.max((size.width + box.width) / 2 + 8, 44) && Math.abs(y - box.y) < Math.max((size.height + box.height) / 2 + 6, 20));
+        const boundaryPenalty = minBoundaryDist < 18 ? -1000 : minBoundaryDist * 0.9;
+        const score = item.pixelLength * 0.2 + boundaryPenalty - (overlaps ? 1000 : 0) - Math.abs(x - plotCenterX) * 0.02;
+        candidates.push({level, text, placement, x, y, angle, width:size.width, height:size.height, score, overlaps});
+      }
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const best = candidates.find(c=>!c.overlaps) || candidates[0];
+    if(best){
+      infos.push(best);
+      labelBoxes.push({x:best.x, y:best.y, width:best.width, height:best.height});
+    }
+  });
+  return infos;
+}
+function isPointInsideRetireIncomeLabelGap(px, py, info){
+  if(!info) return false;
+  const dx = px - info.x;
+  const dy = py - info.y;
+  const cos = Math.cos(-info.angle);
+  const sin = Math.sin(-info.angle);
+  const localX = dx * cos - dy * sin;
+  const localY = dx * sin + dy * cos;
+  return Math.abs(localX) <= info.width / 2 && Math.abs(localY) <= info.height / 2;
+}
+function drawRetireIncomeContourLabel(ctx, info){
+  if(!info || !info.text) return false;
+  ctx.save();
+  ctx.translate(info.x, info.y);
+  ctx.rotate(info.angle);
   ctx.font = '400 13px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const metrics = ctx.measureText(text);
-  const textWidth = Math.max(20, metrics.width);
-  const gapWidth = textWidth + 8;
-  ctx.strokeStyle = coverColor;
-  ctx.lineWidth = 3.2;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-gapWidth / 2, 0);
-  ctx.lineTo(gapWidth / 2, 0);
-  ctx.stroke();
   ctx.fillStyle = 'rgba(15,23,42,0.98)';
-  ctx.fillText(text, 0, 0);
+  ctx.fillText(info.text, 0, 0);
   ctx.restore();
   return true;
 }
@@ -25246,106 +25351,157 @@ function drawRetireIncomeContourBands(ctx, xScale, yScale, fine){
   offCtx.putImageData(image, 0, 0);
   ctx.drawImage(off, xScale.left, yScale.top, plotWidth, plotHeight);
 }
-function buildRetireIncomeIsoBoundaryFromFineData(fineData, level){
+function orientRetireIncomeBoundaryTopToBottom(points){
+  const pts = (Array.isArray(points) ? points : []).map(p=>({x:Number(p.x), y:Number(p.y)})).filter(p=>Number.isFinite(p.x) && Number.isFinite(p.y));
+  if(pts.length < 2) return pts;
+  return pts[0].y >= pts[pts.length - 1].y ? pts : pts.slice().reverse();
+}
+function extendRetireIncomeBoundaryToEdges(points, fineData){
+  let pts = orientRetireIncomeBoundaryTopToBottom(points);
   const xs = fineData?.xFine || [];
   const ys = fineData?.yFine || [];
-  const grid = fineData?.gridFine || [];
-  const out = [];
+  if(pts.length < 2 || xs.length < 2 || ys.length < 2) return pts;
+  const yMax = Number(ys[ys.length - 1]);
+  const yMin = Number(ys[0]);
+  const xMin = Number(xs[0]);
+  const xMax = Number(xs[xs.length - 1]);
+  const extrapolateToY = (p0, p1, targetY)=>{
+    const dy = Number(p1.y) - Number(p0.y);
+    const dx = Number(p1.x) - Number(p0.x);
+    if(Math.abs(dy) < 1e-9) return {x:Number(p0.x), y:targetY};
+    const t = (targetY - Number(p0.y)) / dy;
+    return {x:Number(p0.x) + dx * t, y:targetY};
+  };
+  if(pts[0].y < yMax - 1e-6){
+    const ext = extrapolateToY(pts[0], pts[1], yMax);
+    ext.x = Math.max(xMin, Math.min(xMax, ext.x));
+    pts.unshift(ext);
+  } else {
+    pts[0].y = yMax;
+  }
+  if(pts[pts.length - 1].y > yMin + 1e-6){
+    const n = pts.length;
+    const ext = extrapolateToY(pts[n - 1], pts[n - 2], yMin);
+    ext.x = Math.max(xMin, Math.min(xMax, ext.x));
+    pts.push(ext);
+  } else {
+    pts[pts.length - 1].y = yMin;
+  }
+  return pts;
+}
+function buildRetireIncomeIsoBoundaryFromFineData(fineData, level){
   const lv = Number(level);
-  if(!Number.isFinite(lv) || xs.length < 2 || ys.length < 2) return out;
+  if(!Number.isFinite(lv)) return [];
+  const polylines = buildRetireIncomeContourPolylines(fineData, lv)
+    .map(poly=>orientRetireIncomeBoundaryTopToBottom(poly))
+    .filter(poly=>Array.isArray(poly) && poly.length >= 2)
+    .sort((a,b)=>getRetireIncomePolylineLength(b) - getRetireIncomePolylineLength(a));
+  if(!polylines.length) return [];
+  const selected = extendRetireIncomeBoundaryToEdges(polylines[0], fineData);
+  return selected.map(p=>({x:Number(p.x), y:Number(p.y)})).filter(p=>Number.isFinite(p.x) && Number.isFinite(p.y));
+}
+function buildRetireIncomeBoundaryFromSourceGrid(result, kind, level){
+  const xs = (Array.isArray(result?.xAges) ? result.xAges : []).map(Number).filter(Number.isFinite);
+  const ys = (Array.isArray(result?.yMonthlyIncomes) ? result.yMonthlyIncomes : []).map(Number).filter(Number.isFinite);
+  const grid = getRetireIncomeGridForKind(result, kind);
+  const lv = Number(level);
+  if(xs.length < 2 || ys.length < 2 || !Array.isArray(grid) || !Number.isFinite(lv)) return [];
+  const yMin = ys[0];
+  const eps = 1e-7;
+  const raw = [];
+  let bottomReached = false;
   for(let xi=0; xi<xs.length; xi++){
-    const col = ys.map((_, yi)=>Number(grid[yi]?.[xi]));
+    if(bottomReached) break;
+    const col = ys.map((_, yi)=>Number(grid?.[yi]?.[xi]));
     if(col.some(v=>!Number.isFinite(v))) continue;
+    let income = NaN;
     if(col[0] >= lv){
-      out.push({x:xs[xi], y:ys[0]});
-      continue;
-    }
-    for(let yi=1; yi<ys.length; yi++){
-      const prev = col[yi - 1], cur = col[yi];
-      if((prev <= lv && cur >= lv) || (prev >= lv && cur <= lv)){
-        const t = cur === prev ? 0 : (lv - prev) / (cur - prev);
-        out.push({x:xs[xi], y:ys[yi - 1] + (ys[yi] - ys[yi - 1]) * Math.max(0, Math.min(1, t))});
-        break;
+      income = yMin;
+    }else{
+      for(let yi=1; yi<ys.length; yi++){
+        const prev = col[yi - 1], cur = col[yi];
+        if((prev <= lv && cur >= lv) || (prev >= lv && cur <= lv)){
+          const t = cur === prev ? 0 : (lv - prev) / (cur - prev);
+          income = ys[yi - 1] + (ys[yi] - ys[yi - 1]) * Math.max(0, Math.min(1, t));
+          break;
+        }
       }
     }
+    if(!Number.isFinite(income)) continue;
+    raw.push({x:xs[xi], y:income});
+    if(Math.abs(income - yMin) <= eps && raw.length >= 2) bottomReached = true;
   }
-  return out;
+  const fineLike = {xFine:xs, yFine:ys};
+  return extendRetireIncomeBoundaryToEdges(raw, fineLike);
+}
+function getRetireIncomeAssetLifeFireLevel(result){
+  const values = [];
+  (Array.isArray(result?.pointGrid) ? result.pointGrid : []).forEach(row=>{
+    (Array.isArray(row) ? row : []).forEach(point=>{
+      const v = Number(point?.lifeExpect);
+      if(Number.isFinite(v) && v > 0 && v < 130) values.push(v);
+    });
+  });
+  if(values.length){
+    values.sort((a,b)=>a-b);
+    return values[Math.floor(values.length / 2)];
+  }
+  const fallback = Number(result?.lifeExpect);
+  return Number.isFinite(fallback) && fallback > 0 ? fallback : 90;
 }
 function buildRetireIncomeChartFireBoundary(result, kind, requiredTerminalAsset=0, safe=false){
   if(!result) return [];
-  if(safe){
-    const fineTerminal = buildRetireIncomeFineContourData(result, 'terminal');
-    return buildRetireIncomeIsoBoundaryFromFineData(fineTerminal, Math.max(0, Number(requiredTerminalAsset) || 0)).map(p=>({age:p.x, income:p.y}));
-  }
   if(kind === 'terminal'){
     const fineTerminal = buildRetireIncomeFineContourData(result, 'terminal');
-    return buildRetireIncomeIsoBoundaryFromFineData(fineTerminal, 0).map(p=>({age:p.x, income:p.y}));
+    const level = safe ? Math.max(0, Number(requiredTerminalAsset) || 0) : 0;
+    const terminalIso = buildRetireIncomeIsoBoundaryFromFineData(fineTerminal, level);
+    const terminalFallback = terminalIso.length ? terminalIso : buildRetireIncomeBoundaryFromSourceGrid(result, 'terminal', level);
+    return terminalFallback.map(p=>({age:p.x, income:p.y}));
   }
+  const lifeLevel = getRetireIncomeAssetLifeFireLevel(result);
   const fineLife = buildRetireIncomeFineContourData(result, 'assetLife');
-  return buildRetireIncomeIsoBoundaryFromFineData(fineLife, Number(result.lifeExpect || 0)).map(p=>({age:p.x, income:p.y}));
+  const lifeIso = buildRetireIncomeIsoBoundaryFromFineData(fineLife, lifeLevel);
+  const lifeFallback = lifeIso.length ? lifeIso : buildRetireIncomeBoundaryFromSourceGrid(result, 'assetLife', lifeLevel);
+  if(!safe) return lifeFallback.map(p=>({age:p.x, income:p.y}));
+  const terminalLevel = Math.max(0, Number(requiredTerminalAsset) || 0);
+  const fineTerminal = buildRetireIncomeFineContourData(result, 'terminal');
+  const terminalIso = buildRetireIncomeIsoBoundaryFromFineData(fineTerminal, terminalLevel);
+  const terminalFallback = terminalIso.length ? terminalIso : buildRetireIncomeBoundaryFromSourceGrid(result, 'terminal', terminalLevel);
+  return (terminalFallback.length ? terminalFallback : lifeFallback).map(p=>({age:p.x, income:p.y}));
 }
-function drawRetireIncomeContourLines(ctx, xScale, yScale, fine, kind, data){
+function drawRetireIncomeContourLines(ctx, xScale, yScale, fine, kind, data, labelInfos=[]){
   const levels = fine?.levels || [];
   levels.forEach(level=>{
-    const isKey = (kind === 'terminal' && Math.abs(level) < 1e-7) || (kind === 'assetLife' && Math.abs(level - Number(data.lifeExpect || 0)) < 0.05);
-    ctx.strokeStyle = isKey ? 'rgba(15,23,42,0.82)' : 'rgba(15,23,42,0.52)';
-    ctx.lineWidth = isKey ? 1.8 : 1.0;
+    ctx.strokeStyle = 'rgba(15,23,42,0.52)';
+    ctx.lineWidth = 1.0;
     ctx.setLineDash([]);
+    const gaps = labelInfos.filter(info=>Math.abs(Number(info.level) - Number(level)) < 1e-9);
     const polylines = buildRetireIncomeContourPolylines(fine, level);
     polylines.forEach(polyline=>{
       if(!Array.isArray(polyline) || polyline.length < 2) return;
+      let drawing = false;
       ctx.beginPath();
-      const start = polyline[0];
-      ctx.moveTo(xScale.getPixelForValue(start.x), yScale.getPixelForValue(start.y));
-      for(let i=1; i<polyline.length; i++){
-        ctx.lineTo(xScale.getPixelForValue(polyline[i].x), yScale.getPixelForValue(polyline[i].y));
+      for(let i=0; i<polyline.length; i++){
+        const px = xScale.getPixelForValue(polyline[i].x);
+        const py = yScale.getPixelForValue(polyline[i].y);
+        const inGap = gaps.some(info=>isPointInsideRetireIncomeLabelGap(px, py, info));
+        if(inGap){
+          drawing = false;
+          continue;
+        }
+        if(!drawing){
+          ctx.moveTo(px, py);
+          drawing = true;
+        }else{
+          ctx.lineTo(px, py);
+        }
       }
       ctx.stroke();
     });
   });
 }
-function drawRetireIncomeContourLabels(ctx, xScale, yScale, fine, kind, data){
-  const labelBoxes = [];
-  const levels = fine?.levels || [];
-  const plotCenterX = (xScale.left + xScale.right) / 2;
-  const plotCenterY = (yScale.top + yScale.bottom) / 2;
-  levels.forEach(level=>{
-    const text = formatRetireIncomeContourLevelLabel(kind, level, data.lifeExpect);
-    const polylines = buildRetireIncomeContourPolylines(fine, level)
-      .map(polyline=>{
-        const pixelLength = getRetireIncomePolylinePixelLength(polyline, xScale, yScale);
-        const centerPlacement = getRetireIncomePolylineLabelPlacementAtFraction(polyline, 0.5);
-        if(!centerPlacement) return null;
-        const px = xScale.getPixelForValue(centerPlacement.x);
-        const py = yScale.getPixelForValue(centerPlacement.y);
-        const centerPenalty = Math.abs(px - plotCenterX) * 0.004 + Math.abs(py - plotCenterY) * 0.003;
-        return {polyline, pixelLength, score:pixelLength - centerPenalty};
-      })
-      .filter(Boolean)
-      .filter(item=>item.pixelLength >= 58)
-      .sort((a,b)=>b.score-a.score);
-    let drawn = 0;
-    const fractionSets = [[0.5], [0.35,0.65], [0.22,0.78]];
-    for(const item of polylines){
-      for(const fractions of fractionSets){
-        for(const fraction of fractions){
-          const placement = getRetireIncomePolylineLabelPlacementAtFraction(item.polyline, fraction);
-          if(!placement) continue;
-          const px = xScale.getPixelForValue(placement.x);
-          const py = yScale.getPixelForValue(placement.y);
-          const tooClose = labelBoxes.some(box=>Math.abs(px - box.x) < 58 && Math.abs(py - box.y) < 22);
-          if(tooClose && drawn > 0) continue;
-          if(drawRetireIncomeContourLabel(ctx, xScale, yScale, placement, text, fine)){
-            labelBoxes.push({x:px, y:py});
-            drawn++;
-            break;
-          }
-        }
-        if(drawn > 0) break;
-      }
-      if(drawn >= 1) break;
-    }
-  });
+function drawRetireIncomeContourLabels(ctx, labelInfos){
+  (Array.isArray(labelInfos) ? labelInfos : []).forEach(info=>drawRetireIncomeContourLabel(ctx, info));
 }
 function buildRetireIncomeContourPlugin(kind, contourData){
   return {
@@ -25358,27 +25514,29 @@ function buildRetireIncomeContourPlugin(kind, contourData){
       const fine = buildRetireIncomeFineContourData(data, kind);
       if(!fine || !fine.values?.length) return;
       const ctx = chart.ctx;
+      const labelInfos = buildRetireIncomeContourLabelInfos(ctx, xScale, yScale, fine, kind, data);
+      chart.$retireIncomeContourLabelInfos = chart.$retireIncomeContourLabelInfos || {};
+      chart.$retireIncomeContourLabelInfos[kind] = labelInfos;
       ctx.save();
       ctx.beginPath();
       ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
       ctx.clip();
       drawRetireIncomeContourBands(ctx, xScale, yScale, fine);
-      drawRetireIncomeContourLines(ctx, xScale, yScale, fine, kind, data);
+      drawRetireIncomeContourLines(ctx, xScale, yScale, fine, kind, data, labelInfos);
       ctx.restore();
     },
     afterDatasetsDraw(chart){
       const xScale = chart.scales?.x;
       const yScale = chart.scales?.y;
       if(!xScale || !yScale) return;
-      const data = contourData || {};
-      const fine = buildRetireIncomeFineContourData(data, kind);
-      if(!fine || !fine.values?.length) return;
+      const labelInfos = chart.$retireIncomeContourLabelInfos?.[kind] || [];
+      if(!labelInfos.length) return;
       const ctx = chart.ctx;
       ctx.save();
       ctx.beginPath();
       ctx.rect(xScale.left, yScale.top, xScale.right - xScale.left, yScale.bottom - yScale.top);
       ctx.clip();
-      drawRetireIncomeContourLabels(ctx, xScale, yScale, fine, kind, data);
+      drawRetireIncomeContourLabels(ctx, labelInfos);
       ctx.restore();
     }
   };
@@ -25404,17 +25562,40 @@ function buildRetireIncomeFireGridPointDataset(result, kind){
     fireRetireIncomeKind:kind
   };
 }
-function buildRetireIncomeBoundaryDataset(points, label, color, dashPattern, legendKey=''){
+function sanitizeRetireIncomeBoundaryForChart(points, result){
+  const yValues = (Array.isArray(result?.yMonthlyIncomes) ? result.yMonthlyIncomes : []).map(Number).filter(Number.isFinite);
+  const yMin = yValues.length ? Math.min(...yValues) : 0;
+  const eps = 1e-7;
+  const pts = (Array.isArray(points) ? points : [])
+    .map(p=>({age:Number(p.age), income:Number(p.income)}))
+    .filter(p=>Number.isFinite(p.age) && Number.isFinite(p.income));
+  if(pts.length < 2) return pts;
+  const out = [];
+  for(let i=0; i<pts.length; i++){
+    const prev = pts[i - 1];
+    const cur = pts[i];
+    const next = pts[i + 1];
+    const curBottom = cur.income <= yMin + eps;
+    const prevBottom = prev && prev.income <= yMin + eps;
+    const nextBottom = next && next.income <= yMin + eps;
+    // y=0（グラフ下端）に沿って走る水平成分はFIRE曲線として描かない。
+    if(curBottom && (prevBottom || nextBottom)) continue;
+    out.push({...cur, income:Math.max(yMin, cur.income)});
+  }
+  return out.length >= 2 ? out : pts.filter(p=>p.income > yMin + eps);
+}
+function buildRetireIncomeBoundaryDataset(points, label, color, dashPattern, legendKey='', width=3.2, order=10){
   const key = String(legendKey || label || '').trim();
   return {
     label,
+    order,
     fireLegendKey:key,
     data:(Array.isArray(points) ? points : []).map(p=>({x:Number(p.age), y:Number(p.income)})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)),
     parsing:false,
     showLine:true,
     borderColor:color,
     backgroundColor:color,
-    borderWidth:3.2,
+    borderWidth:width,
     borderDash:Array.isArray(dashPattern) ? dashPattern : [],
     pointRadius:0,
     pointHoverRadius:3,
@@ -25455,12 +25636,14 @@ function interpolateRetireIncomeBoundaryIncome(boundary, age){
   const pts = (Array.isArray(boundary) ? boundary : []).map(p=>({age:Number(p.age), income:Number(p.income)})).filter(p=>Number.isFinite(p.age) && Number.isFinite(p.income)).sort((a,b)=>a.age-b.age);
   const targetAge = Number(age);
   if(!Number.isFinite(targetAge) || !pts.length) return NaN;
+  const minIncome = Math.min(...pts.map(p=>p.income).filter(Number.isFinite), 0);
+  if(targetAge > pts[pts.length - 1].age + 1e-9) return Math.max(0, minIncome);
   for(let i=0; i<pts.length; i++){
-    if(Math.abs(pts[i].age - targetAge) < 1e-9) return pts[i].income;
+    if(Math.abs(pts[i].age - targetAge) < 1e-9) return Math.max(0, pts[i].income);
     if(i > 0 && pts[i-1].age <= targetAge && targetAge <= pts[i].age){
       const prev = pts[i-1], cur = pts[i];
       const t = cur.age === prev.age ? 0 : (targetAge - prev.age) / (cur.age - prev.age);
-      return prev.income + (cur.income - prev.income) * t;
+      return Math.max(0, prev.income + (cur.income - prev.income) * t);
     }
   }
   return NaN;
@@ -25534,13 +25717,15 @@ function renderRetireIncomeFireChart(result, kind){
   if(kind === 'terminal') destroyFireDiagnosisIncomeTerminalChart();
   else destroyFireDiagnosisIncomeAssetLifeChart();
   document.getElementById(sectionId)?.classList.remove('withdrawal-rule-hidden');
-  const fireLine = buildRetireIncomeChartFireBoundary(result, kind, 0, false);
-  const safeLine = buildRetireIncomeChartFireBoundary(result, kind, result?.requiredTerminalAsset, true);
+  const rawFireLine = buildRetireIncomeChartFireBoundary(result, kind, 0, false);
+  const rawSafeLine = buildRetireIncomeChartFireBoundary(result, kind, result?.requiredTerminalAsset, true);
+  const fireLine = sanitizeRetireIncomeBoundaryForChart(rawFireLine, result);
+  const safeLine = sanitizeRetireIncomeBoundaryForChart(rawSafeLine, result);
   const datasets = [
-    buildRetireIncomeFireGridPointDataset(result, kind),
-    buildRetireIncomeBoundaryDataset(fireLine, 'FIRE', '#d63b3b', [], 'fire')
+    buildRetireIncomeFireGridPointDataset(result, kind)
   ];
-  if(result?.judgementMode === 'safe') datasets.push(buildRetireIncomeBoundaryDataset(safeLine, '安全FIRE', '#d63b3b', [8,5], 'safeFire'));
+  if(result?.judgementMode === 'safe') datasets.push(buildRetireIncomeBoundaryDataset(safeLine, '安全FIRE', '#d63b3b', [8,5], 'safeFire', 2.8, 11));
+  datasets.push(buildRetireIncomeBoundaryDataset(fireLine, 'FIRE', '#d63b3b', [], 'fire', 3.4, 12));
   const xMin = Math.min(...result.xAges), xMax = Math.max(...result.xAges);
   const yMin = Math.min(...result.yMonthlyIncomes), yMax = Math.max(...result.yMonthlyIncomes);
   const chart = new Chart(canvas.getContext('2d'), {
