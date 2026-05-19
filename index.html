@@ -7035,7 +7035,7 @@ document.addEventListener("scroll", (ev)=>{
   <div class="fire-diagnosis-chart-title">リタイア年齢×リタイア後収入：資産寿命</div>
   <div class="fire-probability-legend fire-diagnosis-contour-legend withdrawal-rule-hidden" id="fireDiagnosisIncomeAssetLifeLegend"></div>
   <div class="withdrawal-compare-chart-wrap fire-diagnosis-contour-chart-wrap" id="fireDiagnosisIncomeAssetLifeChartWrap" style="margin-top:10px;"><canvas id="fireDiagnosisIncomeAssetLifeChart"></canvas></div>
-  <div class="fire-probability-axis-note" id="fireDiagnosisIncomeAssetLifeAxisNote">・横軸はリタイア年齢、縦軸はリタイア後の手取り（月）です。色と等高線は資産寿命を表します。<br>・資産寿命の等高線は、推定資産枯渇時点の実年齢です。FIRE線は想定寿命の年末時点まで資産が残る条件のため、誕生日によっては想定寿命より少し上の等高線上に表示されます。</div>
+  <div class="fire-probability-axis-note" id="fireDiagnosisIncomeAssetLifeAxisNote">・横軸はリタイア年齢、縦軸はリタイア後の手取り（月）です。色と等高線は資産寿命を表します。<br>・資産寿命の等高線は、推定資産枯渇時点の実年齢です。<br>・FIRE線は想定寿命の年末時点まで資産が残る条件のため、誕生日によっては想定寿命より少し上の等高線上に表示されます。</div>
 </div>
 <div class="fire-asset-life-table-wrap withdrawal-rule-hidden" id="fireDiagnosisAssetLifeTableWrap"></div>
 </div>
@@ -21663,6 +21663,19 @@ function setFireDiagnosisJudgementModeToModal(judgementMode){
   const checkbox = document.getElementById('fireDiagnosisSafeJudgementCheckbox');
   if(checkbox) checkbox.checked = judgementMode === 'safe';
 }
+function formatFireDiagnosisConditionSummaryHtml({isMonte=false, safe=false, requiredTerminalAsset=0, requiredSuccessRate=80}={}){
+  const terminalText = `${Math.round(resolveFireDiagnosisRequiredTerminalAsset(requiredTerminalAsset)).toLocaleString()}万円以上`;
+  const successText = `${Math.max(1, Math.min(100, Math.round(Number(requiredSuccessRate) || 80)))}%以上`;
+  const lines = [];
+  if(isMonte){
+    lines.push(`FIRE：想定寿命まで総資産が一度もマイナスにならないtrialの比率が<strong>${successText}</strong>であること`);
+    if(safe) lines.push(`安全FIRE：想定寿命まで総資産が一度もマイナスにならず、寿命時残高が<strong>${terminalText}</strong>となるtrialの比率が<strong>${successText}</strong>であること`);
+  }else{
+    lines.push('FIRE：想定寿命まで総資産が一度もマイナスにならないこと');
+    if(safe) lines.push(`安全FIRE：想定寿命まで総資産が一度もマイナスにならず、寿命時残高が<strong>${terminalText}</strong>であること`);
+  }
+  return lines.map(line=>`<div>${line}</div>`).join('');
+}
 function updateFireDiagnosisJudgementUi(){
   const diagnosisContent = getFireDiagnosisContentFromModal();
   let diagnosisType = getFireDiagnosisTypeFromModal();
@@ -21714,25 +21727,12 @@ function updateFireDiagnosisJudgementUi(){
     }
   }
   if(summary){
-    if(isRetireIncomeMap){
-      const threshold = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
-      summary.innerHTML = mode === 'safe'
-        ? `通常FIRE：想定寿命まで総資産が一度もマイナスにならないこと。安全FIRE：さらに寿命時残高が <strong>${Math.round(threshold).toLocaleString()}万円以上</strong> であること。`
-        : 'FIRE可能条件：想定寿命まで総資産が一度もマイナスにならないこと';
-    }else if(isMonte){
-      const threshold = Math.max(1, Math.min(100, Math.round(Number(document.getElementById('fireDiagnosisRequiredSuccessRateInput')?.value || 80) || 80)));
-      if(mode === 'safe'){
-        const terminalThreshold = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
-        summary.innerHTML = `モンテカルロ診断 / 安全重視：各 trial で想定寿命まで総資産が一度もマイナスにならず、寿命時残高が <strong>${Math.round(terminalThreshold).toLocaleString()}万円以上</strong> となる trial の比率が <strong>${threshold}%以上</strong> であること`;
-      } else {
-        summary.innerHTML = `モンテカルロ診断：各 trial で想定寿命まで総資産が一度もマイナスにならない trial の比率が <strong>${threshold}%以上</strong> であること`;
-      }
-    }else if(mode === 'safe'){
-      const threshold = resolveFireDiagnosisRequiredTerminalAsset(document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value);
-      summary.innerHTML = `安全重視：想定寿命まで総資産が一度もマイナスにならず、寿命時残高が <strong>${Math.round(threshold).toLocaleString()}万円以上</strong> であること`;
-    }else{
-      summary.textContent = 'FIRE可能年齢：想定寿命まで総資産が一度もマイナスにならないこと';
-    }
+    summary.innerHTML = formatFireDiagnosisConditionSummaryHtml({
+      isMonte:!isRetireIncomeMap && isMonte,
+      safe:mode === 'safe',
+      requiredTerminalAsset:document.getElementById('fireDiagnosisRequiredTerminalAssetInput')?.value,
+      requiredSuccessRate:document.getElementById('fireDiagnosisRequiredSuccessRateInput')?.value
+    });
   }
 }
 function loadFireDiagnosisDraftToModal(){
@@ -24760,21 +24760,40 @@ function buildRetireIncomeMonthlyFireAgeEntry(income, fire, safeFire){
     safeFireAgeTotalMonths:Number.isFinite(Number(safeFire?.fireAgeTotalMonths)) ? Number(safeFire.fireAgeTotalMonths) : null
   };
 }
-async function buildRetireIncomeMonthlyFireAgeResults(baseScenario, settings, xAges, yMonthlyIncomes, pointGrid, applyCrash){
+function buildRetireIncomeFireProgressPlan(xAges, yMonthlyIncomes, settings){
+  const annualWork = Math.max(1, (Array.isArray(xAges) ? xAges.length : 0) * (Array.isArray(yMonthlyIncomes) ? yMonthlyIncomes.length : 0));
+  const incomeCount = Math.max(1, Array.isArray(yMonthlyIncomes) ? yMonthlyIncomes.length : 0);
+  const monthlyChecksPerIncome = settings?.judgementMode === 'safe' ? 2 : 1;
+  // 月次補正は境界前後の最大11ヶ月を走査するが、実際には途中で成立することが多いため平均6ヶ月相当として配分する。
+  const estimatedMonthlyWork = incomeCount * monthlyChecksPerIncome * 6;
+  const graphWork = Math.max(1, annualWork * 0.025);
+  const totalWork = annualWork + estimatedMonthlyWork + graphWork;
+  const annualEnd = Math.max(45, Math.min(94, (annualWork / totalWork) * 100));
+  const graphSpan = Math.max(1.5, Math.min(4, (graphWork / totalWork) * 100));
+  const monthlyStart = annualEnd;
+  const monthlyEnd = Math.max(monthlyStart, 100 - graphSpan);
+  return {annualEnd, monthlyStart, monthlyEnd, monthlySpan:Math.max(0, monthlyEnd - monthlyStart), graphStart:monthlyEnd};
+}
+async function buildRetireIncomeMonthlyFireAgeResults(baseScenario, settings, xAges, yMonthlyIncomes, pointGrid, applyCrash, progressStart=96, progressSpan=3){
   const out = [];
   const ageFrom = Math.max(0, Math.round(Number(settings?.ageFrom) || 0));
   const ageTo = Math.max(ageFrom, Math.round(Number(settings?.ageTo) || ageFrom));
   const hasSafe = settings?.judgementMode === 'safe';
   const incomes = Array.isArray(yMonthlyIncomes) ? yMonthlyIncomes : [];
+  const safeProgressStart = Math.max(0, Math.min(100, Number(progressStart) || 0));
+  const safeProgressSpan = Math.max(0, Number(progressSpan) || 0);
   for(let yi=0; yi<incomes.length; yi++){
     const income = Number(incomes[yi]);
     const incomeBaseScenario = buildRetireIncomeFireScenarioData(baseScenario, ageFrom, income, settings?.incomeEndYear, settings?.incomeEndMonth);
     const trialCache = new Map();
     const trialBaseContext = buildFireDiagnosisTrialBaseContext(incomeBaseScenario);
     const series = Array.isArray(pointGrid?.[yi]) ? pointGrid[yi] : [];
+    const incomeStart = safeProgressStart + (yi / Math.max(1, incomes.length)) * safeProgressSpan;
+    const incomeSpan = safeProgressSpan / Math.max(1, incomes.length);
+    const fireSpan = hasSafe ? incomeSpan / 2 : incomeSpan;
+    const safeSpan = hasSafe ? incomeSpan / 2 : 0;
     if(settings?.progressReporter){
-      const pct = 96 + (yi / Math.max(1, incomes.length)) * 3;
-      await settings.progressReporter(pct, {detail:`月収${formatFireDiagnosisIncomePointValue(income)}万円のFIRE可能年齢を月単位で判定中`});
+      await settings.progressReporter(incomeStart, {detail:`月収${formatFireDiagnosisIncomePointValue(income)}万円のFIRE可能年齢を月単位で判定中`});
     }
     const localSettings = {...settings, ageFrom, ageTo};
     const fire = await refineNormalCurrentConditionFireAgeFromAnnualSeries(
@@ -24784,7 +24803,7 @@ async function buildRetireIncomeMonthlyFireAgeResults(baseScenario, settings, xA
       series,
       0,
       'standard',
-      null,
+      createFireDiagnosisScopedProgress(settings?.progressReporter, incomeStart, fireSpan, `月収${formatFireDiagnosisIncomePointValue(income)}万円のFIRE可能年齢を月単位で判定中`),
       trialCache,
       trialBaseContext
     );
@@ -24797,7 +24816,7 @@ async function buildRetireIncomeMonthlyFireAgeResults(baseScenario, settings, xA
         series,
         settings?.requiredTerminalAsset,
         'safe',
-        null,
+        createFireDiagnosisScopedProgress(settings?.progressReporter, incomeStart + fireSpan, safeSpan, `月収${formatFireDiagnosisIncomePointValue(income)}万円の安全FIRE可能年齢を月単位で判定中`),
         trialCache,
         trialBaseContext
       );
@@ -24817,6 +24836,7 @@ async function runRetireIncomeFireDiagnosisFixedRate(request){
   const assetLifeGrid = [];
   const pointGrid = [];
   const total = Math.max(1, xAges.length * yMonthlyIncomes.length);
+  const progressPlan = buildRetireIncomeFireProgressPlan(xAges, yMonthlyIncomes, settings);
   let done = 0;
   let lifeExpect = null;
   const applyCrash = settings.mode === 'with_crash';
@@ -24828,7 +24848,7 @@ async function runRetireIncomeFireDiagnosisFixedRate(request){
     for(let xi=0; xi<xAges.length; xi++){
       const age = xAges[xi];
       if(settings.progressReporter){
-        await settings.progressReporter((done / total) * 100, {detail:`${age}歳・月収${formatFireDiagnosisIncomePointValue(income)}万円を計算中（${done + 1} / ${total}点）`});
+        await settings.progressReporter((done / total) * progressPlan.annualEnd, {detail:`${age}歳・月収${formatFireDiagnosisIncomePointValue(income)}万円を計算中（${done + 1} / ${total}点）`});
       }
       const scenario = buildRetireIncomeFireScenarioData(baseScenario, age, income, settings.incomeEndYear, settings.incomeEndMonth);
       const trial = runFireDiagnosisTrialAtWholeYear(scenario, age, {
@@ -24863,7 +24883,9 @@ async function runRetireIncomeFireDiagnosisFixedRate(request){
   const safeFireBoundary = settings.judgementMode === 'safe'
     ? buildRetireIncomeFireBoundary(xAges, yMonthlyIncomes, pointGrid, settings.requiredTerminalAsset)
     : [];
-  const monthlyFireAgeByIncome = await buildRetireIncomeMonthlyFireAgeResults(baseScenario, settings, xAges, yMonthlyIncomes, pointGrid, applyCrash);
+  if(settings.progressReporter) await settings.progressReporter(progressPlan.monthlyStart, {detail:'月収ごとのFIRE可能年齢を月単位で判定中'});
+  const monthlyFireAgeByIncome = await buildRetireIncomeMonthlyFireAgeResults(baseScenario, settings, xAges, yMonthlyIncomes, pointGrid, applyCrash, progressPlan.monthlyStart, progressPlan.monthlySpan);
+  if(settings.progressReporter) await settings.progressReporter(progressPlan.graphStart, {detail:'等高線グラフを準備中'});
   if(settings.progressReporter) await settings.progressReporter(100, {detail:'等高線グラフを準備中'});
   return {
     diagnosisContent:'retire_income_map',
@@ -25607,6 +25629,82 @@ function buildRetireIncomeContourPlugin(kind, contourData){
     }
   };
 }
+function getRetireIncomeTooltipInputLifeExpect(result){
+  const domValue = Number(document.getElementById('lifeExpect')?.value);
+  if(Number.isFinite(domValue) && domValue > 0) return Math.round(domValue);
+  const cfgValue = Number(result?.scenarioData?.lifeExpect || result?.baseScenario?.lifeExpect);
+  if(Number.isFinite(cfgValue) && cfgValue > 0) return Math.round(cfgValue);
+  const fallback = Number(result?.lifeExpect);
+  return Number.isFinite(fallback) && fallback > 0 ? Math.round(fallback) : 90;
+}
+function formatRetireIncomeTooltipIncome(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '—';
+  return `${(Math.round(n * 10) / 10).toFixed(1)}万円/月`;
+}
+function formatRetireIncomeTooltipMoneyManYen(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '—';
+  const rounded = Math.round(n);
+  if(Object.is(rounded, -0) || Math.abs(rounded) === 0) return '0万円';
+  return `${rounded.toLocaleString()}万円`;
+}
+function formatRetireIncomeTooltipAge(value, capped=false){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return '—';
+  return formatAssetLifeAgeText(n, !!capped || n >= 120);
+}
+function sampleRetireIncomeChartValueForTooltip(result, kind, x, y){
+  const fine = buildRetireIncomeFineContourData(result, kind);
+  return sampleRetireIncomeFineGridBilinear(fine, Number(x), Number(y));
+}
+function formatRetireIncomeBoundaryTooltipTitle(dataset){
+  return dataset?.fireRetireIncomeBoundaryKey === 'safeFire' ? '安全FIRE' : 'FIRE';
+}
+function buildRetireIncomeTooltipBeforeLabelLines(ctx, result, kind){
+  const ds = ctx?.dataset || {};
+  const raw = ctx?.raw || {};
+  if(!ds.fireRetireIncomeBoundary) return [];
+  const age = Number(raw.x);
+  const income = Number(raw.y);
+  const ageLabel = ds.fireRetireIncomeBoundaryKey === 'safeFire' ? '安全FIRE可能年齢' : 'FIRE可能年齢';
+  return [
+    `${ageLabel}：${formatFireDiagnosisRetireAgeText(age)}`,
+    `必要月収：${formatRetireIncomeTooltipIncome(income)}`
+  ];
+}
+function buildRetireIncomeTooltipMetricLabel(ctx, result, kind){
+  const ds = ctx?.dataset || {};
+  const raw = ctx?.raw || {};
+  if(ds.fireRetireIncomeBoundary){
+    const age = Number(raw.x);
+    const income = Number(raw.y);
+    const sampled = sampleRetireIncomeChartValueForTooltip(result, kind, age, income);
+    if(kind === 'terminal'){
+      const value = ds.fireRetireIncomeBoundaryKey === 'safeFire'
+        ? resolveFireDiagnosisRequiredTerminalAsset(result?.requiredTerminalAsset)
+        : 0;
+      return `寿命時残高：約${formatRetireIncomeTooltipMoneyManYen(value)}`;
+    }
+    return `資産寿命：約${formatRetireIncomeTooltipAge(sampled)}`;
+  }
+  if(ds.fireRetireIncomeGrid){
+    if(kind === 'terminal') return `寿命時残高：約${formatRetireIncomeTooltipMoneyManYen(raw.terminalAsset)}`;
+    return `資産寿命：${formatRetireIncomeTooltipAge(raw.assetLifeAge, raw.capped || Number(raw.assetLifeAge) >= 120)}`;
+  }
+  return '';
+}
+function buildRetireIncomeTooltipAfterLabelLines(ctx, result, kind){
+  if(kind !== 'assetLife') return [];
+  return [`想定寿命：${getRetireIncomeTooltipInputLifeExpect(result)}歳`];
+}
+function formatRetireIncomeTooltipTitle(items, result, kind){
+  const item = items?.[0];
+  const ds = item?.dataset || {};
+  const raw = item?.raw || {};
+  if(ds.fireRetireIncomeBoundary) return '';
+  return `${Math.round(Number(raw.x) || 0)}歳 / 月収${formatFireDiagnosisIncomePointValue(raw.y)}万円`;
+}
 function buildRetireIncomeFireGridPointDataset(result, kind){
   const data = [];
   (Array.isArray(result?.pointGrid) ? result.pointGrid : []).forEach(row=>{
@@ -25622,8 +25720,17 @@ function buildRetireIncomeFireGridPointDataset(result, kind){
     showLine:false,
     pointRadius:0,
     pointHoverRadius:4,
+    pointHitRadius:8,
+    pointStyle:'circle',
     borderWidth:0,
-    backgroundColor:'rgba(15,23,42,0.001)',
+    borderColor:'rgba(148,163,184,0.95)',
+    backgroundColor:'rgba(0,0,0,0)',
+    pointBorderColor:'rgba(148,163,184,0.95)',
+    pointBackgroundColor:'rgba(0,0,0,0)',
+    pointHoverBorderColor:'rgba(148,163,184,0.95)',
+    pointHoverBackgroundColor:'rgba(0,0,0,0)',
+    pointBorderWidth:2.2,
+    hoverBorderWidth:2.2,
     fireRetireIncomeGrid:true,
     fireRetireIncomeKind:kind
   };
@@ -25664,7 +25771,12 @@ function buildRetireIncomeBoundaryDataset(points, label, color, dashPattern, leg
     borderWidth:width,
     borderDash:Array.isArray(dashPattern) ? dashPattern : [],
     pointRadius:0,
-    pointHoverRadius:3,
+    pointHoverRadius:4,
+    pointHitRadius:8,
+    pointBorderColor:color,
+    pointBackgroundColor:color,
+    pointHoverBorderColor:color,
+    pointHoverBackgroundColor:color,
     tension:0.18,
     fireRetireIncomeBoundary:true,
     fireRetireIncomeBoundaryKey:key
@@ -25820,24 +25932,29 @@ function renderRetireIncomeFireChart(result, kind){
       responsive:true,
       maintainAspectRatio:false,
       layout:{padding:{right:14, top:12, bottom:10, left:0}},
-      interaction:{mode:'nearest', intersect:false, axis:'xy'},
+      interaction:{mode:'nearest', intersect:true, axis:'xy'},
       plugins:{
         legend:{display:false},
         tooltip:{
-          filter(ctx){ return !!ctx.dataset?.fireRetireIncomeGrid; },
+          displayColors:true,
+          usePointStyle:true,
+          boxWidth:12,
+          boxHeight:12,
+          filter(ctx){ return !!(ctx.dataset?.fireRetireIncomeGrid || ctx.dataset?.fireRetireIncomeBoundary); },
           callbacks:{
-            title(items){
-              const raw = items?.[0]?.raw || {};
-              return `${Math.round(Number(raw.x) || 0)}歳 / 月収${formatFireDiagnosisIncomePointValue(raw.y)}万円`;
+            title(items){ return formatRetireIncomeTooltipTitle(items, result, kind); },
+            beforeLabel(ctx){ return buildRetireIncomeTooltipBeforeLabelLines(ctx, result, kind); },
+            label(ctx){ return buildRetireIncomeTooltipMetricLabel(ctx, result, kind); },
+            afterLabel(ctx){ return buildRetireIncomeTooltipAfterLabelLines(ctx, result, kind); },
+            labelPointStyle(ctx){
+              return {pointStyle:'circle', rotation:0};
             },
-            label(ctx){
-              const raw = ctx.raw || {};
-              if(kind === 'terminal') return `寿命時残高：約${Math.round(Number(raw.terminalAsset || 0)).toLocaleString()}万円`;
-              return `資産寿命：${formatAssetLifeAgeText(raw.assetLifeAge, raw.capped || Number(raw.assetLifeAge) >= 120)}`;
-            },
-            afterLabel(ctx){
-              const raw = ctx.raw || {};
-              return kind === 'assetLife' ? `想定寿命：${Math.round(Number(raw.lifeExpect || result.lifeExpect || 0))}歳` : '';
+            labelColor(ctx){
+              if(ctx.dataset?.fireRetireIncomeGrid){
+                return {borderColor:'rgba(148,163,184,0.95)', backgroundColor:'rgba(15,23,42,0.94)', borderWidth:2.2};
+              }
+              const color = ctx.dataset?.borderColor || '#d63b3b';
+              return {borderColor:color, backgroundColor:color, borderWidth:2};
             }
           }
         }
@@ -25876,13 +25993,17 @@ function formatRetireIncomeFireDiagnosisResultHtml(result){
   lines.push(`<div><strong>安全重視判定</strong>：${result.judgementMode === 'safe' ? '含める' : '含めない'}</div>`);
   if(result.judgementMode === 'safe') lines.push(`<div><strong>寿命時最低残高</strong>：${Math.round(resolveFireDiagnosisRequiredTerminalAsset(result.requiredTerminalAsset)).toLocaleString()}万円</div>`);
   lines.push(`<div><strong>検索年齢</strong>：${Math.round(Number(result.checkedFrom) || 0)}歳 ～ ${Math.round(Number(result.checkedTo) || 0)}歳</div>`);
+  const resultCfg = getScenarioFromDOM();
+  const resultLifeExpectNote = getFireDiagnosisLifeExpectYearEndNote(resultCfg);
+  lines.push('<div class="fire-diagnosis-result-notes" style="margin-top:8px;line-height:1.55;">');
+  lines.push('・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。<br>' + resultLifeExpectNote);
+  lines.push('</div>');
   lines.push(`<div><strong>リタイア後の手取り（月）</strong>：${incomeText} 万円／月</div>`);
   lines.push(`<div><strong>リタイア後収入終了年月</strong>：${Math.round(Number(result.incomeEndYear) || 0)}年${Math.round(Number(result.incomeEndMonth) || 0)}月${incomeEndAgeText}</div>`);
   lines.push('<div style="margin-top:8px;line-height:1.55;">');
-  lines.push('<div>・寿命時残高と資産寿命の等高線グラフを表示しています。</div>');
   lines.push('<div>・等高線とFIRE線は、リタイア年齢×月収の計算グリッドを補間した診断マップです。</div>');
   lines.push('<div>・「リタイア年齢ごとの必要月収」は、マップ上のFIRE線から読み取った目安です。</div>');
-  lines.push('<div>・「月収ごとのFIRE可能年齢」は、現在条件でFIRE診断と同じ月次探索による判定値です。</div>');
+  lines.push('<div>・「月収ごとのFIRE可能年齢」は、月次探索による判定値です。</div>');
   lines.push('<div>・グラフ上のFIRE線と月次判定のFIRE可能年齢は、数ヶ月程度ずれる場合があります。</div>');
   lines.push('</div>');
   return lines.join('');
@@ -26163,10 +26284,12 @@ function renderAssetLifeDiagnosisChart(result){
     }
   }
   if(axisNoteEl){
-    const safeNote = result?.judgementMode === 'safe' ? '<br>・安全重視判定は、寿命時残高が最低残高以上かどうかを追加で判定します。資産寿命の定義自体は通常どおり総資産が0円を下回る年齢です。' : '';
+    const safeDefinitionNote = result?.judgementMode === 'safe' ? '<br>・安全重視判定は、寿命時残高が最低残高以上かどうかを追加で判定します。資産寿命の定義自体は、総資産が0円を下回る年齢です。' : '';
     axisNoteEl.innerHTML = isMonte
-      ? `・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。グラフは各リタイア年齢における資産寿命のばらつきを示します。<br>・確率帯は、多くの試行結果が入る10-90%の範囲を示します。白抜き丸印は、指定した成功率で想定寿命まで資産がもつようになる最初のリタイア年齢を示します。<br>${getFireDiagnosisLifeExpectYearEndNote(cfg)}${safeNote}`
-      : `・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。グラフは各リタイア年齢における資産寿命の推移を示します。<br>・FIRE可能年齢は月単位で判定しています。小さな丸印は1歳刻みの計算点、白抜き丸印は想定寿命まで資産がもつようになる月単位の成立点を示します。<br>${getFireDiagnosisLifeExpectYearEndNote(cfg)}${safeNote}`;
+      ? `・グラフは、各リタイア年齢における資産寿命の分布を示します。<br>・中央値の線に加えて、多くの試行結果が入る10〜90%の範囲を確率帯で表示します。<br>・白抜き丸印は、指定した成功率を初めて満たす月単位の成立点を示します。${safeDefinitionNote}`
+      : (result?.judgementMode === 'safe'
+        ? `・グラフは、各リタイア年齢における資産寿命の推移を示します。<br>・小さな丸印は1歳刻みの計算点、白抜き丸印は月単位で判定したFIRE／安全FIREの成立点を示します。<br>・安全重視判定は、寿命時残高が最低残高以上かどうかを追加で判定します。資産寿命の定義自体は、総資産が0円を下回る年齢です。`
+        : `・グラフは、各リタイア年齢における資産寿命の推移を示します。<br>・小さな丸印は1歳刻みの計算点、白抜き丸印は月単位で判定したFIRE成立点を示します。`);
   }
   const assetLifeGuidePlugin = {
     id:'assetLifeGuidePlugin',
@@ -26423,7 +26546,9 @@ function renderAssetLifeSuccessRateChart(result){
     ]);
   }
   if(axisNoteEl){
-    axisNoteEl.innerHTML = `・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。グラフは各リタイア年齢におけるFIRE成功率の推移を示します。<br>・成功率しきい値は破線で表示します。白抜き丸印は、指定した成功率を初めて満たす月単位の成立点を示します。`;
+    axisNoteEl.innerHTML = hasSafe
+      ? `・グラフは、各リタイア年齢におけるFIRE／安全FIRE成功率の推移を示します。<br>・成功率しきい値は破線で表示します。<br>・白抜き丸印は、指定した成功率を初めて満たすFIRE／安全FIREの月単位成立点を示します。`
+      : `・グラフは、各リタイア年齢におけるFIRE成功率の推移を示します。<br>・成功率しきい値は破線で表示します。<br>・白抜き丸印は、指定した成功率を初めて満たす月単位の成立点を示します。`;
   }
   const thresholdLinePlugin = {
     id:'assetLifeSuccessRateThresholdLinePlugin',
@@ -26674,10 +26799,15 @@ function renderAssetLifeTerminalAssetChart(result){
     }
   }
   if(axisNoteEl){
-    const lifeExpectNote = getFireDiagnosisLifeExpectYearEndNote(getScenarioFromDOM());
-    axisNoteEl.innerHTML = safeMode
-      ? `・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。<br>・0円ラインに加えて、寿命時最低残高ラインを表示します。現時点では安全重視ON時の成立点を示します。<br>${lifeExpectNote}`
-      : (isMonte ? `・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。<br>・寿命時残高の10-90%範囲、中央値、一定利率を表示します。<br>${lifeExpectNote}` : `・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。<br>・寿命時残高が0円以上になる地点をFIRE成立の目安として表示します。<br>${lifeExpectNote}`);
+    if(isMonte){
+      axisNoteEl.innerHTML = safeMode
+        ? `・グラフは、各リタイア年齢における寿命時残高の分布を示します。<br>・中央値の線に加えて、多くの試行結果が入る10〜90%の範囲を確率帯で表示します。<br>・白抜き丸印は、指定した成功率を初めて満たす月単位の成立点を示します。<br>・0円ラインはFIRE成立の目安、寿命時最低残高ラインは安全FIRE成立の目安を示します。`
+        : `・グラフは、各リタイア年齢における寿命時残高の分布を示します。<br>・中央値の線に加えて、多くの試行結果が入る10〜90%の範囲を確率帯で表示します。<br>・白抜き丸印は、指定した成功率を初めて満たす月単位の成立点を示します。<br>・0円ラインはFIRE成立の目安を示します。`;
+    }else{
+      axisNoteEl.innerHTML = safeMode
+        ? `・グラフは、各リタイア年齢における寿命時残高の推移を示します。<br>・小さな丸印は1歳刻みの計算点、白抜き丸印は月単位で判定したFIRE／安全FIREの成立点を示します。<br>・0円ラインはFIRE成立の目安、寿命時最低残高ラインは安全FIRE成立の目安を示します。`
+        : `・グラフは、各リタイア年齢における寿命時残高の推移を示します。<br>・小さな丸印は1歳刻みの計算点、白抜き丸印は月単位で判定したFIRE成立点を示します。<br>・0円ラインはFIRE成立の目安を示します。`;
+    }
   }
   const referenceLinePlugin = {
     id:'assetLifeTerminalReferenceLinePlugin',
@@ -26927,6 +27057,11 @@ function formatFireDiagnosisResultHtml(result){
   if(result.judgementMode === 'safe') lines.push(`<div><strong>寿命時最低残高</strong>：${Math.round(resolveFireDiagnosisRequiredTerminalAsset(result.requiredTerminalAsset)).toLocaleString()}万円</div>`);
   if(result.diagnosisType === 'monte_carlo') lines.push(`<div><strong>成功率しきい値</strong>：${Math.round(Number(result.requiredSuccessRate || 0) || 0)}%</div>`);
   lines.push(`<div><strong>検索年齢</strong>：${Math.round(Number(result.checkedFrom) || 0)}歳 ～ ${Math.round(Number(result.checkedTo) || 0)}歳</div>`);
+  const resultCfg = getScenarioFromDOM();
+  const resultLifeExpectNote = getFireDiagnosisLifeExpectYearEndNote(resultCfg);
+  lines.push('<div class="fire-diagnosis-result-notes" style="margin-top:8px;line-height:1.55;">');
+  lines.push('・横軸の各年齢は、その年齢の誕生日時点でリタイアするケースを表します。<br>' + resultLifeExpectNote);
+  lines.push('</div>');
   const addSingle = (single, heading)=>{
     if(heading) lines.push(`<div style="margin:8px 0 6px;border-top:1px solid #d8dee9;"></div><div><strong>${heading}</strong></div>`);
     if(single?.found){
